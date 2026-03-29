@@ -6,12 +6,16 @@ import { NPC_CONFIGS } from '../data/npc-configs';
 import { EventBus } from '../EventBus';
 import { getDoorByScene, type DoorConfig } from '../data/door-configs';
 
+const EXIT_INTERACTION_RANGE = 20;
+
 export interface InteriorState {
   player: Player;
   npc: NPC;
   returnX: number;
   returnY: number;
   isExiting: boolean;
+  exitPrompt: Phaser.GameObjects.Graphics | null;
+  door: DoorConfig;
 }
 
 export function initInterior(
@@ -21,10 +25,12 @@ export function initInterior(
 ) {
   const door = getDoorByScene(scene.scene.key);
   if (!door) throw new Error(`No door config for scene ${scene.scene.key}`);
+  state.door = door;
   state.returnX = data.returnX ?? door.returnX;
   state.returnY = data.returnY ?? door.returnY;
   if (data.visitorName) scene.registry.set('visitorName', data.visitorName);
   state.isExiting = false;
+  state.exitPrompt = null;
 }
 
 export function setupInterior(
@@ -35,7 +41,7 @@ export function setupInterior(
   locationName: string,
   state: InteriorState
 ) {
-  const door = getDoorByScene(scene.scene.key)!;
+  const door = state.door;
 
   scene.cameras.main.fadeIn(300, 0, 0, 0);
 
@@ -50,9 +56,9 @@ export function setupInterior(
   const spawnsLayer = tilemap.getLayer('spawns')?.tilemapLayer;
   if (spawnsLayer) spawnsLayer.setVisible(false);
 
-  // Depth sorting
+  // Depth sorting (above player depth of 16)
   const furnitureTopsLayer = tilemap.getLayer('furnitureTops')?.tilemapLayer;
-  if (furnitureTopsLayer) furnitureTopsLayer.setDepth(15);
+  if (furnitureTopsLayer) furnitureTopsLayer.setDepth(50);
 
   // Player
   state.player = new Player(scene, door.interior.spawnX, door.interior.spawnY);
@@ -76,24 +82,21 @@ export function setupInterior(
   scene.cameras.main.setBounds(0, 0, tilemap.widthInPixels, tilemap.heightInPixels);
   scene.physics.world.setBounds(0, 0, tilemap.widthInPixels, tilemap.heightInPixels);
 
-  // Exit zone
-  const exitZone = scene.add.zone(
-    door.interior.exitX,
-    door.interior.exitY,
-    door.interior.exitWidth,
-    door.interior.exitHeight
-  );
-  scene.physics.add.existing(exitZone, true);
-  (exitZone.body as Phaser.Physics.Arcade.StaticBody).setSize(
-    door.interior.exitWidth,
-    door.interior.exitHeight
-  );
-  scene.physics.add.overlap(state.player, exitZone, () => {
-    handleExit(scene, state);
-  });
+  // Exit door prompt arrow
+  const g = scene.add.graphics();
+  g.setPosition(door.interior.exitX, door.interior.exitY - 14);
+  g.setDepth(21);
+  g.setVisible(false);
+  g.fillStyle(0xffffff, 0.8);
+  g.fillTriangle(-4, -3, 4, -3, 0, 3);
+  g.fillCircle(0, 5, 1);
+  state.exitPrompt = g;
 
-  // NPC interaction
+  // Interaction handler
   EventBus.on('player-interact', () => {
+    if (state.isExiting) return;
+
+    // NPC interaction takes priority
     if (state.npc.isPlayerInRange(state.player.x, state.player.y)) {
       state.npc.facePlayer(state.player.x, state.player.y);
       EventBus.emit('npc-interaction', {
@@ -101,6 +104,16 @@ export function setupInterior(
         npcName: npcConfig.displayName,
       });
       EventBus.emit('chat-opened', { npcId: npcId });
+      return;
+    }
+
+    // Exit door interaction
+    const dist = Phaser.Math.Distance.Between(
+      state.player.x, state.player.y,
+      door.interior.exitX, door.interior.exitY
+    );
+    if (dist <= EXIT_INTERACTION_RANGE) {
+      handleExit(scene, state);
     }
   });
 
@@ -112,11 +125,23 @@ export function updateInterior(state: InteriorState) {
   state.player.update();
   state.npc.update();
   state.npc.checkProximity(state.player.x, state.player.y);
+
+  // Show/hide exit prompt based on proximity
+  if (state.exitPrompt && !state.isExiting) {
+    const dist = Phaser.Math.Distance.Between(
+      state.player.x, state.player.y,
+      state.door.interior.exitX, state.door.interior.exitY
+    );
+    const nearExit = dist <= EXIT_INTERACTION_RANGE;
+    const npcInRange = state.npc.isPlayerInRange(state.player.x, state.player.y);
+    state.exitPrompt.setVisible(nearExit && !npcInRange);
+  }
 }
 
 function handleExit(scene: Phaser.Scene, state: InteriorState) {
   if (state.isExiting) return;
   state.isExiting = true;
+  if (state.exitPrompt) state.exitPrompt.setVisible(false);
 
   const cam = scene.cameras?.main;
   if (!cam) return;

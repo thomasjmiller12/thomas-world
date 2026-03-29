@@ -298,11 +298,11 @@ export default class Town extends Phaser.Scene {
 		const spawnsLayer = this.townMap.getLayer('spawns')?.tilemapLayer;
 		if (spawnsLayer) spawnsLayer.setVisible(false);
 
-		// Depth sorting for tops layers
+		// Depth sorting for tops layers (must be above player depth of 16)
 		const buildingTopsLayer = this.townMap.getLayer('buildingTops')?.tilemapLayer;
 		const decorationTopsLayer = this.townMap.getLayer('decorationTops')?.tilemapLayer;
-		if (buildingTopsLayer) buildingTopsLayer.setDepth(15);
-		if (decorationTopsLayer) decorationTopsLayer.setDepth(15);
+		if (buildingTopsLayer) buildingTopsLayer.setDepth(50);
+		if (decorationTopsLayer) decorationTopsLayer.setDepth(50);
 
 		// Player
 		const spawnX = this.registry.get('spawnX') || Town.PLAYER_SPAWN.x;
