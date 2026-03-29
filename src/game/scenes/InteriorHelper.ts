@@ -52,7 +52,7 @@ export function setupInterior(
 
   // Depth sorting
   const furnitureTopsLayer = tilemap.getLayer('furnitureTops')?.tilemapLayer;
-  if (furnitureTopsLayer) furnitureTopsLayer.setDepth(15);
+  if (furnitureTopsLayer) furnitureTopsLayer.setDepth(50);
 
   // Player
   state.player = new Player(scene, door.interior.spawnX, door.interior.spawnY);
