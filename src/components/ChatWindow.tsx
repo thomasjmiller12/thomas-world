@@ -48,12 +48,12 @@ export function ChatWindow({ npcId, npcName, messages, onSend, onClose }: ChatWi
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.sender === 'visitor' ? 'justify-end' : 'justify-start'}`}>
             <div
-              className={`max-w-[90%] px-2.5 py-1.5 rounded-lg text-[11px] leading-relaxed ${
+              className={`max-w-[90%] px-2.5 py-1.5 rounded-lg text-xs leading-relaxed ${
                 msg.sender === 'visitor' ? 'bg-[#4A90D9]/20 text-[#c4b5a0]' : 'text-[#c4b5a0]'
               }`}
               style={msg.sender !== 'visitor' ? { backgroundColor: npcColor + '15' } : {}}
             >
-              <span className="font-bold text-[9px] block mb-0.5" style={{ color: msg.sender === 'visitor' ? '#7ab3e8' : npcColor }}>
+              <span className="font-bold text-[10px] block mb-0.5" style={{ color: msg.sender === 'visitor' ? '#7ab3e8' : npcColor }}>
                 {msg.senderName}
               </span>
               <span>{msg.text}</span>
@@ -71,11 +71,11 @@ export function ChatWindow({ npcId, npcName, messages, onSend, onClose }: ChatWi
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder="Say something..."
-          className="flex-1 bg-[#c4b5a0]/5 text-[#c4b5a0] text-[11px] px-2.5 py-1.5 rounded border border-[#3d3654]/30 focus:outline-none focus:border-[#3d3654]/60 placeholder-[#c4b5a0]/20"
+          className="flex-1 bg-[#c4b5a0]/5 text-[#c4b5a0] text-xs px-2.5 py-1.5 rounded border border-[#3d3654]/30 focus:outline-none focus:border-[#3d3654]/60 placeholder-[#c4b5a0]/25"
         />
         <button
           onClick={handleSend}
-          className="px-2.5 py-1.5 text-[11px] rounded hover:opacity-80 transition-opacity"
+          className="px-2.5 py-1.5 text-xs rounded hover:opacity-80 transition-opacity"
           style={{ backgroundColor: npcColor + '30', color: npcColor }}
         >
           Send

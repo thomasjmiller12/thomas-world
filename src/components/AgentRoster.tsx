@@ -76,7 +76,7 @@ export function AgentRoster({ proximityNpcId, chatNpcId, selectedNpcId, onNpcCli
   return (
     <div className="w-48 h-full bg-[#1e1b2e] border-r border-[#3d3654]/40 flex flex-col overflow-hidden">
       <div className="px-3 py-2 border-b border-[#3d3654]/40 flex items-center justify-between">
-        <p className="text-[#c4b5a0]/50 text-[9px] font-mono uppercase tracking-widest">Residents</p>
+        <p className="text-[#c4b5a0]/60 text-[10px] font-mono uppercase tracking-widest">Residents</p>
         <button
           onClick={() => setCollapsed(true)}
           className="text-[#c4b5a0]/40 hover:text-[#c4b5a0] text-xs"
@@ -126,7 +126,7 @@ function RosterEntry({ config, isNear, isChatting, isSelected, onClick }: {
         <div className="min-w-0 flex-1 ml-1">
           <div className="flex items-center gap-1.5">
             <span
-              className="text-[11px] font-bold truncate"
+              className="text-xs font-bold truncate"
               style={{ color: config.color }}
             >
               {config.displayName.replace('Thomas', '').trim()}
@@ -136,13 +136,13 @@ function RosterEntry({ config, isNear, isChatting, isSelected, onClick }: {
             )}
           </div>
           <div className="flex items-center gap-1 mt-0.5">
-            <span className="text-[8px] text-[#c4b5a0]/30 bg-[#c4b5a0]/5 px-1 py-px rounded">
+            <span className="text-[9px] text-[#c4b5a0]/40 bg-[#c4b5a0]/8 px-1 py-px rounded">
               {location}
             </span>
           </div>
         </div>
       </div>
-      <p className="text-[9px] text-[#c4b5a0]/35 mt-1 leading-snug line-clamp-1 pl-1">
+      <p className="text-[10px] text-[#c4b5a0]/45 mt-1 leading-snug line-clamp-1 pl-1">
         {config.status}
       </p>
     </button>

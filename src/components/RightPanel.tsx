@@ -113,7 +113,7 @@ export function RightPanel({
           <NpcInfoView npcId={selectedNpcId} />
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-[#c4b5a0]/15 text-[11px] text-center px-4">
+            <p className="text-[#c4b5a0]/25 text-xs text-center px-4">
               Select a resident to learn more
             </p>
           </div>
@@ -140,17 +140,17 @@ function NpcInfoView({ npcId }: { npcId: ThomasId }) {
 
       <div className="flex-1 overflow-y-auto p-3">
         <div className="mb-3">
-          <p className="text-[8px] text-[#c4b5a0]/30 uppercase tracking-wider mb-1">Status</p>
-          <p className="text-[11px] text-[#c4b5a0]/70">{config?.status}</p>
+          <p className="text-[9px] text-[#c4b5a0]/40 uppercase tracking-wider mb-1">Status</p>
+          <p className="text-xs text-[#c4b5a0]/75">{config?.status}</p>
         </div>
         <div>
-          <p className="text-[8px] text-[#c4b5a0]/30 uppercase tracking-wider mb-1">About</p>
-          <p className="text-[11px] text-[#c4b5a0]/50 leading-relaxed">{config?.aboutText}</p>
+          <p className="text-[9px] text-[#c4b5a0]/40 uppercase tracking-wider mb-1">About</p>
+          <p className="text-xs text-[#c4b5a0]/60 leading-relaxed">{config?.aboutText}</p>
         </div>
       </div>
 
       <div className="px-3 py-2 border-t border-[#3d3654]/40">
-        <p className="text-[8px] text-[#c4b5a0]/20 text-center">
+        <p className="text-[9px] text-[#c4b5a0]/30 text-center">
           Walk nearby & press SPACE to chat
         </p>
       </div>
