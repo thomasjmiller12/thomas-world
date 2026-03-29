@@ -269,6 +269,7 @@ export default class Town extends Phaser.Scene {
 	private nearestNPC: NPC | null = null;
 	private nearestDoor: DoorConfig | null = null;
 	private isTransitioning: boolean = false;
+	private doorPrompts: Map<string, Phaser.GameObjects.Graphics> = new Map();
 	private static readonly DOOR_INTERACTION_RANGE = 20;
 	private static readonly PLAYER_SPAWN = { x: 152, y: 456 };
 
@@ -329,6 +330,20 @@ export default class Town extends Phaser.Scene {
 				this.physics.add.collider(npc, collisionLayer);
 			}
 			this.physics.add.collider(this.player, npc);
+		}
+
+		// Door proximity prompts — small arrow above each door
+		for (const door of Object.values(DOOR_CONFIGS)) {
+			const g = this.add.graphics();
+			g.setPosition(door.town.x, door.town.y - 14);
+			g.setDepth(21);
+			g.setVisible(false);
+			// Small white downward arrow
+			g.fillStyle(0xffffff, 0.8);
+			g.fillTriangle(-4, -3, 4, -3, 0, 3);
+			// Tiny dot below
+			g.fillCircle(0, 5, 1);
+			this.doorPrompts.set(door.id, g);
 		}
 
 		// Interaction handler
@@ -397,6 +412,10 @@ export default class Town extends Phaser.Scene {
 				nearestDoorDist = dist;
 				this.nearestDoor = door;
 			}
+		}
+
+		for (const [doorId, prompt] of this.doorPrompts) {
+			prompt.setVisible(this.nearestDoor?.id === doorId && !this.nearestNPC);
 		}
 	}
 
