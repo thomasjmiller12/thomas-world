@@ -269,8 +269,6 @@ export default class Town extends Phaser.Scene {
 	private nearestNPC: NPC | null = null;
 	private nearestDoor: DoorConfig | null = null;
 	private isTransitioning: boolean = false;
-	private doorIndicators: Map<string, Phaser.GameObjects.Sprite> = new Map();
-
 	private static readonly DOOR_INTERACTION_RANGE = 20;
 	private static readonly PLAYER_SPAWN = { x: 152, y: 456 };
 
@@ -333,30 +331,6 @@ export default class Town extends Phaser.Scene {
 			this.physics.add.collider(this.player, npc);
 		}
 
-		// Door indicators - render to texture once for clean display
-		for (const door of Object.values(DOOR_CONFIGS)) {
-			const key = `door-space-${door.id}`;
-			const tmp = this.add.text(0, 0, '[SPACE]', {
-				fontFamily: 'Arial, Helvetica, sans-serif',
-				fontSize: '16px',
-				fontStyle: 'bold',
-				color: '#ffff00',
-				stroke: '#000000',
-				strokeThickness: 3,
-			}).setOrigin(0.5);
-			const w = Math.ceil(tmp.width) + 4;
-			const h = Math.ceil(tmp.height) + 4;
-			const rt = this.textures.createCanvas(key, w, h);
-			const ctx = rt!.getContext();
-			ctx.drawImage(tmp.canvas, (w - tmp.width) / 2, (h - tmp.height) / 2);
-			rt!.refresh();
-			tmp.destroy();
-
-			const indicator = this.add.sprite(door.town.x, door.town.y - 12, key);
-			indicator.setOrigin(0.5).setScale(0.5).setDepth(20).setVisible(false);
-			this.doorIndicators.set(door.id, indicator);
-		}
-
 		// Interaction handler
 		EventBus.on('player-interact', () => {
 			if (this.isTransitioning) return;
@@ -403,15 +377,12 @@ export default class Town extends Phaser.Scene {
 
 		for (const npc of this.npcs) {
 			npc.update();
+			npc.checkProximity(this.player.x, this.player.y);
 			const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, npc.x, npc.y);
 			if (dist <= INTERACTION_RANGE && dist < nearestNpcDist) {
 				nearestNpcDist = dist;
 				this.nearestNPC = npc;
 			}
-		}
-
-		for (const npc of this.npcs) {
-			npc.showInteractionIndicator(npc === this.nearestNPC);
 		}
 
 		this.nearestDoor = null;
@@ -426,11 +397,6 @@ export default class Town extends Phaser.Scene {
 				nearestDoorDist = dist;
 				this.nearestDoor = door;
 			}
-		}
-
-		for (const [doorId, indicator] of this.doorIndicators) {
-			const isNearest = this.nearestDoor?.id === doorId && !this.nearestNPC;
-			indicator.setVisible(isNearest);
 		}
 	}
 

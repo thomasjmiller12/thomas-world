@@ -10,6 +10,8 @@ export interface NPCConfig {
   greeting: string;
   waypoints: { x: number; y: number }[];
   stubbedResponses: string[];
+  status: string;
+  aboutText: string;
 }
 
 export interface SimulatedAction {

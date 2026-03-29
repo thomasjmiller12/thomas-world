@@ -68,7 +68,15 @@ export default class Preloader extends Phaser.Scene {
     private createAnimations() {
         const sprites = ['player', 'thomas-career', 'thomas-researcher', 'thomas-builder', 'thomas-writer', 'thomas-hobby'];
 
+        // Spritesheets: 64x96, 4 cols x 4 rows, 16x24 frames
+        // Row 0 (frames 0-3): down
+        // Row 1 (frames 4-7): left
+        // Row 2 (frames 8-11): right
+        // Row 3 (frames 12-15): up
+        // RPG Maker pattern per row: idle, step-left, idle, step-right
+
         for (const sprite of sprites) {
+            // Down (row 0)
             this.anims.create({
                 key: `${sprite}-idle-down`,
                 frames: [{ key: sprite, frame: 0 }],
@@ -76,21 +84,17 @@ export default class Preloader extends Phaser.Scene {
             });
             this.anims.create({
                 key: `${sprite}-walk-down`,
-                frames: this.anims.generateFrameNumbers(sprite, { start: 0, end: 3 }),
+                frames: [
+                    { key: sprite, frame: 0 },
+                    { key: sprite, frame: 1 },
+                    { key: sprite, frame: 2 },
+                    { key: sprite, frame: 3 },
+                ],
                 frameRate: 8,
                 repeat: -1,
             });
-            this.anims.create({
-                key: `${sprite}-idle-up`,
-                frames: [{ key: sprite, frame: 4 }],
-                frameRate: 1,
-            });
-            this.anims.create({
-                key: `${sprite}-walk-up`,
-                frames: this.anims.generateFrameNumbers(sprite, { start: 4, end: 7 }),
-                frameRate: 8,
-                repeat: -1,
-            });
+
+            // Left (row 1)
             this.anims.create({
                 key: `${sprite}-idle-left`,
                 frames: [{ key: sprite, frame: 4 }],
@@ -98,18 +102,48 @@ export default class Preloader extends Phaser.Scene {
             });
             this.anims.create({
                 key: `${sprite}-walk-left`,
-                frames: this.anims.generateFrameNumbers(sprite, { start: 4, end: 7 }),
+                frames: [
+                    { key: sprite, frame: 4 },
+                    { key: sprite, frame: 5 },
+                    { key: sprite, frame: 6 },
+                    { key: sprite, frame: 7 },
+                ],
                 frameRate: 8,
                 repeat: -1,
             });
+
+            // Right (row 2)
             this.anims.create({
                 key: `${sprite}-idle-right`,
-                frames: [{ key: sprite, frame: 4 }],
+                frames: [{ key: sprite, frame: 8 }],
                 frameRate: 1,
             });
             this.anims.create({
                 key: `${sprite}-walk-right`,
-                frames: this.anims.generateFrameNumbers(sprite, { start: 4, end: 7 }),
+                frames: [
+                    { key: sprite, frame: 8 },
+                    { key: sprite, frame: 9 },
+                    { key: sprite, frame: 10 },
+                    { key: sprite, frame: 11 },
+                ],
+                frameRate: 8,
+                repeat: -1,
+            });
+
+            // Up (row 3)
+            this.anims.create({
+                key: `${sprite}-idle-up`,
+                frames: [{ key: sprite, frame: 12 }],
+                frameRate: 1,
+            });
+            this.anims.create({
+                key: `${sprite}-walk-up`,
+                frames: [
+                    { key: sprite, frame: 12 },
+                    { key: sprite, frame: 13 },
+                    { key: sprite, frame: 14 },
+                    { key: sprite, frame: 15 },
+                ],
                 frameRate: 8,
                 repeat: -1,
             });

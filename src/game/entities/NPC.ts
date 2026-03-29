@@ -13,9 +13,10 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   private direction: string = 'down';
   private isPaused: boolean = false;
   private pauseTimer?: Phaser.Time.TimerEvent;
-  private nameTag?: Phaser.GameObjects.Sprite;
-  private interactionIndicator?: Phaser.GameObjects.Sprite;
+  private colorDot: Phaser.GameObjects.Arc;
+  private speechBubble: Phaser.GameObjects.Graphics;
   private isInConversation: boolean = false;
+  private wasInRange: boolean = false;
 
   constructor(scene: Phaser.Scene, config: NPCConfig) {
     super(scene, config.homePosition.x, config.homePosition.y, config.sprite, 0);
@@ -30,33 +31,20 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
 
     this.setCollideWorldBounds(true);
     this.setSize(10, 10);
-    this.setOffset(3, 20);
+    this.setOffset(3, 12);
     this.setDepth(16);
     this.setImmovable(true);
 
-    // Render text to texture once to avoid per-frame text rendering artifacts
-    this.nameTag = this.createTextSprite(scene, `npc-name-${config.id}`, this.displayName, {
-      fontFamily: 'Arial, Helvetica, sans-serif',
-      fontSize: '18px',
-      fontStyle: 'bold',
-      color: config.color,
-      stroke: '#000000',
-      strokeThickness: 3,
-    }, 0.5);
-    this.nameTag.setPosition(this.x, this.y - 20);
-    this.nameTag.setDepth(20);
+    // Small colored dot above the NPC
+    const colorInt = Phaser.Display.Color.HexStringToColor(config.color).color;
+    this.colorDot = scene.add.circle(this.x, this.y - 14, 3, colorInt);
+    this.colorDot.setDepth(20);
 
-    this.interactionIndicator = this.createTextSprite(scene, `npc-space-${config.id}`, '[SPACE]', {
-      fontFamily: 'Arial, Helvetica, sans-serif',
-      fontSize: '16px',
-      fontStyle: 'bold',
-      color: '#ffff00',
-      stroke: '#000000',
-      strokeThickness: 3,
-    }, 0.5);
-    this.interactionIndicator.setPosition(this.x, this.y - 30);
-    this.interactionIndicator.setDepth(20);
-    this.interactionIndicator.setVisible(false);
+    // Speech bubble (hidden until proximity)
+    this.speechBubble = scene.add.graphics();
+    this.speechBubble.setDepth(21);
+    this.speechBubble.setVisible(false);
+    this.drawSpeechBubble();
 
     this.startWaypoints();
 
@@ -72,6 +60,24 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
         this.isInConversation = false;
       }
     });
+  }
+
+  private drawSpeechBubble() {
+    const g = this.speechBubble;
+    g.clear();
+
+    // Small white rounded rectangle
+    g.fillStyle(0xffffff, 0.95);
+    g.fillRoundedRect(-10, -10, 20, 12, 3);
+
+    // Tiny pointer triangle
+    g.fillTriangle(-2, 2, 2, 2, 0, 5);
+
+    // Three dots
+    g.fillStyle(0x666666, 1);
+    g.fillCircle(-4, -4, 1.5);
+    g.fillCircle(0, -4, 1.5);
+    g.fillCircle(4, -4, 1.5);
   }
 
   private startWaypoints() {
@@ -103,7 +109,6 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
       this.direction = dy > 0 ? 'down' : 'up';
     }
 
-    this.setFlipX(this.direction === 'left');
     this.play(`${this.npcConfig.sprite}-walk-${this.direction}`, true);
   }
 
@@ -128,12 +133,19 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     } else {
       this.direction = dy > 0 ? 'down' : 'up';
     }
-    this.setFlipX(this.direction === 'left');
     this.play(`${this.npcConfig.sprite}-idle-${this.direction}`, true);
   }
 
-  showInteractionIndicator(show: boolean) {
-    this.interactionIndicator?.setVisible(show);
+  checkProximity(playerX: number, playerY: number) {
+    const inRange = this.isPlayerInRange(playerX, playerY);
+    if (inRange && !this.wasInRange) {
+      this.speechBubble.setVisible(true);
+      EventBus.emit('npc-proximity-enter', { npcId: this.npcId });
+    } else if (!inRange && this.wasInRange) {
+      this.speechBubble.setVisible(false);
+      EventBus.emit('npc-proximity-exit', { npcId: this.npcId });
+    }
+    this.wasInRange = inRange;
   }
 
   isPlayerInRange(playerX: number, playerY: number): boolean {
@@ -142,12 +154,8 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   }
 
   update() {
-    if (this.nameTag) {
-      this.nameTag.setPosition(this.x, this.y - 20);
-    }
-    if (this.interactionIndicator) {
-      this.interactionIndicator.setPosition(this.x, this.y - 26);
-    }
+    this.colorDot.setPosition(this.x, this.y - 14);
+    this.speechBubble.setPosition(this.x, this.y - 22);
 
     if (!this.isPaused && !this.isInConversation) {
       const target = this.waypoints[this.currentWaypointIndex];
@@ -169,35 +177,9 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
-  private createTextSprite(
-    scene: Phaser.Scene,
-    key: string,
-    text: string,
-    style: Phaser.Types.GameObjects.Text.TextStyle,
-    scale: number,
-  ): Phaser.GameObjects.Sprite {
-    // Render at 2x size then display at half scale for crisp text
-    const tmp = scene.add.text(0, 0, text, style).setOrigin(0.5);
-    const w = Math.ceil(tmp.width) + 4;
-    const h = Math.ceil(tmp.height) + 4;
-    const rt = scene.textures.createCanvas(key, w, h);
-    const ctx = rt!.getContext();
-    tmp.setPosition(w / 2, h / 2);
-    // Draw text onto canvas
-    const textCanvas = tmp.canvas;
-    ctx.drawImage(textCanvas, (w - tmp.width) / 2, (h - tmp.height) / 2);
-    rt!.refresh();
-    tmp.destroy();
-
-    const sprite = scene.add.sprite(0, 0, key);
-    sprite.setOrigin(0.5);
-    sprite.setScale(scale);
-    return sprite;
-  }
-
   destroy(fromScene?: boolean) {
-    this.nameTag?.destroy();
-    this.interactionIndicator?.destroy();
+    this.colorDot?.destroy();
+    this.speechBubble?.destroy();
     this.pauseTimer?.destroy();
     super.destroy(fromScene);
   }

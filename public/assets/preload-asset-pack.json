@@ -112,7 +112,7 @@
                 "key": "player",
                 "frameConfig": {
                     "frameWidth": 16,
-                    "frameHeight": 32
+                    "frameHeight": 24
                 }
             },
             {
@@ -121,7 +121,7 @@
                 "key": "thomas-career",
                 "frameConfig": {
                     "frameWidth": 16,
-                    "frameHeight": 32
+                    "frameHeight": 24
                 }
             },
             {
@@ -130,7 +130,7 @@
                 "key": "thomas-researcher",
                 "frameConfig": {
                     "frameWidth": 16,
-                    "frameHeight": 32
+                    "frameHeight": 24
                 }
             },
             {
@@ -139,7 +139,7 @@
                 "key": "thomas-builder",
                 "frameConfig": {
                     "frameWidth": 16,
-                    "frameHeight": 32
+                    "frameHeight": 24
                 }
             },
             {
@@ -148,7 +148,7 @@
                 "key": "thomas-writer",
                 "frameConfig": {
                     "frameWidth": 16,
-                    "frameHeight": 32
+                    "frameHeight": 24
                 }
             },
             {
@@ -157,7 +157,7 @@
                 "key": "thomas-hobby",
                 "frameConfig": {
                     "frameWidth": 16,
-                    "frameHeight": 32
+                    "frameHeight": 24
                 }
             }
         ]

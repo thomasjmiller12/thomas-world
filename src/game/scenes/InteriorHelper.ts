@@ -111,9 +111,7 @@ export function setupInterior(
 export function updateInterior(state: InteriorState) {
   state.player.update();
   state.npc.update();
-  state.npc.showInteractionIndicator(
-    state.npc.isPlayerInRange(state.player.x, state.player.y)
-  );
+  state.npc.checkProximity(state.player.x, state.player.y);
 }
 
 function handleExit(scene: Phaser.Scene, state: InteriorState) {

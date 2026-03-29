@@ -3,7 +3,8 @@ import { PhaserGame } from './PhaserGame';
 import { EventBus } from './game/EventBus';
 import { InteractionSystem } from './game/systems/InteractionSystem';
 import { AgentSimulator } from './game/systems/AgentSimulator';
-import { ChatWindow } from './components/ChatWindow';
+import { AgentRoster } from './components/AgentRoster';
+import { RightPanel } from './components/RightPanel';
 import { DialogBox } from './components/DialogBox';
 import { ThoughtBubble } from './components/ThoughtBubble';
 import { HUD } from './components/HUD';
@@ -27,6 +28,9 @@ function App({ visitorName }: AppProps) {
   const [thoughtBubbles, setThoughtBubbles] = useState<ThoughtBubbleData[]>([]);
   const [locationName, setLocationName] = useState("Thomas's Town");
   const [npcPositions, setNpcPositions] = useState<Record<string, { screenX: number; screenY: number }>>({});
+  const [proximityNpcId, setProximityNpcId] = useState<ThomasId | null>(null);
+  const [selectedNpcId, setSelectedNpcId] = useState<ThomasId | null>(null);
+  const [rightPanelVisible, setRightPanelVisible] = useState(false);
 
   const handleChatSend = useCallback((message: string) => {
     if (!chatNpcId) return;
@@ -55,6 +59,15 @@ function App({ visitorName }: AppProps) {
     EventBus.emit('dialog-closed');
   }, []);
 
+  const handleRosterClick = useCallback((id: ThomasId) => {
+    setSelectedNpcId(prev => prev === id ? null : id);
+    setRightPanelVisible(true);
+  }, []);
+
+  const handleToggleRightPanel = useCallback(() => {
+    setRightPanelVisible(prev => !prev);
+  }, []);
+
   useEffect(() => {
     simulatorRef.current = new AgentSimulator();
     interactionRef.current = new InteractionSystem();
@@ -74,6 +87,8 @@ function App({ visitorName }: AppProps) {
         timestamp: Date.now(),
       }]);
       setChatOpen(true);
+      setSelectedNpcId(data.npcId);
+      setRightPanelVisible(true);
     });
 
     EventBus.on('npc-chat-response', (msg: ChatMessage) => {
@@ -110,6 +125,14 @@ function App({ visitorName }: AppProps) {
       }));
     });
 
+    EventBus.on('npc-proximity-enter', (data: { npcId: ThomasId }) => {
+      setProximityNpcId(data.npcId);
+    });
+
+    EventBus.on('npc-proximity-exit', (data: { npcId: ThomasId }) => {
+      setProximityNpcId(prev => prev === data.npcId ? null : prev);
+    });
+
     return () => {
       simulatorRef.current?.stop();
       interactionRef.current?.destroy();
@@ -118,40 +141,51 @@ function App({ visitorName }: AppProps) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-[#1a1a2e]">
-      <PhaserGame />
+    <div className="flex w-screen h-screen overflow-hidden bg-[#15132a]">
+      <AgentRoster
+        proximityNpcId={proximityNpcId}
+        chatNpcId={chatNpcId}
+        selectedNpcId={selectedNpcId}
+        onNpcClick={handleRosterClick}
+      />
 
-      <div className="absolute inset-0 pointer-events-none">
-        <HUD locationName={locationName} visitorName={visitorName} />
+      <div className="flex-1 relative overflow-hidden bg-[#15132a]">
+        <PhaserGame />
 
-        {chatOpen && chatNpcId && (
-          <ChatWindow
-            npcId={chatNpcId}
-            npcName={chatNpcName}
-            messages={chatMessages}
-            onSend={handleChatSend}
-            onClose={handleChatClose}
-          />
-        )}
+        <div className="absolute inset-0 pointer-events-none">
+          <HUD locationName={locationName} visitorName={visitorName} />
 
-        {dialogOpen && dialogData && (
-          <DialogBox
-            text={dialogData.text}
-            title={dialogData.title}
-            onClose={handleDialogClose}
-          />
-        )}
+          {dialogOpen && dialogData && (
+            <DialogBox
+              text={dialogData.text}
+              title={dialogData.title}
+              onClose={handleDialogClose}
+            />
+          )}
 
-        {thoughtBubbles.map(bubble => (
-          <ThoughtBubble
-            key={bubble.id}
-            npcId={bubble.npcId}
-            text={bubble.text}
-            screenX={npcPositions[bubble.npcId]?.screenX || bubble.screenX}
-            screenY={npcPositions[bubble.npcId]?.screenY || bubble.screenY}
-          />
-        ))}
+          {thoughtBubbles.map(bubble => (
+            <ThoughtBubble
+              key={bubble.id}
+              npcId={bubble.npcId}
+              text={bubble.text}
+              screenX={npcPositions[bubble.npcId]?.screenX || bubble.screenX}
+              screenY={npcPositions[bubble.npcId]?.screenY || bubble.screenY}
+            />
+          ))}
+        </div>
       </div>
+
+      <RightPanel
+        chatOpen={chatOpen}
+        chatNpcId={chatNpcId}
+        chatNpcName={chatNpcName}
+        chatMessages={chatMessages}
+        onChatSend={handleChatSend}
+        onChatClose={handleChatClose}
+        selectedNpcId={selectedNpcId}
+        visible={rightPanelVisible}
+        onToggle={handleToggleRightPanel}
+      />
     </div>
   );
 }

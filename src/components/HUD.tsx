@@ -3,24 +3,18 @@ interface HUDProps {
   visitorName: string;
 }
 
-export function HUD({ locationName, visitorName }: HUDProps) {
+export function HUD({ locationName }: HUDProps) {
   return (
     <>
-      <div className="absolute top-4 left-4">
-        <div className="bg-black/70 border border-white/20 rounded-lg px-4 py-2">
-          <p className="text-white text-[10px] font-mono">{locationName}</p>
+      <div className="absolute top-3 left-3">
+        <div className="bg-[#1e1b2e]/80 border border-[#3d3654]/30 rounded px-3 py-1.5">
+          <p className="text-[#c4b5a0]/70 text-[9px] font-mono">{locationName}</p>
         </div>
       </div>
 
-      <div className="absolute top-4 right-4">
-        <div className="bg-black/70 border border-[#4A90D9]/30 rounded-lg px-4 py-2">
-          <p className="text-[#4A90D9] text-[10px] font-mono">{visitorName}</p>
-        </div>
-      </div>
-
-      <div className="absolute bottom-4 left-4">
-        <div className="bg-black/50 rounded-lg px-3 py-1.5">
-          <p className="text-gray-500 text-[8px] font-mono">WASD move | SPACE interact</p>
+      <div className="absolute bottom-3 left-3">
+        <div className="bg-[#1e1b2e]/60 rounded px-2 py-1">
+          <p className="text-[#c4b5a0]/25 text-[7px] font-mono">WASD to move</p>
         </div>
       </div>
     </>

@@ -18,7 +18,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.setCollideWorldBounds(true);
     this.setSize(10, 10);
-    this.setOffset(3, 20);
+    this.setOffset(3, 12);
     this.setDepth(16);
 
     if (scene.input.keyboard) {
@@ -98,8 +98,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       else if (left) this.direction = 'left';
       else if (right) this.direction = 'right';
     }
-
-    this.setFlipX(this.direction === 'left');
 
     if (moving) {
       this.play(`player-walk-${this.direction}`, true);

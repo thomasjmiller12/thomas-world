@@ -22,6 +22,8 @@ export const NPC_CONFIGS: Record<string, NPCConfig> = {
       "The transition from data science to AI engineering felt natural. I love building things that ship.",
       "I think the best career advice is to find the intersection of what you're good at and what's emerging.",
     ],
+    status: 'Reviewing AI billing metrics',
+    aboutText: "Career Thomas tracks Thomas's professional journey — from studying statistics at BYU to building AI infrastructure at SambaNova Systems to founding Billables AI. Ask him about career transitions, the AI industry, or what it's like building a startup.",
   },
   researcher: {
     id: 'researcher',
@@ -44,6 +46,8 @@ export const NPC_CONFIGS: Record<string, NPCConfig> = {
       "I read three papers yesterday on Bayesian approaches to prompt optimization. Fascinating stuff.",
       "Statistical rigor isn't just academic — it's what separates real AI advances from noise.",
     ],
+    status: 'Reading papers on Bayesian methods',
+    aboutText: "Researcher Thomas represents the analytical side — deep into statistics, ML evaluation, and scientific rigor. He's always reading papers, questioning benchmarks, and thinking about how to properly measure AI capabilities.",
   },
   builder: {
     id: 'builder',
@@ -66,6 +70,8 @@ export const NPC_CONFIGS: Record<string, NPCConfig> = {
       "My workshop has monitors everywhere. Each one running a different experiment or build.",
       "The best projects come from scratching your own itch. Every tool I build, I use myself first.",
     ],
+    status: 'Shipping a new eval pipeline',
+    aboutText: "Builder Thomas is the maker — always prototyping, shipping, and iterating. From Codenames eval tools to this very town, he's got multiple projects running at once. Ask him about what he's building or his approach to rapid development.",
   },
   writer: {
     id: 'writer',
@@ -88,6 +94,8 @@ export const NPC_CONFIGS: Record<string, NPCConfig> = {
       "I keep a notebook for every idea. Most won't become articles, but the practice of capturing them matters.",
       "The cafe is my favorite spot to write. Something about the ambient noise helps me think.",
     ],
+    status: 'Drafting an article on AI in law',
+    aboutText: "Writer Thomas turns complex ideas into clear narratives. He writes about AI, law, technology ethics, and the future of professional services. Find him at the cafe with a notebook and strong opinions about good prose.",
   },
   hobby: {
     id: 'hobby',
@@ -110,5 +118,7 @@ export const NPC_CONFIGS: Record<string, NPCConfig> = {
       "Life's too short to only think about work. The hobby side of me keeps the other Thomases human.",
       "I've been getting into cooking lately. There's something meditative about making pasta from scratch.",
     ],
+    status: 'Planning a board game night',
+    aboutText: "Hobby Thomas is the fun side — board games, hiking, volleyball, cooking. He keeps the other Thomases grounded and reminds everyone that life is more than code and deadlines.",
   },
 };
