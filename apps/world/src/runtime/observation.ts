@@ -12,7 +12,7 @@
 //  - your status + current activity
 //  - core memory files (always loaded) + recall results for the situation
 
-import { desc, gt, sql } from "drizzle-orm";
+import { gt, sql } from "drizzle-orm";
 import type { AgentId, LocationId, WorldEvent } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { getAgent, type AgentRow } from "../engine/agents.js";
@@ -22,7 +22,7 @@ import { inboxFor, type MessageRow } from "../engine/messages.js";
 import { coreMemorySnapshot } from "../engine/memory.js";
 import { clockLine } from "./clock.js";
 
-const { worldEvents, visitors } = schema;
+const { visitors } = schema;
 
 export interface ObservationPacket {
   // The rendered user-turn text the model sees.
@@ -80,24 +80,6 @@ export async function writeCursor(
   } else {
     await db.insert(schema.memoryFiles).values({ agentId, path: CURSOR_PATH, content });
   }
-}
-
-async function maxEventId(): Promise<string> {
-  const [row] = await db
-    .select({ id: worldEvents.id })
-    .from(worldEvents)
-    .orderBy(desc(worldEvents.id))
-    .limit(1);
-  return row ? String(row.id) : "0";
-}
-
-async function maxMessageId(): Promise<number> {
-  const [row] = await db
-    .select({ id: schema.messages.id })
-    .from(schema.messages)
-    .orderBy(desc(schema.messages.id))
-    .limit(1);
-  return row ? row.id : 0;
 }
 
 async function visitorsPresentCount(): Promise<number> {
@@ -186,16 +168,16 @@ export async function buildObservation(
   const location = agent.locationId as LocationId;
 
   const cursor = await readCursor(agentId);
-  const [loc, here, perceived, inbox, visitorCount, core, hiEvent, hiMsg] = await Promise.all([
+  const [loc, here, perceivedRes, inboxRes, visitorCount, core] = await Promise.all([
     getLocation(location),
     agentsAtLocation(location, agentId),
     perceivedEventsSince(cursor.eventId, agentId, location),
     inboxFor(agentId, cursor.messageId),
     visitorsPresentCount(),
     coreMemorySnapshot(agentId),
-    maxEventId(),
-    maxMessageId(),
   ]);
+  const perceived = perceivedRes.events;
+  const inbox = inboxRes.rows;
 
   const fixtures = ((loc?.fixtures as Array<{ id: string }>) ?? []).map((f) => f.id).join(", ");
   const others =
@@ -236,8 +218,11 @@ export async function buildObservation(
 
   return {
     text: sections.join("\n"),
-    highWaterEventId: hiEvent,
-    highWaterMessageId: hiMsg,
+    // Advance the cursor only to the highest id we actually examined this tick
+    // (not the global max), so events/messages beyond the fetch cap are picked up
+    // on the next tick instead of being silently skipped.
+    highWaterEventId: perceivedRes.maxConsideredId,
+    highWaterMessageId: inboxRes.maxConsideredId,
     deliveredMessageIds: inbox.map((m) => m.id),
     location,
   };

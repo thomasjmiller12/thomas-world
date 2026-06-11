@@ -145,13 +145,21 @@ export function scopeEventsForAgent(
 
 // Events since a given id, scoped to one agent's perception. Convenience used
 // by the observation builder in the runtime phase.
+//
+// Returns the scoped events PLUS `maxConsideredId` — the highest world_events id
+// actually fetched (before scoping). The tick advances the perception cursor to
+// THIS id, never the global max: `eventsAfter` is capped at `limit`, so if more
+// than `limit` events accumulated between ticks, jumping the cursor to the global
+// max would silently skip the un-fetched tail. Advancing only to the last id we
+// examined keeps perception gap-free (the next tick picks up where we stopped).
 export async function perceivedEventsSince(
   afterId: string,
   agentId: AgentId,
   agentLocation: LocationId,
-): Promise<WorldEvent[]> {
+): Promise<{ events: WorldEvent[]; maxConsideredId: string }> {
   const all = await eventsAfter(afterId);
-  return scopeEventsForAgent(all, agentId, agentLocation);
+  const maxConsideredId = all.length ? all[all.length - 1].id : afterId;
+  return { events: scopeEventsForAgent(all, agentId, agentLocation), maxConsideredId };
 }
 
 // Helper for callers that want events of specific types only.

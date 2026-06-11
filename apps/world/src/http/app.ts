@@ -32,7 +32,7 @@ import { spendTodayUsd } from "../engine/usage.js";
 import { renderDebugPage } from "./debug.js";
 import { runTick } from "../runtime/tick.js";
 import { flushTracing } from "../runtime/tracing.js";
-import { openChat, endChat, runChatTurn } from "../runtime/chat.js";
+import { openChat, endChat, runChatTurn, sanitizeVisitorText } from "../runtime/chat.js";
 
 const agentSet = new Set<string>(agentIds);
 const locationSet = new Set<string>(locationIds);
@@ -74,23 +74,23 @@ export function createApp() {
     return streamSSE(c, async (stream) => {
       let presentVisitor: { id: string; name: string } | null = null;
       if (visitorId) {
-        const v = await getVisitor(visitorId);
-        if (v) {
-          presentVisitor = { id: v.id, name: v.name };
-          await touchVisitor(v.id);
-          await visitorArrived(v.id, v.name); // perceivable world event
+        try {
+          const v = await getVisitor(visitorId);
+          if (v) {
+            presentVisitor = { id: v.id, name: v.name };
+            await touchVisitor(v.id);
+            await visitorArrived(v.id, v.name); // perceivable world event
+          }
+        } catch (err) {
+          console.warn("[sse] visitor arrival failed:", (err as Error).message);
         }
       }
 
-      // Catch-up replay from the durable log so no event is missed across a
-      // reconnect (the bus only carries live events).
-      const backlog = await eventsAfter(lastEventId);
-      for (const e of backlog) {
-        await stream.writeSSE({ id: e.id, event: e.type, data: JSON.stringify(e) });
-      }
-
-      // Live fan-out: queue published events and flush them on the stream.
-      const queue: string[] = [];
+      // Subscribe to the live bus BEFORE reading the backlog so any event
+      // appended during the (paged) backlog read lands in the queue rather than
+      // falling into the gap between "backlog SELECT" and "listener registered".
+      // We dedupe the queue against the backlog high-water id before flushing.
+      const queue: { id: string; type: string; raw: string }[] = [];
       let resolveWake: (() => void) | null = null;
       const wake = () => {
         if (resolveWake) {
@@ -99,26 +99,43 @@ export function createApp() {
         }
       };
       const unsub = subscribe((event) => {
-        queue.push(JSON.stringify(event));
-        // Stash the id+type alongside via a small framed JSON we re-parse below.
+        queue.push({ id: event.id, type: event.type, raw: JSON.stringify(event) });
         wake();
       });
-
-      // We need id+type for writeSSE; subscribe pushes the full event already,
-      // so re-derive from the queued JSON.
       stream.onAbort(() => {
         unsub();
         wake();
       });
 
+      // Catch-up replay from the durable log so no event is missed across a
+      // reconnect — paged until exhausted (eventsAfter is capped per call) so a
+      // client resuming after >cap missed events still gets all of them.
+      let cursor = lastEventId;
+      let backlogHigh = 0;
+      try {
+        for (;;) {
+          const batch = await eventsAfter(cursor);
+          if (batch.length === 0) break;
+          for (const e of batch) {
+            await stream.writeSSE({ id: e.id, event: e.type, data: JSON.stringify(e) });
+            backlogHigh = Math.max(backlogHigh, Number(e.id));
+          }
+          cursor = batch[batch.length - 1].id;
+          if (batch.length < 200) break; // last (partial) page
+        }
+      } catch (err) {
+        console.warn("[sse] backlog replay failed:", (err as Error).message);
+      }
+
       let heartbeatAt = Date.now() + 25_000;
       try {
         while (!stream.aborted) {
-          // Flush anything queued.
+          // Flush anything queued, skipping any live event already covered by the
+          // backlog replay (id <= backlogHigh) so a reconnect never double-sends.
           while (queue.length && !stream.aborted) {
-            const raw = queue.shift()!;
-            const ev = JSON.parse(raw) as { id: string; type: string };
-            await stream.writeSSE({ id: ev.id, event: ev.type, data: raw });
+            const ev = queue.shift()!;
+            if (Number(ev.id) <= backlogHigh) continue;
+            await stream.writeSSE({ id: ev.id, event: ev.type, data: ev.raw });
           }
           if (stream.aborted) break;
           // Heartbeat every ~25s to keep proxies from closing the connection.
@@ -127,17 +144,25 @@ export function createApp() {
             await stream.writeSSE({ event: "heartbeat", data: String(now) });
             heartbeatAt = now + 25_000;
           }
-          // Wait for either a new event or the heartbeat deadline.
+          // Wait for either a new event or the heartbeat deadline. Clear the
+          // timer on early wake so timers don't accumulate on a busy stream.
           const waitMs = Math.max(50, heartbeatAt - Date.now());
           await new Promise<void>((resolve) => {
-            resolveWake = resolve;
-            setTimeout(resolve, waitMs);
+            const timer = setTimeout(resolve, waitMs);
+            resolveWake = () => {
+              clearTimeout(timer);
+              resolve();
+            };
           });
         }
       } finally {
         unsub();
         if (presentVisitor) {
-          await visitorLeft(presentVisitor.id); // departure perceivable
+          try {
+            await visitorLeft(presentVisitor.id); // departure perceivable
+          } catch (err) {
+            console.warn("[sse] visitor departure failed:", (err as Error).message);
+          }
         }
       }
     });
@@ -219,6 +244,9 @@ export function createApp() {
     const body = await c.req.json().catch(() => ({}));
     const name = typeof body?.name === "string" && body.name.trim() ? body.name.trim() : null;
     if (!name) return c.json({ error: "name required" }, 400);
+    // Cap the display name — it's stored, broadcast to every SSE client, and fed
+    // into agent observation packets (token-cost amplification otherwise).
+    if (name.length > 80) return c.json({ error: "name too long" }, 400);
     const v = await registerVisitor(name);
     return c.json({ visitorId: v.id, name: v.name });
   });
@@ -234,7 +262,8 @@ export function createApp() {
       return c.json({ error: "visitorId required" }, 400);
     }
     const res = await openChat(agentId, visitorId);
-    if (!res) return c.json({ error: "could not open chat" }, 500);
+    // null → unknown agent or the agent is already busy (one live chat per agent).
+    if (!res) return c.json({ error: "agent unavailable (busy or unknown)" }, 409);
     return c.json({ sessionId: res.sessionId });
   });
 
@@ -245,8 +274,13 @@ export function createApp() {
     const text = typeof body?.text === "string" ? body.text : "";
     if (!text.trim()) return c.json({ error: "text required" }, 400);
     // Optional one-shot operator note (e.g. continuity context); model-gated
-    // injection handled inside runChatTurn.
-    const operatorNote = typeof body?.operatorNote === "string" ? body.operatorNote : undefined;
+    // injection handled inside runChatTurn. It enters the model in the SYSTEM
+    // role (higher trust than visitor text) so treat it with the same distrust:
+    // cap length and strip the common injection scaffolding before it's injected.
+    const operatorNote =
+      typeof body?.operatorNote === "string"
+        ? sanitizeVisitorText(body.operatorNote).slice(0, 500)
+        : undefined;
 
     return streamSSE(c, async (stream) => {
       const result = await runChatTurn(

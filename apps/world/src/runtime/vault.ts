@@ -7,7 +7,7 @@
 // a local vault-pending/ dir so nothing the agent makes is lost.
 
 import { spawn } from "node:child_process";
-import { readFile, readdir, mkdir, writeFile, stat } from "node:fs/promises";
+import { readFile, readdir, mkdir, writeFile, stat, realpath } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, dirname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,10 +41,43 @@ function vaultRoot(): string | null {
 }
 
 // Guard against path traversal: resolved path must stay within `base`.
+// LEXICAL only — does NOT follow symlinks. Use `realSafeJoin` for reads of repo
+// content (the vault is auto-`git pull`ed, so a crafted symlink could otherwise
+// escape the vault dir and read e.g. /etc/passwd).
 function safeJoin(base: string, rel: string): string | null {
   const target = resolve(base, rel.replace(/^\/+/, ""));
   const baseResolved = resolve(base);
   if (target !== baseResolved && !target.startsWith(baseResolved + sep)) return null;
+  return target;
+}
+
+// Symlink-safe variant for reads: resolves real paths so a symlink inside the
+// vault that points outside it is rejected. Returns the lexical target (safe to
+// read) or null if it escapes the vault even after following links. We realpath
+// base + the nearest existing ancestor of target so non-existent leaves (a path
+// the caller will then report "not found") don't throw.
+async function realSafeJoin(base: string, rel: string): Promise<string | null> {
+  const target = safeJoin(base, rel);
+  if (!target) return null;
+  try {
+    const realBase = await realpath(base);
+    // Resolve the deepest existing ancestor; a symlink anywhere along the chain
+    // would surface here.
+    let probe = target;
+    for (;;) {
+      try {
+        const realProbe = await realpath(probe);
+        if (realProbe !== realBase && !realProbe.startsWith(realBase + sep)) return null;
+        break;
+      } catch {
+        const parent = dirname(probe);
+        if (parent === probe) break; // reached fs root without resolving
+        probe = parent;
+      }
+    }
+  } catch {
+    return null;
+  }
   return target;
 }
 
@@ -56,7 +89,7 @@ export async function listNotes(dir: string): Promise<ReferenceResult> {
     warnOnce();
     return { ok: false, text: VAULT_REFERENCE_FICTION };
   }
-  const target = safeJoin(root, dir || ".");
+  const target = await realSafeJoin(root, dir || ".");
   if (!target || !existsSync(target)) return { ok: false, text: `Nothing at ${dir}.` };
   const entries = await readdir(target, { withFileTypes: true });
   const lines = entries
@@ -71,7 +104,7 @@ export async function readNote(path: string): Promise<ReferenceResult> {
     warnOnce();
     return { ok: false, text: VAULT_REFERENCE_FICTION };
   }
-  const target = safeJoin(root, path);
+  const target = await realSafeJoin(root, path);
   if (!target || !existsSync(target)) return { ok: false, text: `No note at ${path}.` };
   const body = await readFile(target, "utf8");
   // Cap how much a single read can pull into the tick context.
@@ -195,8 +228,29 @@ export async function pushAgentNotes(): Promise<void> {
     if (!existsSync(agentsDir)) return;
     const dirty = await git(["status", "--porcelain", "Agents/"], root);
     if (!dirty.out.trim()) return;
-    await git(["add", "Agents/"], root);
-    await git(["commit", "-m", "Agent notes (world server)"], root);
+    const added = await git(["add", "Agents/"], root);
+    if (added.code !== 0) {
+      console.warn("[vault] add failed, not committing:", added.out.slice(0, 300));
+      return;
+    }
+    // Set identity inline so a deploy box with no git user.* configured can still
+    // commit (otherwise commit fails and notes pile up uncommitted silently).
+    const committed = await git(
+      [
+        "-c",
+        "user.email=agents@thomas-town.local",
+        "-c",
+        "user.name=Thomas's Town agents",
+        "commit",
+        "-m",
+        "Agent notes (world server)",
+      ],
+      root,
+    );
+    if (committed.code !== 0) {
+      console.warn("[vault] commit failed, not pushing:", committed.out.slice(0, 300));
+      return;
+    }
     const res = await git(["push"], root);
     if (res.code !== 0) console.warn("[vault] push failed:", res.out.slice(0, 300));
   } catch (err) {

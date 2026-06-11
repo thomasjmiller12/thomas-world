@@ -44,6 +44,12 @@ export async function sendEmailToThomas(
     return { id, sent: false };
   }
 
+  // Two separate failure domains. (1) The SEND: only a thrown fetch or a non-OK
+  // response marks the row "failed". (2) The post-send STATUS UPDATE: if it
+  // throws, the email already WENT OUT — we must NOT flip the row to "failed"
+  // (that would invite a duplicate email on any future retry). We leave it
+  // "queued" and log; a retry can reconcile by message id.
+  let messageId: string | undefined;
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -62,16 +68,26 @@ export async function sendEmailToThomas(
     });
     if (!res.ok) throw new Error(`resend ${res.status}: ${await res.text()}`);
     const data = (await res.json().catch(() => ({}))) as { id?: string };
+    messageId = data.id;
+  } catch (err) {
+    console.warn(`[outside] email send failed, left queued:`, (err as Error).message);
+    await db.update(outbox).set({ status: "failed" }).where(eqId(id)).catch(() => {});
+    return { id, sent: false };
+  }
+
+  // The send succeeded. Record it — but a DB error here must not undo the send.
+  try {
     await db
       .update(outbox)
       .set({ status: "sent", sentAt: new Date() })
       .where(eqId(id));
-    return { id, sent: true, messageId: data.id };
   } catch (err) {
-    console.warn(`[outside] email send failed, left queued:`, (err as Error).message);
-    await db.update(outbox).set({ status: "failed" }).where(eqId(id));
-    return { id, sent: false };
+    console.warn(
+      `[outside] email SENT but status update failed (left queued for reconcile):`,
+      (err as Error).message,
+    );
   }
+  return { id, sent: true, messageId };
 }
 
 // tiny local helper to avoid importing eq at module top for one use

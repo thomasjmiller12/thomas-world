@@ -11,7 +11,7 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, isNull, desc } from "drizzle-orm";
 import type { AgentId, LocationId } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { anthropic, systemBlocks, hasLlm, TICK_BETAS, MID_CONV_SYSTEM_BETA } from "./client.js";
@@ -49,6 +49,10 @@ export interface OpenChatResult {
 export async function openChat(agentId: AgentId, visitorId: string): Promise<OpenChatResult | null> {
   const agent = await getAgent(agentId);
   if (!agent) return null;
+  // Don't open a second concurrent session on a busy agent: `busy` is a single
+  // boolean, so overlapping chats/scenes would corrupt it (the first to close
+  // clears it while another holder is still active). One live chat per agent.
+  if (agent.busy) return null;
   const sessionId = randomUUID();
   await db.insert(chatSessions).values({ id: sessionId, agentId, visitorId });
   await setBusy(agentId, true);
@@ -72,6 +76,30 @@ export async function endChat(sessionId: string): Promise<void> {
     visibility: "public",
     payload: { agent: session.agentId, visitorId: session.visitorId, sessionId },
   });
+}
+
+// Auto-close chat sessions abandoned without a /chats/:id/close call (the common
+// case: the visitor closes the tab, loses network, or the browser never fires
+// the close). Each such session leaves the agent busy=true forever, so the
+// scheduler permanently skips it. The scheduler calls this on a timer; we end any
+// open session whose last activity (last message, else startedAt) is older than
+// `staleMs`, which also clears the agent's busy flag via endChat.
+export async function sweepStaleChats(staleMs = 10 * 60_000): Promise<void> {
+  const open = await db.select().from(chatSessions).where(isNull(chatSessions.endedAt));
+  const now = Date.now();
+  for (const s of open) {
+    const [lastMsg] = await db
+      .select({ ts: chatMessages.ts })
+      .from(chatMessages)
+      .where(eq(chatMessages.sessionId, s.id))
+      .orderBy(desc(chatMessages.ts))
+      .limit(1);
+    const lastActivity = (lastMsg?.ts ?? s.startedAt).getTime();
+    if (now - lastActivity >= staleMs) {
+      console.log(`[chat] auto-closing stale session ${s.id} (agent ${s.agentId}).`);
+      await endChat(s.id);
+    }
+  }
 }
 
 // Build the running message history for a chat session from chat_messages.

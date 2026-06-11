@@ -9,20 +9,21 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { randomUUID } from "node:crypto";
-import type { AgentId } from "@town/contract";
+import type { AgentId, LocationId } from "@town/contract";
 import { config } from "../config.js";
 import { anthropic, systemBlocks, hasLlm, TICK_BETAS } from "./client.js";
 import { getProfile, soulGitHash } from "./roles.js";
 import { buildTools, type AgentContext } from "./tools.js";
 import { buildObservation, writeCursor } from "./observation.js";
 import { coreMemorySnapshot } from "../engine/memory.js";
-import { getAgent, setStatus, markTicked } from "../engine/agents.js";
+import { getAgent, setStatus, setActivity, markTicked } from "../engine/agents.js";
 import { appendEvent } from "../engine/events.js";
 import { markRead } from "../engine/messages.js";
 import { recordUsage, spendTodayUsd, spendTodayForAgent } from "../engine/usage.js";
 import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
 import { startTrace } from "./tracing.js";
 import { maybeRunConversationScene } from "./conversation-scene.js";
+import { tryAcquire } from "./agent-lock.js";
 
 // How many tool rounds a single idle tick may take before we force a stop.
 const MAX_TICK_ROUNDS = 6;
@@ -58,6 +59,33 @@ export interface TickResult {
 export async function runTick(agentId: AgentId): Promise<TickResult> {
   if (!hasLlm()) return { ran: false, reason: "no-llm" };
 
+  // Serialize against any other tick/reflection for this agent in this process
+  // (scheduler timer vs POST /admin/tick, etc). The DB `busy` flag does NOT
+  // cover tick-vs-tick. If we can't take the lock, another tick is mid-flight.
+  const release = tryAcquire(agentId);
+  if (!release) return { ran: false, reason: "busy" };
+  let result: TickResult & { _conversationTarget?: AgentId | null; _location?: LocationId };
+  try {
+    result = await runTickLocked(agentId);
+  } finally {
+    release();
+  }
+
+  // Run the bounded conversation scene AFTER releasing this agent's tick lock —
+  // the scene acquires both participants' locks itself, so holding ours here
+  // would self-deadlock the initiator.
+  const target = result._conversationTarget;
+  if (target) {
+    await maybeRunConversationScene(agentId, target, result._location ?? "town");
+  }
+  delete result._conversationTarget;
+  delete result._location;
+  return result;
+}
+
+async function runTickLocked(
+  agentId: AgentId,
+): Promise<TickResult & { _conversationTarget?: AgentId | null; _location?: LocationId }> {
   const agent = await getAgent(agentId);
   if (!agent) return { ran: false, reason: "error" };
   if (agent.busy) return { ran: false, reason: "busy" };
@@ -77,11 +105,21 @@ export async function runTick(agentId: AgentId): Promise<TickResult> {
       agentCapUsd: profile.role.dailyTokenBudgetUsd,
     })
   ) {
-    if (agent.status !== SLEEPING_BUDGET) await setStatus(agentId, SLEEPING_BUDGET);
+    // Emit an activity line on the transition INTO budget-sleep so the feed
+    // distinguishes "went quiet because it hit its cap" from "silently stopped
+    // ticking (crashed)" — they look identical to a log reviewer otherwise.
+    if (agent.status !== SLEEPING_BUDGET) {
+      await setStatus(agentId, SLEEPING_BUDGET);
+      await setActivity(agentId, "resting — out of energy for today");
+    }
     return { ran: false, reason: "budget" };
   }
-  // Coming back from a budget sleep on a new day: clear the status.
-  if (agent.status === SLEEPING_BUDGET) await setStatus(agentId, "awake");
+  // Coming back from a budget sleep on a new day: clear the status (the activity
+  // line emits a "back at it" so the wake-up is visible in the feed too).
+  if (agent.status === SLEEPING_BUDGET) {
+    await setStatus(agentId, "awake");
+    await setActivity(agentId, "back at it after a rest");
+  }
 
   const tickId = `tick-${agentId}-${randomUUID().slice(0, 8)}`;
   const trace = startTrace("tick", {
@@ -190,12 +228,18 @@ export async function runTick(agentId: AgentId): Promise<TickResult> {
 
   trace.end({ rounds, totalCost, totalCacheRead, refused });
 
-  // 5. If the agent tried to start a conversation, run the bounded scene now
-  //    (synchronous exchange ≤6 turns each — plan §4.1).
-  if (conversationTarget) {
-    await maybeRunConversationScene(agentId, conversationTarget, ctx.location);
-  }
+  // Unconditional structured tick line so the soak's cache-hygiene check
+  // (`cache_read_input_tokens > 0`) is observable WITHOUT Langfuse — the soak
+  // runs with tracing off, and the brief requires tick logs surface cache reads.
+  console.log(
+    `[tick ${agentId}] rounds=${rounds} cacheRead=${totalCacheRead} cost=$${totalCost.toFixed(4)}${
+      refused ? " refused" : ""
+    }`,
+  );
 
+  // 5. If the agent tried to start a conversation, hand the target back to the
+  //    caller, which runs the bounded scene AFTER releasing this tick's lock
+  //    (the scene acquires the participants' locks itself — plan §4.1).
   return {
     ran: true,
     reason: refused ? "refusal" : "ok",
@@ -203,6 +247,8 @@ export async function runTick(agentId: AgentId): Promise<TickResult> {
     costUsd: totalCost,
     cacheReadTokens: totalCacheRead,
     traceId: trace.traceId,
+    _conversationTarget: conversationTarget,
+    _location: ctx.location,
   };
 }
 

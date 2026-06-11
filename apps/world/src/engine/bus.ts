@@ -14,12 +14,22 @@ export function subscribe(fn: Listener): () => void {
   return () => listeners.delete(fn);
 }
 
+let subscriberErrors = 0;
 export function publish(event: WorldEvent): void {
   for (const fn of listeners) {
     try {
       fn(event);
-    } catch {
-      // A slow/broken subscriber must never break the publisher.
+    } catch (err) {
+      // A slow/broken subscriber must never break the publisher — but a
+      // systematically-throwing one (a bug in an SSE writer) would otherwise be
+      // 100% invisible for the whole soak. Log the first, then periodically.
+      subscriberErrors++;
+      if (subscriberErrors === 1 || subscriberErrors % 100 === 0) {
+        console.warn(
+          `[bus] subscriber threw (${subscriberErrors} total):`,
+          (err as Error).message,
+        );
+      }
     }
   }
 }

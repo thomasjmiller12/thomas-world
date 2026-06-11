@@ -22,6 +22,7 @@ import { getAgent, setBusy } from "../engine/agents.js";
 import { agentsAtLocation } from "../engine/locations.js";
 import { recordUsage } from "../engine/usage.js";
 import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
+import { tryAcquire } from "./agent-lock.js";
 
 const MAX_TURNS_EACH = 6;
 
@@ -110,11 +111,25 @@ export async function maybeRunConversationScene(
   // Don't barge into a busy participant.
   if (b.busy) return;
 
-  await Promise.all([setBusy(initiator, true), setBusy(target, true)]);
-  const scene = await startConversation(location, [initiator, target]);
-  const lines: Line[] = [];
+  // Take both agents' process locks so a scheduled tick can't fire mid-scene.
+  // The initiator's tick lock has already been released by the caller (runTick
+  // runs the scene after release), so these should be free; bail if not.
+  const relInitiator = tryAcquire(initiator);
+  if (!relInitiator) return;
+  const relTarget = tryAcquire(target);
+  if (!relTarget) {
+    relInitiator();
+    return;
+  }
 
+  // Set busy + run the scene inside the try so the finally ALWAYS clears busy
+  // and releases the locks, even if startConversation or a line throws.
+  const lines: Line[] = [];
+  let sceneId: string | null = null;
   try {
+    await Promise.all([setBusy(initiator, true), setBusy(target, true)]);
+    const scene = await startConversation(location, [initiator, target]);
+    sceneId = scene.id;
     // Alternate speakers, initiator first, up to MAX_TURNS_EACH rounds.
     const order: AgentId[] = [initiator, target];
     for (let round = 0; round < MAX_TURNS_EACH; round++) {
@@ -134,9 +149,11 @@ export async function maybeRunConversationScene(
       if (ended) break;
     }
   } catch (err) {
-    console.warn(`[scene ${scene.id}] error:`, (err as Error).message);
+    console.warn(`[scene ${sceneId ?? "?"}] error:`, (err as Error).message);
   } finally {
-    await endConversation(scene.id);
+    if (sceneId) await endConversation(sceneId);
     await Promise.all([setBusy(initiator, false), setBusy(target, false)]);
+    relTarget();
+    relInitiator();
   }
 }

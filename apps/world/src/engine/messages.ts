@@ -2,7 +2,7 @@
 // recipient's next tick). The event log carries only the headline; the body
 // lives in `messages` and is read via GET /messages.
 
-import { and, desc, eq, gt, isNull, isNotNull, lt, type SQL } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, isNotNull, lt, or, sql, type SQL } from "drizzle-orm";
 import type { AgentId } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { appendEvent } from "./events.js";
@@ -33,25 +33,35 @@ export async function sendMessage(
 // The recipient's unread inbox: DMs addressed to them + broadcasts from others,
 // since `sinceId` (typically delivered once at the next tick). Does NOT mark
 // read — the caller decides (the tick marks them read after building the packet).
-export async function inboxFor(agentId: AgentId, sinceId?: number): Promise<MessageRow[]> {
-  const conds: SQL[] = [
-    // DM to me, or a broadcast from someone other than me.
-    // (Drizzle has no portable OR-of-ANDs sugar here; build it explicitly.)
-  ];
+//
+// The recipient filter is pushed into SQL so the LIMIT applies to RELEVANT rows
+// (a burst of broadcasts can't push a genuinely-addressed DM outside the window).
+// Returns `maxConsideredId` so the caller advances the message cursor only to the
+// highest id it actually fetched — never the global max (which would skip the
+// un-fetched tail when more than `limit` relevant messages accumulate).
+const INBOX_LIMIT = 200;
+export async function inboxFor(
+  agentId: AgentId,
+  sinceId?: number,
+): Promise<{ rows: MessageRow[]; maxConsideredId: number }> {
+  // DM to me, OR a broadcast (toAgent IS NULL) from someone other than me.
+  const relevance = or(
+    eq(messages.toAgent, agentId),
+    and(isNull(messages.toAgent), sql`${messages.fromAgent} <> ${agentId}`),
+  )!;
+  const conds: SQL[] = [relevance];
   if (sinceId !== undefined) conds.push(gt(messages.id, sinceId));
   const rows = await db
     .select()
     .from(messages)
-    .where(conds.length ? and(...conds) : undefined)
+    .where(and(...conds))
     .orderBy(desc(messages.id))
-    .limit(200);
-  return rows
-    .filter(
-      (m) =>
-        m.toAgent === agentId ||
-        (m.toAgent === null && m.fromAgent !== agentId),
-    )
-    .reverse();
+    .limit(INBOX_LIMIT);
+  const ordered = rows.reverse();
+  const maxConsideredId = ordered.length
+    ? ordered[ordered.length - 1].id
+    : (sinceId ?? 0);
+  return { rows: ordered, maxConsideredId };
 }
 
 export async function markRead(ids: number[]) {
