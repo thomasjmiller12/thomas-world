@@ -123,7 +123,9 @@ async function main() {
       })
       .onConflictDoUpdate({
         target: agents.id,
-        set: { displayName: a.displayName, locationId: a.locationId },
+        // Never reset locationId/status on re-seed: the seed runs on every
+        // deploy and must not teleport live agents back to their home spots.
+        set: { displayName: a.displayName },
       });
   }
   console.log(`seeded ${AGENTS.length} agents`);
