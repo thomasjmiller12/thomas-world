@@ -1,21 +1,22 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
-/node_modules
-/.pnp
+# dependencies (any package in the monorepo)
+node_modules/
+.pnp
 .pnp.js
 .yarn/install-state.gz
 
 # testing
-/coverage
+coverage/
 
-# next.js
-/.next/
-/out/
+# next.js / static export (apps/web)
+.next/
+out/
+apps/web/dist/
 
-# production
-/build
-/dist
+# build output (apps/world, packages/*)
+dist/
+build/
 
 # misc
 .DS_Store
@@ -28,8 +29,11 @@ yarn-error.log*
 
 # local env files
 .env*.local
-scratch.env
 .env
+scratch.env
+.scratch.env.swp
+*.swp
+apps/world/.env
 
 # vercel
 .vercel
@@ -44,6 +48,6 @@ next-env.d.ts
 # mcp
 .mcp.json
 
-# feature logs
+# feature logs / scratch
 feature-logs/
 scratch/
