@@ -34,6 +34,8 @@ scratch.env
 .scratch.env.swp
 *.swp
 apps/world/.env
+# Local fallback dir agents write to when no real vault is connected (runtime scratch).
+apps/world/vault-pending/
 
 # vercel
 .vercel

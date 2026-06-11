@@ -17,12 +17,14 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.104.1",
     "@hono/node-server": "^1.13.7",
     "@town/contract": "workspace:*",
     "drizzle-orm": "^0.38.3",
     "hono": "^4.6.14",
     "pg": "^8.13.1",
-    "yaml": "^2.6.1"
+    "yaml": "^2.6.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/pg": "^8.11.10",

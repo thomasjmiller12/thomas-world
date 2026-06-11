@@ -30,6 +30,8 @@ import {
 import { subscribe } from "../engine/bus.js";
 import { spendTodayUsd } from "../engine/usage.js";
 import { renderDebugPage } from "./debug.js";
+import { runTick } from "../runtime/tick.js";
+import { openChat, endChat, runChatTurn } from "../runtime/chat.js";
 
 const agentSet = new Set<string>(agentIds);
 const locationSet = new Set<string>(locationIds);
@@ -220,16 +222,54 @@ export function createApp() {
     return c.json({ visitorId: v.id, name: v.name });
   });
 
-  // --- POST /chats {agentId, visitorId} — stub for the runtime phase ------
-  app.post("/chats", (c) =>
-    c.json({ error: "chat sessions are implemented in the runtime phase" }, 501),
-  );
-  app.post("/chats/:id/messages", (c) =>
-    c.json({ error: "chat streaming is implemented in the runtime phase" }, 501),
-  );
+  // --- POST /chats {agentId, visitorId} -----------------------------------
+  // Opens a chat session: the agent goes busy, idle ticks skip it (plan §4.1).
+  app.post("/chats", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const agentId = body?.agentId;
+    const visitorId = body?.visitorId;
+    if (!isAgentId(agentId)) return c.json({ error: "unknown agent" }, 404);
+    if (typeof visitorId !== "string" || !visitorId) {
+      return c.json({ error: "visitorId required" }, 400);
+    }
+    const res = await openChat(agentId, visitorId);
+    if (!res) return c.json({ error: "could not open chat" }, 500);
+    return c.json({ sessionId: res.sessionId });
+  });
 
-  // --- POST /admin/tick/:agentId — STUB (runtime phase implements) --------
-  app.post("/admin/tick/:agentId", (c) => {
+  // --- POST /chats/:id/messages {text} → SSE token stream -----------------
+  app.post("/chats/:id/messages", async (c) => {
+    const sessionId = c.req.param("id");
+    const body = await c.req.json().catch(() => ({}));
+    const text = typeof body?.text === "string" ? body.text : "";
+    if (!text.trim()) return c.json({ error: "text required" }, 400);
+    // Optional one-shot operator note (e.g. continuity context); model-gated
+    // injection handled inside runChatTurn.
+    const operatorNote = typeof body?.operatorNote === "string" ? body.operatorNote : undefined;
+
+    return streamSSE(c, async (stream) => {
+      const result = await runChatTurn(
+        sessionId,
+        text,
+        {
+          onText: async (delta) => {
+            await stream.writeSSE({ event: "delta", data: JSON.stringify({ text: delta }) });
+          },
+        },
+        operatorNote,
+      );
+      await stream.writeSSE({ event: "done", data: JSON.stringify({ ok: result.ok }) });
+    });
+  });
+
+  // --- POST /chats/:id/close ----------------------------------------------
+  app.post("/chats/:id/close", async (c) => {
+    await endChat(c.req.param("id"));
+    return c.json({ ok: true });
+  });
+
+  // --- POST /admin/tick/:agentId — force one tick (smoke tests) -----------
+  app.post("/admin/tick/:agentId", async (c) => {
     // Guard: ADMIN_TOKEN when set, otherwise allowed off-production (brief).
     if (config.adminToken) {
       const provided = c.req.header("x-admin-token");
@@ -239,7 +279,8 @@ export function createApp() {
     }
     const id = c.req.param("agentId");
     if (!isAgentId(id)) return c.json({ error: "unknown agent" }, 404);
-    return c.json({ error: "tick loop is implemented in the runtime phase" }, 501);
+    const result = await runTick(id);
+    return c.json(result);
   });
 
   // --- GET /debug — dead-simple server-rendered status page ---------------

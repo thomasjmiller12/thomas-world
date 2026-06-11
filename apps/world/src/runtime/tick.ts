@@ -1,0 +1,228 @@
+// The tick runner (plan §4.1). One tick = one trace. Builds the observation
+// packet (pure SQL), assembles the cached prefix + frozen core-memory + current
+// observation, and runs the SDK toolRunner for bounded rounds. Persists usage
+// with cache_read tokens, records the daily budget, handles refusal, and
+// advances the perception cursor + last_tick_at.
+//
+// We DO NOT hand-roll the dispatch loop — the SDK's toolRunner owns it; we bound
+// it by iterating (max_iterations) and inspecting each yielded BetaMessage.
+
+import type Anthropic from "@anthropic-ai/sdk";
+import { randomUUID } from "node:crypto";
+import type { AgentId } from "@town/contract";
+import { config } from "../config.js";
+import { anthropic, systemBlocks, hasLlm, TICK_BETAS } from "./client.js";
+import { getProfile } from "./roles.js";
+import { buildTools, type AgentContext } from "./tools.js";
+import { buildObservation, writeCursor } from "./observation.js";
+import { coreMemorySnapshot } from "../engine/memory.js";
+import { getAgent, setStatus, markTicked } from "../engine/agents.js";
+import { appendEvent } from "../engine/events.js";
+import { markRead } from "../engine/messages.js";
+import { recordUsage, spendTodayUsd, spendTodayForAgent } from "../engine/usage.js";
+import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
+import { startTrace } from "./tracing.js";
+import { maybeRunConversationScene } from "./conversation-scene.js";
+
+// How many tool rounds a single idle tick may take before we force a stop.
+const MAX_TICK_ROUNDS = 6;
+export const SLEEPING_BUDGET = "sleeping (budget)";
+
+// Pure budget-cap decision (brief §"Observability & budget"): a tick is blocked
+// when either the global daily ceiling OR the agent's per-role soft cap is met.
+// Extracted so it's unit-testable without a DB or the LLM.
+export function budgetExceeded(opts: {
+  globalSpendUsd: number;
+  globalCapUsd: number;
+  agentSpendUsd: number;
+  agentCapUsd: number;
+}): boolean {
+  return (
+    opts.globalSpendUsd >= opts.globalCapUsd || opts.agentSpendUsd >= opts.agentCapUsd
+  );
+}
+
+export interface TickResult {
+  ran: boolean;
+  reason?: "no-llm" | "busy" | "budget" | "ok" | "refusal" | "error";
+  rounds?: number;
+  costUsd?: number;
+  cacheReadTokens?: number;
+}
+
+// Run one idle tick for an agent. Safe to call from the scheduler or the
+// /admin/tick endpoint. Never throws — returns a structured result.
+export async function runTick(agentId: AgentId): Promise<TickResult> {
+  if (!hasLlm()) return { ran: false, reason: "no-llm" };
+
+  const agent = await getAgent(agentId);
+  if (!agent) return { ran: false, reason: "error" };
+  if (agent.busy) return { ran: false, reason: "busy" };
+
+  // Budget gates (brief): global hard ceiling + per-role soft cap. Either trips
+  // → status "sleeping (budget)" and the scheduler skips until UTC midnight.
+  const profile = getProfile(agentId);
+  const [globalSpend, agentSpend] = await Promise.all([
+    spendTodayUsd(),
+    spendTodayForAgent(agentId),
+  ]);
+  if (
+    budgetExceeded({
+      globalSpendUsd: globalSpend,
+      globalCapUsd: config.dailyBudgetUsd,
+      agentSpendUsd: agentSpend,
+      agentCapUsd: profile.role.dailyTokenBudgetUsd,
+    })
+  ) {
+    if (agent.status !== SLEEPING_BUDGET) await setStatus(agentId, SLEEPING_BUDGET);
+    return { ran: false, reason: "budget" };
+  }
+  // Coming back from a budget sleep on a new day: clear the status.
+  if (agent.status === SLEEPING_BUDGET) await setStatus(agentId, "awake");
+
+  const tickId = `tick-${agentId}-${randomUUID().slice(0, 8)}`;
+  const trace = startTrace("tick", {
+    userId: agentId,
+    sessionId: utcDay(),
+    metadata: { soulVersion: agent.soulVersion },
+  });
+
+  // 1. Observation packet — pure SQL, frozen for this tick. Core memory is
+  //    snapshotted here so it's byte-stable for the request (below the cache
+  //    breakpoint, per plan §4.3).
+  const obs = await buildObservation(agentId, { cadenceMinutes: profile.role.tickCadenceMinutes });
+  const core = await coreMemorySnapshot(agentId); // also embedded in obs; harmless dup avoided below
+
+  void core; // obs.text already includes the core snapshot.
+
+  const ctx: AgentContext = { agentId, location: obs.location, conversationId: null };
+  const tools = buildTools(ctx);
+
+  // 2. The user turn carries the volatile content (time + observation). The
+  //    soul + protocol live in the cached system blocks (byte-stable).
+  const messages: Anthropic.Beta.BetaMessageParam[] = [
+    { role: "user", content: obs.text },
+  ];
+
+  // 3. Run the SDK agentic loop, bounded. We iterate the runner ourselves so we
+  //    can (a) cap rounds, (b) inspect stop_reason for refusal, (c) intercept
+  //    conversation-scene sentinels, and (d) sum usage across rounds.
+  let rounds = 0;
+  let totalCost = 0;
+  let totalCacheRead = 0;
+  let refused = false;
+  let conversationTarget: AgentId | null = null;
+
+  try {
+    const runner = anthropic.beta.messages.toolRunner({
+      model: profile.role.tickModel,
+      max_tokens: 4096,
+      system: systemBlocks(agentId),
+      messages,
+      tools,
+      max_iterations: MAX_TICK_ROUNDS,
+      betas: [...TICK_BETAS],
+    });
+
+    for await (const message of runner) {
+      rounds++;
+      // Usage accounting per round (plan §4.1 step 4 + brief budget/cache).
+      const t = tokensFromUsage(message.usage);
+      const cost = estimateCostUsd(profile.role.tickModel, t);
+      totalCost += cost;
+      totalCacheRead += t.cacheReadTokens;
+      await recordUsage({
+        agentId,
+        model: profile.role.tickModel,
+        tickId,
+        inputTokens: t.inputTokens,
+        outputTokens: t.outputTokens,
+        cacheReadTokens: t.cacheReadTokens,
+        cacheWriteTokens: t.cacheWriteTokens,
+        estCostUsd: cost,
+      });
+      trace.event("round", {
+        round: rounds,
+        stop_reason: message.stop_reason,
+        cache_read_input_tokens: t.cacheReadTokens,
+        cost,
+      });
+
+      // Refusal handling (explicit, plan §4.1). Stop the tick; don't retry.
+      if (message.stop_reason === "refusal") {
+        refused = true;
+        break;
+      }
+
+      // Persist any public-safe assistant text as a thought (location-private:
+      // the agent's interior monologue, only it perceives it back).
+      const text = extractText(message);
+      if (text && message.stop_reason === "end_turn") {
+        await appendEvent({
+          type: "agent.thought",
+          agentId,
+          locationId: ctx.location,
+          visibility: "private",
+          payload: { agent: agentId, text: text.slice(0, 600) },
+        });
+      }
+
+      // Detect a conversation-start sentinel emitted by start_conversation, so
+      // we can run the bounded scene AFTER the tick settles.
+      const target = detectConversationStart(message);
+      if (target) conversationTarget = target;
+    }
+  } catch (err) {
+    console.warn(`[tick ${agentId}] error:`, (err as Error).message);
+    trace.end({ error: (err as Error).message });
+    await markTicked(agentId);
+    return { ran: false, reason: "error", rounds };
+  }
+
+  // 4. Advance the perception cursor + last_tick_at so the next tick sees only
+  //    newer events, and mark delivered inbox messages read.
+  await writeCursor(agentId, obs.highWaterEventId, obs.highWaterMessageId);
+  await markRead(obs.deliveredMessageIds);
+  await markTicked(agentId);
+
+  trace.end({ rounds, totalCost, totalCacheRead, refused });
+
+  // 5. If the agent tried to start a conversation, run the bounded scene now
+  //    (synchronous exchange ≤6 turns each — plan §4.1).
+  if (conversationTarget) {
+    await maybeRunConversationScene(agentId, conversationTarget, ctx.location);
+  }
+
+  return {
+    ran: true,
+    reason: refused ? "refusal" : "ok",
+    rounds,
+    costUsd: totalCost,
+    cacheReadTokens: totalCacheRead,
+  };
+}
+
+function extractText(message: Anthropic.Beta.BetaMessage): string {
+  return message.content
+    .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("\n")
+    .trim();
+}
+
+// start_conversation returns "__START_CONVERSATION__:<agent>" as its tool
+// result; the runner feeds that back as a tool_result the model sees, but we
+// also scan the assistant's tool_use inputs to capture the intended target.
+function detectConversationStart(message: Anthropic.Beta.BetaMessage): AgentId | null {
+  for (const block of message.content) {
+    if (block.type === "tool_use" && block.name === "start_conversation") {
+      const input = block.input as { agent?: string };
+      if (input?.agent) return input.agent as AgentId;
+    }
+  }
+  return null;
+}
+
+function utcDay(): string {
+  return new Date().toISOString().slice(0, 10);
+}
