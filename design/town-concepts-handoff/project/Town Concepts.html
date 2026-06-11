@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thomas's Town — Concept Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F7F1E6; --paper-2:#FBF6EC; --card:#FFFFFF;
+    --ink:#2B2620; --ink-2:#5C544A; --ink-3:#8A8174; --line:#E6DCC9; --line-2:#D8CBB3;
+    --display:'Fredoka',sans-serif; --sans:'Nunito Sans',system-ui,sans-serif; --mono:'Space Mono',monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:#EDE6D8; font-family:var(--sans); color:var(--ink); -webkit-font-smoothing:antialiased}
+
+  /* town backdrop cover behavior inside any frame */
+  .town-bg canvas{position:absolute; inset:0; width:100%!important; height:100%!important; object-fit:cover; image-rendering:pixelated; display:block}
+  .screen{position:relative; width:100%; height:100%; overflow:hidden; background:#15110c; font-family:var(--sans)}
+
+  /* keyframes */
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  @keyframes stream{0%,100%{opacity:.35; transform:translateY(0)}50%{opacity:1; transform:translateY(-3px)}}
+  @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+  @keyframes drift{0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+
+  /* chunky pixel dialog frame */
+  .pixel-frame{
+    border:4px solid #241a10;
+    box-shadow:0 0 0 4px #fdf6e8, 0 0 0 8px #241a10, 14px 14px 0 -2px rgba(20,16,11,.22);
+  }
+  .pixel-frame-inner{ border:3px solid #241a10; box-shadow:inset 0 0 0 2px #fdf6e8; }
+
+  .tl-card:hover .show-town{ opacity:1!important; }
+  .tl-card{ border-radius:10px; transition:background .15s; padding-left:2px }
+  .tl-card:hover{ background:rgba(255,255,255,.5) }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="lib/town.js"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="screens/shared.jsx"></script>
+  <script type="text/babel" src="screens/chat.jsx"></script>
+  <script type="text/babel" src="screens/feed.jsx"></script>
+
+  <script type="text/babel">
+    const { useState } = React;
+    function Frame({ children }) {
+      return <div style={{ position:'relative', width:'100%', height:'100%' }}>{children}</div>;
+    }
+
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection id="chat" title="A · Agent ↔ Visitor Chat" subtitle="Three placements for the primary interaction — all carry continuity & memory signals. Streaming is live in these mockups.">
+            <DCArtboard id="chat-float" label="01 · Floating overlay" width={1180} height={720}>
+              <Frame><ChatFloating/></Frame>
+            </DCArtboard>
+            <DCArtboard id="chat-dock" label="02 · Docked panel + context rail" width={1180} height={720}>
+              <Frame><ChatDocked/></Frame>
+            </DCArtboard>
+            <DCArtboard id="chat-dia" label="03 · Diegetic RPG dialog" width={1180} height={720}>
+              <Frame><ChatDiegetic/></Frame>
+            </DCArtboard>
+          </DCSection>
+          <DCSection id="feed" title="B · Day-in-the-Life Look-back" subtitle="The town's memory, three ways. Same day-log data underneath — swap the renderer, keep the data. Filter chips are live in the timeline.">
+            <DCArtboard id="feed-timeline" label="01 · Unified timeline" width={520} height={720}>
+              <Frame><FeedTimeline/></Frame>
+            </DCArtboard>
+            <DCArtboard id="feed-news" label="02 · Town newspaper" width={1180} height={720}>
+              <Frame><FeedNewspaper/></Frame>
+            </DCArtboard>
+            <DCArtboard id="feed-lanes" label="03 · Per-agent lanes" width={1180} height={560}>
+              <Frame><FeedLanes/></Frame>
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
