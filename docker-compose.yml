@@ -1,0 +1,60 @@
+# Local dev infra for Thomas's Town (Milestone 1).
+#
+#   docker compose up -d        # start postgres (+ hindsight)
+#   pnpm --filter world migrate # apply checked-in drizzle migrations
+#   pnpm --filter world seed    # seed locations + agents
+#   pnpm --filter world dev     # run the world server (tsx watch)
+#
+# Postgres binds 5433 on the host (avoids colliding with a system 5432).
+# Hindsight is the self-hosted episodic-memory store (plan §2 row 6); the
+# `-slim` image uses external embeddings (OpenAI) so it carries no bundled
+# ONNX models. Without an OPENAI_API_KEY it is allowed to stay unhealthy /
+# degraded — the world server boots and ticks regardless (env-gated).
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: town-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: town
+      POSTGRES_PASSWORD: town
+      POSTGRES_DB: town
+    ports:
+      - "5433:5432"
+    volumes:
+      - town-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U town -d town"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Episodic memory (verbatim retain mode, external OpenAI embeddings).
+  # Pinned per plan §2/§4.5. API on 8888, control-plane UI on 9999. It points
+  # at the SAME postgres (its own tables, its own migrations) over the compose
+  # network. Stays degraded without OPENAI_API_KEY — that's expected for M1.
+  hindsight:
+    image: ghcr.io/vectorize-io/hindsight:0.7.0-slim
+    container_name: town-hindsight
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Point Hindsight at our pgvector instance over the compose network.
+      HINDSIGHT_API_DATABASE_URL: postgresql://town:town@postgres:5432/town
+      # Verbatim retain mode keeps the agent's exact words as plain rows.
+      HINDSIGHT_API_RETAIN_EXTRACTION_MODE: verbatim
+      # External embeddings (slim image ships no local ONNX models).
+      HINDSIGHT_API_EMBEDDINGS_PROVIDER: openai
+      HINDSIGHT_API_EMBEDDINGS_OPENAI_MODEL: text-embedding-3-small
+      HINDSIGHT_API_EMBEDDINGS_OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      HINDSIGHT_API_LLM_API_KEY: ${OPENAI_API_KEY:-}
+      # Stable worker id so consolidation workers resume cleanly across restarts.
+      HINDSIGHT_API_WORKER_ID: town-worker-1
+    ports:
+      - "8888:8888"
+      - "9999:9999"
+
+volumes:
+  town-pgdata:
