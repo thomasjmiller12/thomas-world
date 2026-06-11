@@ -12,7 +12,7 @@ import { randomUUID } from "node:crypto";
 import type { AgentId } from "@town/contract";
 import { config } from "../config.js";
 import { anthropic, systemBlocks, hasLlm, TICK_BETAS } from "./client.js";
-import { getProfile } from "./roles.js";
+import { getProfile, soulGitHash } from "./roles.js";
 import { buildTools, type AgentContext } from "./tools.js";
 import { buildObservation, writeCursor } from "./observation.js";
 import { coreMemorySnapshot } from "../engine/memory.js";
@@ -48,6 +48,9 @@ export interface TickResult {
   rounds?: number;
   costUsd?: number;
   cacheReadTokens?: number;
+  // Langfuse trace id for this tick (empty when tracing is off). Surfaced by the
+  // /admin/tick endpoint so a smoke test can verify the trace landed.
+  traceId?: string;
 }
 
 // Run one idle tick for an agent. Safe to call from the scheduler or the
@@ -84,7 +87,7 @@ export async function runTick(agentId: AgentId): Promise<TickResult> {
   const trace = startTrace("tick", {
     userId: agentId,
     sessionId: utcDay(),
-    metadata: { soulVersion: agent.soulVersion },
+    metadata: { soulVersion: agent.soulVersion, soulGitHash: soulGitHash(agentId) },
   });
 
   // 1. Observation packet — pure SQL, frozen for this tick. Core memory is
@@ -176,7 +179,7 @@ export async function runTick(agentId: AgentId): Promise<TickResult> {
     console.warn(`[tick ${agentId}] error:`, (err as Error).message);
     trace.end({ error: (err as Error).message });
     await markTicked(agentId);
-    return { ran: false, reason: "error", rounds };
+    return { ran: false, reason: "error", rounds, traceId: trace.traceId };
   }
 
   // 4. Advance the perception cursor + last_tick_at so the next tick sees only
@@ -199,6 +202,7 @@ export async function runTick(agentId: AgentId): Promise<TickResult> {
     rounds,
     costUsd: totalCost,
     cacheReadTokens: totalCacheRead,
+    traceId: trace.traceId,
   };
 }
 

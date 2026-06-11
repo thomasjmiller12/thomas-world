@@ -120,29 +120,49 @@ result, never a crash) and the degradation is logged once at boot. The `features
 | `DAILY_BUDGET_USD` | no | `15` | Global hard spend ceiling/day across all agents. Per-agent soft caps are in `roles/*.yaml`. Cap trip → status `"sleeping (budget)"`, scheduler skips until UTC midnight. |
 | `ADMIN_TOKEN` | no | — | When set, `/admin/tick` requires header `x-admin-token`. |
 | `HINDSIGHT_URL` | no | — | **feature: hindsight** (needs `OPENAI_API_KEY` too). Episodic memory store. Absent → `remember`/`recall`/`forget` return an in-fiction "memory is hazy" soft failure. Core memory (the `memory` tool) is unaffected. |
-| `OPENAI_API_KEY` | no | — | External embeddings for Hindsight (the only thing it's used for). Half of the `hindsight` flag. |
-| `LANGFUSE_SECRET_KEY` + `LANGFUSE_PUBLIC_KEY` | no | — | **feature: langfuse**. Tracing. Absent → tracing is a no-op wrapper; everything else identical. (`LANGFUSE_BASE_URL` optional.) |
+| `OPENAI_API_KEY` | no | — | Hindsight's external embeddings **and** its extraction LLM (verbatim mode still runs an LLM to index entities/temporal info). Half of the `hindsight` flag. |
+| `LANGFUSE_SECRET_KEY` + `LANGFUSE_PUBLIC_KEY` | no | — | **feature: langfuse**. Real OTel tracing via `@langfuse/otel` (trace = tick, `userId` = agent, `sessionId` = day, `soulGitHash` in metadata). Absent → tracing is a strict no-op; everything else identical. `LANGFUSE_BASE_URL` selects the region (default `https://us.cloud.langfuse.com`). |
 | `RESEND_API_KEY` | no | — | **feature: resend**. Outbound email (`email_thomas`). Absent → email is queued to an outbox row and reported queued-not-sent in-fiction. |
 | `VAULT_DIR` | no | — | **feature: vault**. Absolute path to the synced Obsidian clone. Absent → reference tools degrade in-fiction; `write_agent_note` writes to a local `vault-pending/` dir so nothing is lost. Sync also uses `VAULT_REPO_URL` + `VAULT_DEPLOY_KEY_PATH`. |
 
-### Keys not yet provisioned (arrive at deploy)
+### Integrations (verified live)
 
-As of Milestone 1 only `ANTHROPIC_API_KEY` is available locally. The rest are env-gated and
-"light up" their feature when their key lands:
+Every integration is env-gated — the server boots and ticks with any subset absent. As of
+Milestone 1 these three are wired and proven end-to-end against the real services:
 
-- **OpenAI** (embeddings) + **Hindsight** container → real episodic memory (verbatim mode).
-- **Langfuse** cloud keys → the full `@langfuse/otel` exporter (currently a structured-log
-  fallback when keys are present; wire the OTel exporter at deploy — see plan §2 row 10).
+- **OpenAI** + **Hindsight** container → real episodic memory (verbatim mode). The
+  `remember`/`recall`/`reflect` tools hit the Hindsight REST API live; recall is
+  semantically relevant. See "Hindsight API shape" below for the endpoints we use.
+- **Langfuse** cloud keys → the real `@langfuse/otel` v5 exporter (manual spans — we own the
+  toolRunner loop, so no auto-instrumentation). Each tick is a trace (`userId` = agent,
+  `sessionId` = UTC day, metadata `soulGitHash` = git blob hash of the agent's soul file).
+  Flushed on shutdown and force-flushed after `/admin/tick` for fast verification.
 - **Resend** key → real outbound mail (outbound-only MVP via `onboarding@resend.dev`).
-- **Vault** repo + deploy key → the obsidian-git → GitHub → server-pull reference layer.
+  `email_thomas` → `sendEmailToThomas` returns Resend's provider `messageId` on success.
+  `RESEND_TO` / `RESEND_FROM` override the recipient / sender for testing.
+- **Vault** repo + deploy key → the obsidian-git → GitHub → server-pull reference layer
+  (still env-gated, not wired in M1).
 
-When wiring real Hindsight, confirm the exact env-var names / endpoint shapes against the
-pinned `0.7.0-slim` image (they were taken from the plan, not runtime-verified locally).
+#### Hindsight API shape (pinned `0.7.0-slim`, runtime-verified)
+
+Bank-per-agent (`town-<agentId>`). Endpoints `src/runtime/hindsight.ts` uses:
+- retain: `POST /v1/default/banks/{bank}/memories` — `{ items: [{ content, tags, metadata }], async: false }`
+- recall: `POST /v1/default/banks/{bank}/memories/recall` — `{ query, max_tokens }` → `{ results: [{ id, text }] }`
+- reflect: `POST /v1/default/banks/{bank}/reflect` — `{ query }` → `{ text }`
+- delete: `DELETE /v1/default/banks/{bank}/memories[?type=]` — bank/type-wide only.
+  Hindsight has **no per-memory delete**, so the model-facing `forget` tool is a soft
+  acknowledgement (the memory fades); destructive clears are an operator-only path.
 
 ## Local infra (`docker-compose.yml`, repo root)
 
 - **postgres** — `pgvector/pgvector:pg17`, host port `5433`, db/user/pass = `town`.
 - **hindsight** — `ghcr.io/vectorize-io/hindsight:0.7.0-slim`, API `:8888` / UI `:9999`,
-  pointed at the same Postgres. Stays degraded without `OPENAI_API_KEY` — expected for M1.
+  pointed at the same Postgres under its own `hindsight` schema. Needs `OPENAI_API_KEY`
+  (passed through compose) for both embeddings and the extraction LLM. Two gotchas the
+  compose handles: (1) the `-slim` image has no `sentence-transformers`, so the default
+  `local` cross-encoder reranker crash-loops — we set `HINDSIGHT_API_RERANKER_PROVIDER=rrf`;
+  (2) Hindsight's keyword search uses pg_trgm's `%` operator, which must live in `public`
+  (where `vector` is) — `pnpm --filter world migrate` creates `pg_trgm WITH SCHEMA public`.
 
 `docker compose up -d postgres` starts just Postgres (enough to run + tick the world).
+`docker compose up -d` (with `OPENAI_API_KEY` exported) also starts Hindsight.

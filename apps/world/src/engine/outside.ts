@@ -28,14 +28,15 @@ export async function recordCapabilityRequest(
   return { id };
 }
 
-// Send (or queue) an email to Thomas. Returns whether it actually sent. When
-// Resend is absent OR a send fails, the row stays "queued"/"failed" and the
-// caller reports queued-not-sent in-fiction.
+// Send (or queue) an email to Thomas. Returns the outbox row id, whether it
+// actually sent, and (when sent) Resend's provider message id. When Resend is
+// absent OR a send fails, the row stays "queued"/"failed" and the caller reports
+// queued-not-sent in-fiction.
 export async function sendEmailToThomas(
   agentId: AgentId,
   subject: string,
   body: string,
-): Promise<{ id: string; sent: boolean }> {
+): Promise<{ id: string; sent: boolean; messageId?: string }> {
   const id = randomUUID();
   await db.insert(outbox).values({ id, agentId, subject, body, status: "queued" });
 
@@ -51,7 +52,7 @@ export async function sendEmailToThomas(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Thomas's Town <onboarding@resend.dev>",
+        from: process.env.RESEND_FROM ?? "Thomas's Town <onboarding@resend.dev>",
         // The only recipient email_thomas ever targets is Thomas's own Resend
         // account email (plan §9). RESEND_TO overrides for testing.
         to: [process.env.RESEND_TO ?? "delivered@resend.dev"],
@@ -59,12 +60,13 @@ export async function sendEmailToThomas(
         text: body,
       }),
     });
-    if (!res.ok) throw new Error(`resend ${res.status}`);
+    if (!res.ok) throw new Error(`resend ${res.status}: ${await res.text()}`);
+    const data = (await res.json().catch(() => ({}))) as { id?: string };
     await db
       .update(outbox)
       .set({ status: "sent", sentAt: new Date() })
       .where(eqId(id));
-    return { id, sent: true };
+    return { id, sent: true, messageId: data.id };
   } catch (err) {
     console.warn(`[outside] email send failed, left queued:`, (err as Error).message);
     await db.update(outbox).set({ status: "failed" }).where(eqId(id));

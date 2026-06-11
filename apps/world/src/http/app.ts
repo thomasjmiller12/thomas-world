@@ -31,6 +31,7 @@ import { subscribe } from "../engine/bus.js";
 import { spendTodayUsd } from "../engine/usage.js";
 import { renderDebugPage } from "./debug.js";
 import { runTick } from "../runtime/tick.js";
+import { flushTracing } from "../runtime/tracing.js";
 import { openChat, endChat, runChatTurn } from "../runtime/chat.js";
 
 const agentSet = new Set<string>(agentIds);
@@ -280,6 +281,9 @@ export function createApp() {
     const id = c.req.param("agentId");
     if (!isAgentId(id)) return c.json({ error: "unknown agent" }, 404);
     const result = await runTick(id);
+    // Force-flush the trace so a smoke test can verify it immediately (OTel
+    // batches by default). No-op when Langfuse is off.
+    await flushTracing();
     return c.json(result);
   });
 

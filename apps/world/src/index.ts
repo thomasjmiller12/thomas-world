@@ -21,6 +21,7 @@ import { config, featureSummary } from "./config.js";
 import { db, pool } from "./db/client.js";
 import { createApp } from "./http/app.js";
 import { startScheduler, stopScheduler } from "./runtime/scheduler.js";
+import { initTracing, shutdownTracing } from "./runtime/tracing.js";
 
 // Confirm the DB is reachable and the schema has been migrated. We probe a core
 // table (`agents`) rather than auto-running migrations — applying migrations is
@@ -41,6 +42,10 @@ async function migrationsCheck(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  // Start the tracing exporter first so every traced tick/chat is captured
+  // (no-op when Langfuse keys are absent).
+  await initTracing();
+
   await migrationsCheck();
 
   // Boot summary — log feature flags up front, before the scheduler ticks.
@@ -61,6 +66,7 @@ async function main(): Promise<void> {
     console.log(`[shutdown] ${signal} received — stopping scheduler and draining.`);
     stopScheduler();
     server.close(async () => {
+      await shutdownTracing().catch(() => {});
       await pool.end().catch(() => {});
       console.log("[shutdown] done.");
       process.exit(0);

@@ -10,7 +10,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { randomUUID } from "node:crypto";
 import type { AgentId } from "@town/contract";
 import { anthropic, systemBlocks, hasLlm, TICK_BETAS } from "./client.js";
-import { getProfile } from "./roles.js";
+import { getProfile, soulGitHash } from "./roles.js";
 import { betaMemoryTool } from "@anthropic-ai/sdk/helpers/beta/memory";
 import {
   memView,
@@ -48,7 +48,11 @@ export async function runReflection(agentId: AgentId): Promise<{ ran: boolean }>
   if (!hasLlm()) return { ran: false };
   const profile = getProfile(agentId);
   const tickId = `reflect-${agentId}-${randomUUID().slice(0, 8)}`;
-  const trace = startTrace("reflection", { userId: agentId, sessionId: utcDay() });
+  const trace = startTrace("reflection", {
+    userId: agentId,
+    sessionId: utcDay(),
+    metadata: { soulGitHash: soulGitHash(agentId) },
+  });
 
   // Build the day-review user turn (recent events for this agent + core memory).
   const [recent, core] = await Promise.all([

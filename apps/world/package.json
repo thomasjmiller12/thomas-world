@@ -19,6 +19,10 @@
   "dependencies": {
     "@anthropic-ai/sdk": "0.104.1",
     "@hono/node-server": "^1.13.7",
+    "@langfuse/otel": "^5.4.1",
+    "@langfuse/tracing": "^5.4.1",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/sdk-node": "^0.219.0",
     "@town/contract": "workspace:*",
     "drizzle-orm": "^0.38.3",
     "hono": "^4.6.14",

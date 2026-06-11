@@ -41,15 +41,28 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      # Point Hindsight at our pgvector instance over the compose network.
+      # Point Hindsight at our pgvector instance over the compose network. Give
+      # it its own schema so its tables never collide with the world server's
+      # drizzle tables in the same `town` database.
       HINDSIGHT_API_DATABASE_URL: postgresql://town:town@postgres:5432/town
-      # Verbatim retain mode keeps the agent's exact words as plain rows.
+      HINDSIGHT_API_DATABASE_SCHEMA: hindsight
+      # Verbatim retain mode keeps the agent's exact words. NB: even verbatim
+      # runs the extraction LLM (entities/temporal) to index the chunk, so the
+      # LLM provider below is REQUIRED for ingestion — not just embeddings.
       HINDSIGHT_API_RETAIN_EXTRACTION_MODE: verbatim
-      # External embeddings (slim image ships no local ONNX models).
+      # External embeddings (the -slim image ships no local ONNX/ST models).
       HINDSIGHT_API_EMBEDDINGS_PROVIDER: openai
       HINDSIGHT_API_EMBEDDINGS_OPENAI_MODEL: text-embedding-3-small
       HINDSIGHT_API_EMBEDDINGS_OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Extraction LLM (verbatim still needs it). OpenAI, reusing the one key.
+      HINDSIGHT_API_LLM_PROVIDER: openai
+      HINDSIGHT_API_LLM_MODEL: gpt-4o-mini
       HINDSIGHT_API_LLM_API_KEY: ${OPENAI_API_KEY:-}
+      # RRF-only ranking: the -slim image has no sentence-transformers, so the
+      # default `local` cross-encoder reranker crash-loops on startup. We have no
+      # Cohere/OpenRouter key, so disable neural reranking — reciprocal-rank
+      # fusion is plenty for verbatim recall.
+      HINDSIGHT_API_RERANKER_PROVIDER: rrf
       # Stable worker id so consolidation workers resume cleanly across restarts.
       HINDSIGHT_API_WORKER_ID: town-worker-1
     ports:

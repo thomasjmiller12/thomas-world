@@ -4,6 +4,7 @@
 // not code).
 
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { parse as parseYaml } from "yaml";
@@ -28,6 +29,30 @@ export interface AgentProfile {
 
 function loadText(rel: string): string {
   return readFileSync(join(PKG_ROOT, rel), "utf8");
+}
+
+// Per-agent soul git hash (plan §4.1: attached to each trace as metadata so a
+// soul edit is visible as a version dimension in Langfuse). We use the git blob
+// hash of the agent's soul file — content-addressed, so it changes iff the soul
+// text changes, independent of unrelated commits. Computed once and cached;
+// falls back to "nogit" outside a checkout (env-gated runtime stays unaffected).
+const soulHashCache = new Map<AgentId, string>();
+export function soulGitHash(id: AgentId): string {
+  const cached = soulHashCache.get(id);
+  if (cached) return cached;
+  let hash = "nogit";
+  try {
+    hash = execFileSync("git", ["hash-object", join("souls", `${id}.md`)], {
+      cwd: PKG_ROOT,
+      encoding: "utf8",
+    })
+      .trim()
+      .slice(0, 12);
+  } catch {
+    /* not a git checkout (e.g. some prod images) — leave "nogit" */
+  }
+  soulHashCache.set(id, hash);
+  return hash;
 }
 
 let baseSoulCache: string | null = null;
