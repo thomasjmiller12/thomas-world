@@ -1,6 +1,6 @@
 # Role config for Career Thomas
 # tick_cadence_minutes: how often the scheduler fires an idle tick for this agent
-# tick_model: model used for autonomous idle ticks (cheap/fast)
+# tick_model: model used for autonomous idle ticks
 # chat_model: model used when a visitor opens a chat session (high-quality)
 # daily_token_budget: soft budget cap in USD; when exceeded, agent status → "sleeping (budget)"
 #   and the scheduler skips until the next UTC day resets the meter.
@@ -8,6 +8,6 @@
 #   env var is a hard ceiling across all agents combined.
 
 tick_cadence_minutes: 12
-tick_model: claude-haiku-4-5
+tick_model: claude-sonnet-4-6
 chat_model: claude-opus-4-8
-daily_token_budget: 1.50
+daily_token_budget: 4.50
