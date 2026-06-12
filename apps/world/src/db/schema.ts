@@ -55,8 +55,13 @@ const eventTypeEnum = [
   "capability.requested",
   "visitor.arrived",
   "visitor.left",
+  "visitor.moved",
+  "visitor.interacted",
+  "world.effect",
   "chat.started",
   "chat.ended",
+  "chat.joined",
+  "conversation.converted",
   "world.time",
 ] as const;
 

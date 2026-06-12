@@ -106,6 +106,49 @@ export const ChatEndedPayload = z.object({
   sessionId: z.string(),
 });
 
+// --- M2 event payloads (design doc §5) -------------------------------------
+
+// A visitor (logical body) moved between locations. `from` null => first
+// placement (gate → town). Public: agents at `to` perceive the arrival.
+export const VisitorMovedPayload = z.object({
+  visitorId: z.string(),
+  name: z.string(),
+  from: LocationId.nullable(),
+  to: LocationId,
+});
+
+// A visitor touched a fixture (answered the phone, etc.). Public; routes to
+// an operator note mid-chat when the triggering agent shares a session.
+export const VisitorInteractedPayload = z.object({
+  visitorId: z.string(),
+  name: z.string(),
+  location: LocationId,
+  fixture: z.string(),
+});
+
+// An agent touched the *set* via `use_fixture` (phone rings, lamp flickers).
+// Public; the frontend materializes shake/sound/glow + a visitor affordance.
+// `agent` optional: an effect may be ambient/system-triggered.
+export const WorldEffectPayload = z.object({
+  location: LocationId,
+  fixture: z.string(),
+  effect: z.string(),
+  agent: AgentId.optional(),
+});
+
+// A second agent joined a chat session (invite_to_chat / scene conversion).
+// `sessionId` carried only on private/feed surfaces (presence-only in public).
+export const ChatJoinedPayload = z.object({
+  sessionId: z.string().optional(),
+  agent: AgentId,
+});
+
+// A paced scene was converted to a group chat (visitor interjected). Public;
+// no session linkage exposed (the chat is private to the interjecting visitor).
+export const ConversationConvertedPayload = z.object({
+  conversationId: z.string(),
+});
+
 export const WorldTimePayload = z.object({
   phase: DayPhase, // day/night tint
 });
@@ -138,8 +181,13 @@ export const WorldEvent = z.discriminatedUnion("type", [
   z.object({ ...envelopeBase, type: z.literal("capability.requested"), payload: CapabilityRequestedPayload }),
   z.object({ ...envelopeBase, type: z.literal("visitor.arrived"), payload: VisitorArrivedPayload }),
   z.object({ ...envelopeBase, type: z.literal("visitor.left"), payload: VisitorLeftPayload }),
+  z.object({ ...envelopeBase, type: z.literal("visitor.moved"), payload: VisitorMovedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("visitor.interacted"), payload: VisitorInteractedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("world.effect"), payload: WorldEffectPayload }),
   z.object({ ...envelopeBase, type: z.literal("chat.started"), payload: ChatStartedPayload }),
   z.object({ ...envelopeBase, type: z.literal("chat.ended"), payload: ChatEndedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("chat.joined"), payload: ChatJoinedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("conversation.converted"), payload: ConversationConvertedPayload }),
   z.object({ ...envelopeBase, type: z.literal("world.time"), payload: WorldTimePayload }),
 ]);
 export type WorldEvent = z.infer<typeof WorldEvent>;
@@ -160,8 +208,13 @@ export const worldEventTypes = [
   "capability.requested",
   "visitor.arrived",
   "visitor.left",
+  "visitor.moved",
+  "visitor.interacted",
+  "world.effect",
   "chat.started",
   "chat.ended",
+  "chat.joined",
+  "conversation.converted",
   "world.time",
 ] as const;
 export const WorldEventType = z.enum(worldEventTypes);

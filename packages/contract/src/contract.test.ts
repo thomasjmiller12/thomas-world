@@ -7,6 +7,16 @@ import {
   worldEventTypes,
   SnapshotResponse,
   CreateChatRequest,
+  CreateChatResponse,
+  CreateVisitorResponse,
+  GetVisitorResponse,
+  PatchVisitorRequest,
+  InteractRequest,
+  GetChatResponse,
+  JoinConversationResponse,
+  HealthResponse,
+  FeedResponse,
+  AgentStatus,
   ChatStreamFrame,
 } from "./index.js";
 
@@ -142,10 +152,13 @@ describe("REST shapes round-trip", () => {
           payload: { agent: "career", activity: "drafting a cover letter" },
         },
       ],
+      world: { phase: "morning", visitorsPresent: 2, awake: true },
     };
     const parsed = SnapshotResponse.parse(snap);
     expect(parsed.agents[0].id).toBe("career");
     expect(parsed.recentEvents[0].type).toBe("agent.activity");
+    expect(parsed.world.phase).toBe("morning");
+    expect(parsed.world.awake).toBe(true);
   });
 
   it("validates a chat-open request and rejects a bad agent", () => {
@@ -154,13 +167,244 @@ describe("REST shapes round-trip", () => {
   });
 
   it("validates the chat stream frame annotations", () => {
-    expect(ChatStreamFrame.parse({ type: "text", text: "hi" }).type).toBe("text");
+    expect(ChatStreamFrame.parse({ type: "turn_started", agent: "writer" }).type).toBe("turn_started");
+    expect(ChatStreamFrame.parse({ type: "text", text: "hi", agent: "writer" }).type).toBe("text");
     expect(
-      ChatStreamFrame.parse({ type: "memory_recalled", label: "recalled from earlier today" }).type,
+      ChatStreamFrame.parse({
+        type: "memory_recalled",
+        label: "recalled from earlier today",
+        agent: "writer",
+      }).type,
     ).toBe("memory_recalled");
     expect(
       ChatStreamFrame.parse({ type: "suggested_replies", replies: ["tell me more", "what else?"] }).type,
     ).toBe("suggested_replies");
+    // done carries messageId; agent is optional
     expect(ChatStreamFrame.parse({ type: "done", messageId: "m1" }).type).toBe("done");
+    expect(ChatStreamFrame.parse({ type: "done", messageId: "m1", agent: "hobby" }).type).toBe("done");
+    // text frames now require an agent for attribution
+    expect(() => ChatStreamFrame.parse({ type: "text", text: "hi" })).toThrow();
+  });
+});
+
+describe("M2 event payloads round-trip", () => {
+  it("validates a visitor.moved event with nullable `from`", () => {
+    const ev = {
+      id: "evt_m1",
+      ts: "2026-06-11T10:00:00.000Z",
+      visibility: "public",
+      type: "visitor.moved",
+      payload: { visitorId: "v1", name: "Ada", from: null, to: "library" },
+    };
+    const parsed = WorldEvent.parse(ev);
+    expect(parsed.type).toBe("visitor.moved");
+    if (parsed.type === "visitor.moved") {
+      expect(parsed.payload.from).toBeNull();
+      expect(parsed.payload.to).toBe("library");
+    }
+  });
+
+  it("validates a visitor.interacted event", () => {
+    const ev = {
+      id: "evt_m2",
+      ts: "2026-06-11T10:01:00.000Z",
+      visibility: "public",
+      type: "visitor.interacted",
+      payload: { visitorId: "v1", name: "Ada", location: "office", fixture: "phone" },
+    };
+    expect(WorldEvent.parse(ev).type).toBe("visitor.interacted");
+  });
+
+  it("validates a world.effect event with and without an agent", () => {
+    const withAgent = {
+      id: "evt_m3",
+      ts: "2026-06-11T10:02:00.000Z",
+      visibility: "public",
+      type: "world.effect",
+      payload: { location: "office", fixture: "phone", effect: "ring", agent: "hobby" },
+    };
+    expect(WorldEvent.parse(withAgent).type).toBe("world.effect");
+    const ambient = {
+      id: "evt_m4",
+      ts: "2026-06-11T10:02:30.000Z",
+      visibility: "public",
+      type: "world.effect",
+      payload: { location: "town", fixture: "notice board", effect: "rustle" },
+    };
+    expect(WorldEvent.parse(ambient).type).toBe("world.effect");
+  });
+
+  it("validates chat.joined (sessionId optional) and conversation.converted", () => {
+    const joinedPublic = {
+      id: "evt_m5",
+      ts: "2026-06-11T10:03:00.000Z",
+      visibility: "public",
+      type: "chat.joined",
+      payload: { agent: "researcher" }, // presence only, no sessionId
+    };
+    expect(WorldEvent.parse(joinedPublic).type).toBe("chat.joined");
+    const joinedFeed = {
+      id: "evt_m6",
+      ts: "2026-06-11T10:03:30.000Z",
+      visibility: "private",
+      type: "chat.joined",
+      payload: { agent: "researcher", sessionId: "s1" },
+    };
+    expect(WorldEvent.parse(joinedFeed).type).toBe("chat.joined");
+    const converted = {
+      id: "evt_m7",
+      ts: "2026-06-11T10:04:00.000Z",
+      visibility: "public",
+      type: "conversation.converted",
+      payload: { conversationId: "c1" },
+    };
+    expect(WorldEvent.parse(converted).type).toBe("conversation.converted");
+  });
+});
+
+describe("M2 REST shapes round-trip", () => {
+  it("validates a HealthResponse", () => {
+    const h = HealthResponse.parse({
+      ok: true,
+      ts: "2026-06-11T10:00:00.000Z",
+      llm: true,
+      budgetExhausted: false,
+    });
+    expect(h.budgetExhausted).toBe(false);
+  });
+
+  it("validates an AgentStatus with engagement and `with` participants", () => {
+    const a = AgentStatus.parse({
+      id: "builder",
+      displayName: "Builder Thomas",
+      locationId: "workshop",
+      status: "in conversation",
+      activity: null,
+      busy: true,
+      engagement: { kind: "chat", with: ["researcher", "visitor"] },
+      lastTickAt: null,
+    });
+    expect(a.engagement?.kind).toBe("chat");
+    expect(a.engagement?.with).toEqual(["researcher", "visitor"]);
+    // engagement is optional — unengaged agents omit it
+    const idle = AgentStatus.parse({
+      id: "writer",
+      displayName: "Writer Thomas",
+      locationId: "cafe",
+      status: "working",
+      activity: "drafting",
+      busy: false,
+      lastTickAt: null,
+    });
+    expect(idle.engagement).toBeUndefined();
+    // a bad `with` member is rejected
+    expect(() =>
+      AgentStatus.parse({
+        id: "writer",
+        displayName: "Writer Thomas",
+        locationId: "cafe",
+        status: "x",
+        activity: null,
+        busy: true,
+        engagement: { kind: "scene", with: ["nobody"] },
+        lastTickAt: null,
+      }),
+    ).toThrow();
+  });
+
+  it("validates a FeedResponse with typed/located items and a count", () => {
+    const feed = FeedResponse.parse({
+      items: [
+        {
+          id: "f1",
+          ts: "2026-06-11T10:00:00.000Z",
+          agent: "writer",
+          line: "Writer published a post.",
+          type: "artifact.created",
+          locationId: "cafe",
+          to: null,
+        },
+        {
+          id: "f2",
+          ts: "2026-06-11T10:01:00.000Z",
+          agent: null,
+          line: "The office phone rang. Nobody knows why.",
+          type: null,
+          locationId: null,
+          to: null,
+        },
+      ],
+      nextCursor: null,
+      count: 2,
+    });
+    expect(feed.count).toBe(2);
+    expect(feed.items[0].type).toBe("artifact.created");
+    expect(feed.items[1].type).toBeNull();
+  });
+
+  it("validates visitor identity shapes (create/get/patch/interact)", () => {
+    const created = CreateVisitorResponse.parse({
+      visitorId: "v1",
+      name: "Ada",
+      visitorToken: "tok_abc",
+    });
+    expect(created.visitorToken).toBe("tok_abc");
+    // token must not be optional
+    expect(() => CreateVisitorResponse.parse({ visitorId: "v1", name: "Ada" })).toThrow();
+
+    const got = GetVisitorResponse.parse({ visitorId: "v1", name: "Ada", locationId: "library" });
+    expect(got.locationId).toBe("library");
+    expect(GetVisitorResponse.parse({ visitorId: "v1", name: "Ada", locationId: null }).locationId).toBeNull();
+
+    expect(PatchVisitorRequest.parse({ locationId: "park" }).locationId).toBe("park");
+    expect(PatchVisitorRequest.parse({ name: "Ada B." }).name).toBe("Ada B.");
+    expect(() => PatchVisitorRequest.parse({ locationId: "dungeon" })).toThrow();
+
+    expect(InteractRequest.parse({ locationId: "office", fixture: "phone" }).fixture).toBe("phone");
+    expect(() => InteractRequest.parse({ locationId: "office", fixture: "" })).toThrow();
+  });
+
+  it("validates a full CreateChatResponse with participants + token", () => {
+    const res = CreateChatResponse.parse({
+      sessionId: "s1",
+      agentId: "hobby",
+      visitorId: "v1",
+      participants: ["hobby"],
+      sessionToken: "stok_1",
+    });
+    expect(res.participants).toEqual(["hobby"]);
+    expect(res.sessionToken).toBe("stok_1");
+    // JoinConversationResponse shares the shape
+    const joined = JoinConversationResponse.parse({
+      sessionId: "s2",
+      agentId: "writer",
+      visitorId: "v1",
+      participants: ["writer", "hobby"],
+      sessionToken: "stok_2",
+    });
+    expect(joined.participants).toEqual(["writer", "hobby"]);
+  });
+
+  it("validates a GetChatResponse transcript (visitor + agent senders only)", () => {
+    const chat = GetChatResponse.parse({
+      sessionId: "s1",
+      visitorId: "v1",
+      participants: ["hobby"],
+      messages: [
+        { id: "m1", sender: "visitor", body: "hi", ts: "2026-06-11T10:00:00.000Z" },
+        { id: "m2", sender: "hobby", body: "hey there", ts: "2026-06-11T10:00:05.000Z" },
+      ],
+    });
+    expect(chat.messages[0].sender).toBe("visitor");
+    expect(chat.messages[1].sender).toBe("hobby");
+    // operator rows are never exposed — `operator` is not a valid sender here
+    expect(() =>
+      GetChatResponse.parse({
+        sessionId: "s1",
+        visitorId: "v1",
+        participants: ["hobby"],
+        messages: [{ id: "m3", sender: "operator", body: "note", ts: "2026-06-11T10:00:00.000Z" }],
+      }),
+    ).toThrow();
   });
 });
