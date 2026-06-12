@@ -42,10 +42,6 @@ export function renderDebugPage(d: DebugData): string {
     )
     .join("");
 
-  const convRows = d.snapshot.conversations
-    .map((c) => `<li>${esc(c.participantIds.join(", "))} in ${esc(c.locationId)} (since ${esc(c.startedAt)})</li>`)
-    .join("");
-
   const feedRows = d.feed
     .map((f) => `<li><span class="ts">${esc(f.ts)}</span> ${esc(f.line)}</li>`)
     .join("");
@@ -80,9 +76,6 @@ export function renderDebugPage(d: DebugData): string {
   <tr><th>agent</th><th>location</th><th>status</th><th>activity</th><th>engaged</th><th>last tick</th></tr>
   ${agentRows}
 </table>
-
-<h2>Active conversations</h2>
-<ul>${convRows || "<li>none</li>"}</ul>
 
 <h2>Recent feed</h2>
 <ul>${feedRows || "<li>nothing yet</li>"}</ul>

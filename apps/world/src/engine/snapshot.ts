@@ -1,25 +1,26 @@
 // Builds the GET /world/snapshot payload (plan §5) for initial frontend render.
 import { sql, gt } from "drizzle-orm";
-import type { SnapshotResponse, AgentStatus, ActiveConversation, AgentId, LocationId } from "@town/contract";
+import type { SnapshotResponse, AgentStatus, AgentId, LocationId } from "@town/contract";
 import { db } from "../db/client.js";
 import { visitors } from "../db/schema.js";
 import type { Engagement } from "../db/schema.js";
 import { currentPhase, isOvernight } from "../runtime/clock.js";
 import { allAgents } from "./agents.js";
-import { activeConversations } from "./conversations.js";
 import { recentEvents } from "./events.js";
 import { isBudgetExhausted } from "./usage.js";
 
 // Project a stored Engagement row onto the contract's AgentStatus.engagement
 // shape (design doc §5): `with` is the OTHER participants plus the literal
-// 'visitor' when it's a chat (a visitor is always present in a chat session).
+// 'visitor' (a visitor is always present in a chat session). Only `chat`
+// engagements exist post-M2.1 (paced scenes are gone); a stale `scene`
+// engagement (only possible from a pre-M2.1 row the boot sweep hasn't cleared
+// yet) projects to undefined rather than a kind the contract no longer allows.
 export function engagementToContract(
   e: Engagement | null | undefined,
 ): AgentStatus["engagement"] {
-  if (!e) return undefined;
-  const withList: (AgentId | "visitor")[] = [...e.participants];
-  if (e.kind === "chat") withList.push("visitor");
-  return { kind: e.kind, with: withList };
+  if (!e || e.kind !== "chat") return undefined;
+  const withList: (AgentId | "visitor")[] = [...e.participants, "visitor"];
+  return { kind: "chat", with: withList };
 }
 
 // Visitors seen within the last 2 minutes count as "present in town" — same
@@ -34,9 +35,8 @@ async function visitorsPresent(): Promise<number> {
 }
 
 export async function buildSnapshot(): Promise<SnapshotResponse> {
-  const [agentRows, convs, events, present, budgetExhausted] = await Promise.all([
+  const [agentRows, events, present, budgetExhausted] = await Promise.all([
     allAgents(),
-    activeConversations(),
     recentEvents(30),
     visitorsPresent(),
     isBudgetExhausted(),
@@ -54,13 +54,6 @@ export async function buildSnapshot(): Promise<SnapshotResponse> {
     lastTickAt: a.lastTickAt ? a.lastTickAt.toISOString() : null,
   }));
 
-  const conversations: ActiveConversation[] = convs.map((c) => ({
-    id: c.id,
-    locationId: c.locationId as LocationId,
-    participantIds: c.participantIds as AgentId[],
-    startedAt: c.startedAt.toISOString(),
-  }));
-
   // `awake` is false when the town is asleep (overnight) OR the daily budget is
   // exhausted (design doc §7 — the frontend renders "dream mode" either way;
   // reads stay live). The clock alone drove this before the budget signal wired.
@@ -70,5 +63,5 @@ export async function buildSnapshot(): Promise<SnapshotResponse> {
     awake: !isOvernight() && !budgetExhausted,
   };
 
-  return { agents, conversations, recentEvents: events, world };
+  return { agents, recentEvents: events, world };
 }

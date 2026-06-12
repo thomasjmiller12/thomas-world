@@ -15,6 +15,7 @@ import {
   SnapshotResponse,
   EventsResponse,
   FeedResponse,
+  ChronicleResponse,
   AgentProfileResponse,
   MessagesResponse,
   CreateVisitorResponse,
@@ -22,7 +23,6 @@ import {
   PatchVisitorRequest,
   CreateChatResponse,
   GetChatResponse,
-  JoinConversationResponse,
   InteractRequest,
 } from "@town/contract";
 import type { LocationId } from "@town/contract";
@@ -36,6 +36,7 @@ import {
   publicView,
 } from "../engine/events.js";
 import { getFeed } from "../engine/feed.js";
+import { getChronicle, todayUtc } from "../engine/chronicle.js";
 import { getAgent, allAgents } from "../engine/agents.js";
 import { listMessages } from "../engine/messages.js";
 import {
@@ -67,12 +68,10 @@ import {
   runChatTurn,
   suggestedReplies,
   chatTokenValid,
-  openGreeting,
   pingChat,
   getChatTranscript,
-  chatHasAnyMessage,
-  joinConversation,
   routeVisitorInteraction,
+  routeVisitorMovement,
 } from "../runtime/chat.js";
 import type { FixtureDef } from "../runtime/fixtures.js";
 import {
@@ -302,6 +301,26 @@ export function createApp() {
     return c.json(validated(FeedResponse, { items, nextCursor, count }));
   });
 
+  // --- GET /chronicle?day=YYYY-MM-DD --------------------------------------
+  // The Town Chronicle hub (design doc M2.1): one day's grouped emergent life
+  // (threads, artifacts, bulletins, effects, presence). Public read. `day`
+  // defaults to today (UTC); a malformed day → 400. Thread summaries fill
+  // lazily (capped per request) — see engine/chronicle.ts.
+  app.get("/chronicle", async (c) => {
+    const day = c.req.query("day") ?? todayUtc();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+      return c.json({ error: "bad day", message: "day must be YYYY-MM-DD" }, 400);
+    }
+    let payload;
+    try {
+      payload = await getChronicle(day);
+    } catch {
+      // dayBounds throws on a day that passes the regex but isn't a real date.
+      return c.json({ error: "bad day", message: "day must be YYYY-MM-DD" }, 400);
+    }
+    return c.json(validated(ChronicleResponse, payload));
+  });
+
   // --- GET /agents/:id -----------------------------------------------------
   app.get("/agents/:id", async (c) => {
     const id = c.req.param("id");
@@ -447,10 +466,25 @@ export function createApp() {
       if (moved?.changed) {
         const here = await agentsAtLocation(locationId).catch(() => []);
         for (const a of here) {
-          void boostAgent(a.id as AgentId, id).catch((err) =>
+          // Ordered-pair throttle key (visitor → agent), default 5-min window.
+          void boostAgent(a.id as AgentId, `${id}|${a.id}`).catch((err) =>
             console.warn(`[visitors] boost ${a.id} failed:`, (err as Error).message),
           );
         }
+        // Route the move into any LIVE chat session of this visitor (M2.1): a
+        // chat is a channel, not proximity-gated, so the visitor walking off (or
+        // toward the agent) lands as a pending operator note rather than ending
+        // the session. Best-effort, alongside the boost fan-out — never blocks
+        // the PATCH response.
+        void routeVisitorMovement({
+          visitorId: id,
+          // `name` may have just been renamed in this same request; prefer it.
+          visitorName: name?.trim() || v.name,
+          from: (moved.from ?? locationId) as LocationId,
+          to: locationId as LocationId,
+        }).catch((err) =>
+          console.warn(`[visitors] movement route failed:`, (err as Error).message),
+        );
       }
     }
 
@@ -543,70 +577,6 @@ export function createApp() {
     }
   });
 
-  // --- POST /conversations/:id/join {visitorId} ---------------------------
-  // Visitor interjects into a live agent↔agent scene (design doc §3.3a). The
-  // scene converts to a group chat with BOTH agents; the visitor's subsequent
-  // messages flow through /chats/:id/messages with the returned sessionToken.
-  // Visitor-token gated. Registry CAS: first visitor wins; a gone / already-
-  // converted scene → 409 (the client degrades to listen-in).
-  app.post("/conversations/:id/join", async (c) => {
-    const conversationId = c.req.param("id");
-    const body = await c.req.json().catch(() => ({}));
-    const visitorId = body?.visitorId;
-    if (typeof visitorId !== "string" || !visitorId) {
-      return c.json({ error: "visitorId required" }, 400);
-    }
-    const token = c.req.header("x-visitor-token");
-    if (!(await visitorTokenValid(visitorId, token))) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-    const res = await joinConversation(conversationId, visitorId);
-    switch (res.status) {
-      case "gone":
-        return c.json({ error: "scene ended", reason: "gone" }, 409);
-      case "converted":
-        return c.json({ error: "already converted", reason: "converted" }, 409);
-      case "ok":
-        return c.json(
-          validated(JoinConversationResponse, {
-            sessionId: res.sessionId,
-            agentId: res.agentId,
-            visitorId: res.visitorId,
-            participants: res.participants,
-            sessionToken: res.sessionToken,
-          }),
-        );
-    }
-  });
-
-  // --- POST /chats/:id/open → SSE greeting stream -------------------------
-  // Token-gated. Streams the agent-initiated greeting as contract ChatStreamFrames
-  // (design doc §3.4): a byte-stable `operator` opener row is persisted FIRST
-  // (folded into the leading user turn so the greeting never sits first in the
-  // API history), then the greeting streams + persists as the agent's message.
-  // Idempotent-ish: a second call on a session that already has messages → 409.
-  app.post("/chats/:id/open", async (c) => {
-    const sessionId = c.req.param("id");
-    const token = c.req.header("x-session-token") ?? undefined;
-    if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
-    // Guard 404/409 BEFORE opening the SSE stream so the client gets a clean
-    // status code rather than an empty stream. The 409 guard checks for ANY
-    // persisted row (including the hidden operator opener), so a rapid second
-    // /open 409s even before the agent's visible reply lands.
-    const transcript = await getChatTranscript(sessionId);
-    if (!transcript) return c.json({ error: "unknown session" }, 404);
-    if (await chatHasAnyMessage(sessionId)) {
-      return c.json({ error: "already opened", reason: "already" }, 409);
-    }
-    return streamSSE(c, async (stream) => {
-      await openGreeting(sessionId, {
-        onFrame: async (frame) => {
-          await stream.writeSSE({ data: JSON.stringify(frame) });
-        },
-      });
-    });
-  });
-
   // --- POST /chats/:id/ping -----------------------------------------------
   // Token-gated liveness ping (design doc §3.4). WorldClient pings every 60s
   // while the panel is open; the sweep keeps the session alive as long as pings
@@ -666,7 +636,7 @@ export function createApp() {
     const wrapUpNote = turn.wrapUp ? SESSION_WRAP_UP_NOTE : undefined;
 
     return streamSSE(c, async (stream) => {
-      await runChatTurn(
+      const turn = await runChatTurn(
         sessionId,
         text,
         {
@@ -678,7 +648,10 @@ export function createApp() {
         wrapUpNote,
       );
       // suggested_replies rides AFTER done — never on the latency path. A
-      // failure here yields no chips; it must not break the stream.
+      // failure here yields no chips; it must not break the stream. Skip them
+      // entirely when the agent ENDED the chat itself (leave_chat): chips
+      // prompting the visitor to reply into a closed session make no sense.
+      if (turn.ended) return;
       try {
         const replies = await suggestedReplies(sessionId);
         if (replies.length) {

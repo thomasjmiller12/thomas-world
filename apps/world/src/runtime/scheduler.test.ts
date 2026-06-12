@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { decideBoost } from "./scheduler.js";
+import { decideBoost, sayBoostBudgetExceeded } from "./scheduler.js";
+
+// Say-boost bands/keys (design doc §2) mirrored from scheduler.ts for the tests.
+const SAY_THROTTLE_MS = 90_000;
+const SAY_FLOOR = 20_000;
+const SAY_MAX = 45_000;
 
 // Pure boost-decision logic (design doc §2/§7). The DB/timer wiring in
 // boostAgent is integration-bound; the throttle + clamp rules are pure here.
@@ -75,5 +80,105 @@ describe("decideBoost — co-located tick boost throttle + clamp", () => {
     });
     expect(d.boost).toBe(false);
     expect(d.reason).toBe("no-timer");
+  });
+});
+
+// Say-boost extends the same pure decideBoost with a tighter throttle window, a
+// 20–45s band, and a per-location hourly storm cap (design doc §2).
+describe("decideBoost — say-boost (room-talk wake)", () => {
+  const now = 1_000_000_000_000;
+
+  it("uses the explicit say throttle window (90s), not the default 5-min", () => {
+    // 60s ago: inside the 90s say window → throttled, even though it's WELL past
+    // the 5-min default that the visitor boost uses.
+    const d = decideBoost({
+      now,
+      lastBoostAt: now - 60_000,
+      remainingMs: 10 * 60_000,
+      maxDelayMs: SAY_MAX,
+      jitterMs: 0,
+      floorMs: SAY_FLOOR,
+      throttleMs: SAY_THROTTLE_MS,
+    });
+    expect(d.boost).toBe(false);
+    expect(d.reason).toBe("throttled");
+  });
+
+  it("allows a say-boost once the 90s pair window has passed", () => {
+    const d = decideBoost({
+      now,
+      lastBoostAt: now - 91_000,
+      remainingMs: 10 * 60_000,
+      maxDelayMs: SAY_MAX,
+      jitterMs: 0,
+      floorMs: SAY_FLOOR,
+      throttleMs: SAY_THROTTLE_MS,
+    });
+    expect(d.boost).toBe(true);
+  });
+
+  it("clamps to the 20s floor at the bottom of the say band", () => {
+    const d = decideBoost({
+      now,
+      lastBoostAt: undefined,
+      remainingMs: 10 * 60_000,
+      maxDelayMs: SAY_MAX,
+      jitterMs: 0,
+      floorMs: SAY_FLOOR,
+      throttleMs: SAY_THROTTLE_MS,
+    });
+    expect(d.delayMs).toBe(SAY_FLOOR);
+  });
+
+  it("caps at the 45s max of the say band even with large jitter", () => {
+    const d = decideBoost({
+      now,
+      lastBoostAt: undefined,
+      remainingMs: 10 * 60_000,
+      maxDelayMs: SAY_MAX,
+      jitterMs: 60_000, // floor+jitter would be 80s — clamp to the 45s max
+      floorMs: SAY_FLOOR,
+      throttleMs: SAY_THROTTLE_MS,
+    });
+    expect(d.delayMs).toBe(SAY_MAX);
+  });
+
+  it("falls back to natural cadence once the location budget is spent", () => {
+    // The location-budget cap is checked FIRST and beats the (passed) throttle.
+    const d = decideBoost({
+      now,
+      lastBoostAt: undefined,
+      remainingMs: 10 * 60_000,
+      maxDelayMs: SAY_MAX,
+      jitterMs: 0,
+      floorMs: SAY_FLOOR,
+      throttleMs: SAY_THROTTLE_MS,
+      locationBudgetExceeded: true,
+    });
+    expect(d.boost).toBe(false);
+    expect(d.reason).toBe("location-budget");
+  });
+
+  it("never delays a say-target's tick already due sooner than the band floor", () => {
+    const d = decideBoost({
+      now,
+      lastBoostAt: undefined,
+      remainingMs: 8_000, // due in 8s, under the 20s floor
+      maxDelayMs: SAY_MAX,
+      jitterMs: 10_000,
+      floorMs: SAY_FLOOR,
+      throttleMs: SAY_THROTTLE_MS,
+    });
+    expect(d.boost).toBe(true);
+    expect(d.delayMs).toBe(8_000);
+  });
+});
+
+describe("sayBoostBudgetExceeded — per-location hourly storm cap", () => {
+  it("is false below the budget and true at/above it", () => {
+    expect(sayBoostBudgetExceeded(0, 12)).toBe(false);
+    expect(sayBoostBudgetExceeded(11, 12)).toBe(false);
+    expect(sayBoostBudgetExceeded(12, 12)).toBe(true);
+    expect(sayBoostBudgetExceeded(13, 12)).toBe(true);
   });
 });

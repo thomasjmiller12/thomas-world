@@ -30,7 +30,9 @@ export async function renderLine(e: WorldEvent): Promise<string> {
     case "agent.thought":
       return `${await who(p.agent)} thought: "${p.text}"`;
     case "agent.spoke":
-      return `${await who(p.agent)} said (in ${p.location}): "${p.text}"`;
+      return p.to
+        ? `${await who(p.agent)} said to ${await who(p.to)} (in ${p.location}): "${p.text}"`
+        : `${await who(p.agent)} said (in ${p.location}): "${p.text}"`;
     case "conversation.started": {
       const names = await Promise.all((p.participants as string[]).map(who));
       return `${names.join(" and ")} started talking in ${p.location}.`;

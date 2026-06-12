@@ -20,9 +20,12 @@ describe("engagement → contract derivation (design doc §3.2/§5)", () => {
     expect(out).toEqual({ kind: "chat", with: ["researcher", "visitor"] });
   });
 
-  it("a scene lists only the other agent(s) — no visitor", () => {
+  it("a stale 'scene' engagement projects to undefined (paced scenes removed, M2.1)", () => {
+    // Scenes are gone post-M2.1; the contract only allows kind:'chat'. A scene
+    // engagement can only be a pre-M2.1 row the boot sweep hasn't cleared yet —
+    // it must not surface as a kind the contract no longer knows.
     const out = engagementToContract({ kind: "scene", id: "c1", participants: ["builder"] });
-    expect(out).toEqual({ kind: "scene", with: ["builder"] });
+    expect(out).toBeUndefined();
   });
 
   it("an absent engagement maps to undefined (omitted from the contract)", () => {

@@ -45,13 +45,15 @@ import { checkFixtureAction, tryRecordEffect, type FixtureDef } from "./fixtures
 export interface AgentContext {
   agentId: AgentId;
   location: LocationId;
-  // Conversation the agent is currently in (set by start_conversation), so
-  // reply/end_conversation know which scene to write to.
-  conversationId: string | null;
   // The visitor chat session this agent is replying in, when applicable (design
   // doc §3.3). Set on chat-turn contexts so invite_to_chat knows which session
-  // to add the invited agent to. Null on idle ticks / greetings.
+  // to add the invited agent to. Null on idle ticks.
   chatSessionId?: string | null;
+  // Set by the leave_chat tool when the agent decides a chat has run its course.
+  // The toolRunner is mid-loop when leave_chat fires, so it cannot end the
+  // session synchronously; it stashes the reason here and the chat layer
+  // (streamAgentTurn → runChatTurn) ends the session AFTER the final message.
+  endRequested?: string;
 }
 
 // Tools the idle tick gets. The chat subset (plan §4.1) is a filtered view.
@@ -143,60 +145,30 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   const say = betaZodTool({
     name: "say",
     description:
-      "Say something out loud where you are. Co-located facets and any visitors here can hear it. Use this for ambient remarks and talking to whoever's around.",
-    inputSchema: z.object({ text: z.string().min(1).max(600) }),
-    run: async ({ text }) => {
+      "Say something out loud where you are. Saying something is HOW conversations happen here: co-located facets hear it and usually wake shortly to respond, and any visitors here see it too. Optionally address a specific facet with `to` — they'll know it was aimed at them. Use this for ambient remarks, opening a conversation, or replying to whoever's around.",
+    inputSchema: z.object({
+      text: z.string().min(1).max(600),
+      // Optional addressing for emergent room talk aimed at a specific facet.
+      to: z.enum(agentIds as unknown as [string, ...string[]]).optional(),
+    }),
+    run: async ({ text, to }) => {
+      const addressed = (to as AgentId | undefined) ?? undefined;
+      if (addressed === ctx.agentId) {
+        return "You can't address yourself — leave `to` off to speak to the room.";
+      }
       await appendEvent({
         type: "agent.spoke",
         agentId: ctx.agentId,
         locationId: ctx.location,
         visibility: "location",
-        payload: { agent: ctx.agentId, location: ctx.location, text },
+        payload: {
+          agent: ctx.agentId,
+          location: ctx.location,
+          text,
+          ...(addressed ? { to: addressed } : {}),
+        },
       });
-      return `You said: "${text}"`;
-    },
-  });
-
-  const start_conversation = betaZodTool({
-    name: "start_conversation",
-    description:
-      "Start a face-to-face conversation with another facet who is HERE with you. They must be co-located. After this you can use reply to continue and end_conversation to wrap up.",
-    inputSchema: z.object({
-      agent: z.enum(agentIds as unknown as [string, ...string[]]),
-    }),
-    run: async ({ agent }) => {
-      const other = agent as AgentId;
-      if (other === ctx.agentId) return "You can't start a conversation with yourself.";
-      const here = await agentsAtLocation(ctx.location, ctx.agentId);
-      if (!here.some((a) => a.id === other)) {
-        return `${other} isn't here with you. You'd need to be in the same place — try moving to where they are, or DM them instead.`;
-      }
-      // The scheduler drives the actual bounded scene; here we just signal intent
-      // by recording the opening. The scene runner picks it up.
-      return `__START_CONVERSATION__:${other}`;
-    },
-  });
-
-  const reply = betaZodTool({
-    name: "reply",
-    description:
-      "Say your next line in the conversation you're currently in. Only valid while a conversation is open.",
-    inputSchema: z.object({ text: z.string().min(1).max(600) }),
-    run: async ({ text }) => {
-      if (!ctx.conversationId) {
-        return "You're not in a conversation right now. Start one with start_conversation, or use say to speak to the room.";
-      }
-      return `__REPLY__:${text}`;
-    },
-  });
-
-  const end_conversation = betaZodTool({
-    name: "end_conversation",
-    description: "Wrap up the conversation you're currently in.",
-    inputSchema: z.object({}),
-    run: async () => {
-      if (!ctx.conversationId) return "You're not in a conversation.";
-      return `__END_CONVERSATION__`;
+      return addressed ? `You said to ${addressed}: "${text}"` : `You said: "${text}"`;
     },
   });
 
@@ -445,9 +417,6 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     look_around as RunnableTool,
     use_fixture as RunnableTool,
     say as RunnableTool,
-    start_conversation as RunnableTool,
-    reply as RunnableTool,
-    end_conversation as RunnableTool,
     send_dm as RunnableTool,
     broadcast as RunnableTool,
     create_artifact as RunnableTool,
@@ -566,21 +535,62 @@ function buildInviteToChat(ctx: AgentContext): RunnableTool {
   }) as RunnableTool;
 }
 
-// The chat subset (plan §4.1): visitor chat runs on Opus with a smaller, safe
-// toolset — no world-mutating "making" tools, no email/capability, but memory
-// recall and look_around so the agent stays grounded and can reference its life.
-// Group chat (design doc §3.3) adds invite_to_chat when a chat session is set.
+// leave_chat (M2.1 full-agency chat): an agent in a visitor chat decides the
+// conversation has run its course and leaves it, warmly, in its own voice. A
+// chat is a channel, not a cage. The toolRunner is mid-loop here, so we CANNOT
+// end the session synchronously — we stash the reason on ctx.endRequested and
+// let the chat layer end the whole session AFTER the agent's final message
+// lands. v1 semantics: leaving ends the WHOLE session (solo or group).
+function buildLeaveChat(ctx: AgentContext): RunnableTool {
+  return betaZodTool({
+    name: "leave_chat",
+    description:
+      "Leave the conversation you're having with the visitor — when it has genuinely run its course, you've said your goodbyes, or you need to get back to your life. Say your warm farewell in your reply, then call this; the chat closes after your message. You never owe anyone an endless conversation.",
+    inputSchema: z.object({
+      reason: z.string().max(200).optional(),
+    }),
+    run: async ({ reason }) => {
+      if (!ctx.chatSessionId) {
+        return "You can only leave a conversation while you're in one with a visitor.";
+      }
+      ctx.endRequested = reason ?? "wound down";
+      return "Alright — wrap up warmly in this message; the conversation will close once you've said it.";
+    },
+  }) as RunnableTool;
+}
+
+// The chat subset (plan §4.1; widened in M2.1 to full agency). A chat is a
+// channel, not a cage: the agent keeps its whole life mid-chat — it can walk
+// somewhere, make or revise an artifact, speak to the room, check its memory.
+// The only EXCLUSIONS are the external / megaphone side effects (email_thomas,
+// request_capability, broadcast, post_bulletin, publish_blog_post) — those stay
+// tick-only. Group chat (design doc §3.3) adds invite_to_chat, and M2.1 adds
+// leave_chat, both whenever a chat session is set.
 export function buildChatTools(ctx: AgentContext): RunnableTool[] {
   const allowed = new Set([
+    "move_to",
+    "set_activity",
     "look_around",
     "use_fixture",
-    "recall",
+    "say",
+    "create_artifact",
+    "update_artifact",
     "memory",
+    "remember",
+    "recall",
+    "forget",
     "send_dm",
+    "list_notes",
+    "read_note",
+    "search_notes",
+    "write_agent_note",
   ]);
   const tools = buildTools(ctx).filter((t) => allowed.has(toolName(t)));
-  // invite_to_chat is only meaningful within a visitor chat session.
-  if (ctx.chatSessionId) tools.push(buildInviteToChat(ctx));
+  // invite_to_chat + leave_chat are only meaningful within a visitor chat session.
+  if (ctx.chatSessionId) {
+    tools.push(buildInviteToChat(ctx));
+    tools.push(buildLeaveChat(ctx));
+  }
   // Keep the byte-stable sorted order (cache hygiene) now that we appended.
   return tools.sort((a, b) => toolName(a).localeCompare(toolName(b)));
 }

@@ -9,7 +9,7 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { randomUUID } from "node:crypto";
-import type { AgentId, LocationId } from "@town/contract";
+import type { AgentId } from "@town/contract";
 import { config } from "../config.js";
 import { anthropic, systemBlocks, hasLlm, TICK_BETAS } from "./client.js";
 import { getProfile, soulGitHash } from "./roles.js";
@@ -22,7 +22,6 @@ import { markRead } from "../engine/messages.js";
 import { recordUsage, spendTodayUsd, spendTodayForAgent } from "../engine/usage.js";
 import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
 import { startTrace } from "./tracing.js";
-import * as sceneRunner from "./conversation-scene.js";
 import { tryAcquire } from "./agent-lock.js";
 
 // How many tool rounds a single idle tick may take before we force a stop.
@@ -52,10 +51,6 @@ export interface TickResult {
   // Langfuse trace id for this tick (empty when tracing is off). Surfaced by the
   // /admin/tick endpoint so a smoke test can verify the trace landed.
   traceId?: string;
-  // The agent this tick fired a paced scene at, if any (design doc §3.1). The
-  // scene runs detached (fire-and-forget); /admin/tick returns this immediately
-  // rather than waiting for the scene to play out.
-  conversationStarted?: AgentId | null;
 }
 
 // Run one idle tick for an agent. Safe to call from the scheduler or the
@@ -68,35 +63,14 @@ export async function runTick(agentId: AgentId): Promise<TickResult> {
   // cover tick-vs-tick. If we can't take the lock, another tick is mid-flight.
   const release = tryAcquire(agentId);
   if (!release) return { ran: false, reason: "busy" };
-  let result: TickResult & { _conversationTarget?: AgentId | null; _location?: LocationId };
   try {
-    result = await runTickLocked(agentId);
+    return await runTickLocked(agentId);
   } finally {
     release();
   }
-
-  // Fire-and-forget the paced scene AFTER releasing this agent's tick lock
-  // (design doc §3.1): the SceneRunner is a step machine that acquires the
-  // speaker's lock per step, so /admin/tick returns immediately while the scene
-  // plays out in real time. Own try/catch + own Langfuse trace live inside
-  // start(); we never await it here (and never let a rejection escape).
-  const target = result._conversationTarget;
-  const location = result._location ?? "town";
-  if (target) {
-    void sceneRunner.start(agentId, target, location).catch((err) =>
-      console.warn(`[tick ${agentId}] scene start failed:`, (err as Error).message),
-    );
-  }
-  delete result._conversationTarget;
-  delete result._location;
-  // Surface the scene target (if any) immediately — the scene plays out detached.
-  result.conversationStarted = target ?? null;
-  return result;
 }
 
-async function runTickLocked(
-  agentId: AgentId,
-): Promise<TickResult & { _conversationTarget?: AgentId | null; _location?: LocationId }> {
+async function runTickLocked(agentId: AgentId): Promise<TickResult> {
   const agent = await getAgent(agentId);
   if (!agent) return { ran: false, reason: "error" };
   // Engaged in a live chat/scene (design doc §3.2) → skip the idle tick. The
@@ -152,7 +126,7 @@ async function runTickLocked(
 
   void core; // obs.text already includes the core snapshot.
 
-  const ctx: AgentContext = { agentId, location: obs.location, conversationId: null };
+  const ctx: AgentContext = { agentId, location: obs.location };
   const tools = buildTools(ctx);
 
   // 2. The user turn carries the volatile content (time + observation). The
@@ -162,13 +136,12 @@ async function runTickLocked(
   ];
 
   // 3. Run the SDK agentic loop, bounded. We iterate the runner ourselves so we
-  //    can (a) cap rounds, (b) inspect stop_reason for refusal, (c) intercept
-  //    conversation-scene sentinels, and (d) sum usage across rounds.
+  //    can (a) cap rounds, (b) inspect stop_reason for refusal, and (c) sum
+  //    usage across rounds.
   let rounds = 0;
   let totalCost = 0;
   let totalCacheRead = 0;
   let refused = false;
-  let conversationTarget: AgentId | null = null;
 
   try {
     const runner = anthropic.beta.messages.toolRunner({
@@ -225,11 +198,6 @@ async function runTickLocked(
           payload: { agent: agentId, text: text.slice(0, 600) },
         });
       }
-
-      // Detect a conversation-start sentinel emitted by start_conversation, so
-      // we can run the bounded scene AFTER the tick settles.
-      const target = detectConversationStart(message);
-      if (target) conversationTarget = target;
     }
   } catch (err) {
     console.warn(`[tick ${agentId}] error:`, (err as Error).message);
@@ -255,9 +223,6 @@ async function runTickLocked(
     }`,
   );
 
-  // 5. If the agent tried to start a conversation, hand the target back to the
-  //    caller, which runs the bounded scene AFTER releasing this tick's lock
-  //    (the scene acquires the participants' locks itself — plan §4.1).
   return {
     ran: true,
     reason: refused ? "refusal" : "ok",
@@ -265,8 +230,6 @@ async function runTickLocked(
     costUsd: totalCost,
     cacheReadTokens: totalCacheRead,
     traceId: trace.traceId,
-    _conversationTarget: conversationTarget,
-    _location: ctx.location,
   };
 }
 
@@ -276,19 +239,6 @@ function extractText(message: Anthropic.Beta.BetaMessage): string {
     .map((b) => b.text)
     .join("\n")
     .trim();
-}
-
-// start_conversation returns "__START_CONVERSATION__:<agent>" as its tool
-// result; the runner feeds that back as a tool_result the model sees, but we
-// also scan the assistant's tool_use inputs to capture the intended target.
-function detectConversationStart(message: Anthropic.Beta.BetaMessage): AgentId | null {
-  for (const block of message.content) {
-    if (block.type === "tool_use" && block.name === "start_conversation") {
-      const input = block.input as { agent?: string };
-      if (input?.agent) return input.agent as AgentId;
-    }
-  }
-  return null;
 }
 
 function utcDay(): string {

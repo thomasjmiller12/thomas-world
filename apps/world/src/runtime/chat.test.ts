@@ -2,17 +2,16 @@ import { describe, it, expect } from "vitest";
 import {
   rowsToHistory,
   isChatStale,
-  buildGreetingOpener,
   pickAddressedAgent,
   lastAgentToSpeak,
   isInterjectPass,
-  seedRowForSceneLine,
   interactionOperatorNote,
   pickRoutedSession,
+  narrateAction,
+  movementOperatorNote,
   type ChatRowLike,
   type RoutableSession,
 } from "./chat.js";
-import type { WorldEvent } from "@town/contract";
 
 const t = (s: number): Date => new Date(s * 1000);
 
@@ -104,71 +103,6 @@ describe("isChatStale — liveness-aware sweep (design doc §3.4)", () => {
     expect(
       isChatStale({ startedAt: new Date(now - 1_000), lastPingAt: null, lastMessageAt: null }, now, STALE),
     ).toBe(false);
-  });
-});
-
-describe("buildGreetingOpener — byte-stable continuity opener (design doc §3.4)", () => {
-  const ev = (type: WorldEvent["type"], payload: Record<string, unknown>): WorldEvent =>
-    ({
-      id: "1",
-      ts: "2026-06-11T00:00:00.000Z",
-      type,
-      agentId: "hobby",
-      locationId: "workshop",
-      visitorId: null,
-      visibility: "public",
-      payload,
-    }) as WorldEvent;
-
-  it("is byte-stable: same inputs → identical string (cache-friendly)", () => {
-    const args = {
-      displayName: "Hobby",
-      activity: "tinkering with a marble run",
-      recentEvents: [ev("artifact.created", { kind: "fun_list", title: "Rainy-day builds", agent: "hobby" })],
-      visitorName: "Ada",
-    };
-    expect(buildGreetingOpener(args)).toBe(buildGreetingOpener(args));
-  });
-
-  it("leads with the visitor name and the current activity", () => {
-    const opener = buildGreetingOpener({
-      displayName: "Hobby",
-      activity: "tinkering with a marble run",
-      recentEvents: [],
-      visitorName: "Ada",
-    });
-    expect(opener).toContain("Ada");
-    expect(opener).toContain("tinkering with a marble run");
-    expect(opener).toContain("Hobby");
-  });
-
-  it("falls back gracefully with no name and no activity", () => {
-    const opener = buildGreetingOpener({
-      displayName: "Hobby",
-      activity: null,
-      recentEvents: [],
-      visitorName: null,
-    });
-    expect(opener).toContain("a visitor");
-    expect(opener).toContain("between things");
-  });
-
-  it("includes at most the 3 most recent renderable events", () => {
-    const events = [
-      ev("agent.moved", { agent: "hobby", from: "town", to: "workshop" }),
-      ev("agent.activity", { agent: "hobby", activity: "sketching" }),
-      ev("artifact.created", { kind: "fun_list", title: "A", agent: "hobby" }),
-      ev("artifact.updated", { title: "B", agent: "hobby" }),
-    ];
-    const opener = buildGreetingOpener({
-      displayName: "Hobby",
-      activity: "x",
-      recentEvents: events,
-      visitorName: "Ada",
-    });
-    // The oldest (moved) should be dropped; the newest 3 kept.
-    expect(opener).not.toContain("walked to the workshop");
-    expect(opener).toContain('updated "B"');
   });
 });
 
@@ -341,15 +275,6 @@ describe("isInterjectPass (design doc §3.3 step 2)", () => {
   });
 });
 
-describe("seedRowForSceneLine (design doc §3.3a — interject seeding)", () => {
-  it("renders a scene line as a labeled operator row", () => {
-    expect(seedRowForSceneLine({ agent: "builder", text: "let's prototype it" })).toEqual({
-      sender: "operator",
-      body: "Builder: let's prototype it",
-    });
-  });
-});
-
 describe("interactionOperatorNote (design doc §4 — visitor.interacted routing)", () => {
   it("special-cases the phone with the warranty-bit payoff line", () => {
     const note = interactionOperatorNote("Ada", "phone");
@@ -398,5 +323,83 @@ describe("pickRoutedSession (design doc §4 — routing decision)", () => {
 
   it("ignores null/undefined participant locations (agent row gone)", () => {
     expect(pickRoutedSession([session("s1", null, undefined)], "office")).toBeNull();
+  });
+});
+
+// Visitor speaks first (M2.1 — forced greeting removed). runChatTurn inserts the
+// visitor row BEFORE building history, so a fresh session's first persisted row
+// is the visitor's message → the leading history turn is a `user` turn. (No
+// operator opener is written anymore; the only chat-stream entry is a visitor
+// message.) rowsToHistory is the pure invariant under that flow.
+describe("visitor speaks first (M2.1 — no forced greeting)", () => {
+  it("a fresh session's first history entry is a user turn", () => {
+    // The first row a brand-new session ever has is the visitor's opening line.
+    const rows: ChatRowLike[] = [{ sender: "visitor", body: "hey, who are you?", ts: t(1) }];
+    const history = rowsToHistory(rows, "hobby");
+    expect(history).toHaveLength(1);
+    expect(history[0].role).toBe("user");
+    expect(history[0].content).toBe("hey, who are you?");
+  });
+});
+
+// Mid-chat action-frame narration (M2.1 full agency). Pure map from a tool +
+// its parsed args to the inline `detail` the panel renders.
+describe("narrateAction — mid-chat tool narration map (M2.1)", () => {
+  it("narrates move_to with the destination", () => {
+    expect(narrateAction("move_to", { location: "cafe" })).toBe("walks to the cafe");
+  });
+
+  it("narrates use_fixture as '<action>s the <fixture>'", () => {
+    expect(narrateAction("use_fixture", { fixture: "phone", action: "ring" })).toBe("rings the phone");
+  });
+
+  it("narrates create_artifact with the title in quotes", () => {
+    expect(narrateAction("create_artifact", { title: "Eval design", kind: "blog_post" })).toBe(
+      'starts writing "Eval design"',
+    );
+  });
+
+  it("narrates update_artifact generically", () => {
+    expect(narrateAction("update_artifact", { id: "42" })).toBe("revises an artifact");
+  });
+
+  it("narrates set_activity with the text", () => {
+    expect(narrateAction("set_activity", { text: "sketching a marble run" })).toBe(
+      "is now sketching a marble run",
+    );
+  });
+
+  it("narrates say with the spoken text in quotes", () => {
+    expect(narrateAction("say", { text: "anyone around?" })).toBe('says aloud: "anyone around?"');
+  });
+
+  it("returns null for tools with their own frames / no narration", () => {
+    expect(narrateAction("memory", { command: "view" })).toBeNull();
+    expect(narrateAction("recall", { query: "x" })).toBeNull();
+    expect(narrateAction("leave_chat", { reason: "bye" })).toBeNull();
+    expect(narrateAction("invite_to_chat", { agent: "builder" })).toBeNull();
+  });
+
+  it("falls back gracefully when an expected field is missing", () => {
+    expect(narrateAction("move_to", {})).toBe("walks to the somewhere");
+    expect(narrateAction("create_artifact", {})).toBe('starts writing "something"');
+  });
+});
+
+// Visitor-movement routing note (M2.1). Pure decision: phrasing depends only on
+// whether a participant agent is at the destination the visitor walked to.
+describe("movementOperatorNote — visitor.moved routing (M2.1)", () => {
+  it("reads 'walked into the <loc> with you' when a participant is at the destination", () => {
+    const note = movementOperatorNote("Ada", "cafe", true);
+    expect(note).toBe("[operator note] Ada just walked into the cafe with you.");
+  });
+
+  it("reads 'walked over to the <loc>' when no participant is at the destination", () => {
+    const note = movementOperatorNote("Ada", "park", false);
+    expect(note).toBe("[operator note] Ada just walked over to the park.");
+  });
+
+  it("uses 'The visitor' when no name is given", () => {
+    expect(movementOperatorNote("", "office", false)).toMatch(/^\[operator note\] The visitor just walked over to the office\.$/);
   });
 });

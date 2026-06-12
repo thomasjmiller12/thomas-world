@@ -167,6 +167,10 @@ export const messages = pgTable(
 );
 
 // --- conversations / turns (agent↔agent scenes) -----------------------------
+// FROZEN — legacy paced scenes (pre-M2.1). Room talk is now emergent `say`
+// across boosted ticks; the scene engine is gone, so no write paths remain.
+// These table definitions are kept only so historical rows still exist and the
+// boot sweep can close any left open by a pre-M2.1 deploy.
 export const conversations = pgTable("conversations", {
   id: text("id").primaryKey(),
   locationId: text("location_id", { enum: locationEnum }).notNull(),
@@ -300,6 +304,22 @@ export const chatMessages = pgTable(
   },
   (t) => [index("chat_messages_session_idx").on(t.sessionId)],
 );
+
+// --- thread_summaries (Town Chronicle lazy summaries, M2.1) -----------------
+// One row per CLOSED room-talk thread the Chronicle has summarized (a one-line
+// Haiku phrase). `threadId` is the chronicle's deterministic thread id
+// (thr-<location>-<firstEventId> for emergent agent.spoke runs, conv-<id> for
+// historical paced-scene turns). Only threads whose last line is older than the
+// grouping gap are inserted (an open thread can still grow, so it's never
+// cached). `participants` mirrors the thread roster for cheap display.
+export const threadSummaries = pgTable("thread_summaries", {
+  threadId: text("thread_id").primaryKey(),
+  day: text("day").notNull(),
+  locationId: text("location_id", { enum: locationEnum }),
+  participants: jsonb("participants").$type<AgentId[]>().notNull().default([]),
+  summary: text("summary").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 // --- capability_requests (the meta-layer flex surface) ----------------------
 export const capabilityRequests = pgTable("capability_requests", {

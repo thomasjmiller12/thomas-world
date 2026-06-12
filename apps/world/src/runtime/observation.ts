@@ -108,10 +108,14 @@ function arrivalPhrase(ms: number | undefined, now: number): string {
   return " (has been around a little while)";
 }
 
-// Render the location-aware Visitors section (design doc §2). Leads with the
-// visitors HERE WITH the agent (by name + arrival recency), then the town-wide
-// count. Pure so the phrasing is unit-testable. `here` is ordered
-// most-recently-seen first; `arrivalMs` maps visitorId → arrival epoch ms.
+// Render the location-aware Visitors section (design doc §2; de-prescribed in
+// M2.1). PLAIN FACT, no instruction: visitor presence is reported the same way
+// any other co-presence is — who's here and how recently they arrived. Whether
+// to acknowledge a visitor is the agent's choice (the protocol's stance: people
+// share the town, they aren't an audience owed a performance), so this section
+// carries no "say something" / "don't leave them standing there" nudge. Pure so
+// the phrasing is unit-testable. `here` is ordered most-recently-seen first;
+// `arrivalMs` maps visitorId → arrival epoch ms.
 export function renderVisitorsSection(
   here: { id: string; name: string }[],
   arrivalMs: Map<string, number>,
@@ -120,9 +124,9 @@ export function renderVisitorsSection(
 ): string {
   if (here.length === 0) {
     if (townCount > 0) {
-      return `No visitors here with you, but ${townCount} ${townCount === 1 ? "visitor is" : "visitors are"} elsewhere in town — someone might wander over.`;
+      return `No visitors here with you; ${townCount} ${townCount === 1 ? "visitor is" : "visitors are"} elsewhere in town.`;
     }
-    return `No visitors in town right now. The place is yours.`;
+    return `No visitors in town right now.`;
   }
   const lines = here
     .map((v) => `${v.name} is here with you${arrivalPhrase(arrivalMs.get(v.id), now)}`)
@@ -132,7 +136,7 @@ export function renderVisitorsSection(
     elsewhere > 0
       ? ` (${elsewhere} more ${elsewhere === 1 ? "visitor" : "visitors"} elsewhere in town.)`
       : "";
-  return `${lines}. They've come to see the town — say something. Don't leave them standing there.${tail}`;
+  return `${lines}.${tail}`;
 }
 
 function renderInbox(msgs: MessageRow[]): string {
@@ -146,7 +150,11 @@ function renderInbox(msgs: MessageRow[]): string {
     .join("\n");
 }
 
-function renderEvents(events: WorldEvent[], location: LocationId): string {
+// Render the events-since-last-tick section from the PERSPECTIVE of `viewer`
+// (the ticking agent): an addressed agent.spoke shows whether it was aimed at
+// the viewer (`said (to you)`) or another facet (`said to <name>`). The
+// conversation.* cases stay (historical world_events rows still parse + render).
+export function renderEvents(events: WorldEvent[], location: LocationId, viewer: AgentId): string {
   if (events.length === 0) return "Nothing notable has happened since your last tick.";
   return events
     .map((e) => {
@@ -156,8 +164,12 @@ function renderEvents(events: WorldEvent[], location: LocationId): string {
           return `- ${p.agent} moved to ${p.to}`;
         case "agent.activity":
           return `- ${p.agent} is now ${p.activity}`;
-        case "agent.spoke":
-          return p.text ? `- ${p.agent} said: "${p.text}"` : `- ${p.agent} said something (elsewhere)`;
+        case "agent.spoke": {
+          if (!p.text) return `- ${p.agent} said something (elsewhere)`;
+          if (p.to === viewer) return `- ${p.agent} said (to you): "${p.text}"`;
+          if (p.to) return `- ${p.agent} said to ${p.to}: "${p.text}"`;
+          return `- ${p.agent} said: "${p.text}"`;
+        }
         case "agent.thought":
           return p.text ? `- ${p.agent} thought aloud: "${p.text}"` : `- ${p.agent} was thinking`;
         case "conversation.started":
@@ -265,7 +277,7 @@ export async function buildObservation(
     renderInbox(inbox),
     ``,
     `## What's happened since your last tick`,
-    renderEvents(perceived, location),
+    renderEvents(perceived, location, agentId),
     ``,
     `## Your status (as the world believes it)`,
     `Status: ${agent.status}. Activity: ${agent.activity ?? "(none set)"}.`,

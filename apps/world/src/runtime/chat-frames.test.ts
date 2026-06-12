@@ -33,6 +33,18 @@ describe("chat stream frame conformance (design doc §5)", () => {
     expect(ChatStreamFrame.parse(f)).toEqual(f);
   });
 
+  it("action carries the mid-chat tool + a human-readable detail (M2.1)", () => {
+    const f: Frame = { type: "action", agent: "builder", tool: "move_to", detail: "walks to the cafe" };
+    expect(ChatStreamFrame.parse(f)).toEqual(f);
+  });
+
+  it("chat_ended carries the agent who left + an optional reason (M2.1)", () => {
+    const withReason: Frame = { type: "chat_ended", agent: "builder", reason: "wound down" };
+    expect(ChatStreamFrame.parse(withReason)).toEqual(withReason);
+    const noReason: Frame = { type: "chat_ended", agent: "builder" };
+    expect(ChatStreamFrame.parse(noReason)).toEqual(noReason);
+  });
+
   it("the discriminator is the `type` field — a bad type is rejected", () => {
     expect(ChatStreamFrame.safeParse({ type: "delta", text: "x", agent: "hobby" }).success).toBe(
       false,

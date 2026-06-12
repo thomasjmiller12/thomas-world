@@ -13,7 +13,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { randomUUID } from "node:crypto";
 import { eq, and, isNull, desc, asc } from "drizzle-orm";
 import { agentIds } from "@town/contract";
-import type { AgentId, LocationId, ChatStreamFrame, WorldEvent, GetChatResponse } from "@town/contract";
+import type { AgentId, LocationId, ChatStreamFrame, GetChatResponse } from "@town/contract";
 import { z } from "zod";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { db, schema } from "../db/client.js";
@@ -21,12 +21,10 @@ import { anthropic, systemBlocks, hasLlm, TICK_BETAS, MID_CONV_SYSTEM_BETA } fro
 import { getProfile } from "./roles.js";
 import { buildChatTools, type AgentContext } from "./tools.js";
 import { getAgent, setEngagement, clearEngagement } from "../engine/agents.js";
-import { appendEvent, recentEventsForAgent } from "../engine/events.js";
+import { appendEvent } from "../engine/events.js";
 import { recordUsage } from "../engine/usage.js";
 import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
-import { getVisitor } from "../engine/visitors.js";
 import { tryAcquire } from "./agent-lock.js";
-import { getScene, convertScene } from "./conversation-scene.js";
 
 // The model suggestedReplies runs on (cheap post-turn chips, design doc §5).
 // Literal so the usage row records the model actually billed.
@@ -120,6 +118,10 @@ export async function openChat(agentId: AgentId, visitorId: string): Promise<Ope
 export async function endChat(sessionId: string): Promise<void> {
   const [session] = await db.select().from(chatSessions).where(eq(chatSessions.id, sessionId));
   if (!session) return;
+  // Idempotency FIRST: leave_chat, the liveness sweep, and POST /chats/:id/close
+  // can all race to end the same session — without this guard each path would
+  // re-stamp endedAt and emit a second chat.ended (double presence event).
+  if (session.endedAt) return;
   await db.update(chatSessions).set({ endedAt: new Date() }).where(eq(chatSessions.id, sessionId));
   // clearEngagement releases every participant of this session (a group chat
   // has two agents engaged under the same id) — the single owner of clearing.
@@ -133,128 +135,10 @@ export async function endChat(sessionId: string): Promise<void> {
   });
 }
 
-// joinConversation outcomes (design doc §3.3a — visitor interjects into a live
-// scene):
-//   - ok       → scene converted to a group chat with BOTH agents; carries the
-//                new session id, token, and participants
-//   - gone     → no such live scene (already ended / never existed) → 409
-//   - converted→ another visitor won the interject race (CAS lost) → 409
-export type JoinConversationResult =
-  | {
-      status: "ok";
-      sessionId: string;
-      agentId: AgentId;
-      visitorId: string;
-      participants: AgentId[];
-      sessionToken: string;
-    }
-  | { status: "gone" }
-  | { status: "converted" };
-
-// One labeled scene line, rendered as an operator/context row when seeding the
-// converted chat's transcript. Exported pure helper so the seeding format is
-// unit-testable. Each scene turn becomes an `operator` row "Builder: ..." so
-// historyFor folds it into the model's leading user context (never shown to the
-// visitor, never an assistant turn that would mis-attribute the line).
-export function seedRowForSceneLine(line: { agent: AgentId; text: string }): {
-  sender: "operator";
-  body: string;
-} {
-  const label = AGENT_LABELS[line.agent] ?? line.agent;
-  return { sender: "operator", body: `${label}: ${line.text}` };
-}
-
-// Convert a live scene into a group chat the visitor joins (design doc §3.1,
-// §3.3a). CAS-FIRST ordering: we win the scene's convert CAS BEFORE writing
-// anything, so the loser of a two-visitor interject race returns `converted`
-// having written no session row and no engagement (the race-free invariant: only
-// the CAS winner ever writes agents.engagement). convertScene's converted branch
-// only closes the conversation row + emits conversation.converted — it never
-// reads the session row — so winning before the insert is safe. The winner then
-// creates the chat session with BOTH agents as participants, seeds the transcript
-// with the scene lines as labeled operator/context rows + an operator note that a
-// visitor jumped in, and sets engagement to the chat session id (replacing the
-// scene engagement under the SAME agents). Registry CAS: first visitor wins; a
-// gone / already-converted scene returns a 409-mapping status.
-export async function joinConversation(
-  conversationId: string,
-  visitorId: string,
-): Promise<JoinConversationResult> {
-  const scene = getScene(conversationId);
-  if (!scene) return { status: "gone" };
-  if (scene.convertedTo || scene.interrupted) return { status: "converted" };
-
-  const [a, b] = scene.participants;
-  const sessionId = randomUUID();
-  const sessionToken = randomUUID();
-
-  // CAS FIRST (verification fix): the previous order inserted the session row and
-  // set engagement BEFORE the CAS, so the loser of a two-visitor interject race
-  // had already written engagement — and that write could land AFTER the winner's
-  // re-assert, stranding both agents engaged to the loser's dead session forever.
-  // convertScene's converted branch only closes the conversation row + emits
-  // conversation.converted (it never reads the session row), so we can win the
-  // race before any DB write. The loser returns `converted` having written
-  // NOTHING — no session row, no engagement. Only the CAS winner ever touches
-  // agents.engagement, which is the invariant that must hold.
-  const won = convertScene(conversationId, sessionId);
-  if (!won) return { status: "converted" };
-
-  // Winner-only writes. Create the chat session with both agents as participants.
-  // The PRIMARY agent (agentId) is the initiator — the addressed-agent director
-  // defaults to it until the visitor names one.
-  await db.insert(chatSessions).values({
-    id: sessionId,
-    agentId: a,
-    participantAgentIds: [a, b],
-    visitorId,
-    sessionToken,
-  });
-
-  // Seed the transcript with the scene lines as labeled operator rows so the
-  // agents have the conversation context the visitor just walked into.
-  const seedRows = scene.lines.map((l) => ({
-    sessionId,
-    ...seedRowForSceneLine(l),
-  }));
-  if (seedRows.length) await db.insert(chatMessages).values(seedRows);
-  // An operator note tells the agents a visitor jumped into their conversation.
-  await db.insert(chatMessages).values({
-    sessionId,
-    sender: "operator",
-    body:
-      "[operator note] A visitor just jumped into your conversation — they can now hear and talk to both of you. React to the interruption in character.",
-  });
-
-  // Engagement hand-off: set BOTH agents' engagement to the chat session (same
-  // agents, new {kind:'chat', id}). Done only by the CAS winner and only after
-  // winning, so no losing racer can overwrite it. clearEngagement isn't called
-  // for the scene — setEngagement overwrites the row, and the scene's converted
-  // branch is told (by convertScene) NOT to clear engagement.
-  await setEngagement("chat", sessionId, [a, b]);
-
-  // chat.started is PUBLIC presence only — no sessionId (design doc §3.3).
-  await appendEvent({
-    type: "chat.started",
-    agentId: a,
-    visibility: "public",
-    payload: { agent: a, visitorId },
-  });
-
-  return {
-    status: "ok",
-    sessionId,
-    agentId: a,
-    visitorId,
-    participants: [a, b],
-    sessionToken,
-  };
-}
-
-// Token check for the auth-gated chat endpoints (/open, /messages, /close,
-// /ping). Returns true iff the session exists and the token matches. A session
-// created before this migration (null token) cannot be authorized — callers
-// treat a mismatch as 401.
+// Token check for the auth-gated chat endpoints (/messages, /close, /ping).
+// Returns true iff the session exists and the token matches. A session created
+// before this migration (null token) cannot be authorized — callers treat a
+// mismatch as 401.
 export async function chatTokenValid(sessionId: string, token: string | undefined): Promise<boolean> {
   if (!token) return false;
   const [s] = await db
@@ -352,11 +236,15 @@ function isAgentSender(sender: string): boolean {
 //   - the visitor + operator rows       → `user` (operator notes are model-only)
 //   - the OTHER agent's lines (group)    → `user`, prefixed "Builder: ..." so the
 //                                          perspective agent can tell who spoke
-// Because the byte-stable operator opener persists FIRST, the leading turn is
-// always a `user` turn, so the API history NEVER starts with `assistant` (the
-// 400-trap). When `perspective` is omitted, ANY agent line renders as
-// `assistant` (the 1-agent path — there's only one agent, so it's unambiguous).
-// Pure + synchronous so the perspective/labeling invariants are unit-testable.
+// The leading turn is always a `user` turn (the visitor speaks first now — there
+// is no agent greeting, so the first persisted row is the visitor's message that
+// runChatTurn inserts BEFORE building history), so the API history NEVER starts
+// with `assistant` (the 400-trap). An older session may still carry a leading
+// `operator` row (historical / mid-chat note); that's a user turn too, so the
+// invariant holds either way. When `perspective` is omitted, ANY agent line
+// renders as `assistant` (the 1-agent path — only one agent, so it's
+// unambiguous). Pure + synchronous so the perspective/labeling invariants are
+// unit-testable.
 export function rowsToHistory(
   rows: ChatRowLike[],
   perspective?: AgentId,
@@ -452,7 +340,7 @@ export interface ChatTurnHandlers {
 // Record one chat-path LLM call against the daily budget (verification fix).
 // Chat greetings/turns/interjects/suggested-replies were invisible to the budget
 // gates (isBudgetExhausted / budgetExceeded sum llm_usage) because they never
-// wrote a row. We mirror tick.ts / conversation-scene.ts: pull the four token
+// wrote a row. We mirror tick.ts: pull the four token
 // counts off the final message's usage, price them against the model actually
 // used, and persist a row keyed by tickId `chat-<sessionId>`. The toolRunner
 // streaming path may iterate (tool rounds); record per-iteration (rows are
@@ -490,6 +378,43 @@ const RECALL_TOOLS = new Set(["recall", "memory"]);
 // core-memory view is always-loaded context.
 function recallLabel(toolName: string): string {
   return toolName === "recall" ? "recalled from earlier" : "drew on a memory";
+}
+
+// Narrate a world-mutating tool the agent invoked MID-CHAT into an inline action
+// frame detail (M2.1 full-agency chat): the panel surfaces "walks to the cafe"
+// inline so the visitor sees the agent keep living during the conversation.
+// Returns null for tools we don't narrate (memory has its own memory_recalled
+// special-case; leave_chat / invite_to_chat surface via their own frames). Pure
+// so the narration map is unit-testable. `input` is the tool_use block's parsed
+// args (best-effort field reads — a missing field falls back gracefully).
+export function narrateAction(tool: string, input: Record<string, unknown>): string | null {
+  switch (tool) {
+    case "move_to": {
+      const loc = typeof input.location === "string" ? input.location : "somewhere";
+      return `walks to the ${loc}`;
+    }
+    case "use_fixture": {
+      const action = typeof input.action === "string" ? input.action : "fiddles with";
+      const fixture = typeof input.fixture === "string" ? input.fixture : "fixture";
+      return `${action}s the ${fixture}`;
+    }
+    case "create_artifact": {
+      const title = typeof input.title === "string" ? input.title : "something";
+      return `starts writing "${title}"`;
+    }
+    case "update_artifact":
+      return "revises an artifact";
+    case "set_activity": {
+      const text = typeof input.text === "string" ? input.text : "busy";
+      return `is now ${text}`;
+    }
+    case "say": {
+      const text = typeof input.text === "string" ? input.text : "";
+      return `says aloud: "${text}"`;
+    }
+    default:
+      return null;
+  }
 }
 
 // Director addressing (design doc §3.3): which agent replies FIRST to a visitor
@@ -550,7 +475,7 @@ async function streamAgentTurn(args: {
   maxIterations: number;
   extraSystem?: string;
   handlers: ChatTurnHandlers;
-}): Promise<{ text: string; ok: boolean; messageId: string }> {
+}): Promise<{ text: string; ok: boolean; messageId: string; endReason?: string }> {
   const { sessionId, agentId, messages, betas, maxTokens, maxIterations, extraSystem, handlers } =
     args;
   const agent = await getAgent(agentId);
@@ -558,7 +483,6 @@ async function streamAgentTurn(args: {
   const ctx: AgentContext = {
     agentId,
     location: (agent?.locationId as LocationId) ?? "town",
-    conversationId: null,
     chatSessionId: sessionId,
   };
   const tools = buildChatTools(ctx);
@@ -603,17 +527,24 @@ async function streamAgentTurn(args: {
       const message = await stream.finalMessage();
       // Record usage per tool round so the chat turn counts against the budget.
       await recordChatUsage(agentId, chatModel, sessionId, message.usage);
-      if (!recalledThisTurn) {
-        for (const block of message.content) {
-          if (block.type === "tool_use" && RECALL_TOOLS.has(block.name)) {
-            recalledThisTurn = true;
-            await handlers.onFrame({
-              type: "memory_recalled",
-              label: recallLabel(block.name),
-              agent: agentId,
-            });
-            break;
-          }
+      // Scan this round's tool_use blocks (M2.1): a recall surfaces the
+      // memory_recalled annotation (once per turn); a world-mutating tool
+      // surfaces an inline `action` frame so the panel shows the agent living
+      // mid-chat. narrateAction returns null for tools with their own frames.
+      for (const block of message.content) {
+        if (block.type !== "tool_use") continue;
+        if (!recalledThisTurn && RECALL_TOOLS.has(block.name)) {
+          recalledThisTurn = true;
+          await handlers.onFrame({
+            type: "memory_recalled",
+            label: recallLabel(block.name),
+            agent: agentId,
+          });
+          continue;
+        }
+        const detail = narrateAction(block.name, (block.input ?? {}) as Record<string, unknown>);
+        if (detail) {
+          await handlers.onFrame({ type: "action", agent: agentId, tool: block.name, detail });
         }
       }
       if (message.stop_reason === "tool_use") {
@@ -640,13 +571,15 @@ async function streamAgentTurn(args: {
     await handlers.onFrame({ type: "text", text: note, agent: agentId });
     const id = await persistAgentTurn(sessionId, agentId, note);
     await handlers.onFrame({ type: "done", messageId: id, agent: agentId });
-    return { text: note, ok: false, messageId: id };
+    return { text: note, ok: false, messageId: id, endReason: ctx.endRequested };
   }
 
   const text = full.trim();
   const messageId = await persistAgentTurn(sessionId, agentId, text);
   await handlers.onFrame({ type: "done", messageId, agent: agentId });
-  return { text, ok: true, messageId };
+  // endRequested is set by the leave_chat tool mid-loop; surface it so runChatTurn
+  // ends the WHOLE session AFTER this final message landed.
+  return { text, ok: true, messageId, endReason: ctx.endRequested };
 }
 
 // The interject gate instruction for the second agent (design doc §3.3 step 2).
@@ -662,18 +595,48 @@ export function isInterjectPass(text: string): boolean {
   return /^\s*\[?pass\]?[.!]?\s*$/i.test(text);
 }
 
+// Per-session turn mutex (M2.1): chat turns now MUTATE the world (the agent can
+// move, make artifacts, leave the chat), so two POST /chats/:id/messages racing
+// on the same session could interleave history reads/writes. Serialize them with
+// an in-memory promise-chain keyed by sessionId. Single-process only — sufficient
+// for a portfolio (so is the rest of the in-memory limiter state).
+const sessionTurnChains = new Map<string, Promise<unknown>>();
+
 // Run one visitor turn (design doc §3.3 — the director). The addressed agent
 // replies first; in a 2-agent session the OTHER agent then gets one bounded
 // `[pass]`-gated interject. Each agent uses its OWN cached system prefix; the
 // running transcript carries a cache breakpoint so re-reads land warm.
 // `operatorNote` is optional, internal mid-conversation context injected per the
-// model gate (never client-supplied).
+// model gate (never client-supplied). Turns for the same session are serialized
+// (see sessionTurnChains).
 export async function runChatTurn(
   sessionId: string,
   visitorText: string,
   handlers: ChatTurnHandlers,
   operatorNote?: string,
-): Promise<{ text: string; ok: boolean }> {
+): Promise<{ text: string; ok: boolean; ended?: boolean }> {
+  // Chain this turn behind any in-flight turn for the same session. We swallow
+  // the prior turn's settle (success OR failure) before running so one turn's
+  // error never rejects the next; the chain entry is cleaned up when it's the
+  // tail, so a quiet session doesn't leak map entries.
+  const prior = sessionTurnChains.get(sessionId) ?? Promise.resolve();
+  const run = prior.catch(() => {}).then(() =>
+    runChatTurnInner(sessionId, visitorText, handlers, operatorNote),
+  );
+  sessionTurnChains.set(sessionId, run);
+  try {
+    return await run;
+  } finally {
+    if (sessionTurnChains.get(sessionId) === run) sessionTurnChains.delete(sessionId);
+  }
+}
+
+async function runChatTurnInner(
+  sessionId: string,
+  visitorText: string,
+  handlers: ChatTurnHandlers,
+  operatorNote?: string,
+): Promise<{ text: string; ok: boolean; ended?: boolean }> {
   const [session] = await db.select().from(chatSessions).where(eq(chatSessions.id, sessionId));
   if (!session) return { text: "", ok: false };
   const primary = session.agentId as AgentId;
@@ -744,6 +707,17 @@ export async function runChatTurn(
     handlers,
   });
 
+  // The addressed agent called leave_chat (M2.1 full agency): it warmly wound
+  // the conversation down in the message it just sent. Skip the second-agent
+  // interject and the suggested-reply chips, surface a chat_ended frame, then end
+  // the WHOLE session (solo or group). endChat is idempotent, so a racing sweep
+  // or close won't double-emit chat.ended.
+  if (result.endReason) {
+    await handlers.onFrame({ type: "chat_ended", agent: addressed, reason: result.endReason });
+    await endChat(sessionId);
+    return { ...result, ended: true };
+  }
+
   // Second agent's bounded interject (design doc §3.3 step 2). Only in a 2-agent
   // session. The other agent reads the just-persisted addressed reply from its
   // own perspective; a [pass] streams nothing.
@@ -798,219 +772,9 @@ async function persistAgentTurn(sessionId: string, agentId: AgentId, text: strin
   return String(row.id);
 }
 
-// --- agent-first greeting (design doc §3.4) --------------------------------
-
-// Render an agent's recent event into a terse "what I was just doing" line for
-// the greeting opener. Pure + byte-stable (no timestamps) so the opener row is
-// cache-friendly and identical across re-renders of the same session.
-function recentEventLine(e: WorldEvent): string | null {
-  const p = e.payload as Record<string, unknown>;
-  switch (e.type) {
-    case "agent.activity":
-      return `you set your activity to "${p.activity}"`;
-    case "agent.thought":
-      return p.text ? `you thought: "${p.text}"` : null;
-    case "agent.spoke":
-      return p.text ? `you said: "${p.text}"` : null;
-    case "agent.moved":
-      return `you walked to the ${p.to}`;
-    case "artifact.created":
-      return `you made a ${p.kind}: "${p.title}"`;
-    case "artifact.updated":
-      return `you updated "${p.title}"`;
-    case "bulletin.posted":
-      return `you posted a bulletin: "${p.title}"`;
-    case "conversation.turn":
-      return p.text ? `you were mid-conversation: "${p.text}"` : null;
-    default:
-      return null;
-  }
-}
-
-// Build the synthetic opener prompt fed to the agent as a leading operator row
-// (design doc §3.4). Pure + byte-stable for a given (agent, activity, events,
-// visitorName) so it caches and never drifts across re-reads. The agent reads
-// this as an operator note instructing it to greet the visitor in character,
-// leading with what it was just doing — that's the "continuity is the product"
-// stance (§0): the agent greets YOU with what it was up to.
-export function buildGreetingOpener(args: {
-  displayName: string;
-  activity: string | null;
-  recentEvents: WorldEvent[];
-  visitorName: string | null;
-}): string {
-  const { displayName, activity, recentEvents, visitorName } = args;
-  const lines = recentEvents
-    .map(recentEventLine)
-    .filter((l): l is string => l !== null)
-    .slice(-3);
-  const visitor = visitorName ? `${visitorName}` : "a visitor";
-  const parts: string[] = [
-    `[operator note] ${visitor} just walked up to you and you've noticed them.`,
-    activity ? `You were in the middle of: ${activity}.` : `You were between things.`,
-  ];
-  if (lines.length) {
-    parts.push(`Recently: ${lines.join("; ")}.`);
-  }
-  parts.push(
-    `Greet them now, in character as ${displayName} — warm and genuine, leading with what you were just doing so they feel they walked into a life already in motion. One or two sentences. Don't ask how you can help; you're a person, not a service desk.`,
-  );
-  return parts.join(" ");
-}
-
-// openGreeting outcomes:
-//   - ok        → streamed the agent's greeting turn
-//   - unknown   → no such session (HTTP 404; the HTTP layer gates on the token first)
-//   - already   → the session already has messages (HTTP 409, idempotent-ish guard)
-export type OpenGreetingResult =
-  | { status: "ok"; text: string }
-  | { status: "unknown" }
-  | { status: "already" };
-
-// Stream the agent-initiated greeting (design doc §3.4). Mechanics, EXACTLY:
-//  1. Persist a `sender:'operator'` row FIRST holding the byte-stable opener —
-//     hidden from the visible transcript, rendered by historyFor as the leading
-//     `user` turn so the greeting (an assistant row) never sits first.
-//  2. Stream the agent's reply as contract frames; persist it as the agent's
-//     message and emit a `done` with the real messageId.
-// Idempotent-ish: a second call on a session that already has ANY messages
-// returns `already` (the HTTP layer maps it to 409) — never a double greeting.
-export async function openGreeting(
-  sessionId: string,
-  handlers: ChatTurnHandlers,
-): Promise<OpenGreetingResult> {
-  const [session] = await db.select().from(chatSessions).where(eq(chatSessions.id, sessionId));
-  if (!session) return { status: "unknown" };
-
-  const agentId = session.agentId as AgentId;
-  const agent = await getAgent(agentId);
-
-  // Atomic idempotency guard (verification fix): two concurrent POST /open calls
-  // were a check-then-act race — both could pass the "no messages yet" check and
-  // each insert an operator opener, producing a double greeting. Take the primary
-  // agent's lock around the existence-check + opener insert so only one wins; the
-  // loser sees the lock held and returns `already` (the HTTP layer maps it to 409,
-  // same as a session that already has messages). The lock is released BEFORE the
-  // greeting streams so the stream itself never holds it (a tick can run after).
-  const release = tryAcquire(agentId);
-  if (!release) return { status: "already" };
-  try {
-    // Idempotency: if anything's been said in this session, /open already ran (or
-    // a message was sent) — don't greet again.
-    const existing = await db
-      .select({ id: chatMessages.id })
-      .from(chatMessages)
-      .where(eq(chatMessages.sessionId, sessionId))
-      .limit(1);
-    if (existing.length) return { status: "already" };
-
-    const [recent, visitor] = await Promise.all([
-      recentEventsForAgent(agentId, 3),
-      getVisitor(session.visitorId).catch(() => undefined),
-    ]);
-    const opener = buildGreetingOpener({
-      displayName: agent?.displayName ?? agentId,
-      activity: agent?.activity ?? null,
-      recentEvents: recent,
-      visitorName: visitor?.name ?? null,
-    });
-    // Persist the operator opener FIRST so it leads the API history as a user turn.
-    await db.insert(chatMessages).values({ sessionId, sender: "operator", body: opener });
-  } finally {
-    // Release after the opener is committed: the lock guarded the check+insert
-    // instant; the greeting stream below runs unlocked so a tick isn't starved.
-    release();
-  }
-
-  await handlers.onFrame({ type: "turn_started", agent: agentId });
-
-  if (!hasLlm()) {
-    const text = "Oh — hey. Didn't see you walk in. Give me a sec, the town's a little quiet right now.";
-    await handlers.onFrame({ type: "text", text, agent: agentId });
-    const id = await persistAgentTurn(sessionId, agentId, text);
-    await handlers.onFrame({ type: "done", messageId: id, agent: agentId });
-    return { status: "ok", text };
-  }
-
-  const profile = getProfile(agentId);
-  const ctx: AgentContext = {
-    agentId,
-    location: (agent?.locationId as LocationId) ?? "town",
-    conversationId: null,
-  };
-  const tools = buildChatTools(ctx);
-  // historyFor includes the just-inserted operator row as the leading user turn.
-  // The greeting is single-agent: perspective = the greeting agent.
-  const messages = await historyFor(sessionId, agentId);
-
-  let full = "";
-  try {
-    const runner = anthropic.beta.messages.toolRunner({
-      model: profile.role.chatModel,
-      max_tokens: 1024,
-      system: systemBlocks(agentId),
-      messages: withMessageCacheBreakpoint(messages),
-      tools,
-      max_iterations: 3,
-      stream: true,
-      betas: [...TICK_BETAS],
-    });
-    // Same narration guard as streamAgentTurn: never stream pre-tool-call
-    // stage direction ("Let me check my memory first…") to the visitor.
-    let flushedAny = false;
-    let lastBuffer = "";
-    for await (const stream of runner) {
-      let buf = "";
-      stream.on("text", (delta) => {
-        buf += delta;
-      });
-      const message = await stream.finalMessage();
-      // Record usage per tool round so the greeting counts against the budget.
-      await recordChatUsage(agentId, profile.role.chatModel, sessionId, message.usage);
-      if (message.stop_reason === "tool_use") {
-        lastBuffer = buf;
-      } else if (buf.trim()) {
-        full += buf;
-        flushedAny = true;
-        await handlers.onFrame({ type: "text", text: buf, agent: agentId });
-      }
-      if (message.stop_reason === "refusal") break;
-    }
-    if (!flushedAny && lastBuffer.trim()) {
-      full += lastBuffer;
-      await handlers.onFrame({ type: "text", text: lastBuffer, agent: agentId });
-    }
-  } catch (err) {
-    console.warn(`[chat ${sessionId}] greeting error:`, (err as Error).message);
-    const note = "Oh — hi there. Come on in.";
-    await handlers.onFrame({ type: "text", text: note, agent: agentId });
-    const id = await persistAgentTurn(sessionId, agentId, note);
-    await handlers.onFrame({ type: "done", messageId: id, agent: agentId });
-    return { status: "ok", text: note };
-  }
-
-  const text = full.trim() || "Oh — hi there. Come on in.";
-  const messageId = await persistAgentTurn(sessionId, agentId, text);
-  await handlers.onFrame({ type: "done", messageId, agent: agentId });
-  return { status: "ok", text };
-}
-
-// Whether a session has ANY persisted message row — including the hidden
-// `operator` opener. The /open idempotency guard uses this (NOT the visible
-// transcript): once the operator opener is written, /open has run, so a second
-// call must 409 even before the agent's visible reply lands.
-export async function chatHasAnyMessage(sessionId: string): Promise<boolean> {
-  const [row] = await db
-    .select({ id: chatMessages.id })
-    .from(chatMessages)
-    .where(eq(chatMessages.sessionId, sessionId))
-    .limit(1);
-  return Boolean(row);
-}
-
 // How many visitor turns a session has already seen (design doc §7 session
-// cap). Counts `sender:'visitor'` rows only — operator opener / agent lines /
-// scene-seed rows don't count toward the 40-turn visitor cap.
+// cap). Counts `sender:'visitor'` rows only — operator notes / agent lines
+// don't count toward the 40-turn visitor cap.
 export async function visitorTurnCount(sessionId: string): Promise<number> {
   const rows = await db
     .select({ id: chatMessages.id })
@@ -1171,11 +935,21 @@ export function pickRoutedSession(
 }
 
 // Stash a one-shot operator note on a live session, consumed on the next
-// runChatTurn. Best-effort — returns false if the session vanished mid-call.
+// runChatTurn. CONCATENATES onto an existing pending note rather than
+// overwriting (M2.1): a fixture interaction and a visitor movement can both land
+// between two visitor turns, and the agent should hear BOTH on its next turn
+// instead of one clobbering the other. Best-effort — returns false if the
+// session vanished mid-call.
 export async function setPendingOperatorNote(sessionId: string, note: string): Promise<boolean> {
+  const [existing] = await db
+    .select({ pending: chatSessions.pendingOperatorNote })
+    .from(chatSessions)
+    .where(and(eq(chatSessions.id, sessionId), isNull(chatSessions.endedAt)));
+  if (!existing) return false;
+  const merged = existing.pending ? `${existing.pending}\n${note}` : note;
   const res = await db
     .update(chatSessions)
-    .set({ pendingOperatorNote: note })
+    .set({ pendingOperatorNote: merged })
     .where(and(eq(chatSessions.id, sessionId), isNull(chatSessions.endedAt)))
     .returning({ id: chatSessions.id });
   return res.length > 0;
@@ -1224,4 +998,58 @@ export async function routeVisitorInteraction(args: {
     if (await setPendingOperatorNote(sessionId, note)) return sessionId;
     remaining = remaining.filter((s) => s.id !== sessionId);
   }
+}
+
+// --- visitor.moved routing (M2.1 — chat is a channel, not proximity-gated) --
+
+// The in-fiction operator note a visitor's movement produces for an agent in a
+// live session, given where the visitor walked TO and whether a participant
+// agent is AT that destination. If the visitor walked INTO the agent's room it
+// reads as "walked in with you"; otherwise it's a plain "walked over to the X".
+// Pure + byte-stable so the decision is unit-testable without a DB.
+export function movementOperatorNote(
+  visitorName: string,
+  to: LocationId,
+  walkedInWithParticipant: boolean,
+): string {
+  const who = visitorName || "The visitor";
+  return walkedInWithParticipant
+    ? `[operator note] ${who} just walked into the ${to} with you.`
+    : `[operator note] ${who} just walked over to the ${to}.`;
+}
+
+// Route a visitor.moved event into the visitor's LIVE chat sessions (M2.1).
+// Mirrors routeVisitorInteraction but is NOT proximity-gated: a chat is a
+// channel, not a room, so the agent walking away or the visitor not following
+// never ends the session. EVERY live session of this visitor gets a pending
+// operator note (concatenated, never clobbering an existing one) — phrased per
+// session by whether one of its participants is AT the destination. Best-effort;
+// returns the list of session ids that received a note. The fan-out to multiple
+// sessions is rare (one visitor is usually in at most one chat), but routing all
+// of them keeps the rule simple and correct.
+export async function routeVisitorMovement(args: {
+  visitorId: string;
+  visitorName: string;
+  from: LocationId;
+  to: LocationId;
+}): Promise<string[]> {
+  const { visitorId, visitorName, to } = args;
+  const sessions = await db
+    .select()
+    .from(chatSessions)
+    .where(and(eq(chatSessions.visitorId, visitorId), isNull(chatSessions.endedAt)));
+  if (sessions.length === 0) return [];
+
+  const routed: string[] = [];
+  for (const s of sessions) {
+    const roster = (s.participantAgentIds as AgentId[] | null) ?? [];
+    const participants: AgentId[] = roster.length ? roster : [s.agentId as AgentId];
+    const locations = await Promise.all(
+      participants.map(async (a) => (await getAgent(a))?.locationId as LocationId | undefined),
+    );
+    const walkedInWith = locations.some((loc) => loc === to);
+    const note = movementOperatorNote(visitorName, to, walkedInWith);
+    if (await setPendingOperatorNote(s.id, note)) routed.push(s.id);
+  }
+  return routed;
 }
