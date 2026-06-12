@@ -8,7 +8,7 @@
 #   env var is a hard ceiling across all agents combined.
 
 # Builder runs slightly faster than average — active workshop energy, more ticks per day
-tick_cadence_minutes: 11
+tick_cadence_minutes: 110
 tick_model: claude-sonnet-4-6
 chat_model: claude-opus-4-8
 daily_token_budget: 4.50

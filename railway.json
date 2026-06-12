@@ -5,7 +5,7 @@
     "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter @town/contract build && pnpm --filter world build"
   },
   "deploy": {
-    "startCommand": "node apps/world/dist/db/migrate.js && node apps/world/dist/db/seed.js && node apps/world/dist/index.js",
+    "startCommand": "sh -c 'if [ -n \"$VAULT_DEPLOY_KEY_B64\" ]; then echo \"$VAULT_DEPLOY_KEY_B64\" | base64 -d > /tmp/vault-key && chmod 600 /tmp/vault-key; fi && node apps/world/dist/db/migrate.js && node apps/world/dist/db/seed.js && node apps/world/dist/index.js'",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ALWAYS"
