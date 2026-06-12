@@ -40,6 +40,7 @@ Agents never see the frontend (no screenshots/pixels) — only the observation p
 - `seed.ts` runs on every boot — it must never reset agent `locationId`/state on conflict (only insert-time defaults).
 - Tick cadences in `roles/*.yaml` are 10×-slowed (110–150 min) for the early soak per Thomas; divide by 10 to restore. Budget: global `DAILY_BUDGET_USD` env (hard) + per-role `daily_token_budget` (soft).
 - Secrets: `scratch.env` (repo root) and `apps/world/.env` are gitignored — never commit or print them.
+- **CORS is an allowlist (not wildcard) since M2-G**: `CORS_ORIGINS` (comma-separated, exact-origin match) must be set on the `world` Railway service to the deployed Vercel origin(s), or the live frontend's cross-origin reads are blocked while localhost still works — the classic "works locally, dead in prod" trap. Unset → localhost dev default only. Rate limits + session caps are in-memory (`src/http/rate-limit.ts`, reset on restart — fine for a portfolio).
 
 ## Stack decisions (full rationale in the plan §2)
 
