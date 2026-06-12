@@ -340,20 +340,40 @@ export default class Town extends Phaser.Scene {
 		// can use_fixture map onto real placed objects, so effects play on screen.
 		this.fixtures = new FixtureRegistry(this);
 
-		// From the named LimeZu object library (apps/web/public/assets/objects): a
-		// red telephone box tucked into the empty bottom-right pavement — the prop
-		// for Hobby's "make the phone ring" bit. Placed by NAME, not by tile GID —
-		// the whole point of the object library. Collides at its base (footprint)
-		// so the player can't walk through it; depth above the player (16) since
-		// here the player only ever approaches from above, so the booth reads as a
-		// backdrop it stands behind. Clickable: answering it round-trips to the
-		// world (visitor.interacted → Hobby's next perception or live chat).
-		const payphone = placeTownObject(this, 'red-telephone-box', 586, 436, {
+		// Town design pass from the named LimeZu object library (apps/web/public/
+		// assets/objects) — placed by NAME, not tile GID, positions verified with
+		// scripts/objects/render_map.py. Props collide at their base footprint and
+		// sit at depth 20 (above the player, the phone-box precedent: with the base
+		// blocked, overlap only happens approaching from above, where behind-the-
+		// prop is correct).
+
+		// The park payphone — Hobby's "make the phone ring" bit. Half scale: the
+		// City Props sheet draws it ~3x character height; 0.5 reads right next to
+		// 32px sprites. Clickable: answering round-trips to the world
+		// (visitor.interacted → a live chat or the agent's next perception).
+		const payphone = placeTownObject(this, 'red-telephone-box', 196, 360, {
 			depth: 20,
+			scale: 0.5,
 			collideWith: this.player,
 			footprintTiles: 1,
 		});
 		if (payphone) this.fixtures.register('park', 'payphone', payphone, { interactive: true });
+
+		// Park furniture: two benches on the west grass.
+		placeTownObject(this, 'wooden-park-bench-side', 108, 396, { depth: 20, collideWith: this.player });
+		placeTownObject(this, 'wooden-park-bench-side', 60, 308, { depth: 20, collideWith: this.player });
+
+		// Square: the notice board (world fixture, rustles when agents post) at the
+		// plaza's west entrance; lamps along the south pavement. The existing
+		// vendor cart on the plaza island doubles as the news stand fixture.
+		const board = placeTownObject(this, 'blue-info-sign-board', 396, 320, {
+			depth: 20,
+			collideWith: this.player,
+		});
+		if (board) this.fixtures.register('town', 'notice board', board);
+		this.fixtures.register('town', 'news stand', { x: 467, y: 340 });
+		placeTownObject(this, 'globe-lamp-post-short', 392, 462, { depth: 20, collideWith: this.player });
+		placeTownObject(this, 'globe-lamp-post-short', 566, 462, { depth: 20, collideWith: this.player });
 
 		// Door proximity prompts — small arrow above each door
 		for (const door of Object.values(DOOR_CONFIGS)) {
