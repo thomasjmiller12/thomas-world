@@ -3,6 +3,8 @@ packages:
   - "packages/*"
 allowBuilds:
   protobufjs: true
+  esbuild: true
+  sharp: true
 minimumReleaseAgeExclude:
   - '@opentelemetry/api-logs@0.219.0'
   - '@opentelemetry/configuration@0.219.0'
