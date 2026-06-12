@@ -11,8 +11,8 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { randomUUID } from "node:crypto";
-import { eq, isNull, desc } from "drizzle-orm";
-import type { AgentId, LocationId, ChatStreamFrame } from "@town/contract";
+import { eq, isNull, desc, asc } from "drizzle-orm";
+import type { AgentId, LocationId, ChatStreamFrame, WorldEvent, GetChatResponse } from "@town/contract";
 import { z } from "zod";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { db, schema } from "../db/client.js";
@@ -20,9 +20,8 @@ import { anthropic, systemBlocks, hasLlm, TICK_BETAS, MID_CONV_SYSTEM_BETA } fro
 import { getProfile } from "./roles.js";
 import { buildChatTools, type AgentContext } from "./tools.js";
 import { getAgent, setEngagement, clearEngagement } from "../engine/agents.js";
-import { appendEvent } from "../engine/events.js";
-import { recordUsage } from "../engine/usage.js";
-import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
+import { appendEvent, recentEventsForAgent } from "../engine/events.js";
+import { getVisitor } from "../engine/visitors.js";
 import { tryAcquire } from "./agent-lock.js";
 
 const { chatSessions, chatMessages } = schema;
@@ -136,13 +135,42 @@ export async function chatTokenValid(sessionId: string, token: string | undefine
   return Boolean(s && s.token && s.token === token);
 }
 
+// Liveness ping (design doc §3.4): WorldClient pings every 60s while the panel
+// is open. Records the ping so the sweep keeps a slow-typing / long-reading
+// visitor's session alive even with no new messages.
+export async function pingChat(sessionId: string): Promise<void> {
+  await db
+    .update(chatSessions)
+    .set({ lastPingAt: new Date() })
+    .where(eq(chatSessions.id, sessionId));
+}
+
+// Pure liveness predicate (design doc §3.4): a session is stale iff its last
+// SIGNAL — the latest of last ping, last message, and session start — is older
+// than `staleMs`. So a session stays alive as long as EITHER pings OR messages
+// keep arriving; only when BOTH go quiet for `staleMs` does it close. Pure so
+// the liveness rule is unit-testable without a DB.
+export function isChatStale(
+  args: { startedAt: Date; lastPingAt: Date | null; lastMessageAt: Date | null },
+  now: number,
+  staleMs: number,
+): boolean {
+  const lastSignal = Math.max(
+    args.startedAt.getTime(),
+    args.lastPingAt?.getTime() ?? 0,
+    args.lastMessageAt?.getTime() ?? 0,
+  );
+  return now - lastSignal >= staleMs;
+}
+
 // Auto-close chat sessions abandoned without a /chats/:id/close call (the common
 // case: the visitor closes the tab, loses network, or the browser never fires
-// the close). Each such session leaves the agent busy=true forever, so the
-// scheduler permanently skips it. The scheduler calls this on a timer; we end any
-// open session whose last activity (last message, else startedAt) is older than
-// `staleMs`, which also clears the agent's busy flag via endChat.
-export async function sweepStaleChats(staleMs = 10 * 60_000): Promise<void> {
+// the close). Each such session leaves the agent engaged forever, so the
+// scheduler permanently skips it. Liveness-aware (design doc §3.4): close only
+// sessions with NO ping AND no message for `staleMs` (default 3 min) — the 60s
+// pings from an open panel keep a slow visitor's session alive; an abandoned tab
+// frees the agent in ≤ staleMs. endChat clears engagement for every participant.
+export async function sweepStaleChats(staleMs = 3 * 60_000): Promise<void> {
   const open = await db.select().from(chatSessions).where(isNull(chatSessions.endedAt));
   const now = Date.now();
   for (const s of open) {
@@ -152,25 +180,48 @@ export async function sweepStaleChats(staleMs = 10 * 60_000): Promise<void> {
       .where(eq(chatMessages.sessionId, s.id))
       .orderBy(desc(chatMessages.ts))
       .limit(1);
-    const lastActivity = (lastMsg?.ts ?? s.startedAt).getTime();
-    if (now - lastActivity >= staleMs) {
+    const stale = isChatStale(
+      { startedAt: s.startedAt, lastPingAt: s.lastPingAt, lastMessageAt: lastMsg?.ts ?? null },
+      now,
+      staleMs,
+    );
+    if (stale) {
       console.log(`[chat] auto-closing stale session ${s.id} (agent ${s.agentId}).`);
       await endChat(s.id);
     }
   }
 }
 
-// Build the running message history for a chat session from chat_messages.
+// One persisted chat row, as far as history rendering cares.
+export interface ChatRowLike {
+  sender: string; // "visitor" | "agent" | "operator" | (future) AgentId
+  body: string;
+  ts: Date;
+}
+
+// Pure row→message mapper (design doc §3.4). The agent's own lines render as
+// `assistant`; everything else — visitor input AND `operator` rows (synthetic
+// opener / mid-chat notes) — folds into `user` turns. Because the byte-stable
+// operator opener persists FIRST, the leading turn is always a `user` turn, so
+// the API history NEVER starts with an `assistant` message (the 400-trap).
+// Pure + synchronous so the "assistant never first" invariant is unit-testable.
+export function rowsToHistory(rows: ChatRowLike[]): Anthropic.Beta.BetaMessageParam[] {
+  const sorted = [...rows].sort((a, b) => a.ts.getTime() - b.ts.getTime());
+  return sorted.map((r) => ({
+    role: r.sender === "agent" ? ("assistant" as const) : ("user" as const),
+    content: r.body,
+  }));
+}
+
+// Build the running message history for a chat session from chat_messages —
+// including operator rows (hidden from the visible transcript, fed to the model
+// as leading/context `user` turns).
 async function historyFor(sessionId: string): Promise<Anthropic.Beta.BetaMessageParam[]> {
   const rows = await db
     .select()
     .from(chatMessages)
     .where(eq(chatMessages.sessionId, sessionId));
-  rows.sort((a, b) => a.ts.getTime() - b.ts.getTime());
-  return rows.map((r) => ({
-    role: r.sender === "agent" ? ("assistant" as const) : ("user" as const),
-    content: r.body,
-  }));
+  return rowsToHistory(rows);
 }
 
 // The Haiku fallback for mid-conversation operator context (plan §4.3): inject
@@ -322,6 +373,214 @@ async function persistAgentTurn(sessionId: string, text: string): Promise<string
     .values({ sessionId, sender: "agent", body: text })
     .returning({ id: chatMessages.id });
   return String(row.id);
+}
+
+// --- agent-first greeting (design doc §3.4) --------------------------------
+
+// Render an agent's recent event into a terse "what I was just doing" line for
+// the greeting opener. Pure + byte-stable (no timestamps) so the opener row is
+// cache-friendly and identical across re-renders of the same session.
+function recentEventLine(e: WorldEvent): string | null {
+  const p = e.payload as Record<string, unknown>;
+  switch (e.type) {
+    case "agent.activity":
+      return `you set your activity to "${p.activity}"`;
+    case "agent.thought":
+      return p.text ? `you thought: "${p.text}"` : null;
+    case "agent.spoke":
+      return p.text ? `you said: "${p.text}"` : null;
+    case "agent.moved":
+      return `you walked to the ${p.to}`;
+    case "artifact.created":
+      return `you made a ${p.kind}: "${p.title}"`;
+    case "artifact.updated":
+      return `you updated "${p.title}"`;
+    case "bulletin.posted":
+      return `you posted a bulletin: "${p.title}"`;
+    case "conversation.turn":
+      return p.text ? `you were mid-conversation: "${p.text}"` : null;
+    default:
+      return null;
+  }
+}
+
+// Build the synthetic opener prompt fed to the agent as a leading operator row
+// (design doc §3.4). Pure + byte-stable for a given (agent, activity, events,
+// visitorName) so it caches and never drifts across re-reads. The agent reads
+// this as an operator note instructing it to greet the visitor in character,
+// leading with what it was just doing — that's the "continuity is the product"
+// stance (§0): the agent greets YOU with what it was up to.
+export function buildGreetingOpener(args: {
+  displayName: string;
+  activity: string | null;
+  recentEvents: WorldEvent[];
+  visitorName: string | null;
+}): string {
+  const { displayName, activity, recentEvents, visitorName } = args;
+  const lines = recentEvents
+    .map(recentEventLine)
+    .filter((l): l is string => l !== null)
+    .slice(-3);
+  const visitor = visitorName ? `${visitorName}` : "a visitor";
+  const parts: string[] = [
+    `[operator note] ${visitor} just walked up to you and you've noticed them.`,
+    activity ? `You were in the middle of: ${activity}.` : `You were between things.`,
+  ];
+  if (lines.length) {
+    parts.push(`Recently: ${lines.join("; ")}.`);
+  }
+  parts.push(
+    `Greet them now, in character as ${displayName} — warm and genuine, leading with what you were just doing so they feel they walked into a life already in motion. One or two sentences. Don't ask how you can help; you're a person, not a service desk.`,
+  );
+  return parts.join(" ");
+}
+
+// openGreeting outcomes:
+//   - ok        → streamed the agent's greeting turn
+//   - unknown   → no such session (HTTP 404; the HTTP layer gates on the token first)
+//   - already   → the session already has messages (HTTP 409, idempotent-ish guard)
+export type OpenGreetingResult =
+  | { status: "ok"; text: string }
+  | { status: "unknown" }
+  | { status: "already" };
+
+// Stream the agent-initiated greeting (design doc §3.4). Mechanics, EXACTLY:
+//  1. Persist a `sender:'operator'` row FIRST holding the byte-stable opener —
+//     hidden from the visible transcript, rendered by historyFor as the leading
+//     `user` turn so the greeting (an assistant row) never sits first.
+//  2. Stream the agent's reply as contract frames; persist it as the agent's
+//     message and emit a `done` with the real messageId.
+// Idempotent-ish: a second call on a session that already has ANY messages
+// returns `already` (the HTTP layer maps it to 409) — never a double greeting.
+export async function openGreeting(
+  sessionId: string,
+  handlers: ChatTurnHandlers,
+): Promise<OpenGreetingResult> {
+  const [session] = await db.select().from(chatSessions).where(eq(chatSessions.id, sessionId));
+  if (!session) return { status: "unknown" };
+  // Idempotency: if anything's been said in this session, /open already ran (or
+  // a message was sent) — don't greet again.
+  const existing = await db
+    .select({ id: chatMessages.id })
+    .from(chatMessages)
+    .where(eq(chatMessages.sessionId, sessionId))
+    .limit(1);
+  if (existing.length) return { status: "already" };
+
+  const agentId = session.agentId as AgentId;
+  const agent = await getAgent(agentId);
+  const [recent, visitor] = await Promise.all([
+    recentEventsForAgent(agentId, 3),
+    getVisitor(session.visitorId).catch(() => undefined),
+  ]);
+  const opener = buildGreetingOpener({
+    displayName: agent?.displayName ?? agentId,
+    activity: agent?.activity ?? null,
+    recentEvents: recent,
+    visitorName: visitor?.name ?? null,
+  });
+  // Persist the operator opener FIRST so it leads the API history as a user turn.
+  await db.insert(chatMessages).values({ sessionId, sender: "operator", body: opener });
+
+  await handlers.onFrame({ type: "turn_started", agent: agentId });
+
+  if (!hasLlm()) {
+    const text = "Oh — hey. Didn't see you walk in. Give me a sec, the town's a little quiet right now.";
+    await handlers.onFrame({ type: "text", text, agent: agentId });
+    const id = await persistAgentTurn(sessionId, text);
+    await handlers.onFrame({ type: "done", messageId: id, agent: agentId });
+    return { status: "ok", text };
+  }
+
+  const profile = getProfile(agentId);
+  const ctx: AgentContext = {
+    agentId,
+    location: (agent?.locationId as LocationId) ?? "town",
+    conversationId: null,
+  };
+  const tools = buildChatTools(ctx);
+  // historyFor includes the just-inserted operator row as the leading user turn.
+  const messages = await historyFor(sessionId);
+
+  let full = "";
+  try {
+    const runner = anthropic.beta.messages.toolRunner({
+      model: profile.role.chatModel,
+      max_tokens: 1024,
+      system: systemBlocks(agentId),
+      messages,
+      tools,
+      max_iterations: 3,
+      stream: true,
+      betas: [...TICK_BETAS],
+    });
+    for await (const stream of runner) {
+      stream.on("text", (delta) => {
+        full += delta;
+        void handlers.onFrame({ type: "text", text: delta, agent: agentId });
+      });
+      const message = await stream.finalMessage();
+      if (message.stop_reason === "refusal") break;
+    }
+  } catch (err) {
+    console.warn(`[chat ${sessionId}] greeting error:`, (err as Error).message);
+    const note = "Oh — hi there. Come on in.";
+    await handlers.onFrame({ type: "text", text: note, agent: agentId });
+    const id = await persistAgentTurn(sessionId, note);
+    await handlers.onFrame({ type: "done", messageId: id, agent: agentId });
+    return { status: "ok", text: note };
+  }
+
+  const text = full.trim() || "Oh — hi there. Come on in.";
+  const messageId = await persistAgentTurn(sessionId, text);
+  await handlers.onFrame({ type: "done", messageId, agent: agentId });
+  return { status: "ok", text };
+}
+
+// Whether a session has ANY persisted message row — including the hidden
+// `operator` opener. The /open idempotency guard uses this (NOT the visible
+// transcript): once the operator opener is written, /open has run, so a second
+// call must 409 even before the agent's visible reply lands.
+export async function chatHasAnyMessage(sessionId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: chatMessages.id })
+    .from(chatMessages)
+    .where(eq(chatMessages.sessionId, sessionId))
+    .limit(1);
+  return Boolean(row);
+}
+
+// --- transcript recovery (design doc §3.4, §5) ------------------------------
+
+// GET /chats/:id payload: the session + the VISIBLE transcript (design doc §5).
+// Operator rows are NEVER exposed (they're model context only) — only visitor
+// and agent lines surface. Used to rehydrate a panel after a dropped stream.
+export async function getChatTranscript(sessionId: string): Promise<GetChatResponse | null> {
+  const [session] = await db.select().from(chatSessions).where(eq(chatSessions.id, sessionId));
+  if (!session) return null;
+  const rows = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.sessionId, sessionId))
+    .orderBy(asc(chatMessages.id));
+  const participants: AgentId[] = [session.agentId as AgentId];
+  const messages = rows
+    .filter((r) => r.sender !== "operator")
+    .map((r) => ({
+      id: String(r.id),
+      // sender is "visitor" or an AgentId (operator already filtered out).
+      sender: (r.sender === "visitor" ? "visitor" : (r.sender as AgentId)) as
+        | "visitor"
+        | AgentId,
+      body: r.body,
+      ts: r.ts.toISOString(),
+    }));
+  return {
+    sessionId: session.id,
+    visitorId: session.visitorId,
+    participants,
+    messages,
+  };
 }
 
 // Post-turn suggested replies (design doc §5): a cheap Haiku call that NEVER

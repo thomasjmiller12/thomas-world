@@ -228,6 +228,12 @@ export const memoryFiles = pgTable("memory_files", {
 export const visitors = pgTable("visitors", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  // The visitor's logical location (design doc §2). Nullable: a freshly
+  // registered visitor has no body in the world until the frontend reports its
+  // first scene via PATCH /visitors/:id. The frontend reports every door/scene
+  // change; a change emits a public `visitor.moved` so agents at the
+  // destination perceive the arrival.
+  locationId: text("location_id", { enum: locationEnum }),
   // Returned to the registering browser at creation; required to authorize
   // PATCH /visitors/:id and POST /visitors/:id/interact (design doc §5 Auth).
   // It lives only in that browser — never echoed by GET /visitors/:id.
@@ -252,6 +258,11 @@ export const chatSessions = pgTable("chat_sessions", {
   startedAt: timestamp("started_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  // Last liveness ping from the open panel (design doc §3.4). WorldClient pings
+  // every 60s while the panel is open; the liveness-aware sweep closes only
+  // sessions with NO ping AND no message for 3 min — so a slow-typing or
+  // long-reading visitor is never cut off, but an abandoned tab frees the agent.
+  lastPingAt: timestamp("last_ping_at", { withTimezone: true }),
   endedAt: timestamp("ended_at", { withTimezone: true }),
 });
 
@@ -260,7 +271,12 @@ export const chatMessages = pgTable(
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     sessionId: text("session_id").notNull(),
-    // "visitor" | "agent"
+    // "visitor" | "agent" | "operator". An `operator` row holds a synthetic
+    // opener / mid-chat note: it's NEVER exposed via GET /chats/:id, but
+    // `historyFor` folds it into the model's leading `user` turn so the agent's
+    // greeting (an assistant row) never sits first in the API history (the
+    // 400-trap, design doc §3.4). Free-form text (no DB enum) so the AgentId
+    // widening for group chat (step C) needs no further migration here.
     sender: text("sender").notNull(),
     body: text("body").notNull(),
     ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),

@@ -18,7 +18,9 @@ import {
   MessagesResponse,
   CreateVisitorResponse,
   GetVisitorResponse,
+  PatchVisitorRequest,
   CreateChatResponse,
+  GetChatResponse,
 } from "@town/contract";
 import type { ArtifactSummary } from "@town/contract";
 import type { z } from "zod";
@@ -43,7 +45,11 @@ import {
   touchVisitor,
   getVisitor,
   visitorTokenValid,
+  moveVisitor,
+  renameVisitor,
 } from "../engine/visitors.js";
+import { agentsAtLocation } from "../engine/locations.js";
+import { boostAgent } from "../runtime/scheduler.js";
 import { subscribe } from "../engine/bus.js";
 import { spendTodayUsd, isBudgetExhausted } from "../engine/usage.js";
 import { renderDebugPage } from "./debug.js";
@@ -56,6 +62,10 @@ import {
   runChatTurn,
   suggestedReplies,
   chatTokenValid,
+  openGreeting,
+  pingChat,
+  getChatTranscript,
+  chatHasAnyMessage,
 } from "../runtime/chat.js";
 
 const agentSet = new Set<string>(agentIds);
@@ -330,22 +340,64 @@ export function createApp() {
       validated(GetVisitorResponse, {
         visitorId: v.id,
         name: v.name,
-        // `location_id` lands in step B; null until then.
-        locationId: null,
+        locationId: (v.locationId ?? null) as GetVisitorResponse["locationId"],
       }),
     );
   });
 
   // --- PATCH /visitors/:id {locationId?, name?} ---------------------------
-  // Visitor-token authorized. Full behavior (location reporting, rename,
-  // visitor.moved) lands in step B; A2 ships the auth gate + a 501 stub.
+  // Visitor-token authorized (design doc §2). A locationId change persists the
+  // visitor's logical body, emits a public `visitor.moved {from,to}`, and pulls
+  // unengaged agents at the destination forward (scheduler boost). A name change
+  // renames the row. Both fields optional; at least one is expected.
   app.patch("/visitors/:id", async (c) => {
     const id = c.req.param("id");
     const v = await getVisitor(id);
     if (!v) return c.json({ error: "unknown visitor" }, 404);
     const token = c.req.header("x-visitor-token");
     if (!(await visitorTokenValid(id, token))) return c.json({ error: "unauthorized" }, 401);
-    return c.json({ error: "not implemented" }, 501);
+
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = PatchVisitorRequest.safeParse(body);
+    if (!parsed.success) return c.json({ error: "bad request" }, 400);
+    const { locationId, name } = parsed.data;
+    if (locationId === undefined && name === undefined) {
+      return c.json({ error: "locationId or name required" }, 400);
+    }
+
+    if (name !== undefined) {
+      const trimmed = name.trim();
+      if (!trimmed) return c.json({ error: "name required" }, 400);
+      if (trimmed.length > 80) return c.json({ error: "name too long" }, 400);
+      await renameVisitor(id, trimmed);
+    }
+
+    if (locationId !== undefined) {
+      const moved = await moveVisitor(id, locationId);
+      // Co-located tick boost (design doc §2): when the visitor actually changed
+      // rooms, pull unengaged agents AT THE DESTINATION forward so they can
+      // acknowledge the arrival. boostAgent throttles per (visitor, agent) and
+      // skips engaged agents itself, so we just fan out — best-effort, never
+      // blocking the PATCH response on the scheduler.
+      if (moved?.changed) {
+        const here = await agentsAtLocation(locationId).catch(() => []);
+        for (const a of here) {
+          void boostAgent(a.id as AgentId, id).catch((err) =>
+            console.warn(`[visitors] boost ${a.id} failed:`, (err as Error).message),
+          );
+        }
+      }
+    }
+
+    await touchVisitor(id);
+    const fresh = await getVisitor(id);
+    return c.json(
+      validated(GetVisitorResponse, {
+        visitorId: id,
+        name: fresh?.name ?? v.name,
+        locationId: (fresh?.locationId ?? null) as GetVisitorResponse["locationId"],
+      }),
+    );
   });
 
   // --- POST /visitors/:id/interact {locationId, fixture} ------------------
@@ -394,13 +446,55 @@ export function createApp() {
   });
 
   // --- POST /chats/:id/open → SSE greeting stream -------------------------
-  // Token-gated. The agent-initiated greeting (operator-row mechanics) lands in
-  // step B; A2 ships the auth gate + a stub frame so the contract holds.
+  // Token-gated. Streams the agent-initiated greeting as contract ChatStreamFrames
+  // (design doc §3.4): a byte-stable `operator` opener row is persisted FIRST
+  // (folded into the leading user turn so the greeting never sits first in the
+  // API history), then the greeting streams + persists as the agent's message.
+  // Idempotent-ish: a second call on a session that already has messages → 409.
   app.post("/chats/:id/open", async (c) => {
     const sessionId = c.req.param("id");
     const token = c.req.header("x-session-token") ?? undefined;
     if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
-    return c.json({ error: "not implemented" }, 501);
+    // Guard 404/409 BEFORE opening the SSE stream so the client gets a clean
+    // status code rather than an empty stream. The 409 guard checks for ANY
+    // persisted row (including the hidden operator opener), so a rapid second
+    // /open 409s even before the agent's visible reply lands.
+    const transcript = await getChatTranscript(sessionId);
+    if (!transcript) return c.json({ error: "unknown session" }, 404);
+    if (await chatHasAnyMessage(sessionId)) {
+      return c.json({ error: "already opened", reason: "already" }, 409);
+    }
+    return streamSSE(c, async (stream) => {
+      await openGreeting(sessionId, {
+        onFrame: async (frame) => {
+          await stream.writeSSE({ data: JSON.stringify(frame) });
+        },
+      });
+    });
+  });
+
+  // --- POST /chats/:id/ping -----------------------------------------------
+  // Token-gated liveness ping (design doc §3.4). WorldClient pings every 60s
+  // while the panel is open; the sweep keeps the session alive as long as pings
+  // OR messages keep arriving.
+  app.post("/chats/:id/ping", async (c) => {
+    const sessionId = c.req.param("id");
+    const token = c.req.header("x-session-token") ?? undefined;
+    if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
+    await pingChat(sessionId);
+    return c.json({ ok: true });
+  });
+
+  // --- GET /chats/:id (transcript recovery; token-gated) ------------------
+  // Returns the session + VISIBLE transcript (operator rows never exposed) so a
+  // dropped stream can rehydrate the panel (design doc §3.4, §5).
+  app.get("/chats/:id", async (c) => {
+    const sessionId = c.req.param("id");
+    const token = c.req.header("x-session-token") ?? undefined;
+    if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
+    const transcript = await getChatTranscript(sessionId);
+    if (!transcript) return c.json({ error: "unknown session" }, 404);
+    return c.json(validated(GetChatResponse, transcript));
   });
 
   // --- POST /chats/:id/messages {text} → SSE ChatStreamFrame stream -------

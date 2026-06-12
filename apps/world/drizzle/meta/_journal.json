@@ -15,6 +15,13 @@
       "when": 1781300000000,
       "tag": "0001_living_engagement",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781400000000,
+      "tag": "0002_embodied_visitors",
+      "breakpoints": true
     }
   ]
 }

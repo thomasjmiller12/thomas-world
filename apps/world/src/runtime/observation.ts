@@ -20,6 +20,11 @@ import { getLocation, agentsAtLocation } from "../engine/locations.js";
 import { perceivedEventsSince } from "../engine/events.js";
 import { inboxFor, type MessageRow } from "../engine/messages.js";
 import { coreMemorySnapshot } from "../engine/memory.js";
+import {
+  visitorsAtLocation,
+  arrivalTimesAtLocation,
+  type VisitorRow,
+} from "../engine/visitors.js";
 import { clockLine } from "./clock.js";
 
 const { visitors } = schema;
@@ -93,6 +98,43 @@ async function visitorsPresentCount(): Promise<number> {
   return Number(row?.n ?? 0);
 }
 
+// Human-ish recency phrase for how long ago a visitor arrived at this location.
+function arrivalPhrase(ms: number | undefined, now: number): string {
+  if (ms === undefined) return "";
+  const mins = Math.floor((now - ms) / 60_000);
+  if (mins <= 0) return " (just walked in)";
+  if (mins === 1) return " (arrived a minute ago)";
+  if (mins < 5) return ` (arrived ${mins} minutes ago)`;
+  return " (has been around a little while)";
+}
+
+// Render the location-aware Visitors section (design doc §2). Leads with the
+// visitors HERE WITH the agent (by name + arrival recency), then the town-wide
+// count. Pure so the phrasing is unit-testable. `here` is ordered
+// most-recently-seen first; `arrivalMs` maps visitorId → arrival epoch ms.
+export function renderVisitorsSection(
+  here: { id: string; name: string }[],
+  arrivalMs: Map<string, number>,
+  townCount: number,
+  now: number,
+): string {
+  if (here.length === 0) {
+    if (townCount > 0) {
+      return `No visitors here with you, but ${townCount} ${townCount === 1 ? "visitor is" : "visitors are"} elsewhere in town — someone might wander over.`;
+    }
+    return `No visitors in town right now. The place is yours.`;
+  }
+  const lines = here
+    .map((v) => `${v.name} is here with you${arrivalPhrase(arrivalMs.get(v.id), now)}`)
+    .join("; ");
+  const elsewhere = Math.max(0, townCount - here.length);
+  const tail =
+    elsewhere > 0
+      ? ` (${elsewhere} more ${elsewhere === 1 ? "visitor" : "visitors"} elsewhere in town.)`
+      : "";
+  return `${lines}. They've come to see the town — say something. Don't leave them standing there.${tail}`;
+}
+
 function renderInbox(msgs: MessageRow[]): string {
   if (msgs.length === 0) return "Nothing new in your inbox.";
   return msgs
@@ -104,7 +146,7 @@ function renderInbox(msgs: MessageRow[]): string {
     .join("\n");
 }
 
-function renderEvents(events: WorldEvent[]): string {
+function renderEvents(events: WorldEvent[], location: LocationId): string {
   if (events.length === 0) return "Nothing notable has happened since your last tick.";
   return events
     .map((e) => {
@@ -138,6 +180,18 @@ function renderEvents(events: WorldEvent[]): string {
           return `- a visitor (${p.name}) arrived in town`;
         case "visitor.left":
           return `- ${p.name} left`;
+        case "visitor.moved":
+          return p.to === location
+            ? `- ${p.name} walked in here`
+            : `- ${p.name} walked over to ${p.to}`;
+        case "visitor.interacted":
+          return `- ${p.name} ${p.fixture === "phone" ? "picked up the phone" : `touched the ${p.fixture}`} in the ${p.location}`;
+        case "world.effect":
+          return `- the ${p.fixture} ${p.effect}${p.agent ? ` (${p.agent})` : ""} in the ${p.location}`;
+        case "chat.joined":
+          return `- ${p.agent} joined a conversation`;
+        case "conversation.converted":
+          return `- a conversation turned into a chat with a visitor`;
         case "chat.started":
           return `- ${p.agent} started talking with a visitor`;
         case "chat.ended":
@@ -168,16 +222,21 @@ export async function buildObservation(
   const location = agent.locationId as LocationId;
 
   const cursor = await readCursor(agentId);
-  const [loc, here, perceivedRes, inboxRes, visitorCount, core] = await Promise.all([
+  const [loc, here, perceivedRes, inboxRes, visitorCount, visitorsHere, core] = await Promise.all([
     getLocation(location),
     agentsAtLocation(location, agentId),
     perceivedEventsSince(cursor.eventId, agentId, location),
     inboxFor(agentId, cursor.messageId),
     visitorsPresentCount(),
+    visitorsAtLocation(location),
     coreMemorySnapshot(agentId),
   ]);
   const perceived = perceivedRes.events;
   const inbox = inboxRes.rows;
+  const arrivalMs = await arrivalTimesAtLocation(
+    location,
+    visitorsHere.map((v) => v.id),
+  );
 
   const fixtures = ((loc?.fixtures as Array<{ id: string }>) ?? []).map((f) => f.id).join(", ");
   const others =
@@ -195,15 +254,18 @@ export async function buildObservation(
     `Also here: ${others}.`,
     ``,
     `## Visitors`,
-    visitorCount > 0
-      ? `${visitorCount} visitor(s) are in town right now — someone might wander over.`
-      : `No visitors in town right now. The place is yours.`,
+    renderVisitorsSection(
+      visitorsHere.map((v: VisitorRow) => ({ id: v.id, name: v.name })),
+      arrivalMs,
+      visitorCount,
+      Date.now(),
+    ),
     ``,
     `## Your inbox`,
     renderInbox(inbox),
     ``,
     `## What's happened since your last tick`,
-    renderEvents(perceived),
+    renderEvents(perceived, location),
     ``,
     `## Your status (as the world believes it)`,
     `Status: ${agent.status}. Activity: ${agent.activity ?? "(none set)"}.`,

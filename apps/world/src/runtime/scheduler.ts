@@ -38,6 +38,17 @@ const OVERNIGHT_SLOWDOWN = 2;
 
 let running = false;
 const timers = new Map<AgentId, NodeJS.Timeout>();
+// When each agent's currently-armed timer is scheduled to fire (epoch ms). Lets
+// boostAgent compute the remaining delay so a boost never *delays* a tick that
+// was already due sooner than the boost target.
+const nextFireAt = new Map<AgentId, number>();
+// Boost throttle (design doc §2/§7): per (visitorId, agentId) at most one boost
+// per 5 minutes, so a visitor pacing between rooms can't farm ticks. Keyed
+// "<visitorId>|<agentId>" → last-boost epoch ms. In-memory (matches the
+// single-process scheduler); cleared on restart, which is fine (a restart drops
+// all armed timers anyway).
+const BOOST_THROTTLE_MS = 5 * 60_000;
+const lastBoostAt = new Map<string, number>();
 // Per-agent guard so the once-nightly reflection fires once per NIGHT SESSION,
 // not once per calendar day. The "night" phase straddles UTC midnight (hours
 // >=22 OR <5), so a calendar-day key would let reflection fire again at 00:01.
@@ -114,6 +125,22 @@ async function tickAgent(agentId: AgentId): Promise<void> {
   }
 }
 
+// Arm (or re-arm) the agent's timer to fire `ms` from now, recording the fire
+// time so boostAgent can reason about the remaining delay. Replaces any timer
+// currently armed for this agent.
+function armTimer(agentId: AgentId, ms: number): void {
+  const existing = timers.get(agentId);
+  if (existing) clearTimeout(existing);
+  const timer = setTimeout(() => {
+    nextFireAt.delete(agentId);
+    // tickAgent never throws (it has its own try/catch), but guard the
+    // reschedule with finally so an unexpected synchronous throw can't strand it.
+    void tickAgent(agentId).finally(() => scheduleNext(agentId));
+  }, ms);
+  timers.set(agentId, timer);
+  nextFireAt.set(agentId, Date.now() + ms);
+}
+
 function scheduleNext(agentId: AgentId): void {
   if (!running) return;
   // ALWAYS re-arm, even if the delay computation rejects. A single dropped
@@ -129,13 +156,83 @@ function scheduleNext(agentId: AgentId): void {
     })
     .then((ms) => {
       if (!running) return;
-      const timer = setTimeout(() => {
-        // tickAgent never throws (it has its own try/catch), but guard the
-        // reschedule with finally so an unexpected synchronous throw can't strand it.
-        void tickAgent(agentId).finally(() => scheduleNext(agentId));
-      }, ms);
-      timers.set(agentId, timer);
+      armTimer(agentId, ms);
     });
+}
+
+// Decide whether a (visitorId, agentId) boost is allowed right now and, if so,
+// the new delay to re-arm at. Pure so it's unit-testable (design doc §2):
+//   - throttled: a prior boost for this pair landed within BOOST_THROTTLE_MS
+//   - otherwise re-arm at min(remaining, jittered target ≤ maxDelayMs)
+// A boost NEVER pushes the tick later than it was already due.
+export interface BoostDecision {
+  boost: boolean;
+  reason?: "throttled" | "engaged" | "not-running" | "no-timer";
+  delayMs?: number;
+}
+
+export function decideBoost(args: {
+  now: number;
+  lastBoostAt: number | undefined;
+  remainingMs: number | undefined;
+  maxDelayMs: number;
+  jitterMs: number; // a value in [0, maxDelayMs - floor) chosen by the caller
+  floorMs?: number;
+}): BoostDecision {
+  const { now, lastBoostAt: last, remainingMs, maxDelayMs, jitterMs } = args;
+  const floor = args.floorMs ?? 30_000;
+  if (last !== undefined && now - last < BOOST_THROTTLE_MS) {
+    return { boost: false, reason: "throttled" };
+  }
+  if (remainingMs === undefined) return { boost: false, reason: "no-timer" };
+  const target = Math.min(maxDelayMs, Math.max(floor, floor + jitterMs));
+  // Never delay a tick that's already due sooner than the boost target.
+  const delayMs = Math.max(0, Math.min(remainingMs, target));
+  return { boost: true, delayMs };
+}
+
+// Co-located tick boost (design doc §2). Pull an UNENGAGED agent's next tick
+// forward to within ~30–60s so it can acknowledge a visitor who just walked in,
+// without farming ticks. Throttled per (visitor, agent) to one boost / 5 min.
+// Called from the PATCH /visitors/:id handler for agents at the destination.
+export async function boostAgent(
+  agentId: AgentId,
+  visitorId: string,
+  maxDelayMs = 60_000,
+): Promise<BoostDecision> {
+  if (!running) return { boost: false, reason: "not-running" };
+  // Skip engaged agents — they're already in a chat/scene; a boost would be
+  // dropped by the runTick gate anyway and would waste the throttle slot.
+  const agent = await getAgent(agentId).catch(() => undefined);
+  if (agent?.engagement) return { boost: false, reason: "engaged" };
+
+  const key = `${visitorId}|${agentId}`;
+  const armed = nextFireAt.get(agentId);
+  const remainingMs = armed === undefined ? undefined : Math.max(0, armed - Date.now());
+  // Jitter across the [30s, maxDelayMs] band so co-located boosts don't lockstep.
+  const floor = 30_000;
+  const jitterMs = Math.random() * Math.max(0, maxDelayMs - floor);
+  const decision = decideBoost({
+    now: Date.now(),
+    lastBoostAt: lastBoostAt.get(key),
+    remainingMs,
+    maxDelayMs,
+    jitterMs,
+    floorMs: floor,
+  });
+  if (decision.boost && decision.delayMs !== undefined) {
+    lastBoostAt.set(key, Date.now());
+    armTimer(agentId, decision.delayMs);
+    console.log(
+      `[scheduler] boosted ${agentId} for visitor ${visitorId} → ${Math.round(decision.delayMs / 1000)}s.`,
+    );
+  }
+  return decision;
+}
+
+// Test seam: reset the in-memory boost throttle (no effect on armed timers).
+export function _resetBoostThrottleForTest(): void {
+  lastBoostAt.clear();
 }
 
 // Emit a world.time event when the day phase changes (frontend day/night tint).
@@ -169,24 +266,22 @@ export function startScheduler(): void {
   agentIds.forEach((id, i) => {
     const base = getProfile(id).role.tickCadenceMinutes * 60_000;
     const stagger = Math.round((base / agentIds.length) * i) + 5_000;
-    const timer = setTimeout(async () => {
-      await tickAgent(id);
-      scheduleNext(id);
-    }, stagger);
-    timers.set(id, timer);
+    armTimer(id, stagger);
   });
 
   // World clock: check the phase every minute, emit on change.
   phaseTimer = setInterval(() => void emitPhaseIfChanged(), 60_000);
   void emitPhaseIfChanged();
 
-  // Auto-close abandoned chat sessions every 5 min so a tab-closed-without-close
-  // never strands an agent busy=true (and skipped) for the rest of the soak.
+  // Liveness-aware sweep (design doc §3.4): every minute, close sessions with no
+  // ping AND no message for 3 min so a tab-closed-without-close never strands an
+  // agent engaged for the rest of the soak — while a slow-typing / long-reading
+  // visitor who keeps pinging is never cut off.
   chatSweepTimer = setInterval(() => {
     void sweepStaleChats().catch((err) =>
       console.warn("[scheduler] chat sweep failed:", (err as Error).message),
     );
-  }, 5 * 60_000);
+  }, 60_000);
 
   // Vault sync: pull every ~10 min, push agent notes back (belt-and-suspenders
   // poll; the webhook path lands at deploy). No-op when the vault is unconfigured.
@@ -204,6 +299,7 @@ export function stopScheduler(): void {
   running = false;
   for (const t of timers.values()) clearTimeout(t);
   timers.clear();
+  nextFireAt.clear();
   if (phaseTimer) clearInterval(phaseTimer);
   if (vaultTimer) clearInterval(vaultTimer);
   if (chatSweepTimer) clearInterval(chatSweepTimer);
