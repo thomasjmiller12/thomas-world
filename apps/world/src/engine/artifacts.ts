@@ -1,7 +1,7 @@
 // Artifact CRUD — create + update ONLY (no delete; the world keeps what it
 // makes). Each anchored to a location fixture where visitors find it (plan §6).
 
-import { and, desc, eq, type SQL } from "drizzle-orm";
+import { and, desc, eq, gt, type SQL } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import type { AgentId, ArtifactKind, LocationId } from "@town/contract";
 import { db, schema } from "../db/client.js";
@@ -131,4 +131,24 @@ export async function listArtifacts(
     .where(conds.length ? and(...conds) : undefined)
     .orderBy(desc(artifacts.createdAt))
     .limit(limit);
+}
+
+// Artifacts this agent made in the last `hours`, excluding diary entries
+// (reflection writes those directly). Backs two guards: the create_artifact
+// making-discipline pushback (a flood of new artifacts reads as spam, not life)
+// and the reflection idempotency check (one diary per night, DB-grounded so
+// restarts/retries can't double-write).
+export async function recentArtifactsBy(
+  agentId: AgentId,
+  hours: number,
+  kind?: ArtifactKind,
+): Promise<ArtifactRow[]> {
+  const cutoff = new Date(Date.now() - hours * 60 * 60_000);
+  const conds: SQL[] = [eq(artifacts.agentId, agentId), gt(artifacts.createdAt, cutoff)];
+  if (kind) conds.push(eq(artifacts.kind, kind));
+  return db
+    .select()
+    .from(artifacts)
+    .where(and(...conds))
+    .orderBy(desc(artifacts.createdAt));
 }

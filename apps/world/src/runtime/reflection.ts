@@ -23,7 +23,7 @@ import {
 } from "../engine/memory.js";
 import { recentEventsForAgent } from "../engine/events.js";
 import { getAgent, isBusy } from "../engine/agents.js";
-import { createArtifact } from "../engine/artifacts.js";
+import { createArtifact, recentArtifactsBy } from "../engine/artifacts.js";
 import { tryAcquire } from "./agent-lock.js";
 import { recordUsage } from "../engine/usage.js";
 import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
@@ -58,6 +58,14 @@ export async function runReflection(agentId: AgentId): Promise<{ ran: boolean }>
   try {
     const agent = await getAgent(agentId);
     if (!agent || isBusy(agent.engagement)) return { ran: false };
+    // DB-grounded idempotency: one diary per night, regardless of process
+    // restarts or partial-failure retries. The in-memory reflectedThisNight set
+    // resets on every deploy, and a post-diary failure used to retry the WHOLE
+    // reflection — Career once wrote four diaries in fourteen minutes. A diary
+    // in the last 8 hours (the window spans the midnight date flip) means this
+    // night's reflection already happened: report ran so the scheduler marks it.
+    const recentDiaries = await recentArtifactsBy(agentId, 8, "diary_entry");
+    if (recentDiaries.length > 0) return { ran: true };
     return await runReflectionLocked(agentId);
   } finally {
     release();
@@ -144,10 +152,9 @@ async function runReflectionLocked(agentId: AgentId): Promise<{ ran: boolean }> 
     return { ran: false };
   }
 
-  // Consolidate episodic memory (no-op when Hindsight off).
-  await hindsightReflect(agentId);
-
-  // The diary entry is itself feed content (plan §6).
+  // Diary FIRST (it doubles as the idempotency marker), then consolidation —
+  // and a Hindsight hiccup must never fail the reflection after the diary
+  // landed (that ordering is what caused the multi-diary retry loop).
   if (diaryText) {
     const today = utcDay();
     await createArtifact({
@@ -156,6 +163,13 @@ async function runReflectionLocked(agentId: AgentId): Promise<{ ran: boolean }> 
       title: `Diary — ${today}`,
       body: diaryText,
     });
+  }
+
+  // Consolidate episodic memory (no-op when Hindsight off; best-effort always).
+  try {
+    await hindsightReflect(agentId);
+  } catch (err) {
+    console.warn(`[reflection ${agentId}] hindsight reflect failed:`, (err as Error).message);
   }
 
   trace.end({ wroteDiary: Boolean(diaryText) });

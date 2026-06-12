@@ -25,7 +25,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { tryAcquire } from "./agent-lock.js";
 import { sendMessage } from "../engine/messages.js";
-import { createArtifact, updateArtifact, getArtifact } from "../engine/artifacts.js";
+import { createArtifact, updateArtifact, getArtifact, recentArtifactsBy } from "../engine/artifacts.js";
 import { recordCapabilityRequest, sendEmailToThomas } from "../engine/outside.js";
 import {
   memView,
@@ -240,6 +240,23 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     run: async ({ kind, title, body }) => {
       if (kind === "bulletin") return "Use post_bulletin for bulletins (it's gated to the town notice board).";
       if (kind === "daily_digest") return "The daily digest is written by the town itself, not by a facet.";
+      // Making discipline (in-fiction): a flood of new artifacts reads as spam,
+      // not life. After a few in one day, the desk pushes back — revise instead.
+      const today = (await recentArtifactsBy(ctx.agentId, 24)).filter(
+        (a) => a.kind !== "diary_entry",
+      );
+      if (today.length >= 3) {
+        const recentList = today
+          .slice(0, 4)
+          .map((a) => `- ${a.kind} "${a.title}" (id ${a.id})`)
+          .join("\n");
+        return (
+          `Your desk is already covered in today's work — making a fourth new thing ` +
+          `would mean none of them get the attention they deserve. Today you made:\n${recentList}\n` +
+          `If this idea is real, it probably belongs INSIDE one of those — use ` +
+          `update_artifact to revise or extend it. Tomorrow is another day for new things.`
+        );
+      }
       const row = await createArtifact({
         agentId: ctx.agentId,
         kind: kind as never,
