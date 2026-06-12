@@ -305,6 +305,10 @@ export function ChatSession({
     const s = stateRef.current;
     if (s.phase !== 'gate' || !s.target) return;
     dispatch({ t: 'begin-open' });
+    // The chat is actually engaging now — freeze player movement (canvas pause)
+    // and lock the sprite facing the player. The free gate (pre-engage) emits
+    // npc-interaction only, so walking away from it stays possible.
+    EventBus.emit('chat-opened', { npcId: s.target.npcId });
     onOpen(s.target.npcId);
   }, [onOpen]);
 

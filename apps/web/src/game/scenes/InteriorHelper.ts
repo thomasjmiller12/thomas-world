@@ -108,12 +108,15 @@ export function setupInterior(
 
     // NPC interaction takes priority — nearest agent from the dynamic list.
     if (state.nearestNPC) {
+      // Face the player on first press (the free gate), but do NOT freeze
+      // movement — `chat-opened` (the input-freeze signal) is emitted by
+      // ChatSession only when the chat actually engages, so the visitor can
+      // still walk away from an un-greeted gate (it auto-closes).
       state.nearestNPC.enterEngaged(state.player.x, state.player.y);
       EventBus.emit('npc-interaction', {
         npcId: state.nearestNPC.npcId,
         npcName: state.nearestNPC.displayName,
       });
-      EventBus.emit('chat-opened', { npcId: state.nearestNPC.npcId });
       return;
     }
 

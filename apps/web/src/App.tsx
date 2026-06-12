@@ -107,7 +107,13 @@ function App({ visitorName }: AppProps) {
     // Only tell the server to tear down a session that was actually opened (an
     // un-greeted gate cost nothing — design doc §1).
     if (opened) worldRef.current?.closeChat();
-    if (npcId) EventBus.emit('dialog-closed'); // release any canvas pause hook
+    if (npcId) {
+      // Pair with the `chat-opened` engage signal: release the player input
+      // freeze and the NPC's face-the-player lock immediately. (dialog-closed
+      // stays for the artifact reader's separate canvas-pause hook.)
+      EventBus.emit('chat-closed', { npcId });
+      EventBus.emit('dialog-closed'); // release any canvas pause hook
+    }
   }, []);
 
   // Busy-409 [listen in]: a co-located scene's transcript strip already renders
@@ -172,11 +178,20 @@ function App({ visitorName }: AppProps) {
     worldRef.current = world;
     dreamRef.current = dream;
 
+    // Boot the client ONCE here — not on every `current-scene-ready`. Scene
+    // transitions re-fire that event, and start() wires the overlay bridge +
+    // opens the SSE stream, which must happen exactly once (re-running it leaks
+    // EventSource connections and duplicates chat POSTs).
+    void world.start();
+
     // Keep handler refs so unmount removes ONLY our own listeners (no bare
     // removeAllListeners — that would nuke the Phaser scenes' listeners too,
     // which breaks under React StrictMode / HMR remounts).
+    // Per scene transition the old NPCManager is destroyed and a fresh one is
+    // built empty — re-emit the cached snapshot's per-agent status so it learns
+    // who belongs in the new scene (no listener re-wiring, no stream re-open).
     const onSceneReady = () => {
-      void world.start();
+      world.resyncScene();
     };
     // The two-step greeting gate, busy path, and streaming all live inside the
     // ChatSession container (it subscribes to `npc-interaction` + the chat

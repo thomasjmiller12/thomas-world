@@ -70,6 +70,15 @@ export class WorldClient {
   private currentLocation: LocationId | null = null;
   private activeChat: ActiveChat | null = null;
   private stopped = false;
+  // start() is idempotent: scene transitions re-emit `current-scene-ready`, but
+  // boot (identity + stream + bridge wiring) must happen exactly once per client.
+  // Re-running it would duplicate the overlay-bridge listeners (K× chat POSTs)
+  // and leak EventSource connections. Per-scene re-sync goes through
+  // resyncScene(), not start().
+  private started = false;
+  // The last applied snapshot, kept so resyncScene() can re-emit per-agent
+  // status to a freshly-created NPCManager WITHOUT re-opening streams.
+  private lastSnapshot: SnapshotResponse | null = null;
   // A visitor line typed during the two-step greeting gate (before /chats has
   // resolved) is parked here and flushed once the session exists + the greeting
   // turn completes — so the first keystroke opens the greeting and the typed
@@ -88,6 +97,10 @@ export class WorldClient {
   // Boot: validate/establish identity, hydrate the snapshot, open the stream.
   // Wires the overlay→client chat requests. Degrades to dream mode on failure.
   async start(): Promise<void> {
+    // Idempotent: re-entry (e.g. a second `current-scene-ready`) is a no-op so we
+    // never double-wire the overlay bridge or open a second EventSource.
+    if (this.started) return;
+    this.started = true;
     this.stopped = false;
     this.wireOverlayBridge();
     this.wirePageHide();
@@ -114,10 +127,25 @@ export class WorldClient {
 
   stop(): void {
     this.stopped = true;
+    this.started = false;
     this.closeStream();
     this.closeActiveChat();
     this.unwireOverlayBridge();
     this.unwirePageHide();
+  }
+
+  // Per-scene re-sync (App calls this on `current-scene-ready`, NOT start()). A
+  // scene transition tears down the old NPCManager and builds a fresh one whose
+  // sprite roster is empty until it learns agent locations. Re-emit the cached
+  // snapshot's per-agent status so the new manager spawns the agents that belong
+  // in the new scene — WITHOUT re-registering listeners or re-opening the stream.
+  resyncScene(): void {
+    const snapshot = this.lastSnapshot;
+    if (!snapshot) return;
+    for (const agent of snapshot.agents) {
+      const { name, payload } = mapAgentStatus(agent);
+      EventBus.emit(name, payload);
+    }
   }
 
   // --- identity (localStorage + boot validation + rename) -------------------
@@ -218,6 +246,10 @@ export class WorldClient {
   // `cached`, the world reads as not-awake regardless — a cached snapshot is a
   // memory, the town is asleep until a live tick proves otherwise.
   private applySnapshot(snapshot: SnapshotResponse, cached = false): void {
+    // Remember it so a later scene transition can resyncScene() the new manager
+    // off this state without re-hitting the network.
+    this.lastSnapshot = snapshot;
+
     // Initial per-agent state (positions/status/engagement).
     for (const agent of snapshot.agents) {
       const { name, payload } = mapAgentStatus(agent);
@@ -263,6 +295,9 @@ export class WorldClient {
 
   private openStream(): void {
     if (this.stopped || typeof window === 'undefined' || !('EventSource' in window)) return;
+    // Defense in depth: never leak a prior connection (reconnect paths / any
+    // double-invoke). closeStream() also clears a pending reconnect timer.
+    this.closeStream();
     const url = new URL(`${this.baseUrl}/events/stream`);
     if (this.visitorId) url.searchParams.set('visitorId', this.visitorId);
     // Server replays from Last-Event-ID; EventSource sends it as a header on

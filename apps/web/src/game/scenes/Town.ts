@@ -352,12 +352,15 @@ export default class Town extends Phaser.Scene {
 			if (this.isTransitioning) return;
 
 			if (this.nearestNPC) {
+				// Face the player on first press (the free gate), but do NOT freeze
+				// movement — `chat-opened` (the input-freeze signal) is emitted by
+				// ChatSession only when the chat actually engages, so the visitor can
+				// still walk away from an un-greeted gate (it auto-closes).
 				this.nearestNPC.enterEngaged(this.player.x, this.player.y);
 				EventBus.emit('npc-interaction', {
 					npcId: this.nearestNPC.npcId,
 					npcName: this.nearestNPC.displayName,
 				});
-				EventBus.emit('chat-opened', { npcId: this.nearestNPC.npcId });
 				return;
 			}
 
