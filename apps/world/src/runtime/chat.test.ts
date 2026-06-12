@@ -3,6 +3,10 @@ import {
   rowsToHistory,
   isChatStale,
   buildGreetingOpener,
+  pickAddressedAgent,
+  lastAgentToSpeak,
+  isInterjectPass,
+  seedRowForSceneLine,
   type ChatRowLike,
 } from "./chat.js";
 import type { WorldEvent } from "@town/contract";
@@ -162,5 +166,183 @@ describe("buildGreetingOpener — byte-stable continuity opener (design doc §3.
     // The oldest (moved) should be dropped; the newest 3 kept.
     expect(opener).not.toContain("walked to the workshop");
     expect(opener).toContain('updated "B"');
+  });
+});
+
+describe("rowsToHistory — group-chat perspective + labeling (design doc §3.3)", () => {
+  it("renders the perspective agent's lines as assistant, the other agent's as labeled user", () => {
+    const rows: ChatRowLike[] = [
+      { sender: "operator", body: "opener", ts: t(1) },
+      { sender: "builder", body: "I'd ship it.", ts: t(2) },
+      { sender: "visitor", body: "what about tests?", ts: t(3) },
+      { sender: "researcher", body: "I'd measure first.", ts: t(4) },
+    ];
+    // From Builder's perspective: Builder → assistant, Researcher → labeled user.
+    expect(rowsToHistory(rows, "builder")).toEqual([
+      { role: "user", content: "opener" },
+      { role: "assistant", content: "I'd ship it." },
+      { role: "user", content: "what about tests?" },
+      { role: "user", content: "Researcher: I'd measure first." },
+    ]);
+  });
+
+  it("the same rows from the OTHER agent's perspective flip assistant/labeled-user", () => {
+    const rows: ChatRowLike[] = [
+      { sender: "builder", body: "ship it", ts: t(2) },
+      { sender: "researcher", body: "measure first", ts: t(4) },
+    ];
+    expect(rowsToHistory(rows, "researcher")).toEqual([
+      { role: "user", content: "Builder: ship it" },
+      { role: "assistant", content: "measure first" },
+    ]);
+  });
+
+  it("never starts with an assistant turn even with a perspective (400-trap)", () => {
+    const rows: ChatRowLike[] = [
+      { sender: "operator", body: "a visitor jumped in — react", ts: t(1) },
+      { sender: "builder", body: "oh, hi!", ts: t(2) },
+    ];
+    expect(rowsToHistory(rows, "builder")[0].role).toBe("user");
+  });
+
+  it("the legacy 'agent' sentinel maps to the perspective agent's assistant turn", () => {
+    const rows: ChatRowLike[] = [
+      { sender: "operator", body: "opener", ts: t(1) },
+      { sender: "agent", body: "hello", ts: t(2) },
+    ];
+    expect(rowsToHistory(rows, "hobby")).toEqual([
+      { role: "user", content: "opener" },
+      { role: "assistant", content: "hello" },
+    ]);
+  });
+
+  it("without a perspective (1-agent chat) any agent line is the assistant", () => {
+    const rows: ChatRowLike[] = [
+      { sender: "visitor", body: "hi", ts: t(1) },
+      { sender: "hobby", body: "hey there", ts: t(2) },
+    ];
+    expect(rowsToHistory(rows)).toEqual([
+      { role: "user", content: "hi" },
+      { role: "assistant", content: "hey there" },
+    ]);
+  });
+});
+
+describe("director addressing (design doc §3.3)", () => {
+  it("routes to a participant named in the visitor text", () => {
+    expect(
+      pickAddressedAgent({
+        participants: ["builder", "researcher"],
+        visitorText: "Researcher, what do you think about the eval setup?",
+        lastAgentSpoke: "builder",
+        primary: "builder",
+      }),
+    ).toBe("researcher");
+  });
+
+  it("matches the agent label case-insensitively on a word boundary", () => {
+    expect(
+      pickAddressedAgent({
+        participants: ["builder", "writer"],
+        visitorText: "hey writer, got a sec?",
+        lastAgentSpoke: null,
+        primary: "builder",
+      }),
+    ).toBe("writer");
+  });
+
+  it("does NOT match a name embedded in a longer word", () => {
+    // "writers" must not match "writer".
+    expect(
+      pickAddressedAgent({
+        participants: ["builder", "writer"],
+        visitorText: "do you both know any good writers conferences?",
+        lastAgentSpoke: "builder",
+        primary: "builder",
+      }),
+    ).toBe("builder"); // falls through to last-spoke
+  });
+
+  it("falls back to the last agent who spoke when no name is present", () => {
+    expect(
+      pickAddressedAgent({
+        participants: ["builder", "researcher"],
+        visitorText: "interesting — say more",
+        lastAgentSpoke: "researcher",
+        primary: "builder",
+      }),
+    ).toBe("researcher");
+  });
+
+  it("falls back to the primary when no name and no prior speaker", () => {
+    expect(
+      pickAddressedAgent({
+        participants: ["builder", "researcher"],
+        visitorText: "hello?",
+        lastAgentSpoke: null,
+        primary: "builder",
+      }),
+    ).toBe("builder");
+  });
+
+  it("ignores a last-speaker who is no longer a participant", () => {
+    expect(
+      pickAddressedAgent({
+        participants: ["builder"],
+        visitorText: "go on",
+        lastAgentSpoke: "researcher",
+        primary: "builder",
+      }),
+    ).toBe("builder");
+  });
+});
+
+describe("lastAgentToSpeak (design doc §3.3 director step 2)", () => {
+  it("returns the most recent explicit AgentId sender", () => {
+    const rows: ChatRowLike[] = [
+      { sender: "builder", body: "a", ts: t(1) },
+      { sender: "visitor", body: "b", ts: t(2) },
+      { sender: "researcher", body: "c", ts: t(3) },
+    ];
+    expect(lastAgentToSpeak(rows, "builder")).toBe("researcher");
+  });
+
+  it("resolves the legacy 'agent' sentinel to the primary", () => {
+    const rows: ChatRowLike[] = [
+      { sender: "operator", body: "x", ts: t(1) },
+      { sender: "agent", body: "y", ts: t(2) },
+    ];
+    expect(lastAgentToSpeak(rows, "hobby")).toBe("hobby");
+  });
+
+  it("returns null when no agent has spoken", () => {
+    const rows: ChatRowLike[] = [
+      { sender: "operator", body: "x", ts: t(1) },
+      { sender: "visitor", body: "y", ts: t(2) },
+    ];
+    expect(lastAgentToSpeak(rows, "hobby")).toBeNull();
+  });
+});
+
+describe("isInterjectPass (design doc §3.3 step 2)", () => {
+  it("treats [pass] / pass / PASS as a pass", () => {
+    expect(isInterjectPass("[pass]")).toBe(true);
+    expect(isInterjectPass("pass")).toBe(true);
+    expect(isInterjectPass("  PASS ")).toBe(true);
+    expect(isInterjectPass("[pass].")).toBe(true);
+  });
+
+  it("treats a real line as NOT a pass", () => {
+    expect(isInterjectPass("Actually, I'd push back on that.")).toBe(false);
+    expect(isInterjectPass("passing the test was the goal")).toBe(false);
+  });
+});
+
+describe("seedRowForSceneLine (design doc §3.3a — interject seeding)", () => {
+  it("renders a scene line as a labeled operator row", () => {
+    expect(seedRowForSceneLine({ agent: "builder", text: "let's prototype it" })).toEqual({
+      sender: "operator",
+      body: "Builder: let's prototype it",
+    });
   });
 });

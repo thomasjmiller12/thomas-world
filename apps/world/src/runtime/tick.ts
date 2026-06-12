@@ -22,7 +22,7 @@ import { markRead } from "../engine/messages.js";
 import { recordUsage, spendTodayUsd, spendTodayForAgent } from "../engine/usage.js";
 import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
 import { startTrace } from "./tracing.js";
-import { maybeRunConversationScene } from "./conversation-scene.js";
+import * as sceneRunner from "./conversation-scene.js";
 import { tryAcquire } from "./agent-lock.js";
 
 // How many tool rounds a single idle tick may take before we force a stop.
@@ -52,6 +52,10 @@ export interface TickResult {
   // Langfuse trace id for this tick (empty when tracing is off). Surfaced by the
   // /admin/tick endpoint so a smoke test can verify the trace landed.
   traceId?: string;
+  // The agent this tick fired a paced scene at, if any (design doc §3.1). The
+  // scene runs detached (fire-and-forget); /admin/tick returns this immediately
+  // rather than waiting for the scene to play out.
+  conversationStarted?: AgentId | null;
 }
 
 // Run one idle tick for an agent. Safe to call from the scheduler or the
@@ -71,15 +75,22 @@ export async function runTick(agentId: AgentId): Promise<TickResult> {
     release();
   }
 
-  // Run the bounded conversation scene AFTER releasing this agent's tick lock —
-  // the scene acquires both participants' locks itself, so holding ours here
-  // would self-deadlock the initiator.
+  // Fire-and-forget the paced scene AFTER releasing this agent's tick lock
+  // (design doc §3.1): the SceneRunner is a step machine that acquires the
+  // speaker's lock per step, so /admin/tick returns immediately while the scene
+  // plays out in real time. Own try/catch + own Langfuse trace live inside
+  // start(); we never await it here (and never let a rejection escape).
   const target = result._conversationTarget;
+  const location = result._location ?? "town";
   if (target) {
-    await maybeRunConversationScene(agentId, target, result._location ?? "town");
+    void sceneRunner.start(agentId, target, location).catch((err) =>
+      console.warn(`[tick ${agentId}] scene start failed:`, (err as Error).message),
+    );
   }
   delete result._conversationTarget;
   delete result._location;
+  // Surface the scene target (if any) immediately — the scene plays out detached.
+  result.conversationStarted = target ?? null;
   return result;
 }
 

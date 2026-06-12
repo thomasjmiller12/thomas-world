@@ -249,7 +249,18 @@ export const visitors = pgTable("visitors", {
 // --- chat sessions / messages (visitor chat) --------------------------------
 export const chatSessions = pgTable("chat_sessions", {
   id: text("id").primaryKey(),
+  // The PRIMARY agent — the one the visitor opened the chat with. Kept for
+  // back-compat (chat.started/.ended attribution, 1-agent paths). The full
+  // roster lives in `participantAgentIds` (defaults to [agentId]); a group chat
+  // (invite_to_chat / scene conversion) adds a second agent there (design §3.3).
   agentId: text("agent_id", { enum: agentEnum }).notNull(),
+  // Every agent in the session (design doc §3.3). Defaults to [agentId]; a
+  // second agent joins via invite_to_chat or a scene→chat conversion. Hard cap
+  // of 2 agents + 1 visitor is enforced in the runtime, not the schema.
+  participantAgentIds: jsonb("participant_agent_ids")
+    .$type<AgentId[]>()
+    .notNull()
+    .default([]),
   visitorId: text("visitor_id").notNull(),
   // Per-session bearer required on /open, /messages, /close, /ping (design doc
   // §3.3). Makes visitor↔agent chat content private and enforced. Returned only
@@ -271,12 +282,13 @@ export const chatMessages = pgTable(
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     sessionId: text("session_id").notNull(),
-    // "visitor" | "agent" | "operator". An `operator` row holds a synthetic
-    // opener / mid-chat note: it's NEVER exposed via GET /chats/:id, but
-    // `historyFor` folds it into the model's leading `user` turn so the agent's
-    // greeting (an assistant row) never sits first in the API history (the
-    // 400-trap, design doc §3.4). Free-form text (no DB enum) so the AgentId
-    // widening for group chat (step C) needs no further migration here.
+    // "visitor" | "operator" | <AgentId> (design doc §3.3, step C widening). An
+    // `operator` row holds a synthetic opener / mid-chat note: it's NEVER
+    // exposed via GET /chats/:id, but `historyFor` folds it into the model's
+    // `user` turns. A 1-agent chat persists agent lines under the legacy
+    // "agent" sentinel OR the explicit AgentId; a group chat ALWAYS uses the
+    // explicit AgentId so historyFor can tell the two speakers apart. Free-form
+    // text (no DB enum) so the AgentId widening needs no schema migration here.
     sender: text("sender").notNull(),
     body: text("body").notNull(),
     ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),

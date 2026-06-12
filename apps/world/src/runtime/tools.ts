@@ -18,9 +18,12 @@ import { betaMemoryTool } from "@anthropic-ai/sdk/helpers/beta/memory";
 import type { BetaRunnableTool } from "@anthropic-ai/sdk/lib/tools/BetaRunnableTool.mjs";
 import { agentIds, locationIds, artifactKinds, type AgentId, type LocationId } from "@town/contract";
 
-import { moveAgent, setActivity, getAgent } from "../engine/agents.js";
+import { moveAgent, setActivity, getAgent, setEngagement } from "../engine/agents.js";
 import { checkGate, isAdjacent, getLocation, agentsAtLocation } from "../engine/locations.js";
 import { appendEvent } from "../engine/events.js";
+import { eq } from "drizzle-orm";
+import { db, schema } from "../db/client.js";
+import { tryAcquire } from "./agent-lock.js";
 import { sendMessage } from "../engine/messages.js";
 import { createArtifact, updateArtifact, getArtifact } from "../engine/artifacts.js";
 import { recordCapabilityRequest, sendEmailToThomas } from "../engine/outside.js";
@@ -44,6 +47,10 @@ export interface AgentContext {
   // Conversation the agent is currently in (set by start_conversation), so
   // reply/end_conversation know which scene to write to.
   conversationId: string | null;
+  // The visitor chat session this agent is replying in, when applicable (design
+  // doc §3.3). Set on chat-turn contexts so invite_to_chat knows which session
+  // to add the invited agent to. Null on idle ticks / greetings.
+  chatSessionId?: string | null;
 }
 
 // Tools the idle tick gets. The chat subset (plan §4.1) is a filtered view.
@@ -422,9 +429,98 @@ function toolName(t: RunnableTool): string {
   return (t as unknown as { name?: string }).name ?? "";
 }
 
+// invite_to_chat (design doc §3.3b): an agent in a visitor chat invites a SECOND
+// agent into the session. Gate (TOCTOU-safe): the target is co-located OR one
+// move away (they walk — emit agent.moved) AND tryAcquire(target) succeeds AND
+// the target is unengaged — all atomic. Success → add to participant_agent_ids,
+// set the target's engagement to this chat, emit chat.joined, in-fiction
+// confirmation. Failure → in-fiction reason. Hard cap 2 agents + 1 visitor.
+function buildInviteToChat(ctx: AgentContext): RunnableTool {
+  const { agents, chatSessions } = schema;
+  return betaZodTool({
+    name: "invite_to_chat",
+    description:
+      "Invite another facet to join the conversation you're having with the visitor right now. They must be here with you or one step away (they'll walk over). Use this to bring in someone whose perspective the visitor would value.",
+    inputSchema: z.object({
+      agent: z.enum(agentIds as unknown as [string, ...string[]]),
+    }),
+    run: async ({ agent }) => {
+      const target = agent as AgentId;
+      const sessionId = ctx.chatSessionId;
+      if (!sessionId) return "You can only invite someone while you're in a conversation with a visitor.";
+      if (target === ctx.agentId) return "You're already here.";
+
+      const [session, here] = await Promise.all([
+        db.select().from(chatSessions).where(eq(chatSessions.id, sessionId)).then((r) => r[0]),
+        agentsAtLocation(ctx.location),
+      ]);
+      if (!session || session.endedAt) return "That conversation has already wrapped up.";
+      const roster = ((session.participantAgentIds as AgentId[] | null) ?? []).filter(Boolean);
+      const current = roster.length ? roster : [session.agentId as AgentId];
+      if (current.includes(target)) return `${target} is already part of this conversation.`;
+      // Hard cap: 2 agents + 1 visitor.
+      if (current.length >= 2) {
+        return "There's already two of you here with the visitor — any more would be a crowd.";
+      }
+
+      const targetRow = await getAgent(target);
+      if (!targetRow) return `You don't know anyone called ${target}.`;
+
+      // Co-location or one-move-away gate. If co-located, no walk. If adjacent,
+      // they walk over (emit agent.moved via moveAgent). Otherwise refuse.
+      const coLocated = here.some((a) => a.id === target);
+      const targetLoc = targetRow.locationId as LocationId;
+      let walked = false;
+      if (!coLocated) {
+        const adjacent = await isAdjacent(targetLoc, ctx.location);
+        if (!adjacent) {
+          return `${target} is too far away to join right now — they'd have a long way to walk.`;
+        }
+        walked = true;
+      }
+
+      // Atomic acquire: take the target's lock + check unengaged together, so a
+      // racing tick/chat can't slip the target into another engagement between
+      // the check and the set (the TOCTOU the boolean never closed).
+      const release = tryAcquire(target);
+      if (!release) return `${target} is mid-thought right now — try again in a moment.`;
+      try {
+        const fresh = await getAgent(target);
+        if (!fresh || fresh.engagement) {
+          return `${target} is already caught up in something else.`;
+        }
+        // Walk them over first (emits agent.moved) so the town renders the move.
+        if (walked) await moveAgent(target, ctx.location);
+        // Add to the roster + engage the target in THIS chat session. The two
+        // existing participants keep their engagement; setEngagement on the full
+        // roster re-stamps everyone to the same {kind:'chat', id} cleanly.
+        const nextRoster = [...current, target];
+        await db
+          .update(chatSessions)
+          .set({ participantAgentIds: nextRoster })
+          .where(eq(chatSessions.id, sessionId));
+        await setEngagement("chat", sessionId, nextRoster);
+        await appendEvent({
+          type: "chat.joined",
+          agentId: target,
+          // sessionId carried on feed/private surfaces only; the public event is
+          // presence (design doc §5). We emit it as a location event so it
+          // materializes the walk-over without leaking the session to all.
+          visibility: "location",
+          payload: { sessionId, agent: target },
+        });
+        return `${target} ${walked ? "walks over and joins" : "joins"} the conversation.`;
+      } finally {
+        release();
+      }
+    },
+  }) as RunnableTool;
+}
+
 // The chat subset (plan §4.1): visitor chat runs on Opus with a smaller, safe
 // toolset — no world-mutating "making" tools, no email/capability, but memory
 // recall and look_around so the agent stays grounded and can reference its life.
+// Group chat (design doc §3.3) adds invite_to_chat when a chat session is set.
 export function buildChatTools(ctx: AgentContext): RunnableTool[] {
   const allowed = new Set([
     "look_around",
@@ -432,7 +528,11 @@ export function buildChatTools(ctx: AgentContext): RunnableTool[] {
     "memory",
     "send_dm",
   ]);
-  return buildTools(ctx).filter((t) => allowed.has(toolName(t)));
+  const tools = buildTools(ctx).filter((t) => allowed.has(toolName(t)));
+  // invite_to_chat is only meaningful within a visitor chat session.
+  if (ctx.chatSessionId) tools.push(buildInviteToChat(ctx));
+  // Keep the byte-stable sorted order (cache hygiene) now that we appended.
+  return tools.sort((a, b) => toolName(a).localeCompare(toolName(b)));
 }
 
 export { getAgent };

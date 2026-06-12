@@ -22,6 +22,13 @@
       "when": 1781400000000,
       "tag": "0002_embodied_visitors",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781500000000,
+      "tag": "0003_group_chat",
+      "breakpoints": true
     }
   ]
 }

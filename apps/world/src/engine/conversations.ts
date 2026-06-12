@@ -69,6 +69,17 @@ export async function endConversation(conversationId: string) {
   });
 }
 
+// Close a conversation row WITHOUT emitting conversation.ended (design doc
+// §3.1 converted branch). Used when a scene is interrupted into a group chat:
+// the row must leave activeConversations (so the snapshot stops showing a stale
+// scene) but the public signal is conversation.converted, never .ended.
+export async function closeConversationRow(conversationId: string): Promise<void> {
+  await db
+    .update(conversations)
+    .set({ endedAt: new Date() })
+    .where(eq(conversations.id, conversationId));
+}
+
 // Currently-open scenes (snapshot's activeConversations).
 export async function activeConversations(): Promise<ConversationRow[]> {
   return db.select().from(conversations).where(isNull(conversations.endedAt));

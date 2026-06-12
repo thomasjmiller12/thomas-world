@@ -21,6 +21,7 @@ import {
   PatchVisitorRequest,
   CreateChatResponse,
   GetChatResponse,
+  JoinConversationResponse,
 } from "@town/contract";
 import type { ArtifactSummary } from "@town/contract";
 import type { z } from "zod";
@@ -66,6 +67,7 @@ import {
   pingChat,
   getChatTranscript,
   chatHasAnyMessage,
+  joinConversation,
 } from "../runtime/chat.js";
 
 const agentSet = new Set<string>(agentIds);
@@ -435,6 +437,42 @@ export function createApp() {
       case "ok":
         return c.json(
           validated(CreateChatResponse, {
+            sessionId: res.sessionId,
+            agentId: res.agentId,
+            visitorId: res.visitorId,
+            participants: res.participants,
+            sessionToken: res.sessionToken,
+          }),
+        );
+    }
+  });
+
+  // --- POST /conversations/:id/join {visitorId} ---------------------------
+  // Visitor interjects into a live agent↔agent scene (design doc §3.3a). The
+  // scene converts to a group chat with BOTH agents; the visitor's subsequent
+  // messages flow through /chats/:id/messages with the returned sessionToken.
+  // Visitor-token gated. Registry CAS: first visitor wins; a gone / already-
+  // converted scene → 409 (the client degrades to listen-in).
+  app.post("/conversations/:id/join", async (c) => {
+    const conversationId = c.req.param("id");
+    const body = await c.req.json().catch(() => ({}));
+    const visitorId = body?.visitorId;
+    if (typeof visitorId !== "string" || !visitorId) {
+      return c.json({ error: "visitorId required" }, 400);
+    }
+    const token = c.req.header("x-visitor-token");
+    if (!(await visitorTokenValid(visitorId, token))) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    const res = await joinConversation(conversationId, visitorId);
+    switch (res.status) {
+      case "gone":
+        return c.json({ error: "scene ended", reason: "gone" }, 409);
+      case "converted":
+        return c.json({ error: "already converted", reason: "converted" }, 409);
+      case "ok":
+        return c.json(
+          validated(JoinConversationResponse, {
             sessionId: res.sessionId,
             agentId: res.agentId,
             visitorId: res.visitorId,
