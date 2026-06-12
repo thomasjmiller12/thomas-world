@@ -190,6 +190,8 @@ function lastStreamingIdx(lines: ChatLine[], speaker: ThomasId): number {
 
 function errorLine(reason: string): string {
   if (reason === 'join-lost-race') return 'Someone else jumped in first — you can still listen in.';
+  if (reason === 'mid-thought')
+    return 'Deep in thought right now — give it a few seconds and press again.';
   if (reason === 'not-connected') return 'The town is still waking up. Try again in a moment.';
   if (reason === 'sleeping')
     return "They're asleep right now — read the feed to see today, and come back when the town wakes.";

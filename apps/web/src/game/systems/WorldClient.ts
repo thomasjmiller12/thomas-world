@@ -407,21 +407,35 @@ export class WorldClient {
     // One body, one conversation on the visitor side too: close any prior chat.
     this.closeActiveChat();
 
-    let res: Response;
-    try {
-      res = await fetch(`${this.baseUrl}/chats`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ agentId, visitorId: this.visitorId }),
-      });
-    } catch {
-      EventBus.emit('chat-error', { npcId: agentId, reason: 'server-down' });
-      return;
-    }
-
-    if (res.status === 409) {
-      EventBus.emit('chat-error', { npcId: agentId, reason: 'engaged' });
-      return;
+    // `mid-thought` 409s are transient (the agent's tick is mid-flight — common
+    // right after a visitor arrives, since presence boosts tick rates). Retry a
+    // few times before surfacing it; `engaged` (a real chat/scene) surfaces
+    // immediately with the busy alternatives.
+    const MID_THOUGHT_RETRIES = 3;
+    const MID_THOUGHT_DELAY_MS = 4_000;
+    let res: Response | null = null;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        res = await fetch(`${this.baseUrl}/chats`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ agentId, visitorId: this.visitorId }),
+        });
+      } catch {
+        EventBus.emit('chat-error', { npcId: agentId, reason: 'server-down' });
+        return;
+      }
+      if (res.status !== 409) break;
+      const body = (await res.json().catch(() => ({}))) as { reason?: string };
+      if (body.reason !== 'mid-thought') {
+        EventBus.emit('chat-error', { npcId: agentId, reason: 'engaged' });
+        return;
+      }
+      if (attempt >= MID_THOUGHT_RETRIES) {
+        EventBus.emit('chat-error', { npcId: agentId, reason: 'mid-thought' });
+        return;
+      }
+      await new Promise((r) => setTimeout(r, MID_THOUGHT_DELAY_MS));
     }
     if (!res.ok) {
       EventBus.emit('chat-error', { npcId: agentId, reason: `error-${res.status}` });

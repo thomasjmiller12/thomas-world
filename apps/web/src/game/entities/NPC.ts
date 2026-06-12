@@ -22,6 +22,12 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   private currentWaypointIndex: number = 0;
   private direction: string = 'down';
   private isPaused: boolean = false;
+  // Remaining legs of an A* route (walkPath); consumed by the arrival branch.
+  private pathQueue: { x: number; y: number }[] = [];
+  // Stall detector for walk legs: see update().
+  private stallX = 0;
+  private stallY = 0;
+  private stallFrames = 0;
   private pauseTimer?: Phaser.Time.TimerEvent;
   private colorDot: Phaser.GameObjects.Arc;
   private thinkingBubble: Phaser.GameObjects.Graphics;
@@ -149,15 +155,31 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   walkTo(target: { x: number; y: number }, done?: () => void): void {
     this.npcState = 'walking';
     this.walkTarget = { x: target.x, y: target.y };
+    this.pathQueue = [];
     this.onArrive = done ?? null;
     this.isPaused = false;
+    this.stallFrames = 0;
+    this.stallX = this.x;
+    this.stallY = this.y;
     if (this.pauseTimer) this.pauseTimer.destroy();
+  }
+
+  // Directed walk along an A*-computed route (a list of world points). Each leg
+  // reuses the walking state machine; `done` fires once after the LAST leg.
+  walkPath(points: { x: number; y: number }[], done?: () => void): void {
+    if (points.length === 0) {
+      done?.();
+      return;
+    }
+    this.walkTo(points[0], done);
+    this.pathQueue = points.slice(1).map((p) => ({ x: p.x, y: p.y }));
   }
 
   // Parked in a live scene, facing a partner sprite. Idle (no roaming).
   enterScene(faceTarget?: { x: number; y: number }): void {
     this.npcState = 'in-scene';
     this.walkTarget = null;
+    this.pathQueue = [];
     this.onArrive = null;
     this.setVelocity(0, 0);
     if (this.pauseTimer) this.pauseTimer.destroy();
@@ -171,6 +193,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   enterEngaged(playerX: number, playerY: number): void {
     this.npcState = 'engaged';
     this.walkTarget = null;
+    this.pathQueue = [];
     this.onArrive = null;
     this.setVelocity(0, 0);
     if (this.pauseTimer) this.pauseTimer.destroy();
@@ -240,7 +263,23 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
       const dx = this.walkTarget.x - this.x;
       const dy = this.walkTarget.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 4) {
+      // Stall = arrived: the walk is straight-line with no pathfinding, so a
+      // wall on the line (or an anchor on a collision tile) would otherwise trap
+      // the sprite in 'walking' forever — bumping the wall AND excluded from
+      // interaction targeting. Barely moving for ~15 frames → stop where it is
+      // and fire the arrival callback so the agent still applies its state.
+      const moved = Math.hypot(this.x - this.stallX, this.y - this.stallY);
+      this.stallFrames = moved < 0.3 ? this.stallFrames + 1 : 0;
+      this.stallX = this.x;
+      this.stallY = this.y;
+      if (dist < 4 || this.stallFrames > 15) {
+        this.stallFrames = 0;
+        // More legs queued (A* route) → advance to the next one. A stalled leg
+        // also advances: the next leg usually routes around whatever blocked us.
+        if (this.pathQueue.length > 0) {
+          this.walkTarget = this.pathQueue.shift()!;
+          return;
+        }
         this.setVelocity(0, 0);
         this.play(`${this.npcConfig.sprite}-idle-${this.direction}`, true);
         const cb = this.onArrive;
@@ -258,7 +297,16 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
       const target = this.waypoints[this.currentWaypointIndex];
       if (target) {
         const dist = Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y);
-        if (dist < 4) this.arriveAtWaypoint();
+        // Same stall guard for wander legs: a blocked waypoint advances to the
+        // next one instead of walking into the wall until the heat death of the town.
+        const moved = Math.hypot(this.x - this.stallX, this.y - this.stallY);
+        this.stallFrames = moved < 0.3 ? this.stallFrames + 1 : 0;
+        this.stallX = this.x;
+        this.stallY = this.y;
+        if (dist < 4 || this.stallFrames > 15) {
+          this.stallFrames = 0;
+          this.arriveAtWaypoint();
+        }
       }
     }
 

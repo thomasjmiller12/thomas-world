@@ -3,6 +3,7 @@ import type { LocationId } from '@town/contract';
 import { INTERACTION_RANGE } from '@/lib/constants';
 import { NPC } from '../entities/NPC';
 import { NPC_CONFIGS } from '../data/npc-configs';
+import { findPath } from './pathfinding';
 import { EventBus, type WorldEvents } from '../EventBus';
 import {
   LOCATION_ANCHORS,
@@ -165,8 +166,17 @@ export class NPCManager {
       // over. Skipped when location is unchanged so a status refresh is a no-op.
       this.placedAt.set(id, location);
       const anchor = this.anchorFor(id, location);
-      sprite.walkTo(anchor, () => this.applyStateFor(id));
+      this.walkSprite(sprite, anchor, () => this.applyStateFor(id));
     }
+  }
+
+  // Route a directed walk through A* over the collision grid (real routes
+  // around walls/props); falls back to the straight-line walk — where the NPC's
+  // stall guard still applies — when no path exists.
+  private walkSprite(npc: NPC, target: { x: number; y: number }, done?: () => void): void {
+    const path = findPath(this.collisionLayer, { x: npc.x, y: npc.y }, target);
+    if (path) npc.walkPath(path, done);
+    else npc.walkTo(target, done);
   }
 
   private spawn(id: ThomasId, location: LocationId, walkIn: boolean): void {
@@ -185,7 +195,7 @@ export class NPCManager {
     this.sprites.set(id, npc);
 
     if (walkIn) {
-      npc.walkTo(target, () => this.applyStateFor(id));
+      this.walkSprite(npc, target, () => this.applyStateFor(id));
     } else {
       this.applyStateFor(id);
     }
@@ -205,7 +215,7 @@ export class NPCManager {
     };
     // Walk to the door of whichever scene-location it was just in, then despawn.
     const exitDoor = this.doorForCurrentScene() ?? door;
-    if (exitDoor) sprite.walkTo(exitDoor, finish);
+    if (exitDoor) this.walkSprite(sprite, exitDoor, finish);
     else finish();
   }
 
@@ -299,8 +309,11 @@ export class NPCManager {
     for (const npc of this.sprites.values()) {
       npc.update();
       npc.checkProximity(this.player.x, this.player.y);
-      // An agent locked in a live scene or mid-walk isn't a chat target.
-      if (npc.getState() === 'walking') continue;
+      // Only an agent locked in a live scene is off-limits; a WALKING agent is
+      // still a chat target (pressing talk stops them — "hey, got a sec?").
+      // Excluding 'walking' here once made every agent unchattable when a bad
+      // anchor left sprites stuck mid-walk.
+      if (npc.getState() === 'in-scene') continue;
       const dist = Phaser.Math.Distance.Between(
         this.player.x, this.player.y, npc.x, npc.y
       );
@@ -323,7 +336,7 @@ export class NPCManager {
     let nearest: NPC | null = null;
     let nearestDist = radius;
     for (const npc of this.sprites.values()) {
-      if (npc.getState() === 'walking') continue;
+      if (npc.getState() === 'in-scene') continue;
       const dist = Phaser.Math.Distance.Between(worldX, worldY, npc.x, npc.y);
       if (dist <= nearestDist) {
         nearestDist = dist;
