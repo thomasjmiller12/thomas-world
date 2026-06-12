@@ -534,11 +534,12 @@ function buildInviteToChat(ctx: AgentContext): RunnableTool {
         await appendEvent({
           type: "chat.joined",
           agentId: target,
-          // sessionId carried on feed/private surfaces only; the public event is
-          // presence (design doc §5). We emit it as a location event so it
-          // materializes the walk-over without leaking the session to all.
+          // Presence only — NO sessionId (design doc §5: chat content is private;
+          // the event carries presence). Visibility stays 'location' so co-located
+          // perception + feed still materialize the walk-over without leaking the
+          // session id to all surfaces.
           visibility: "location",
-          payload: { sessionId, agent: target },
+          payload: { agent: target },
         });
         return `${target} ${walked ? "walks over and joins" : "joins"} the conversation.`;
       } finally {

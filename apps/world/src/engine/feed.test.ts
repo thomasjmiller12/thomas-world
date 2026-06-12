@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { WorldEvent } from "@town/contract";
-import { enrichFeedRow } from "./feed.js";
+import { enrichFeedRow, renderLine } from "./feed.js";
 
 function evt(partial: Partial<WorldEvent>): WorldEvent {
   return {
@@ -56,5 +56,27 @@ describe("feed enrichment (design doc §5 — type/locationId/to)", () => {
     const row = enrichFeedRow(evt({ type: "world.time", locationId: null, agentId: null, payload: { phase: "morning" } }), "It's now morning.");
     expect(row.locationId).toBeNull();
     expect(row.agent).toBeNull();
+  });
+});
+
+describe("renderLine — new M2 event types (verification fix)", () => {
+  // conversation.converted has no name lookup (static copy), so it's DB-free.
+  it("renders conversation.converted as a visitor-joined line", async () => {
+    const line = await renderLine(
+      evt({
+        type: "conversation.converted",
+        locationId: "library",
+        agentId: null,
+        payload: { conversationId: "conv-1" },
+      }),
+    );
+    expect(line).toBe("A visitor joined the conversation.");
+  });
+
+  it("no longer renders conversation.converted as an unknown event", async () => {
+    const line = await renderLine(
+      evt({ type: "conversation.converted", agentId: null, payload: { conversationId: "c" } }),
+    );
+    expect(line).not.toBe("(unknown event)");
   });
 });

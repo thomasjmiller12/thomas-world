@@ -180,24 +180,47 @@ export async function start(
   // Don't barge into an engaged participant (in a chat/scene already).
   if (b.engagement || a.engagement) return null;
 
-  const conversation = await startConversation(location, [initiator, target]);
-  const conversationId = conversation.id;
-  // Engagement marks BOTH busy for the scene's duration (cleared on teardown /
-  // handed off on convert). Set BEFORE the first step so a concurrent tick can't
-  // slip in. clearEngagement keys on (kind,id) so it frees both at once.
-  await setEngagement("scene", conversationId, [initiator, target]);
+  // Atomic acquire (verification fix): the engagement check above is check-then-
+  // act vs an in-flight tick of EITHER participant. Take BOTH agent-locks before
+  // setting engagement — mirroring openChat (lock guards the instant, engagement
+  // guards the session). If either lock is held (a tick is mid-flight), release
+  // any we took and bail; the scene simply doesn't start this round.
+  const releaseInitiator = tryAcquire(initiator);
+  if (!releaseInitiator) return null;
+  const releaseTarget = tryAcquire(target);
+  if (!releaseTarget) {
+    releaseInitiator();
+    return null;
+  }
 
-  const state: SceneState = {
-    conversationId,
-    participants: [initiator, target],
-    location,
-    lines: [],
-    interrupted: false,
-    convertedTo: null,
-    abort: new AbortController(),
-    timer: null,
-  };
-  scenes.set(conversationId, state);
+  let conversationId: string;
+  let state: SceneState;
+  try {
+    const conversation = await startConversation(location, [initiator, target]);
+    conversationId = conversation.id;
+    // Engagement marks BOTH busy for the scene's duration (cleared on teardown /
+    // handed off on convert). Set under both locks so a concurrent tick can't
+    // slip in. clearEngagement keys on (kind,id) so it frees both at once.
+    await setEngagement("scene", conversationId, [initiator, target]);
+
+    state = {
+      conversationId,
+      participants: [initiator, target],
+      location,
+      lines: [],
+      interrupted: false,
+      convertedTo: null,
+      abort: new AbortController(),
+      timer: null,
+    };
+    scenes.set(conversationId, state);
+  } finally {
+    // Release after engagement is set: the locks guarded the instant; engagement
+    // now guards both agents for the scene's lifetime. The step loop re-acquires
+    // each speaker's lock per line (held seconds, not the whole scene).
+    releaseTarget();
+    releaseInitiator();
+  }
 
   // Own Langfuse trace for the whole scene (design doc §3.1) — scene LLM calls
   // are no longer orphaned from tracing now that runTick fire-and-forgets us.

@@ -89,7 +89,8 @@ async function clearStaleEngagement(): Promise<void> {
       type: "chat.ended",
       agentId: s.agentId as AgentId,
       visibility: "public",
-      payload: { agent: s.agentId, visitorId: s.visitorId, sessionId: s.id },
+      // Presence only — no sessionId on the public stream (matches endChat).
+      payload: { agent: s.agentId, visitorId: s.visitorId },
     });
   }
 
