@@ -5,13 +5,14 @@ import type { ThomasId } from '@/lib/types';
 import { agentShortName } from '@/components/chat/primitives';
 import { fetchArtifact } from './chronicleClient';
 import { artifactKindLabel, headerDate } from './chroniclePresentation';
+import { MarkdownBody } from './MarkdownBody';
 
 // ArtifactReader — the in-hub document reader (M2.1). Lazily GETs the full
 // artifact body (list views carry only the headline) and renders it as a paper
-// document: a --card page with an agent-hue accent rule, Fredoka title, Nunito
-// Sans body (whitespace-pre-wrap so the agent's paragraphs survive), and a
-// Silkscreen meta footer. The ← back affordance pops the reader off the stack
-// (the parent owns whether that returns to a list or a tab).
+// document: a --card page with an agent-hue accent rule, Fredoka title, the
+// markdown body the agents write in (MarkdownBody maps it onto the tokens),
+// and a Silkscreen meta footer. The ← back affordance pops the reader off the
+// stack (the parent owns whether that returns to a list or a tab).
 
 interface Props {
   artifactId: string;
@@ -43,7 +44,8 @@ export function ArtifactReader({ artifactId, onBack }: Props) {
   }, [artifactId, attempt]);
 
   const agent = artifact?.agentId as ThomasId | undefined;
-  const color = agent ? THOMAS_COLORS[agent] : 'var(--ink-3)';
+  // Hex (not a CSS var) — MarkdownBody derives alpha variants like `${color}66`.
+  const color = agent ? THOMAS_COLORS[agent] : '#8a8174';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
@@ -126,17 +128,7 @@ export function ArtifactReader({ artifactId, onBack }: Props) {
             </h1>
             {/* agent-hue accent rule */}
             <div style={{ height: 3, width: 48, borderRadius: 999, background: color, margin: '10px 0 18px' }} />
-            <div
-              style={{
-                font: '400 15px var(--sans)',
-                lineHeight: 1.7,
-                color: 'var(--ink)',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-              }}
-            >
-              {artifact.body}
-            </div>
+            <MarkdownBody body={artifact.body} color={color} />
           </article>
 
           {/* Silkscreen meta footer */}
