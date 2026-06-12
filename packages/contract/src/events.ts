@@ -29,20 +29,25 @@ export const AgentSpokePayload = z.object({
   agent: AgentId,
   location: LocationId,
   text: z.string(), // ambient speech, overheard
+  // Optional addressing for emergent room talk aimed at a specific agent.
+  to: AgentId.optional(),
 });
 
+/** @deprecated no longer emitted as of M2.1 — paced scenes removed; kept so historical world_events rows parse */
 export const ConversationStartedPayload = z.object({
   conversationId: z.string(),
   location: LocationId,
   participants: z.array(AgentId),
 });
 
+/** @deprecated no longer emitted as of M2.1 — paced scenes removed; kept so historical world_events rows parse */
 export const ConversationTurnPayload = z.object({
   conversationId: z.string(),
   agent: AgentId,
   text: z.string(),
 });
 
+/** @deprecated no longer emitted as of M2.1 — paced scenes removed; kept so historical world_events rows parse */
 export const ConversationEndedPayload = z.object({
   conversationId: z.string(),
   participants: z.array(AgentId),
@@ -146,6 +151,7 @@ export const ChatJoinedPayload = z.object({
   agent: AgentId,
 });
 
+/** @deprecated no longer emitted as of M2.1 — paced scenes removed; kept so historical world_events rows parse */
 // A paced scene was converted to a group chat (visitor interjected). Public;
 // no session linkage exposed (the chat is private to the interjecting visitor).
 export const ConversationConvertedPayload = z.object({

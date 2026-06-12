@@ -10,12 +10,13 @@ import { WorldEvent, WorldEventType } from "./events.js";
 // --- shared resource entities ----------------------------------------------
 
 // What an agent is currently engaged in (design doc §3.2). One body, one
-// conversation: an agent is either in a `chat` (with a visitor and maybe a
-// second agent) or a `scene` (agent↔agent). `with` lists the co-participants
-// — other agents by id, plus the literal `'visitor'` when a visitor is present.
-// Absent => unengaged. `busy` below is the derived boolean (`engagement != null`).
+// conversation: an agent is in a `chat` (with a visitor and maybe a second
+// agent). `with` lists the co-participants — other agents by id, plus the
+// literal `'visitor'` when a visitor is present. Absent => unengaged. `busy`
+// below is the derived boolean (`engagement != null`). Paced scenes are gone
+// as of M2.1, so `kind` is just `'chat'`.
 export const AgentEngagement = z.object({
-  kind: z.enum(["chat", "scene"]),
+  kind: z.enum(["chat"]),
   with: z.array(z.union([AgentId, z.literal("visitor")])),
 });
 export type AgentEngagement = z.infer<typeof AgentEngagement>;
@@ -33,14 +34,6 @@ export const AgentStatus = z.object({
   lastTickAt: z.string().nullable(), // ISO 8601
 });
 export type AgentStatus = z.infer<typeof AgentStatus>;
-
-export const ActiveConversation = z.object({
-  id: z.string(),
-  locationId: LocationId,
-  participantIds: z.array(AgentId),
-  startedAt: z.string(),
-});
-export type ActiveConversation = z.infer<typeof ActiveConversation>;
 
 export const Artifact = z.object({
   id: z.string(),
@@ -84,7 +77,6 @@ export type WorldState = z.infer<typeof WorldState>;
 
 export const SnapshotResponse = z.object({
   agents: z.array(AgentStatus),
-  conversations: z.array(ActiveConversation),
   recentEvents: z.array(WorldEvent),
   world: WorldState,
 });
@@ -277,35 +269,20 @@ export const GetChatResponse = z.object({
 });
 export type GetChatResponse = z.infer<typeof GetChatResponse>;
 
-// --- POST /conversations/:id/join  {visitorId} ------------------------------
-// Visitor interjects into a live agent↔agent scene (design doc §3.3a). The
-// scene converts to a group chat with both agents as participants and the
-// scene turns seeded as labeled context. Returns the new session (same shape
-// as CreateChatResponse). On a lost race (another visitor interjected first)
-// or a non-joinable scene, the server responds 409 — the client degrades to
-// listen-in.
-export const JoinConversationRequest = z.object({
-  visitorId: z.string(),
-});
-export type JoinConversationRequest = z.infer<typeof JoinConversationRequest>;
-
-export const JoinConversationResponse = CreateChatResponse;
-export type JoinConversationResponse = z.infer<typeof JoinConversationResponse>;
-
-// --- POST /chats/:id/messages {text}  AND  POST /chats/:id/open -------------
+// --- POST /chats/:id/messages {text} ----------------------------------------
 //
-// Both return the agent's turn as a stream of `ChatStreamFrame`s. `/open`
-// streams the agent-initiated greeting; `/messages` streams the reply to a
-// visitor line.
+// Returns the agent's reply turn as a stream of `ChatStreamFrame`s. There is
+// no greeting endpoint as of M2.1 — the visitor always speaks first (no forced
+// greeting), so the only chat-stream entry point is the visitor line.
 //
-// TRANSPORT — chat streams are POST-SSE (the body carries the visitor's text /
-// the open trigger, and POST-SSE means the standard `EventSource` API, which
-// can only GET, cannot be used). WorldClient consumes them via `fetch` +
-// `ReadableStream` SSE parsing. Each SSE `data:` payload is one serialized
-// `ChatStreamFrame`; the **`type` field is the discriminator** — per-type SSE
-// `event:` names are NOT used on the chat stream (only `GET /events/stream`
-// uses named SSE events). `operatorNote` is server-internal and never appears
-// in the request shape (design doc §5).
+// TRANSPORT — chat streams are POST-SSE (the body carries the visitor's text,
+// and POST-SSE means the standard `EventSource` API, which can only GET, cannot
+// be used). WorldClient consumes them via `fetch` + `ReadableStream` SSE
+// parsing. Each SSE `data:` payload is one serialized `ChatStreamFrame`; the
+// **`type` field is the discriminator** — per-type SSE `event:` names are NOT
+// used on the chat stream (only `GET /events/stream` uses named SSE events).
+// `operatorNote` is server-internal and never appears in the request shape
+// (design doc §5).
 //
 // In a group chat, multiple agents may speak in one stream; every frame where
 // attribution matters carries `agent: AgentId` so the client can route deltas
@@ -362,6 +339,27 @@ export const ChatDone = z.object({
 });
 export type ChatDone = z.infer<typeof ChatDone>;
 
+// Inline narration of a world action the agent took mid-chat ("walks to the
+// cafe") — the agent keeps near-full agency during a chat (can walk, make
+// things) and the frame lets the panel surface it inline. `tool` is the tool
+// name invoked, `detail` the human-readable rendering.
+export const ChatActionFrame = z.object({
+  type: z.literal("action"),
+  agent: AgentId,
+  tool: z.string(),
+  detail: z.string(),
+});
+export type ChatActionFrame = z.infer<typeof ChatActionFrame>;
+
+// The agent ended the chat itself (it has the agency to walk away). `reason`
+// is an optional human-readable rendering for the panel.
+export const ChatEndedFrame = z.object({
+  type: z.literal("chat_ended"),
+  agent: AgentId,
+  reason: z.string().optional(),
+});
+export type ChatEndedFrame = z.infer<typeof ChatEndedFrame>;
+
 // Discriminated union of everything that can arrive on the chat SSE stream.
 export const ChatStreamFrame = z.discriminatedUnion("type", [
   ChatTurnStarted,
@@ -369,5 +367,78 @@ export const ChatStreamFrame = z.discriminatedUnion("type", [
   MemoryRecalledAnnotation,
   SuggestedRepliesAnnotation,
   ChatDone,
+  ChatActionFrame,
+  ChatEndedFrame,
 ]);
 export type ChatStreamFrame = z.infer<typeof ChatStreamFrame>;
+
+// --- GET /chronicle?day=YYYY-MM-DD ------------------------------------------
+// The "Town Chronicle" hub (replaces the feed side panel): a curated, grouped
+// view of a single day's emergent life — room-talk threads, artifacts made,
+// bulletins posted, world effects, and presence beats. Progressive disclosure:
+// the list shows headlines; threads carry their turns inline for expansion.
+
+// One line of emergent room talk inside a Chronicle thread. `to` is the agent
+// it was addressed at (optional — ambient/unaddressed talk has none).
+export const ChronicleTurn = z.object({
+  agent: AgentId,
+  to: AgentId.optional(),
+  text: z.string(),
+  ts: z.string(),
+});
+export type ChronicleTurn = z.infer<typeof ChronicleTurn>;
+
+// A Chronicle entry, discriminated on `kind`:
+//  - thread:   a stretch of room talk among co-located agents (turns inline)
+//  - artifact: something an agent made or updated (reuses ArtifactSummary)
+//  - bulletin: a notice posted to the town board
+//  - effect:   a world effect (phone rang, lamp flickered)
+//  - presence: an agent presence beat (arrived, left, started something)
+export const ChronicleItem = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("thread"),
+    id: z.string(),
+    ts: z.string(),
+    locationId: LocationId,
+    participants: z.array(AgentId),
+    summary: z.string().nullable(),
+    turns: z.array(ChronicleTurn),
+  }),
+  z.object({
+    kind: z.literal("artifact"),
+    id: z.string(),
+    ts: z.string(),
+    action: z.enum(["created", "updated"]),
+    artifact: ArtifactSummary,
+  }),
+  z.object({
+    kind: z.literal("bulletin"),
+    id: z.string(),
+    ts: z.string(),
+    agent: AgentId,
+    title: z.string(),
+    artifactId: z.string(),
+  }),
+  z.object({
+    kind: z.literal("effect"),
+    id: z.string(),
+    ts: z.string(),
+    locationId: LocationId.nullable(),
+    line: z.string(),
+  }),
+  z.object({
+    kind: z.literal("presence"),
+    id: z.string(),
+    ts: z.string(),
+    agent: AgentId,
+    line: z.string(),
+  }),
+]);
+export type ChronicleItem = z.infer<typeof ChronicleItem>;
+
+export const ChronicleResponse = z.object({
+  day: z.string(), // the day rendered (YYYY-MM-DD)
+  days: z.array(z.string()), // available days, desc — powers the day picker
+  items: z.array(ChronicleItem),
+});
+export type ChronicleResponse = z.infer<typeof ChronicleResponse>;

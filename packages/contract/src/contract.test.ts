@@ -13,11 +13,11 @@ import {
   PatchVisitorRequest,
   InteractRequest,
   GetChatResponse,
-  JoinConversationResponse,
   HealthResponse,
   FeedResponse,
   AgentStatus,
   ChatStreamFrame,
+  ChronicleResponse,
 } from "./index.js";
 
 describe("id enums", () => {
@@ -140,9 +140,6 @@ describe("REST shapes round-trip", () => {
           lastTickAt: "2026-06-11T10:00:00.000Z",
         },
       ],
-      conversations: [
-        { id: "c1", locationId: "park", participantIds: ["hobby", "writer"], startedAt: "2026-06-11T09:55:00.000Z" },
-      ],
       recentEvents: [
         {
           id: "evt_7",
@@ -184,6 +181,91 @@ describe("REST shapes round-trip", () => {
     expect(ChatStreamFrame.parse({ type: "done", messageId: "m1", agent: "hobby" }).type).toBe("done");
     // text frames now require an agent for attribution
     expect(() => ChatStreamFrame.parse({ type: "text", text: "hi" })).toThrow();
+    // M2.1: inline action narration mid-chat
+    expect(
+      ChatStreamFrame.parse({
+        type: "action",
+        agent: "builder",
+        tool: "walk",
+        detail: "walks to the cafe",
+      }).type,
+    ).toBe("action");
+    // M2.1: the agent can end the chat itself; reason optional
+    expect(ChatStreamFrame.parse({ type: "chat_ended", agent: "writer" }).type).toBe("chat_ended");
+    expect(
+      ChatStreamFrame.parse({ type: "chat_ended", agent: "writer", reason: "heading off to write" }).type,
+    ).toBe("chat_ended");
+  });
+
+  it("validates a ChronicleResponse with each item kind", () => {
+    const res = ChronicleResponse.parse({
+      day: "2026-06-12",
+      days: ["2026-06-12", "2026-06-11"],
+      items: [
+        {
+          kind: "thread",
+          id: "t1",
+          ts: "2026-06-12T10:00:00.000Z",
+          locationId: "cafe",
+          participants: ["writer", "hobby"],
+          summary: "Riffing on a side project.",
+          turns: [
+            { agent: "writer", to: "hobby", text: "what are you building?", ts: "2026-06-12T10:00:00.000Z" },
+            { agent: "hobby", text: "a tiny synth", ts: "2026-06-12T10:00:05.000Z" },
+          ],
+        },
+        {
+          kind: "artifact",
+          id: "a1",
+          ts: "2026-06-12T11:00:00.000Z",
+          action: "created",
+          artifact: {
+            id: "art1",
+            agentId: "writer",
+            kind: "blog_post",
+            title: "On Continuity",
+            locationId: "cafe",
+            fixture: "press",
+            createdAt: "2026-06-12T11:00:00.000Z",
+            updatedAt: "2026-06-12T11:00:00.000Z",
+            published: true,
+          },
+        },
+        {
+          kind: "bulletin",
+          id: "b1",
+          ts: "2026-06-12T12:00:00.000Z",
+          agent: "career",
+          title: "Open office hours",
+          artifactId: "art2",
+        },
+        {
+          kind: "effect",
+          id: "e1",
+          ts: "2026-06-12T13:00:00.000Z",
+          locationId: "office",
+          line: "The office phone rang.",
+        },
+        {
+          kind: "presence",
+          id: "p1",
+          ts: "2026-06-12T14:00:00.000Z",
+          agent: "researcher",
+          line: "Researcher settled into the library.",
+        },
+      ],
+    });
+    expect(res.day).toBe("2026-06-12");
+    expect(res.days).toEqual(["2026-06-12", "2026-06-11"]);
+    expect(res.items[0].kind).toBe("thread");
+    if (res.items[0].kind === "thread") {
+      expect(res.items[0].turns[0].to).toBe("hobby");
+      expect(res.items[0].turns[1].to).toBeUndefined();
+    }
+    // unknown item kind is rejected
+    expect(() =>
+      ChronicleResponse.parse({ day: "2026-06-12", days: [], items: [{ kind: "rumor", id: "r1", ts: "x" }] }),
+    ).toThrow();
   });
 });
 
@@ -306,7 +388,20 @@ describe("M2 REST shapes round-trip", () => {
         status: "x",
         activity: null,
         busy: true,
-        engagement: { kind: "scene", with: ["nobody"] },
+        engagement: { kind: "chat", with: ["nobody"] },
+        lastTickAt: null,
+      }),
+    ).toThrow();
+    // scenes are gone as of M2.1 — `chat` is the only valid engagement kind
+    expect(() =>
+      AgentStatus.parse({
+        id: "writer",
+        displayName: "Writer Thomas",
+        locationId: "cafe",
+        status: "x",
+        activity: null,
+        busy: true,
+        engagement: { kind: "scene", with: ["researcher"] },
         lastTickAt: null,
       }),
     ).toThrow();
@@ -374,15 +469,6 @@ describe("M2 REST shapes round-trip", () => {
     });
     expect(res.participants).toEqual(["hobby"]);
     expect(res.sessionToken).toBe("stok_1");
-    // JoinConversationResponse shares the shape
-    const joined = JoinConversationResponse.parse({
-      sessionId: "s2",
-      agentId: "writer",
-      visitorId: "v1",
-      participants: ["writer", "hobby"],
-      sessionToken: "stok_2",
-    });
-    expect(joined.participants).toEqual(["writer", "hobby"]);
   });
 
   it("validates a GetChatResponse transcript (visitor + agent senders only)", () => {
