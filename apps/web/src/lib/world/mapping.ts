@@ -41,6 +41,7 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
           npcId: ev.payload.agent,
           message: ev.payload.text,
           audience: 'public',
+          location: ev.payload.location,
         }),
       ];
 

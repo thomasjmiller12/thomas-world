@@ -4,10 +4,10 @@
 /* START OF COMPILED CODE */
 
 /* START-USER-IMPORTS */
-import { CAMERA_ZOOM, INTERACTION_RANGE, SCENE_KEYS } from '@/lib/constants';
+import { CAMERA_ZOOM, SCENE_KEYS } from '@/lib/constants';
 import { Player } from '../entities/Player';
 import { NPC } from '../entities/NPC';
-import { NPC_CONFIGS } from '../data/npc-configs';
+import { NPCManager } from '../systems/NPCManager';
 import { EventBus } from '../EventBus';
 import { DOOR_CONFIGS, type DoorConfig } from '../data/door-configs';
 /* END-USER-IMPORTS */
@@ -265,7 +265,7 @@ export default class Town extends Phaser.Scene {
 	/* START-USER-CODE */
 
 	private player!: Player;
-	private npcs: NPC[] = [];
+	private npcManager!: NPCManager;
 	private nearestNPC: NPC | null = null;
 	private nearestDoor: DoorConfig | null = null;
 	private isTransitioning: boolean = false;
@@ -324,16 +324,9 @@ export default class Town extends Phaser.Scene {
 		this.cameras.main.setBounds(0, 0, this.townMap.widthInPixels, this.townMap.heightInPixels);
 		this.physics.world.setBounds(0, 0, this.townMap.widthInPixels, this.townMap.heightInPixels);
 
-		// Only Hobby Thomas roams the town
-		const hobbyConfig = NPC_CONFIGS.hobby;
-		if (hobbyConfig) {
-			const npc = new NPC(this, hobbyConfig);
-			this.npcs.push(npc);
-			if (collisionLayer) {
-				this.physics.add.collider(npc, collisionLayer);
-			}
-			this.physics.add.collider(this.player, npc);
-		}
+		// Server-authoritative NPC presence: ANY agent whose live location maps to
+		// the town/park region is rendered + animated by the manager (design §6.2).
+		this.npcManager = new NPCManager(this, collisionLayer ?? null, this.player);
 
 		// Door proximity prompts — small arrow above each door
 		for (const door of Object.values(DOOR_CONFIGS)) {
@@ -354,7 +347,7 @@ export default class Town extends Phaser.Scene {
 			if (this.isTransitioning) return;
 
 			if (this.nearestNPC) {
-				this.nearestNPC.facePlayer(this.player.x, this.player.y);
+				this.nearestNPC.enterEngaged(this.player.x, this.player.y);
 				EventBus.emit('npc-interaction', {
 					npcId: this.nearestNPC.npcId,
 					npcName: this.nearestNPC.displayName,
@@ -369,7 +362,7 @@ export default class Town extends Phaser.Scene {
 		};
 		EventBus.on('player-interact', this.onPlayerInteract);
 
-		EventBus.emit('scene-changed', { scene: SCENE_KEYS.TOWN, locationName: "Thomas's Town" });
+		EventBus.emit('scene-changed', { scene: SCENE_KEYS.TOWN, locationName: "Thomas's Town", locationId: 'town' });
 		EventBus.emit('current-scene-ready', this);
 	}
 
@@ -381,6 +374,7 @@ export default class Town extends Phaser.Scene {
 				EventBus.off('player-interact', this.onPlayerInteract);
 				this.onPlayerInteract = undefined;
 			}
+			this.npcManager.destroy();
 			this.scene.start(door.sceneKey, {
 				returnX: this.player.x,
 				returnY: this.player.y,
@@ -394,18 +388,8 @@ export default class Town extends Phaser.Scene {
 
 		this.player.update();
 
-		this.nearestNPC = null;
-		let nearestNpcDist = Infinity;
-
-		for (const npc of this.npcs) {
-			npc.update();
-			npc.checkProximity(this.player.x, this.player.y);
-			const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, npc.x, npc.y);
-			if (dist <= INTERACTION_RANGE && dist < nearestNpcDist) {
-				nearestNpcDist = dist;
-				this.nearestNPC = npc;
-			}
-		}
+		// Manager updates every rendered NPC and returns the nearest interactable.
+		this.nearestNPC = this.npcManager.update();
 
 		this.nearestDoor = null;
 		let nearestDoorDist = Infinity;

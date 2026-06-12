@@ -34,7 +34,9 @@ export interface WorldEvents {
   'npc-thought': { npcId: ThomasId; thought: string };
   // Overheard ambient speech / a scene turn (contract agent.spoke + conversation.turn).
   // `conversationId` present marks it as part of a live agent↔agent scene.
-  'npc-speech': { npcId: ThomasId; message: string; audience: string; conversationId?: string };
+  // `location` is present for ambient speech (used for bubble scoping); scene
+  // turns carry no location on the wire — scope them via the scene's location.
+  'npc-speech': { npcId: ThomasId; message: string; audience: string; conversationId?: string; location?: LocationId };
   // What an agent is currently doing (contract agent.activity).
   'npc-activity': { npcId: ThomasId; activity: string };
   // A set/fixture effect — phone rings, lamp flickers (contract world.effect).

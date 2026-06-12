@@ -1,17 +1,21 @@
 import Phaser from 'phaser';
-import { CAMERA_ZOOM, INTERACTION_RANGE, SCENE_KEYS } from '@/lib/constants';
+import { CAMERA_ZOOM, SCENE_KEYS } from '@/lib/constants';
 import { Player } from '../entities/Player';
 import { NPC } from '../entities/NPC';
-import { NPC_CONFIGS } from '../data/npc-configs';
+import { NPCManager } from '../systems/NPCManager';
 import { EventBus } from '../EventBus';
 import { getDoorByScene, type DoorConfig } from '../data/door-configs';
-import type { ThomasId } from '@/lib/types';
+import { locationForScene } from '../data/location-anchors';
 
 const EXIT_INTERACTION_RANGE = 20;
 
 export interface InteriorState {
   player: Player;
-  npc: NPC;
+  // Server-authoritative dynamic NPC presence (design §6.2) — replaces the old
+  // single resident `npc`. Any agent whose live location maps to this interior
+  // is rendered + animated by the manager.
+  npcManager: NPCManager;
+  nearestNPC: NPC | null;
   returnX: number;
   returnY: number;
   isExiting: boolean;
@@ -40,8 +44,11 @@ export function initInterior(
 export function setupInterior(
   scene: Phaser.Scene,
   tilemap: Phaser.Tilemaps.Tilemap,
-  npcId: string,
-  npcSpawn: { x: number; y: number },
+  // Kept for call-site clarity (which facet "owns" this room) but presence is
+  // now fully server-authoritative via the NPCManager — the resident is spawned
+  // by its live location like any other agent, not hardcoded here.
+  _residentId: string,
+  _residentSpawn: { x: number; y: number },
   locationName: string,
   state: InteriorState
 ) {
@@ -69,15 +76,10 @@ export function setupInterior(
   state.player.visitorName = scene.registry.get('visitorName') || 'Visitor';
   if (collisionLayer) scene.physics.add.collider(state.player, collisionLayer);
 
-  // NPC
-  const npcConfig = NPC_CONFIGS[npcId];
-  state.npc = new NPC(scene, {
-    ...npcConfig,
-    homePosition: npcSpawn,
-    waypoints: [npcSpawn, { x: npcSpawn.x + 40, y: npcSpawn.y }],
-  });
-  if (collisionLayer) scene.physics.add.collider(state.npc, collisionLayer);
-  scene.physics.add.collider(state.player, state.npc);
+  // Dynamic NPC presence — manager renders/animates every agent whose live
+  // location maps to this interior (resident + any visiting agents).
+  state.npcManager = new NPCManager(scene, collisionLayer ?? null, state.player);
+  state.nearestNPC = null;
 
   // Camera
   scene.cameras.main.setRoundPixels(true);
@@ -100,14 +102,14 @@ export function setupInterior(
   state.onPlayerInteract = () => {
     if (state.isExiting) return;
 
-    // NPC interaction takes priority
-    if (state.npc.isPlayerInRange(state.player.x, state.player.y)) {
-      state.npc.facePlayer(state.player.x, state.player.y);
+    // NPC interaction takes priority — nearest agent from the dynamic list.
+    if (state.nearestNPC) {
+      state.nearestNPC.enterEngaged(state.player.x, state.player.y);
       EventBus.emit('npc-interaction', {
-        npcId: npcId as ThomasId,
-        npcName: npcConfig.displayName,
+        npcId: state.nearestNPC.npcId,
+        npcName: state.nearestNPC.displayName,
       });
-      EventBus.emit('chat-opened', { npcId: npcId as ThomasId });
+      EventBus.emit('chat-opened', { npcId: state.nearestNPC.npcId });
       return;
     }
 
@@ -122,14 +124,18 @@ export function setupInterior(
   };
   EventBus.on('player-interact', state.onPlayerInteract);
 
-  EventBus.emit('scene-changed', { scene: scene.scene.key, locationName });
+  EventBus.emit('scene-changed', {
+    scene: scene.scene.key,
+    locationName,
+    locationId: locationForScene(scene.scene.key) ?? undefined,
+  });
   EventBus.emit('current-scene-ready', scene);
 }
 
 export function updateInterior(state: InteriorState) {
   state.player.update();
-  state.npc.update();
-  state.npc.checkProximity(state.player.x, state.player.y);
+  // Manager updates every NPC + returns the nearest interactable.
+  state.nearestNPC = state.npcManager.update();
 
   // Show/hide exit prompt based on proximity
   if (state.exitPrompt && !state.isExiting) {
@@ -138,8 +144,7 @@ export function updateInterior(state: InteriorState) {
       state.door.interior.exitX, state.door.interior.exitY
     );
     const nearExit = dist <= EXIT_INTERACTION_RANGE;
-    const npcInRange = state.npc.isPlayerInRange(state.player.x, state.player.y);
-    state.exitPrompt.setVisible(nearExit && !npcInRange);
+    state.exitPrompt.setVisible(nearExit && !state.nearestNPC);
   }
 }
 
@@ -158,6 +163,7 @@ function handleExit(scene: Phaser.Scene, state: InteriorState) {
       EventBus.off('player-interact', state.onPlayerInteract);
       state.onPlayerInteract = undefined;
     }
+    state.npcManager.destroy();
     scene.scene.start(SCENE_KEYS.TOWN, {
       spawnX: state.returnX,
       spawnY: state.returnY + 16,

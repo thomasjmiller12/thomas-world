@@ -118,6 +118,10 @@ function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick }
   // Live location when known, else the home building as a placeholder.
   const locationKey = live?.locationId ?? config.homeBuilding;
   const location = BUILDING_LABELS[locationKey] || locationKey;
+  // Live-scene indicator: an engaged agent shows "in conversation — <where>"
+  // (minimal wiring; full restyle lands in build step F).
+  const inScene = live?.engagement?.kind === 'scene';
+  const inChat = live?.engagement?.kind === 'chat';
 
   return (
     <button
@@ -150,9 +154,15 @@ function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick }
           </div>
         </div>
       </div>
-      <p className="text-[10px] text-[#c4b5a0]/45 mt-1 leading-snug line-clamp-1 pl-1">
-        {statusLine(live)}
-      </p>
+      {inScene || inChat ? (
+        <p className="text-[10px] text-emerald-300/70 mt-1 leading-snug line-clamp-1 pl-1">
+          &#128172; in conversation — {location}
+        </p>
+      ) : (
+        <p className="text-[10px] text-[#c4b5a0]/45 mt-1 leading-snug line-clamp-1 pl-1">
+          {statusLine(live)}
+        </p>
+      )}
     </button>
   );
 }
