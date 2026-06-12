@@ -125,6 +125,7 @@ result, never a crash) and the degradation is logged once at boot. The `features
 | `LANGFUSE_SECRET_KEY` + `LANGFUSE_PUBLIC_KEY` | no | — | **feature: langfuse**. Real OTel tracing via `@langfuse/otel` (trace = tick, `userId` = agent, `sessionId` = day, `soulGitHash` in metadata). Absent → tracing is a strict no-op; everything else identical. `LANGFUSE_BASE_URL` selects the region (default `https://us.cloud.langfuse.com`). |
 | `RESEND_API_KEY` | no | — | **feature: resend**. Outbound email (`email_thomas`). Absent → email is queued to an outbox row and reported queued-not-sent in-fiction. |
 | `VAULT_DIR` | no | — | **feature: vault**. Absolute path to the synced Obsidian clone. Absent → reference tools degrade in-fiction; `write_agent_note` writes to a local `vault-pending/` dir so nothing is lost. Sync also uses `VAULT_REPO_URL` + `VAULT_DEPLOY_KEY_PATH`. |
+| `GITHUB_TOKEN` | no | — | **feature: github**. A **fine-grained, read-only** PAT on Thomas's GitHub account (permissions: Contents → Read-only, Metadata → Read-only; repository access: all repos or a chosen set). Turns on the code-repo reference tools (`list_repos`, `browse_repo`, `read_repo_file`, `search_code`) — read-only, never gated to a place. Absent → those tools degrade in-fiction. `GITHUB_USER` (default `thomasjmiller12`) scopes listing/search to the account. |
 
 ### Integrations (verified live)
 
