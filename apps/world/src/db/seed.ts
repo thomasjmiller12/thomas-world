@@ -74,10 +74,16 @@ const LOCATIONS = [
     id: "park",
     name: "The Park",
     description:
-      "Grass, trees, and — for reasons no one questions — a slightly ridiculous painted sign where fun lists and bits get pinned up.",
+      "Grass, trees, and — for reasons no one questions — a slightly ridiculous painted sign where fun lists and bits get pinned up. A red telephone box stands by the pavement at the south edge.",
     fixtures: [
       { id: "the dumb sign", kind: "artifact_shelf", note: "Fun lists / bits get pinned here. Hobby insisted." },
       { id: "bench", kind: "decoration" },
+      {
+        id: "payphone",
+        kind: "device",
+        note: "The park's red telephone box. Ring it and whoever's in the park — agent or visitor — hears it. (A visitor answering takes a while to reach you: their reply arrives as a world event, not instantly.)",
+        actions: ["ring"],
+      },
     ],
     adjacency: ["town"],
   },

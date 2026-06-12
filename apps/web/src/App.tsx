@@ -204,8 +204,13 @@ function App({ visitorName }: AppProps) {
       if (data.sleeping) dream.start();
       else dream.stop();
     };
+    // A clicked fixture (e.g. the park payphone) → POST /visitors/:id/interact.
+    const onVisitorInteract = (data: { locationId: LocationId; fixture: string }) => {
+      world.interact(data.locationId, data.fixture);
+    };
 
     EventBus.on('current-scene-ready', onSceneReady);
+    EventBus.on('visitor-interact', onVisitorInteract);
     EventBus.on('npc-interaction', onNpcInteraction);
     EventBus.on('scene-changed', onSceneChanged);
     EventBus.on('npc-thought', onNpcThought);
@@ -235,6 +240,7 @@ function App({ visitorName }: AppProps) {
       EventBus.off('npc-proximity-exit', onProximityExit);
       EventBus.off('world-state', onWorldState);
       EventBus.off('world-sleeping', onWorldSleeping);
+      EventBus.off('visitor-interact', onVisitorInteract);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

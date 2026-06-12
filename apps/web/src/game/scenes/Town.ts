@@ -12,6 +12,7 @@ import { EventBus } from '../EventBus';
 import { DOOR_CONFIGS, type DoorConfig } from '../data/door-configs';
 import { resolveTravel } from '../data/travel';
 import { placeTownObject } from '../objects/TownObjects';
+import { FixtureRegistry } from '../objects/Fixtures';
 import type { LocationId } from '@town/contract';
 /* END-USER-IMPORTS */
 
@@ -269,6 +270,7 @@ export default class Town extends Phaser.Scene {
 
 	private player!: Player;
 	private npcManager!: NPCManager;
+	private fixtures!: FixtureRegistry;
 	private nearestNPC: NPC | null = null;
 	private nearestDoor: DoorConfig | null = null;
 	private isTransitioning: boolean = false;
@@ -334,18 +336,24 @@ export default class Town extends Phaser.Scene {
 		// the town/park region is rendered + animated by the manager (design §6.2).
 		this.npcManager = new NPCManager(this, collisionLayer ?? null, this.player);
 
-		// First drop-in from the named LimeZu object library (apps/web/public/assets/
-		// objects): a red telephone box tucked into the empty bottom-right pavement
-		// — the prop Hobby's future "make the phone ring" bit needs. Placed by NAME,
-		// not by tile GID — the whole point of the object library. Collides at its
-		// base (footprint) so the player can't walk through it; depth above the
-		// player (16) since here the player only ever approaches from above, so the
-		// booth reads as a backdrop it stands behind.
-		placeTownObject(this, 'red-telephone-box', 586, 436, {
+		// Fixture embodiment (translation-layer Step 2): world fixtures the agents
+		// can use_fixture map onto real placed objects, so effects play on screen.
+		this.fixtures = new FixtureRegistry(this);
+
+		// From the named LimeZu object library (apps/web/public/assets/objects): a
+		// red telephone box tucked into the empty bottom-right pavement — the prop
+		// for Hobby's "make the phone ring" bit. Placed by NAME, not by tile GID —
+		// the whole point of the object library. Collides at its base (footprint)
+		// so the player can't walk through it; depth above the player (16) since
+		// here the player only ever approaches from above, so the booth reads as a
+		// backdrop it stands behind. Clickable: answering it round-trips to the
+		// world (visitor.interacted → Hobby's next perception or live chat).
+		const payphone = placeTownObject(this, 'red-telephone-box', 586, 436, {
 			depth: 20,
 			collideWith: this.player,
 			footprintTiles: 1,
 		});
+		if (payphone) this.fixtures.register('park', 'payphone', payphone, { interactive: true });
 
 		// Door proximity prompts — small arrow above each door
 		for (const door of Object.values(DOOR_CONFIGS)) {

@@ -107,6 +107,12 @@ export interface WorldEvents {
   // A tap on the world canvas: walk the player toward a world point in a
   // straight line, stopping on collision (Phaser pointer → player target).
   'tap-move': { worldX: number; worldY: number };
+
+  // --- visitor fixture interaction (canvas → WorldClient) ------------------
+  // The visitor clicked an interactive fixture (e.g. the park payphone).
+  // WorldClient POSTs /visitors/:id/interact; the world routes it to a live
+  // chat session or the next tick's perception.
+  'visitor-interact': { locationId: LocationId; fixture: string };
 }
 
 export type WorldEventName = keyof WorldEvents;

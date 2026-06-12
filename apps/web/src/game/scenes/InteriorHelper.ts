@@ -7,6 +7,7 @@ import { EventBus } from '../EventBus';
 import { getDoorByScene, type DoorConfig } from '../data/door-configs';
 import { locationForScene, locationInScene, LOCATION_ANCHORS } from '../data/location-anchors';
 import { resolveTravel } from '../data/travel';
+import { FixtureRegistry, INTERIOR_FIXTURE_POINTS } from '../objects/Fixtures';
 import type { LocationId } from '@town/contract';
 
 const EXIT_INTERACTION_RANGE = 20;
@@ -84,6 +85,16 @@ export function setupInterior(
   // location maps to this interior (resident + any visiting agents).
   state.npcManager = new NPCManager(scene, collisionLayer ?? null, state.player);
   state.nearestNPC = null;
+
+  // Fixture embodiment: world.effect frames for this room play at the
+  // registered points (so `use_fixture` is visible even before real props).
+  const locationId = locationForScene(scene.scene.key);
+  if (locationId) {
+    const registry = new FixtureRegistry(scene);
+    for (const [fixtureId, point] of Object.entries(INTERIOR_FIXTURE_POINTS[locationId] ?? {})) {
+      registry.register(locationId, fixtureId, point);
+    }
+  }
 
   // Camera
   scene.cameras.main.setRoundPixels(true);
