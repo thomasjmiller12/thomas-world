@@ -8,6 +8,7 @@ import { ThoughtBubble } from './components/ThoughtBubble';
 import { SpeechBubble } from './components/SpeechBubble';
 import { ChatSession } from './components/chat/ChatSession';
 import { HUD } from './components/HUD';
+import { WelcomeCard } from './components/WelcomeCard';
 import { SleepOverlay } from './components/SleepOverlay';
 import { ChroniclePanel } from './components/chronicle/ChroniclePanel';
 import { useViewport } from './lib/useViewport';
@@ -273,6 +274,9 @@ function App({ visitorName }: AppProps) {
             chronicleOpen={chronicle != null}
             touch={viewport.touch}
           />
+
+          {/* One-time premise framing for first-time visitors. */}
+          <WelcomeCard touch={viewport.touch} />
 
           {thoughtBubbles.map(bubble => (
             <ThoughtBubble
