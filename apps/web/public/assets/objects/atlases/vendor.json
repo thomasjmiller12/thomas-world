@@ -1,0 +1,293 @@
+{
+  "frames": {
+    "billboard-blue-diagonal": {
+      "frame": {
+        "x": 94,
+        "y": 193,
+        "w": 11,
+        "h": 19
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 19
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 19
+      }
+    },
+    "ice-cream-swirl-tower-top": {
+      "frame": {
+        "x": 516,
+        "y": 0,
+        "w": 32,
+        "h": 80
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 80
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 80
+      }
+    },
+    "ice-cream-swirl-tower-full": {
+      "frame": {
+        "x": 78,
+        "y": 0,
+        "w": 125,
+        "h": 188
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 125,
+        "h": 188
+      },
+      "sourceSize": {
+        "w": 125,
+        "h": 188
+      }
+    },
+    "ice-cream-swirl-tower-cherry": {
+      "frame": {
+        "x": 333,
+        "y": 0,
+        "w": 107,
+        "h": 124
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 107,
+        "h": 124
+      },
+      "sourceSize": {
+        "w": 107,
+        "h": 124
+      }
+    },
+    "sale-billboard-small-standing": {
+      "frame": {
+        "x": 549,
+        "y": 0,
+        "w": 47,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 47,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 47,
+        "h": 64
+      }
+    },
+    "car-dealership-billboard-large": {
+      "frame": {
+        "x": 106,
+        "y": 193,
+        "w": 26,
+        "h": 11
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 11
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 11
+      }
+    },
+    "hungry-ad-billboard-large": {
+      "frame": {
+        "x": 803,
+        "y": 0,
+        "w": 42,
+        "h": 63
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 63
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 63
+      }
+    },
+    "hungry-ad-billboard-small": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 77,
+        "h": 192
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 77,
+        "h": 192
+      },
+      "sourceSize": {
+        "w": 77,
+        "h": 192
+      }
+    },
+    "large-billboard-sign": {
+      "frame": {
+        "x": 441,
+        "y": 0,
+        "w": 74,
+        "h": 91
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 74,
+        "h": 91
+      },
+      "sourceSize": {
+        "w": 74,
+        "h": 91
+      }
+    },
+    "vendor-stall-awning-brown-open": {
+      "frame": {
+        "x": 846,
+        "y": 0,
+        "w": 93,
+        "h": 63
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 93,
+        "h": 63
+      },
+      "sourceSize": {
+        "w": 93,
+        "h": 63
+      }
+    },
+    "vendor-stall-awning-brown-closed": {
+      "frame": {
+        "x": 597,
+        "y": 0,
+        "w": 102,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 102,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 102,
+        "h": 64
+      }
+    },
+    "vendor-stall-awning-brown-front": {
+      "frame": {
+        "x": 204,
+        "y": 0,
+        "w": 128,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 128,
+        "h": 128
+      }
+    },
+    "vendor-stall-awning-open-front": {
+      "frame": {
+        "x": 0,
+        "y": 193,
+        "w": 93,
+        "h": 63
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 93,
+        "h": 63
+      },
+      "sourceSize": {
+        "w": 93,
+        "h": 63
+      }
+    },
+    "vendor-stall-awning-closed-front": {
+      "frame": {
+        "x": 700,
+        "y": 0,
+        "w": 102,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 102,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 102,
+        "h": 64
+      }
+    }
+  },
+  "meta": {
+    "image": "vendor.png",
+    "size": {
+      "w": 940,
+      "h": 257
+    },
+    "scale": 1,
+    "app": "thomas-town/pack_atlas.py"
+  }
+}

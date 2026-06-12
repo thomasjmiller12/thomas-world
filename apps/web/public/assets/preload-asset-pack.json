@@ -1,172 +1,225 @@
 {
-    "preload": {
-        "files": [
-            {
-                "url": "assets/tilesets/exterior/1_Terrains_and_Fences_16x16.png",
-                "type": "image",
-                "key": "1_Terrains_and_Fences_16x16"
-            },
-            {
-                "url": "assets/tilesets/exterior/2_City_Terrains_16x16.png",
-                "type": "image",
-                "key": "2_City_Terrains_16x16"
-            },
-            {
-                "url": "assets/tilesets/exterior/3_City_Props_16x16.png",
-                "type": "image",
-                "key": "3_City_Props_16x16"
-            },
-            {
-                "url": "assets/tilesets/exterior/4_Generic_Buildings_16x16.png",
-                "type": "image",
-                "key": "4_Generic_Buildings_16x16"
-            },
-            {
-                "url": "assets/tilesets/exterior/5_Floor_Modular_Buildings_16x16.png",
-                "type": "image",
-                "key": "5_Floor_Modular_Buildings_16x16"
-            },
-            {
-                "url": "assets/tilesets/exterior/9_Shopping_Center_and_Markets_16x16.png",
-                "type": "image",
-                "key": "9_Shopping_Center_and_Markets_16x16"
-            },
-            {
-                "url": "assets/tilesets/exterior/11_Camping_16x16.png",
-                "type": "image",
-                "key": "11_Camping_16x16"
-            },
-            {
-                "url": "assets/tilesets/exterior/16_Office_16x16.png",
-                "type": "image",
-                "key": "16_Office_16x16"
-            },
-            {
-                "url": "assets/tilesets/interior/Room_Builder_Walls_16x16.png",
-                "type": "image",
-                "key": "Room_Builder_Walls_16x16"
-            },
-            {
-                "url": "assets/tilesets/interior/Room_Builder_Floors_16x16.png",
-                "type": "image",
-                "key": "Room_Builder_Floors_16x16"
-            },
-            {
-                "url": "assets/tilesets/interior/Room_Builder_borders_16x16.png",
-                "type": "image",
-                "key": "Room_Builder_borders_16x16"
-            },
-            {
-                "url": "assets/tilesets/interior/1_Generic_Black_Shadow_16x16.png",
-                "type": "image",
-                "key": "1_Generic_Black_Shadow_16x16"
-            },
-            {
-                "url": "assets/tilesets/interior/2_LivingRoom_Black_Shadow_16x16.png",
-                "type": "image",
-                "key": "2_LivingRoom_Black_Shadow_16x16"
-            },
-            {
-                "url": "assets/tilesets/interior/5_Classroom_and_library_Black_Shadow_16x16.png",
-                "type": "image",
-                "key": "5_Classroom_and_library_Black_Shadow_16x16"
-            },
-            {
-                "url": "assets/tilesets/interior/7_Art_Black_Shadow_16x16.png",
-                "type": "image",
-                "key": "7_Art_Black_Shadow_16x16"
-            },
-            {
-                "url": "assets/tilesets/interior/12_Kitchen_Black_Shadow_16x16.png",
-                "type": "image",
-                "key": "12_Kitchen_Black_Shadow_16x16"
-            },
-            {
-                "url": "assets/tilesets/interior/16_Grocery_store_Black_Shadow_16x16.png",
-                "type": "image",
-                "key": "16_Grocery_store_Black_Shadow_16x16"
-            },
-            {
-                "url": "assets/tilesets/interior/19_Hospital_Black_Shadow_16x16.png",
-                "type": "image",
-                "key": "19_Hospital_Black_Shadow_16x16"
-            },
-            {
-                "url": "assets/tilesets/interior/22_Museum_Black_Shadow_16x16.png",
-                "type": "image",
-                "key": "22_Museum_Black_Shadow_16x16"
-            },
-            {
-                "url": "assets/tilesets/interior/Modern_Office_Black_Shadow_16x16.png",
-                "type": "image",
-                "key": "Modern_Office_Black_Shadow_16x16"
-            },
-            {
-                "url": "assets/tilesets/collisions_objects.png",
-                "type": "image",
-                "key": "collisions_objects"
-            },
-            {
-                "url": "assets/sprites/player.png",
-                "type": "spritesheet",
-                "key": "player",
-                "frameConfig": {
-                    "frameWidth": 16,
-                    "frameHeight": 24
-                }
-            },
-            {
-                "url": "assets/sprites/thomas-career.png",
-                "type": "spritesheet",
-                "key": "thomas-career",
-                "frameConfig": {
-                    "frameWidth": 16,
-                    "frameHeight": 24
-                }
-            },
-            {
-                "url": "assets/sprites/thomas-researcher.png",
-                "type": "spritesheet",
-                "key": "thomas-researcher",
-                "frameConfig": {
-                    "frameWidth": 16,
-                    "frameHeight": 24
-                }
-            },
-            {
-                "url": "assets/sprites/thomas-builder.png",
-                "type": "spritesheet",
-                "key": "thomas-builder",
-                "frameConfig": {
-                    "frameWidth": 16,
-                    "frameHeight": 24
-                }
-            },
-            {
-                "url": "assets/sprites/thomas-writer.png",
-                "type": "spritesheet",
-                "key": "thomas-writer",
-                "frameConfig": {
-                    "frameWidth": 16,
-                    "frameHeight": 24
-                }
-            },
-            {
-                "url": "assets/sprites/thomas-hobby.png",
-                "type": "spritesheet",
-                "key": "thomas-hobby",
-                "frameConfig": {
-                    "frameWidth": 16,
-                    "frameHeight": 24
-                }
-            }
-        ]
-    },
-    "meta": {
-        "app": "Phaser Editor 2D - Asset Pack Editor",
-        "contentType": "phasereditor2d.pack.core.AssetContentType",
-        "url": "https://phaser.io/editor",
-        "version": 2,
-        "showAllFilesInBlocks": false
-    }
+  "preload": {
+    "files": [
+      {
+        "url": "assets/tilesets/exterior/1_Terrains_and_Fences_16x16.png",
+        "type": "image",
+        "key": "1_Terrains_and_Fences_16x16"
+      },
+      {
+        "url": "assets/tilesets/exterior/2_City_Terrains_16x16.png",
+        "type": "image",
+        "key": "2_City_Terrains_16x16"
+      },
+      {
+        "url": "assets/tilesets/exterior/3_City_Props_16x16.png",
+        "type": "image",
+        "key": "3_City_Props_16x16"
+      },
+      {
+        "url": "assets/tilesets/exterior/4_Generic_Buildings_16x16.png",
+        "type": "image",
+        "key": "4_Generic_Buildings_16x16"
+      },
+      {
+        "url": "assets/tilesets/exterior/5_Floor_Modular_Buildings_16x16.png",
+        "type": "image",
+        "key": "5_Floor_Modular_Buildings_16x16"
+      },
+      {
+        "url": "assets/tilesets/exterior/9_Shopping_Center_and_Markets_16x16.png",
+        "type": "image",
+        "key": "9_Shopping_Center_and_Markets_16x16"
+      },
+      {
+        "url": "assets/tilesets/exterior/11_Camping_16x16.png",
+        "type": "image",
+        "key": "11_Camping_16x16"
+      },
+      {
+        "url": "assets/tilesets/exterior/16_Office_16x16.png",
+        "type": "image",
+        "key": "16_Office_16x16"
+      },
+      {
+        "url": "assets/tilesets/interior/Room_Builder_Walls_16x16.png",
+        "type": "image",
+        "key": "Room_Builder_Walls_16x16"
+      },
+      {
+        "url": "assets/tilesets/interior/Room_Builder_Floors_16x16.png",
+        "type": "image",
+        "key": "Room_Builder_Floors_16x16"
+      },
+      {
+        "url": "assets/tilesets/interior/Room_Builder_borders_16x16.png",
+        "type": "image",
+        "key": "Room_Builder_borders_16x16"
+      },
+      {
+        "url": "assets/tilesets/interior/1_Generic_Black_Shadow_16x16.png",
+        "type": "image",
+        "key": "1_Generic_Black_Shadow_16x16"
+      },
+      {
+        "url": "assets/tilesets/interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "type": "image",
+        "key": "2_LivingRoom_Black_Shadow_16x16"
+      },
+      {
+        "url": "assets/tilesets/interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "type": "image",
+        "key": "5_Classroom_and_library_Black_Shadow_16x16"
+      },
+      {
+        "url": "assets/tilesets/interior/7_Art_Black_Shadow_16x16.png",
+        "type": "image",
+        "key": "7_Art_Black_Shadow_16x16"
+      },
+      {
+        "url": "assets/tilesets/interior/12_Kitchen_Black_Shadow_16x16.png",
+        "type": "image",
+        "key": "12_Kitchen_Black_Shadow_16x16"
+      },
+      {
+        "url": "assets/tilesets/interior/16_Grocery_store_Black_Shadow_16x16.png",
+        "type": "image",
+        "key": "16_Grocery_store_Black_Shadow_16x16"
+      },
+      {
+        "url": "assets/tilesets/interior/19_Hospital_Black_Shadow_16x16.png",
+        "type": "image",
+        "key": "19_Hospital_Black_Shadow_16x16"
+      },
+      {
+        "url": "assets/tilesets/interior/22_Museum_Black_Shadow_16x16.png",
+        "type": "image",
+        "key": "22_Museum_Black_Shadow_16x16"
+      },
+      {
+        "url": "assets/tilesets/interior/Modern_Office_Black_Shadow_16x16.png",
+        "type": "image",
+        "key": "Modern_Office_Black_Shadow_16x16"
+      },
+      {
+        "url": "assets/tilesets/collisions_objects.png",
+        "type": "image",
+        "key": "collisions_objects"
+      },
+      {
+        "url": "assets/sprites/player.png",
+        "type": "spritesheet",
+        "key": "player",
+        "frameConfig": {
+          "frameWidth": 16,
+          "frameHeight": 24
+        }
+      },
+      {
+        "url": "assets/sprites/thomas-career.png",
+        "type": "spritesheet",
+        "key": "thomas-career",
+        "frameConfig": {
+          "frameWidth": 16,
+          "frameHeight": 24
+        }
+      },
+      {
+        "url": "assets/sprites/thomas-researcher.png",
+        "type": "spritesheet",
+        "key": "thomas-researcher",
+        "frameConfig": {
+          "frameWidth": 16,
+          "frameHeight": 24
+        }
+      },
+      {
+        "url": "assets/sprites/thomas-builder.png",
+        "type": "spritesheet",
+        "key": "thomas-builder",
+        "frameConfig": {
+          "frameWidth": 16,
+          "frameHeight": 24
+        }
+      },
+      {
+        "url": "assets/sprites/thomas-writer.png",
+        "type": "spritesheet",
+        "key": "thomas-writer",
+        "frameConfig": {
+          "frameWidth": 16,
+          "frameHeight": 24
+        }
+      },
+      {
+        "url": "assets/sprites/thomas-hobby.png",
+        "type": "spritesheet",
+        "key": "thomas-hobby",
+        "frameConfig": {
+          "frameWidth": 16,
+          "frameHeight": 24
+        }
+      },
+      {
+        "type": "atlas",
+        "key": "obj-decor",
+        "textureURL": "assets/objects/atlases/decor.png",
+        "atlasURL": "assets/objects/atlases/decor.json"
+      },
+      {
+        "type": "atlas",
+        "key": "obj-fence",
+        "textureURL": "assets/objects/atlases/fence.png",
+        "atlasURL": "assets/objects/atlases/fence.json"
+      },
+      {
+        "type": "atlas",
+        "key": "obj-furniture",
+        "textureURL": "assets/objects/atlases/furniture.png",
+        "atlasURL": "assets/objects/atlases/furniture.json"
+      },
+      {
+        "type": "atlas",
+        "key": "obj-lighting",
+        "textureURL": "assets/objects/atlases/lighting.png",
+        "atlasURL": "assets/objects/atlases/lighting.json"
+      },
+      {
+        "type": "atlas",
+        "key": "obj-misc",
+        "textureURL": "assets/objects/atlases/misc.png",
+        "atlasURL": "assets/objects/atlases/misc.json"
+      },
+      {
+        "type": "atlas",
+        "key": "obj-nature",
+        "textureURL": "assets/objects/atlases/nature.png",
+        "atlasURL": "assets/objects/atlases/nature.json"
+      },
+      {
+        "type": "atlas",
+        "key": "obj-street",
+        "textureURL": "assets/objects/atlases/street.png",
+        "atlasURL": "assets/objects/atlases/street.json"
+      },
+      {
+        "type": "atlas",
+        "key": "obj-vendor",
+        "textureURL": "assets/objects/atlases/vendor.png",
+        "atlasURL": "assets/objects/atlases/vendor.json"
+      },
+      {
+        "type": "json",
+        "key": "town-objects",
+        "url": "assets/objects/library.json"
+      }
+    ]
+  },
+  "meta": {
+    "app": "Phaser Editor 2D - Asset Pack Editor",
+    "contentType": "phasereditor2d.pack.core.AssetContentType",
+    "url": "https://phaser.io/editor",
+    "version": 2,
+    "showAllFilesInBlocks": false
+  }
 }

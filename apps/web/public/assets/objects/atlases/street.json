@@ -1,0 +1,1733 @@
+{
+  "frames": {
+    "hanging-sign-bracket-left": {
+      "frame": {
+        "x": 0,
+        "y": 121,
+        "w": 20,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 22
+      }
+    },
+    "hanging-sign-blue-cross": {
+      "frame": {
+        "x": 21,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "hanging-sign-blue-cross-lit": {
+      "frame": {
+        "x": 35,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "hanging-sign-blank-small": {
+      "frame": {
+        "x": 49,
+        "y": 121,
+        "w": 12,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 22
+      }
+    },
+    "hanging-sign-blank-large": {
+      "frame": {
+        "x": 62,
+        "y": 121,
+        "w": 12,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 22
+      }
+    },
+    "wall-sign-blank": {
+      "frame": {
+        "x": 75,
+        "y": 121,
+        "w": 12,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 22
+      }
+    },
+    "hanging-sign-red-cross": {
+      "frame": {
+        "x": 88,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "hanging-sign-red-cross-large": {
+      "frame": {
+        "x": 102,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "wall-sign-red-cross-mounted": {
+      "frame": {
+        "x": 116,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "wall-sign-red-cross-angled": {
+      "frame": {
+        "x": 130,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "hanging-sign-orange-dim": {
+      "frame": {
+        "x": 370,
+        "y": 121,
+        "w": 19,
+        "h": 17
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 17
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 17
+      }
+    },
+    "hanging-sign-green-dim": {
+      "frame": {
+        "x": 390,
+        "y": 121,
+        "w": 19,
+        "h": 17
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 17
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 17
+      }
+    },
+    "wanted-poster-single-silhouette": {
+      "frame": {
+        "x": 707,
+        "y": 121,
+        "w": 10,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 10,
+        "h": 13
+      }
+    },
+    "prohibition-sign-board": {
+      "frame": {
+        "x": 729,
+        "y": 121,
+        "w": 9,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 9,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 9,
+        "h": 12
+      }
+    },
+    "wanted-poster-single-framed": {
+      "frame": {
+        "x": 718,
+        "y": 121,
+        "w": 10,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 10,
+        "h": 13
+      }
+    },
+    "roman-numeral-sign-board": {
+      "frame": {
+        "x": 739,
+        "y": 121,
+        "w": 9,
+        "h": 11
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 9,
+        "h": 11
+      },
+      "sourceSize": {
+        "w": 9,
+        "h": 11
+      }
+    },
+    "heart-ad-board-blue": {
+      "frame": {
+        "x": 940,
+        "y": 0,
+        "w": 21,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 21,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 21,
+        "h": 26
+      }
+    },
+    "heart-ad-sign-round-blue": {
+      "frame": {
+        "x": 962,
+        "y": 0,
+        "w": 19,
+        "h": 25
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 25
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 25
+      }
+    },
+    "heart-ad-sign-round-red": {
+      "frame": {
+        "x": 982,
+        "y": 0,
+        "w": 19,
+        "h": 25
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 25
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 25
+      }
+    },
+    "antenna-pole-tall": {
+      "frame": {
+        "x": 288,
+        "y": 0,
+        "w": 31,
+        "h": 78
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 31,
+        "h": 78
+      },
+      "sourceSize": {
+        "w": 31,
+        "h": 78
+      }
+    },
+    "satellite-dish-small": {
+      "frame": {
+        "x": 493,
+        "y": 0,
+        "w": 36,
+        "h": 57
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 57
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 57
+      }
+    },
+    "concrete-block-small": {
+      "frame": {
+        "x": 734,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 32
+      }
+    },
+    "road-sign-single-warning": {
+      "frame": {
+        "x": 362,
+        "y": 0,
+        "w": 20,
+        "h": 59
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 59
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 59
+      }
+    },
+    "road-sign-post-warning": {
+      "frame": {
+        "x": 383,
+        "y": 0,
+        "w": 27,
+        "h": 59
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 59
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 59
+      }
+    },
+    "road-sign-warning-angled": {
+      "frame": {
+        "x": 411,
+        "y": 0,
+        "w": 22,
+        "h": 59
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 59
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 59
+      }
+    },
+    "security-cctv-post": {
+      "frame": {
+        "x": 695,
+        "y": 0,
+        "w": 21,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 21,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 21,
+        "h": 40
+      }
+    },
+    "road-sign-post-blue-circle": {
+      "frame": {
+        "x": 434,
+        "y": 0,
+        "w": 29,
+        "h": 59
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 29,
+        "h": 59
+      },
+      "sourceSize": {
+        "w": 29,
+        "h": 59
+      }
+    },
+    "road-sign-post-blue-arrow": {
+      "frame": {
+        "x": 464,
+        "y": 0,
+        "w": 28,
+        "h": 59
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 59
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 59
+      }
+    },
+    "road-sign-electric-hazard": {
+      "frame": {
+        "x": 585,
+        "y": 0,
+        "w": 31,
+        "h": 43
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 31,
+        "h": 43
+      },
+      "sourceSize": {
+        "w": 31,
+        "h": 43
+      }
+    },
+    "security-bollard-camera": {
+      "frame": {
+        "x": 617,
+        "y": 0,
+        "w": 21,
+        "h": 43
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 21,
+        "h": 43
+      },
+      "sourceSize": {
+        "w": 21,
+        "h": 43
+      }
+    },
+    "road-sign-information-post": {
+      "frame": {
+        "x": 916,
+        "y": 0,
+        "w": 12,
+        "h": 27
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 27
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 27
+      }
+    },
+    "road-sign-rectangle-grey": {
+      "frame": {
+        "x": 929,
+        "y": 0,
+        "w": 10,
+        "h": 27
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 27
+      },
+      "sourceSize": {
+        "w": 10,
+        "h": 27
+      }
+    },
+    "road-sign-green-stripe-post": {
+      "frame": {
+        "x": 639,
+        "y": 0,
+        "w": 20,
+        "h": 42
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 42
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 42
+      }
+    },
+    "road-sign-green-diagonal-post": {
+      "frame": {
+        "x": 660,
+        "y": 0,
+        "w": 20,
+        "h": 42
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 42
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 42
+      }
+    },
+    "tall-signpost-bare": {
+      "frame": {
+        "x": 530,
+        "y": 0,
+        "w": 6,
+        "h": 49
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 49
+      },
+      "sourceSize": {
+        "w": 6,
+        "h": 49
+      }
+    },
+    "road-sign-blue-banner-post": {
+      "frame": {
+        "x": 877,
+        "y": 0,
+        "w": 38,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 28
+      }
+    },
+    "tall-antenna-post": {
+      "frame": {
+        "x": 537,
+        "y": 0,
+        "w": 6,
+        "h": 49
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 49
+      },
+      "sourceSize": {
+        "w": 6,
+        "h": 49
+      }
+    },
+    "road-sign-green-arrow-large": {
+      "frame": {
+        "x": 358,
+        "y": 121,
+        "w": 11,
+        "h": 19
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 19
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 19
+      }
+    },
+    "road-sign-blue-horizontal-bar": {
+      "frame": {
+        "x": 450,
+        "y": 121,
+        "w": 48,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 16
+      }
+    },
+    "road-sign-pole-green": {
+      "frame": {
+        "x": 499,
+        "y": 121,
+        "w": 38,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 16
+      }
+    },
+    "red-telephone-box": {
+      "frame": {
+        "x": 320,
+        "y": 0,
+        "w": 41,
+        "h": 76
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 41,
+        "h": 76
+      },
+      "sourceSize": {
+        "w": 41,
+        "h": 76
+      }
+    },
+    "road-sign-pole-angled-green": {
+      "frame": {
+        "x": 807,
+        "y": 0,
+        "w": 38,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 30
+      }
+    },
+    "road-sign-stack-pole": {
+      "frame": {
+        "x": 717,
+        "y": 0,
+        "w": 16,
+        "h": 39
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 39
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 39
+      }
+    },
+    "horizontal-green-road-sign": {
+      "frame": {
+        "x": 749,
+        "y": 121,
+        "w": 48,
+        "h": 11
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 11
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 11
+      }
+    },
+    "small-road-sign-pole": {
+      "frame": {
+        "x": 656,
+        "y": 121,
+        "w": 38,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 14
+      }
+    },
+    "cctv-pole-camera": {
+      "frame": {
+        "x": 681,
+        "y": 0,
+        "w": 13,
+        "h": 42
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 42
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 42
+      }
+    },
+    "red-telephone-box-small": {
+      "frame": {
+        "x": 29,
+        "y": 0,
+        "w": 44,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 108
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 108
+      }
+    },
+    "road-sign-gantry-directional": {
+      "frame": {
+        "x": 74,
+        "y": 0,
+        "w": 110,
+        "h": 102
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 110,
+        "h": 102
+      },
+      "sourceSize": {
+        "w": 110,
+        "h": 102
+      }
+    },
+    "construction-sign-medical": {
+      "frame": {
+        "x": 695,
+        "y": 121,
+        "w": 11,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 14
+      }
+    },
+    "road-warning-sign-triangle": {
+      "frame": {
+        "x": 846,
+        "y": 0,
+        "w": 30,
+        "h": 29
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 29
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 29
+      }
+    },
+    "industrial-signal-post": {
+      "frame": {
+        "x": 260,
+        "y": 0,
+        "w": 18,
+        "h": 88
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 18,
+        "h": 88
+      },
+      "sourceSize": {
+        "w": 18,
+        "h": 88
+      }
+    },
+    "road-construction-cone-barrel": {
+      "frame": {
+        "x": 751,
+        "y": 0,
+        "w": 7,
+        "h": 31
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 7,
+        "h": 31
+      },
+      "sourceSize": {
+        "w": 7,
+        "h": 31
+      }
+    },
+    "industrial-meter-post": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 120
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 120
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 120
+      }
+    },
+    "tall-thin-antenna-pole": {
+      "frame": {
+        "x": 279,
+        "y": 0,
+        "w": 8,
+        "h": 88
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 88
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 88
+      }
+    },
+    "traffic-signal-post-dark": {
+      "frame": {
+        "x": 642,
+        "y": 121,
+        "w": 6,
+        "h": 15
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 15
+      },
+      "sourceSize": {
+        "w": 6,
+        "h": 15
+      }
+    },
+    "traffic-signal-post-tall": {
+      "frame": {
+        "x": 649,
+        "y": 121,
+        "w": 6,
+        "h": 15
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 15
+      },
+      "sourceSize": {
+        "w": 6,
+        "h": 15
+      }
+    },
+    "road-chevron-sign-single": {
+      "frame": {
+        "x": 759,
+        "y": 0,
+        "w": 11,
+        "h": 31
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 31
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 31
+      }
+    },
+    "road-warning-cone-tall": {
+      "frame": {
+        "x": 771,
+        "y": 0,
+        "w": 11,
+        "h": 31
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 31
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 31
+      }
+    },
+    "give-way-sign-single": {
+      "frame": {
+        "x": 783,
+        "y": 0,
+        "w": 11,
+        "h": 31
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 31
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 31
+      }
+    },
+    "road-warning-sign-diamond": {
+      "frame": {
+        "x": 795,
+        "y": 0,
+        "w": 11,
+        "h": 31
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 31
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 31
+      }
+    },
+    "traffic-cone-stack": {
+      "frame": {
+        "x": 1002,
+        "y": 0,
+        "w": 13,
+        "h": 23
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 23
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 23
+      }
+    },
+    "blue-cross-sign-front": {
+      "frame": {
+        "x": 538,
+        "y": 121,
+        "w": 12,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 16
+      }
+    },
+    "pedestrian-crossing-sign-post": {
+      "frame": {
+        "x": 185,
+        "y": 0,
+        "w": 74,
+        "h": 94
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 74,
+        "h": 94
+      },
+      "sourceSize": {
+        "w": 74,
+        "h": 94
+      }
+    },
+    "blue-down-arrow-sign": {
+      "frame": {
+        "x": 551,
+        "y": 121,
+        "w": 12,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 16
+      }
+    },
+    "traffic-control-box": {
+      "frame": {
+        "x": 544,
+        "y": 0,
+        "w": 40,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 46
+      }
+    },
+    "red-cross-sign-board": {
+      "frame": {
+        "x": 144,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "red-cross-sign-board-alt": {
+      "frame": {
+        "x": 158,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "blue-info-sign-board": {
+      "frame": {
+        "x": 172,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "blue-info-sign-board-alt": {
+      "frame": {
+        "x": 186,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "traffic-signal-box-red": {
+      "frame": {
+        "x": 270,
+        "y": 121,
+        "w": 21,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 21,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 21,
+        "h": 21
+      }
+    },
+    "blue-cross-sign-large": {
+      "frame": {
+        "x": 564,
+        "y": 121,
+        "w": 12,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 16
+      }
+    },
+    "blue-up-arrow-sign-alt": {
+      "frame": {
+        "x": 577,
+        "y": 121,
+        "w": 12,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 16
+      }
+    },
+    "red-cross-sign-front": {
+      "frame": {
+        "x": 200,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "red-cross-sign-angled": {
+      "frame": {
+        "x": 214,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "traffic-signal-box-orange": {
+      "frame": {
+        "x": 410,
+        "y": 121,
+        "w": 19,
+        "h": 17
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 17
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 17
+      }
+    },
+    "blue-up-arrow-sign": {
+      "frame": {
+        "x": 228,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "blue-cross-sign-angled-left": {
+      "frame": {
+        "x": 242,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "traffic-signal-box-yellow": {
+      "frame": {
+        "x": 292,
+        "y": 121,
+        "w": 21,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 21,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 21,
+        "h": 21
+      }
+    },
+    "traffic-signal-box-green": {
+      "frame": {
+        "x": 430,
+        "y": 121,
+        "w": 19,
+        "h": 17
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 17
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 17
+      }
+    },
+    "traffic-signal-box-green-alt": {
+      "frame": {
+        "x": 314,
+        "y": 121,
+        "w": 21,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 21,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 21,
+        "h": 21
+      }
+    },
+    "red-cross-sign-large": {
+      "frame": {
+        "x": 590,
+        "y": 121,
+        "w": 12,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 16
+      }
+    },
+    "red-down-arrow-sign": {
+      "frame": {
+        "x": 603,
+        "y": 121,
+        "w": 12,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 16
+      }
+    },
+    "red-cross-sign-small": {
+      "frame": {
+        "x": 616,
+        "y": 121,
+        "w": 12,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 16
+      }
+    },
+    "red-up-arrow-sign": {
+      "frame": {
+        "x": 629,
+        "y": 121,
+        "w": 12,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 16
+      }
+    },
+    "traffic-signal-box-red-angled": {
+      "frame": {
+        "x": 336,
+        "y": 121,
+        "w": 21,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 21,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 21,
+        "h": 21
+      }
+    },
+    "blue-diagonal-arrow-sign": {
+      "frame": {
+        "x": 256,
+        "y": 121,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    }
+  },
+  "meta": {
+    "image": "street.png",
+    "size": {
+      "w": 1016,
+      "h": 144
+    },
+    "scale": 1,
+    "app": "thomas-town/pack_atlas.py"
+  }
+}

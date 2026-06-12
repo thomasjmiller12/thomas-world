@@ -1,0 +1,8089 @@
+{
+  "version": 1,
+  "sheet": "exterior/3_City_Props_16x16.png",
+  "objects": [
+    {
+      "name": "billboard-blue-diagonal",
+      "category": "vendor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 13,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "billboard",
+        "sign",
+        "blue",
+        "diagonal",
+        "advertising"
+      ],
+      "trim": true,
+      "candidateId": 45
+    },
+    {
+      "name": "blue-liquid-spill-puddle",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 18,
+        "row": 25,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "puddle",
+        "liquid",
+        "spill",
+        "blue",
+        "ground"
+      ],
+      "trim": true,
+      "candidateId": 83
+    },
+    {
+      "name": "hanging-brown-jacket",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 21,
+        "row": 41,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "jacket",
+        "hanging",
+        "clothespin"
+      ],
+      "trim": true,
+      "candidateId": 114
+    },
+    {
+      "name": "hanging-grey-dress",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 18,
+        "row": 42,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "dress",
+        "grey",
+        "hanging",
+        "clothespin"
+      ],
+      "trim": true,
+      "candidateId": 118
+    },
+    {
+      "name": "hanging-pink-dress",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 19,
+        "row": 42,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "dress",
+        "pink",
+        "hanging",
+        "clothespin"
+      ],
+      "trim": true,
+      "candidateId": 119
+    },
+    {
+      "name": "hanging-light-blue-blouse",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 42,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "blouse",
+        "shirt",
+        "hanging",
+        "clothespin"
+      ],
+      "trim": true,
+      "candidateId": 115
+    },
+    {
+      "name": "hanging-blue-overalls",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 21,
+        "row": 42,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "overalls",
+        "pants",
+        "blue",
+        "hanging"
+      ],
+      "trim": true,
+      "candidateId": 120
+    },
+    {
+      "name": "hanging-green-shirt",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 42,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "green",
+        "hanging",
+        "clothespin"
+      ],
+      "trim": true,
+      "candidateId": 116
+    },
+    {
+      "name": "hanging-tan-shirt",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 42,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "tan",
+        "hanging",
+        "clothespin"
+      ],
+      "trim": true,
+      "candidateId": 117
+    },
+    {
+      "name": "hanging-light-blue-shirt",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 18,
+        "row": 43,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "light blue",
+        "hanging"
+      ],
+      "trim": true,
+      "candidateId": 125
+    },
+    {
+      "name": "hanging-blue-shorts",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 19,
+        "row": 43,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shorts",
+        "blue",
+        "hanging",
+        "clothespin"
+      ],
+      "trim": true,
+      "candidateId": 126
+    },
+    {
+      "name": "hanging-floral-dress",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 43,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "dress",
+        "floral",
+        "blue",
+        "hanging"
+      ],
+      "trim": true,
+      "candidateId": 121
+    },
+    {
+      "name": "hanging-grey-shirt-small",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 21,
+        "row": 43,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "grey",
+        "hanging",
+        "clothespin"
+      ],
+      "trim": true,
+      "candidateId": 127
+    },
+    {
+      "name": "hanging-blue-patterned-shirt",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 43,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "blue",
+        "patterned",
+        "hanging"
+      ],
+      "trim": true,
+      "candidateId": 122
+    },
+    {
+      "name": "hanging-brown-patterned-shirt",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 43,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "brown",
+        "patterned",
+        "hanging"
+      ],
+      "trim": true,
+      "candidateId": 123
+    },
+    {
+      "name": "hanging-white-floral-shirt",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 44,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "white",
+        "floral",
+        "hanging"
+      ],
+      "trim": true,
+      "candidateId": 128
+    },
+    {
+      "name": "hanging-white-shirt-green-pin",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 44,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "white",
+        "hanging",
+        "clothespin"
+      ],
+      "trim": true,
+      "candidateId": 129
+    },
+    {
+      "name": "hanging-white-dress-shirt",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 44,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "white",
+        "hanging",
+        "clothespin"
+      ],
+      "trim": true,
+      "candidateId": 130
+    },
+    {
+      "name": "rust-stain-wall-patch",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 61,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "rust",
+        "stain",
+        "wall",
+        "decor",
+        "grunge"
+      ],
+      "trim": true,
+      "candidateId": 158
+    },
+    {
+      "name": "blue-water-puddle",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 14,
+        "row": 94,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "puddle",
+        "water",
+        "wet",
+        "ground"
+      ],
+      "trim": true,
+      "candidateId": 228
+    },
+    {
+      "name": "hanging-sign-orange-light",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 137,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "orange",
+        "illuminated",
+        "shop"
+      ],
+      "trim": true,
+      "candidateId": 325
+    },
+    {
+      "name": "hanging-sign-bracket-left",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 26,
+        "row": 137,
+        "w": 3,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "wall-mounted",
+        "hanging",
+        "bracket",
+        "shop"
+      ],
+      "trim": true,
+      "candidateId": 324
+    },
+    {
+      "name": "hanging-sign-blue-cross",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 138,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "blue",
+        "cross",
+        "pharmacy",
+        "medical"
+      ],
+      "trim": true,
+      "candidateId": 328
+    },
+    {
+      "name": "hanging-sign-blue-cross-lit",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 138,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "blue",
+        "cross",
+        "pharmacy",
+        "illuminated"
+      ],
+      "trim": true,
+      "candidateId": 329
+    },
+    {
+      "name": "hanging-sign-blank-small",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 11,
+        "row": 138,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "blank",
+        "shop",
+        "frame"
+      ],
+      "trim": true,
+      "candidateId": 326
+    },
+    {
+      "name": "hanging-sign-blank-large",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 138,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "blank",
+        "large",
+        "frame"
+      ],
+      "trim": true,
+      "candidateId": 327
+    },
+    {
+      "name": "hanging-sign-green-light",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 139,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "green",
+        "illuminated",
+        "shop"
+      ],
+      "trim": true,
+      "candidateId": 331
+    },
+    {
+      "name": "wall-sign-blank",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 26,
+        "row": 139,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "wall",
+        "blank",
+        "frame",
+        "mounted"
+      ],
+      "trim": true,
+      "candidateId": 330
+    },
+    {
+      "name": "hanging-sign-red-cross",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 140,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "red",
+        "cross",
+        "pharmacy",
+        "medical"
+      ],
+      "trim": true,
+      "candidateId": 332
+    },
+    {
+      "name": "hanging-sign-red-cross-large",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 140,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "red",
+        "cross",
+        "pharmacy",
+        "large"
+      ],
+      "trim": true,
+      "candidateId": 333
+    },
+    {
+      "name": "hanging-sign-red-light",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 141,
+        "w": 3,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "red",
+        "illuminated",
+        "shop"
+      ],
+      "trim": true,
+      "candidateId": 335
+    },
+    {
+      "name": "wall-sign-red-cross-mounted",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 142,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "wall",
+        "red",
+        "cross",
+        "pharmacy",
+        "mounted"
+      ],
+      "trim": true,
+      "candidateId": 336
+    },
+    {
+      "name": "wall-sign-red-cross-angled",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 142,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "wall",
+        "red",
+        "cross",
+        "pharmacy",
+        "angled"
+      ],
+      "trim": true,
+      "candidateId": 337
+    },
+    {
+      "name": "hanging-sign-orange-dim",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 143,
+        "w": 3,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "orange",
+        "dim",
+        "shop"
+      ],
+      "trim": true,
+      "candidateId": 338
+    },
+    {
+      "name": "hanging-sign-green-dim",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 145,
+        "w": 3,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "green",
+        "dim",
+        "shop"
+      ],
+      "trim": true,
+      "candidateId": 339
+    },
+    {
+      "name": "concrete-fountain-base",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 5,
+        "row": 174,
+        "w": 6,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "fountain",
+        "base",
+        "concrete",
+        "plaza"
+      ],
+      "trim": true,
+      "candidateId": 393
+    },
+    {
+      "name": "bulletin-board-blank",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 181,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "bulletin-board",
+        "board",
+        "notice",
+        "blank"
+      ],
+      "trim": true,
+      "candidateId": 411
+    },
+    {
+      "name": "wanted-poster-single-silhouette",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 9,
+        "row": 181,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "poster",
+        "wanted",
+        "sign",
+        "notice-board"
+      ],
+      "trim": true,
+      "candidateId": 410
+    },
+    {
+      "name": "prohibition-sign-board",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 182,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "prohibition",
+        "no-entry",
+        "board",
+        "red"
+      ],
+      "trim": true,
+      "candidateId": 414
+    },
+    {
+      "name": "wanted-poster-single-framed",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 9,
+        "row": 182,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "poster",
+        "wanted",
+        "framed",
+        "sign"
+      ],
+      "trim": true,
+      "candidateId": 413
+    },
+    {
+      "name": "roman-numeral-sign-board",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 183,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "board",
+        "roman-numeral",
+        "yellow"
+      ],
+      "trim": true,
+      "candidateId": 416
+    },
+    {
+      "name": "ice-cream-swirl-tower-top",
+      "category": "vendor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 194,
+        "w": 4,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "ice cream",
+        "swirl",
+        "cone",
+        "vendor",
+        "tower",
+        "food"
+      ],
+      "trim": true,
+      "candidateId": 434
+    },
+    {
+      "name": "mushroom-building-top",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 29,
+        "row": 194,
+        "w": 3,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "mushroom",
+        "building",
+        "red",
+        "polka-dot",
+        "whimsical",
+        "roof"
+      ],
+      "trim": true,
+      "candidateId": 436
+    },
+    {
+      "name": "ice-cream-swirl-tower-full",
+      "category": "vendor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 202,
+        "w": 8,
+        "h": 13
+      },
+      "collides": true,
+      "tags": [
+        "ice cream",
+        "swirl",
+        "cone",
+        "vendor",
+        "tower",
+        "food",
+        "building"
+      ],
+      "trim": true,
+      "candidateId": 440
+    },
+    {
+      "name": "mushroom-building-full",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 203,
+        "w": 6,
+        "h": 16
+      },
+      "collides": true,
+      "tags": [
+        "mushroom",
+        "building",
+        "red",
+        "polka-dot",
+        "whimsical",
+        "tower",
+        "full"
+      ],
+      "trim": true,
+      "candidateId": 442
+    },
+    {
+      "name": "mushroom-building-small",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 5,
+        "row": 203,
+        "w": 7,
+        "h": 8
+      },
+      "collides": true,
+      "tags": [
+        "mushroom",
+        "building",
+        "red",
+        "polka-dot",
+        "whimsical",
+        "small"
+      ],
+      "trim": true,
+      "candidateId": 441
+    },
+    {
+      "name": "ice-cream-swirl-tower-cherry",
+      "category": "vendor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 19,
+        "row": 206,
+        "w": 7,
+        "h": 9
+      },
+      "collides": true,
+      "tags": [
+        "ice cream",
+        "swirl",
+        "cherry",
+        "vendor",
+        "tower",
+        "food",
+        "building"
+      ],
+      "trim": true,
+      "candidateId": 443
+    },
+    {
+      "name": "heart-ad-board-blue",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 211,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "board",
+        "heart",
+        "advertisement",
+        "blue",
+        "love"
+      ],
+      "trim": true,
+      "candidateId": 444
+    },
+    {
+      "name": "heart-ad-sign-round-blue",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 211,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "round",
+        "heart",
+        "advertisement",
+        "blue",
+        "pole"
+      ],
+      "trim": true,
+      "candidateId": 445
+    },
+    {
+      "name": "heart-ad-flag-blue",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 211,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "flag",
+        "heart",
+        "advertisement",
+        "blue",
+        "banner"
+      ],
+      "trim": true,
+      "candidateId": 446
+    },
+    {
+      "name": "heart-ad-flag-red",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 213,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "flag",
+        "heart",
+        "advertisement",
+        "red",
+        "banner"
+      ],
+      "trim": true,
+      "candidateId": 447
+    },
+    {
+      "name": "heart-ad-sign-round-red",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 213,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "round",
+        "heart",
+        "advertisement",
+        "red",
+        "pole"
+      ],
+      "trim": true,
+      "candidateId": 448
+    },
+    {
+      "name": "heart-ad-flag-red-alt",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 213,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "flag",
+        "heart",
+        "advertisement",
+        "red",
+        "banner",
+        "alternate"
+      ],
+      "trim": true,
+      "candidateId": 449
+    },
+    {
+      "name": "ufo-alien-ship",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 219,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "ufo",
+        "alien",
+        "spaceship",
+        "flying saucer",
+        "sci-fi"
+      ],
+      "trim": true,
+      "candidateId": 457
+    },
+    {
+      "name": "robot-mech-dark",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 221,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "robot",
+        "mech",
+        "machine",
+        "sci-fi",
+        "dark",
+        "mechanical"
+      ],
+      "trim": true,
+      "candidateId": 463
+    },
+    {
+      "name": "robot-mech-small",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 3,
+        "row": 221,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "robot",
+        "mech",
+        "machine",
+        "sci-fi",
+        "mechanical"
+      ],
+      "trim": true,
+      "candidateId": 462
+    },
+    {
+      "name": "metal-double-gate",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 17,
+        "row": 4,
+        "w": 3,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "gate",
+        "metal",
+        "door",
+        "fence",
+        "entrance"
+      ],
+      "trim": true,
+      "candidateId": 16
+    },
+    {
+      "name": "metal-gate-barred-large",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 17,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "gate",
+        "metal",
+        "barred",
+        "large",
+        "door"
+      ],
+      "trim": true,
+      "candidateId": 57
+    },
+    {
+      "name": "metal-gate-barred-narrow",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 18,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "gate",
+        "metal",
+        "barred",
+        "narrow",
+        "door"
+      ],
+      "trim": true,
+      "candidateId": 63
+    },
+    {
+      "name": "concrete-barrier-rail",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 167,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "railing",
+        "concrete",
+        "guard"
+      ],
+      "trim": true,
+      "candidateId": 373
+    },
+    {
+      "name": "wooden-park-bench",
+      "category": "furniture",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 21,
+        "row": 0,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "bench",
+        "seat",
+        "park",
+        "wood",
+        "outdoor"
+      ],
+      "trim": true,
+      "candidateId": 3
+    },
+    {
+      "name": "wooden-park-bench-side",
+      "category": "furniture",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 21,
+        "row": 2,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "bench",
+        "seat",
+        "park",
+        "wood",
+        "outdoor"
+      ],
+      "trim": true,
+      "candidateId": 9
+    },
+    {
+      "name": "metal-trash-can-closed",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 24,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "trash can",
+        "bin",
+        "metal",
+        "garbage",
+        "closed"
+      ],
+      "trim": true,
+      "candidateId": 79
+    },
+    {
+      "name": "metal-trash-can-open-lit",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 24,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "trash can",
+        "bin",
+        "metal",
+        "open",
+        "fire",
+        "lit"
+      ],
+      "trim": true,
+      "candidateId": 80
+    },
+    {
+      "name": "metal-trash-can-closed-dented",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 26,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "trash can",
+        "bin",
+        "metal",
+        "dented",
+        "gray"
+      ],
+      "trim": true,
+      "candidateId": 89
+    },
+    {
+      "name": "metal-trash-can-open-overflow",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 26,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "trash can",
+        "bin",
+        "open",
+        "overflow",
+        "full"
+      ],
+      "trim": true,
+      "candidateId": 90
+    },
+    {
+      "name": "metal-pergola-frame",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 18,
+        "row": 51,
+        "w": 5,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "pergola",
+        "frame",
+        "metal",
+        "arch",
+        "outdoor"
+      ],
+      "trim": true,
+      "candidateId": 135
+    },
+    {
+      "name": "industrial-workbench",
+      "category": "furniture",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 82,
+        "w": 4,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "workbench",
+        "industrial",
+        "table",
+        "workshop"
+      ],
+      "trim": true,
+      "candidateId": 195
+    },
+    {
+      "name": "computer-terminal-industrial",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 3,
+        "row": 85,
+        "w": 6,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "computer",
+        "terminal",
+        "industrial",
+        "monitor"
+      ],
+      "trim": true,
+      "candidateId": 199
+    },
+    {
+      "name": "metal-dumpster-open-top",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 93,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "bin",
+        "open",
+        "metal"
+      ],
+      "trim": true,
+      "candidateId": 225
+    },
+    {
+      "name": "waste-bin-filled",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 93,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "bin",
+        "waste",
+        "filled",
+        "container"
+      ],
+      "trim": true,
+      "candidateId": 226
+    },
+    {
+      "name": "large-metal-dumpster-grey",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 93,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "large",
+        "grey",
+        "metal"
+      ],
+      "trim": true,
+      "candidateId": 227
+    },
+    {
+      "name": "metal-dumpster-small-grey",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 93,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "bin",
+        "waste",
+        "metal"
+      ],
+      "trim": true,
+      "candidateId": 223
+    },
+    {
+      "name": "waste-bin-metal-side",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 93,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "bin",
+        "waste",
+        "metal",
+        "container"
+      ],
+      "trim": true,
+      "candidateId": 224
+    },
+    {
+      "name": "large-industrial-dumpster-grey",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 94,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "industrial",
+        "large",
+        "grey"
+      ],
+      "trim": true,
+      "candidateId": 230
+    },
+    {
+      "name": "metal-skip-container-small",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 96,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "skip",
+        "container",
+        "metal",
+        "small"
+      ],
+      "trim": true,
+      "candidateId": 236
+    },
+    {
+      "name": "small-dumpster-with-waste",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 96,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "waste",
+        "small",
+        "metal"
+      ],
+      "trim": true,
+      "candidateId": 237
+    },
+    {
+      "name": "grey-multi-bin-rack",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 96,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "bin",
+        "rack",
+        "grey",
+        "recycling"
+      ],
+      "trim": true,
+      "candidateId": 238
+    },
+    {
+      "name": "small-grey-dumpster-closed",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 96,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "small",
+        "closed",
+        "grey"
+      ],
+      "trim": true,
+      "candidateId": 234
+    },
+    {
+      "name": "dumpster-with-trash-overflow",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 96,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "overflow",
+        "trash",
+        "full"
+      ],
+      "trim": true,
+      "candidateId": 235
+    },
+    {
+      "name": "small-waste-bin-grey",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 97,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "bin",
+        "waste",
+        "small",
+        "grey"
+      ],
+      "trim": true,
+      "candidateId": 239
+    },
+    {
+      "name": "orange-dumpster-large",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 25,
+        "row": 101,
+        "w": 3,
+        "h": 8
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "orange",
+        "large",
+        "container"
+      ],
+      "trim": true,
+      "candidateId": 247
+    },
+    {
+      "name": "orange-industrial-skip",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 28,
+        "row": 101,
+        "w": 3,
+        "h": 8
+      },
+      "collides": true,
+      "tags": [
+        "skip",
+        "orange",
+        "industrial",
+        "container"
+      ],
+      "trim": true,
+      "candidateId": 248
+    },
+    {
+      "name": "concrete-bench-long",
+      "category": "furniture",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 165,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "bench",
+        "concrete",
+        "seating",
+        "public"
+      ],
+      "trim": true,
+      "candidateId": 366
+    },
+    {
+      "name": "concrete-bench-with-back",
+      "category": "furniture",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 165,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "bench",
+        "concrete",
+        "backrest",
+        "seating"
+      ],
+      "trim": true,
+      "candidateId": 367
+    },
+    {
+      "name": "curved-concrete-bench",
+      "category": "furniture",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 5,
+        "row": 167,
+        "w": 6,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "bench",
+        "curved",
+        "concrete",
+        "seating"
+      ],
+      "trim": true,
+      "candidateId": 369
+    },
+    {
+      "name": "double-arm-street-lamp",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 0,
+        "w": 2,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "post",
+        "street-light",
+        "double",
+        "lantern"
+      ],
+      "trim": true,
+      "candidateId": 1
+    },
+    {
+      "name": "ornate-double-street-lamp",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 17,
+        "row": 0,
+        "w": 3,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "post",
+        "street-light",
+        "double",
+        "decorative"
+      ],
+      "trim": true,
+      "candidateId": 2
+    },
+    {
+      "name": "ornate-street-lamp-single",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 0,
+        "w": 1,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "post",
+        "street-light",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 0
+    },
+    {
+      "name": "street-lamp-ornate",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 13,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "light",
+        "ornate",
+        "pole"
+      ],
+      "trim": true,
+      "candidateId": 42
+    },
+    {
+      "name": "bollard-lamp-post-short",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 21,
+        "row": 16,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "bollard",
+        "lamp",
+        "short",
+        "post",
+        "light"
+      ],
+      "trim": true,
+      "candidateId": 55
+    },
+    {
+      "name": "street-lamp-double-arm",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 17,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "double",
+        "arm",
+        "pole"
+      ],
+      "trim": true,
+      "candidateId": 60
+    },
+    {
+      "name": "tall-thin-street-lamp-dark",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 24,
+        "w": 1,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street light",
+        "tall",
+        "thin",
+        "dark"
+      ],
+      "trim": true,
+      "candidateId": 78
+    },
+    {
+      "name": "double-arm-street-lamp-post",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 28,
+        "w": 4,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "lamp post",
+        "street light",
+        "double arm",
+        "dark",
+        "metal"
+      ],
+      "trim": true,
+      "candidateId": 93
+    },
+    {
+      "name": "single-arm-street-lamp-post",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 5,
+        "row": 28,
+        "w": 4,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "lamp post",
+        "street light",
+        "single arm",
+        "metal",
+        "dark"
+      ],
+      "trim": true,
+      "candidateId": 94
+    },
+    {
+      "name": "street-light-pole-thin",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 99,
+        "w": 1,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "street-light",
+        "pole",
+        "thin",
+        "lamp"
+      ],
+      "trim": true,
+      "candidateId": 242
+    },
+    {
+      "name": "street-lamp-arm-post",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 125,
+        "w": 5,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "arm",
+        "post",
+        "street light"
+      ],
+      "trim": true,
+      "candidateId": 282
+    },
+    {
+      "name": "street-lamp-pole-single",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 3,
+        "row": 130,
+        "w": 5,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "pole",
+        "street",
+        "light",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 301
+    },
+    {
+      "name": "street-lamp-pole-branched",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 11,
+        "row": 131,
+        "w": 5,
+        "h": 11
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "pole",
+        "street",
+        "branched",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 303
+    },
+    {
+      "name": "street-lamp-pole-tall",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 131,
+        "w": 5,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "pole",
+        "street",
+        "tall",
+        "single"
+      ],
+      "trim": true,
+      "candidateId": 304
+    },
+    {
+      "name": "street-lamp-horizontal-arm",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 24,
+        "row": 131,
+        "w": 4,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "arm",
+        "horizontal",
+        "street",
+        "overhead"
+      ],
+      "trim": true,
+      "candidateId": 305
+    },
+    {
+      "name": "street-lamp-arm-curved",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 5,
+        "row": 135,
+        "w": 5,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "arm",
+        "curved",
+        "street",
+        "bracket"
+      ],
+      "trim": true,
+      "candidateId": 316
+    },
+    {
+      "name": "street-lamp-pole-angled-arm",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 15,
+        "row": 136,
+        "w": 5,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "pole",
+        "angled",
+        "arm",
+        "street"
+      ],
+      "trim": true,
+      "candidateId": 318
+    },
+    {
+      "name": "street-lamp-pole-thin",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 136,
+        "w": 4,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "pole",
+        "thin",
+        "street",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 319
+    },
+    {
+      "name": "street-lamp-double-arm-r147c0",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 147,
+        "w": 5,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "double",
+        "arm",
+        "post",
+        "light"
+      ],
+      "trim": true,
+      "candidateId": 341
+    },
+    {
+      "name": "street-lamp-sign-arm-left",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 147,
+        "w": 4,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "sign",
+        "arm",
+        "left",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 342
+    },
+    {
+      "name": "street-lamp-hanging-sign-blue",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 7,
+        "row": 147,
+        "w": 5,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "sign",
+        "blue",
+        "hanging",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 343
+    },
+    {
+      "name": "street-lamp-hanging-sign-red-cross",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 11,
+        "row": 147,
+        "w": 4,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "sign",
+        "red",
+        "cross",
+        "hanging",
+        "post",
+        "pharmacy"
+      ],
+      "trim": true,
+      "candidateId": 344
+    },
+    {
+      "name": "street-lamp-hanging-sign-arrow",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 15,
+        "row": 147,
+        "w": 5,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "sign",
+        "arrow",
+        "hanging",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 345
+    },
+    {
+      "name": "street-lamp-hanging-sign-green",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 19,
+        "row": 147,
+        "w": 5,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "sign",
+        "green",
+        "hanging",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 346
+    },
+    {
+      "name": "street-lamp-hanging-sign-down-arrow",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 147,
+        "w": 5,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "sign",
+        "arrow",
+        "down",
+        "hanging",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 347
+    },
+    {
+      "name": "street-lamp-sign-arm-right",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 28,
+        "row": 147,
+        "w": 4,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "sign",
+        "arm",
+        "right",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 348
+    },
+    {
+      "name": "globe-street-lamp-tall",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 165,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "globe",
+        "street",
+        "light",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 365
+    },
+    {
+      "name": "globe-lamp-post-short",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 168,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "globe",
+        "post",
+        "light",
+        "short"
+      ],
+      "trim": true,
+      "candidateId": 374
+    },
+    {
+      "name": "globe-lamp-post-corner",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 171,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "globe",
+        "post",
+        "corner",
+        "light"
+      ],
+      "trim": true,
+      "candidateId": 377
+    },
+    {
+      "name": "globe-lamp-post-ornate",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 174,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "globe",
+        "ornate",
+        "post",
+        "light"
+      ],
+      "trim": true,
+      "candidateId": 389
+    },
+    {
+      "name": "globe-street-lamp-post",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 177,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street-light",
+        "globe",
+        "post",
+        "urban"
+      ],
+      "trim": true,
+      "candidateId": 400
+    },
+    {
+      "name": "globe-street-lamp-short",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 180,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "globe",
+        "street-light",
+        "short",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 406
+    },
+    {
+      "name": "decorative-wall-sconce-small",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 182,
+        "w": 3,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "sconce",
+        "wall-light",
+        "small",
+        "decorative"
+      ],
+      "trim": true,
+      "candidateId": 415
+    },
+    {
+      "name": "paper-lantern-white",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 215,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "lantern",
+        "paper",
+        "white",
+        "round",
+        "decoration",
+        "festival"
+      ],
+      "trim": true,
+      "candidateId": 452
+    },
+    {
+      "name": "antenna-pole-tall",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 17,
+        "row": 15,
+        "w": 2,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "antenna",
+        "pole",
+        "tall",
+        "tower",
+        "signal"
+      ],
+      "trim": true,
+      "candidateId": 49
+    },
+    {
+      "name": "robot-npc-figure",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 16,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "robot",
+        "figure",
+        "npc",
+        "mechanical",
+        "character"
+      ],
+      "trim": true,
+      "candidateId": 54
+    },
+    {
+      "name": "rubble-debris-pile",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 19,
+        "w": 3,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "rubble",
+        "debris",
+        "pile",
+        "scatter",
+        "ground"
+      ],
+      "trim": true,
+      "candidateId": 65
+    },
+    {
+      "name": "green-industrial-barrel",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 20,
+        "w": 2,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "barrel",
+        "drum",
+        "green",
+        "industrial",
+        "container"
+      ],
+      "trim": true,
+      "candidateId": 68
+    },
+    {
+      "name": "green-waste-barrel-open",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 18,
+        "row": 20,
+        "w": 2,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "barrel",
+        "waste",
+        "green",
+        "open",
+        "container"
+      ],
+      "trim": true,
+      "candidateId": 69
+    },
+    {
+      "name": "smoke-cloud-effect",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 20,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "smoke",
+        "cloud",
+        "effect",
+        "fog",
+        "particle"
+      ],
+      "trim": true,
+      "candidateId": 67
+    },
+    {
+      "name": "large-smoke-cloud-effect",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 21,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "smoke",
+        "cloud",
+        "large",
+        "effect",
+        "fog"
+      ],
+      "trim": true,
+      "candidateId": 70
+    },
+    {
+      "name": "gray-blimp-airship",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 22,
+        "w": 4,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "blimp",
+        "airship",
+        "floating",
+        "vehicle"
+      ],
+      "trim": true,
+      "candidateId": 73
+    },
+    {
+      "name": "thin-metal-dumbbell-bar",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 29,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "dumbbell",
+        "barbell",
+        "weight",
+        "gym",
+        "bar"
+      ],
+      "trim": true,
+      "candidateId": 98
+    },
+    {
+      "name": "wind-turbine",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 47,
+        "w": 6,
+        "h": 11
+      },
+      "collides": true,
+      "tags": [
+        "wind turbine",
+        "energy",
+        "tall",
+        "industrial",
+        "windmill"
+      ],
+      "trim": true,
+      "candidateId": 131
+    },
+    {
+      "name": "industrial-building-facade",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 7,
+        "row": 49,
+        "w": 11,
+        "h": 9
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "industrial",
+        "factory",
+        "facade",
+        "grey"
+      ],
+      "trim": true,
+      "candidateId": 132
+    },
+    {
+      "name": "large-water-tower-brown",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 49,
+        "w": 5,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "water tower",
+        "tank",
+        "industrial",
+        "tall",
+        "brown"
+      ],
+      "trim": true,
+      "candidateId": 133
+    },
+    {
+      "name": "small-water-tower-tan",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 28,
+        "row": 49,
+        "w": 4,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "water tower",
+        "tank",
+        "industrial",
+        "tan",
+        "small"
+      ],
+      "trim": true,
+      "candidateId": 134
+    },
+    {
+      "name": "circular-industrial-tank",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 26,
+        "row": 56,
+        "w": 5,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "tank",
+        "industrial",
+        "circular",
+        "storage"
+      ],
+      "trim": true,
+      "candidateId": 136
+    },
+    {
+      "name": "rubble-pile-small",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 3,
+        "row": 57,
+        "w": 4,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "rubble",
+        "debris",
+        "dirt",
+        "pile"
+      ],
+      "trim": true,
+      "candidateId": 145
+    },
+    {
+      "name": "wooden-pallet-stack",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 7,
+        "row": 57,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "pallet",
+        "wooden",
+        "cargo",
+        "storage",
+        "stack"
+      ],
+      "trim": true,
+      "candidateId": 141
+    },
+    {
+      "name": "wooden-crate-large",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 11,
+        "row": 57,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "crate",
+        "wooden",
+        "cargo",
+        "storage",
+        "box"
+      ],
+      "trim": true,
+      "candidateId": 142
+    },
+    {
+      "name": "pickaxe-leaning",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 58,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "pickaxe",
+        "tool",
+        "construction",
+        "leaning"
+      ],
+      "trim": true,
+      "candidateId": 147
+    },
+    {
+      "name": "cardboard-box-crushed",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 58,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "box",
+        "cardboard",
+        "trash",
+        "debris"
+      ],
+      "trim": true,
+      "candidateId": 146
+    },
+    {
+      "name": "wooden-ladder-horizontal",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 15,
+        "row": 58,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "ladder",
+        "wood",
+        "construction",
+        "horizontal"
+      ],
+      "trim": true,
+      "candidateId": 148
+    },
+    {
+      "name": "tarp-bundle-grey",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 59,
+        "w": 2,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "tarp",
+        "bundle",
+        "construction",
+        "cloth"
+      ],
+      "trim": true,
+      "candidateId": 149
+    },
+    {
+      "name": "cauldron-iron-large",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 60,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "cauldron",
+        "pot",
+        "iron",
+        "industrial"
+      ],
+      "trim": true,
+      "candidateId": 152
+    },
+    {
+      "name": "shipping-container-blue",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 7,
+        "row": 60,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "shipping",
+        "blue",
+        "industrial"
+      ],
+      "trim": true,
+      "candidateId": 153
+    },
+    {
+      "name": "shipping-container-labelled",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 11,
+        "row": 60,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "shipping",
+        "cbrc",
+        "industrial",
+        "label"
+      ],
+      "trim": true,
+      "candidateId": 154
+    },
+    {
+      "name": "wooden-ladder-vertical",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 15,
+        "row": 60,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "ladder",
+        "wood",
+        "vertical",
+        "construction"
+      ],
+      "trim": true,
+      "candidateId": 155
+    },
+    {
+      "name": "pipe-curved-rusty",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 60,
+        "w": 2,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "pipe",
+        "rusty",
+        "curved",
+        "industrial"
+      ],
+      "trim": true,
+      "candidateId": 156
+    },
+    {
+      "name": "building-facade-fragment",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 61,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "facade",
+        "windows",
+        "fragment",
+        "structure"
+      ],
+      "trim": true,
+      "candidateId": 161
+    },
+    {
+      "name": "window-frame-boarded",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 61,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "window",
+        "boarded",
+        "building",
+        "frame"
+      ],
+      "trim": true,
+      "candidateId": 162
+    },
+    {
+      "name": "doorway-frame-ruined",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 62,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "door",
+        "frame",
+        "ruined",
+        "building",
+        "entrance"
+      ],
+      "trim": true,
+      "candidateId": 164
+    },
+    {
+      "name": "window-arched-damaged",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 62,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "window",
+        "arched",
+        "damaged",
+        "building",
+        "ruined"
+      ],
+      "trim": true,
+      "candidateId": 165
+    },
+    {
+      "name": "shop-front-small",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 27,
+        "row": 63,
+        "w": 5,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "shop",
+        "storefront",
+        "building",
+        "facade"
+      ],
+      "trim": true,
+      "candidateId": 168
+    },
+    {
+      "name": "toxic-pool-green",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 7,
+        "row": 64,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "toxic",
+        "pool",
+        "green",
+        "hazard",
+        "ground"
+      ],
+      "trim": true,
+      "candidateId": 169
+    },
+    {
+      "name": "dark-puddle-shadow",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 65,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "puddle",
+        "dark",
+        "shadow",
+        "ground",
+        "wet"
+      ],
+      "trim": true,
+      "candidateId": 170
+    },
+    {
+      "name": "biohazard-barrel-single",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 68,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "barrel",
+        "biohazard",
+        "single",
+        "hazard",
+        "green"
+      ],
+      "trim": true,
+      "candidateId": 174
+    },
+    {
+      "name": "rubble-pile-large",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 69,
+        "w": 6,
+        "h": 6
+      },
+      "collides": false,
+      "tags": [
+        "rubble",
+        "pile",
+        "debris",
+        "large",
+        "construction"
+      ],
+      "trim": true,
+      "candidateId": 175
+    },
+    {
+      "name": "debris-ground-scatter",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 7,
+        "row": 72,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "debris",
+        "scatter",
+        "ground",
+        "dirt",
+        "misc"
+      ],
+      "trim": true,
+      "candidateId": 176
+    },
+    {
+      "name": "oil-drum-rusty",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 9,
+        "row": 72,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "drum",
+        "oil",
+        "rusty",
+        "barrel",
+        "industrial"
+      ],
+      "trim": true,
+      "candidateId": 178
+    },
+    {
+      "name": "industrial-locomotive-engine",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 73,
+        "w": 14,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "train",
+        "locomotive",
+        "industrial",
+        "vehicle"
+      ],
+      "trim": true,
+      "candidateId": 180
+    },
+    {
+      "name": "industrial-control-panel-generator",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 3,
+        "row": 76,
+        "w": 6,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "control panel",
+        "generator",
+        "industrial",
+        "machine"
+      ],
+      "trim": true,
+      "candidateId": 183
+    },
+    {
+      "name": "shipping-container-tan-small",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 11,
+        "row": 76,
+        "w": 6,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "cargo",
+        "industrial",
+        "tan"
+      ],
+      "trim": true,
+      "candidateId": 181
+    },
+    {
+      "name": "shipping-container-tan-large",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 76,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "cargo",
+        "industrial",
+        "large"
+      ],
+      "trim": true,
+      "candidateId": 182
+    },
+    {
+      "name": "shipping-container-tan-wide",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 19,
+        "row": 76,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "cargo",
+        "tan",
+        "wide"
+      ],
+      "trim": true,
+      "candidateId": 184
+    },
+    {
+      "name": "shipping-container-teal-small",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 28,
+        "row": 76,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "cargo",
+        "teal",
+        "small"
+      ],
+      "trim": true,
+      "candidateId": 185
+    },
+    {
+      "name": "wooden-crate-flat",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 19,
+        "row": 78,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "crate",
+        "wooden",
+        "box",
+        "cargo"
+      ],
+      "trim": true,
+      "candidateId": 188
+    },
+    {
+      "name": "shipping-container-teal-medium",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 28,
+        "row": 78,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "teal",
+        "cargo",
+        "medium"
+      ],
+      "trim": true,
+      "candidateId": 189
+    },
+    {
+      "name": "shipping-container-blue-large",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 11,
+        "row": 79,
+        "w": 6,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "blue",
+        "cargo",
+        "large"
+      ],
+      "trim": true,
+      "candidateId": 190
+    },
+    {
+      "name": "wooden-crate-medium",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 19,
+        "row": 80,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "crate",
+        "wooden",
+        "box",
+        "cargo"
+      ],
+      "trim": true,
+      "candidateId": 192
+    },
+    {
+      "name": "shipping-container-teal-small-alt",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 28,
+        "row": 80,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "teal",
+        "small",
+        "cargo"
+      ],
+      "trim": true,
+      "candidateId": 193
+    },
+    {
+      "name": "industrial-machine-unit",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 28,
+        "row": 82,
+        "w": 4,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "machine",
+        "industrial",
+        "unit",
+        "equipment"
+      ],
+      "trim": true,
+      "candidateId": 196
+    },
+    {
+      "name": "industrial-conveyor-belt",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 83,
+        "w": 5,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "conveyor",
+        "belt",
+        "industrial",
+        "machine"
+      ],
+      "trim": true,
+      "candidateId": 197
+    },
+    {
+      "name": "industrial-hvac-unit",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 86,
+        "w": 7,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "hvac",
+        "air conditioning",
+        "industrial",
+        "unit"
+      ],
+      "trim": true,
+      "candidateId": 201
+    },
+    {
+      "name": "satellite-dish-small",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 86,
+        "w": 3,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "satellite",
+        "dish",
+        "antenna",
+        "communication"
+      ],
+      "trim": true,
+      "candidateId": 200
+    },
+    {
+      "name": "solar-panel-array",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 19,
+        "row": 87,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "solar panel",
+        "energy",
+        "renewable",
+        "technology"
+      ],
+      "trim": true,
+      "candidateId": 202
+    },
+    {
+      "name": "industrial-window-unit",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 88,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "window",
+        "industrial",
+        "building",
+        "gray"
+      ],
+      "trim": true,
+      "candidateId": 203
+    },
+    {
+      "name": "industrial-junction-box",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 88,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "junction box",
+        "electrical",
+        "industrial",
+        "equipment"
+      ],
+      "trim": true,
+      "candidateId": 204
+    },
+    {
+      "name": "dumpster-green-small",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 90,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "trash",
+        "green",
+        "waste"
+      ],
+      "trim": true,
+      "candidateId": 210
+    },
+    {
+      "name": "industrial-server-rack",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 90,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "server",
+        "rack",
+        "technology",
+        "industrial"
+      ],
+      "trim": true,
+      "candidateId": 212
+    },
+    {
+      "name": "industrial-storage-unit-green",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 90,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "storage",
+        "unit",
+        "green",
+        "industrial"
+      ],
+      "trim": true,
+      "candidateId": 208
+    },
+    {
+      "name": "industrial-small-vehicle",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 90,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "vehicle",
+        "small",
+        "industrial",
+        "forklift"
+      ],
+      "trim": true,
+      "candidateId": 209
+    },
+    {
+      "name": "industrial-truck-cargo",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 17,
+        "row": 90,
+        "w": 8,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "truck",
+        "cargo",
+        "vehicle",
+        "industrial"
+      ],
+      "trim": true,
+      "candidateId": 207
+    },
+    {
+      "name": "shipping-container-gray-medium",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 91,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "gray",
+        "cargo",
+        "medium"
+      ],
+      "trim": true,
+      "candidateId": 215
+    },
+    {
+      "name": "shipping-container-green-large",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 25,
+        "row": 91,
+        "w": 3,
+        "h": 8
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "green",
+        "cargo",
+        "large"
+      ],
+      "trim": true,
+      "candidateId": 213
+    },
+    {
+      "name": "shipping-container-green-medium",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 28,
+        "row": 91,
+        "w": 3,
+        "h": 8
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "green",
+        "cargo",
+        "medium"
+      ],
+      "trim": true,
+      "candidateId": 214
+    },
+    {
+      "name": "cardboard-box-open-flat",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 13,
+        "row": 92,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "cardboard",
+        "box",
+        "trash",
+        "litter"
+      ],
+      "trim": true,
+      "candidateId": 217
+    },
+    {
+      "name": "paper-trash-pile",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 14,
+        "row": 92,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "litter",
+        "trash",
+        "paper",
+        "ground"
+      ],
+      "trim": true,
+      "candidateId": 218
+    },
+    {
+      "name": "small-debris-pile",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 11,
+        "row": 93,
+        "w": 3,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "debris",
+        "litter",
+        "trash",
+        "ground"
+      ],
+      "trim": true,
+      "candidateId": 220
+    },
+    {
+      "name": "crushed-cardboard-box",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 13,
+        "row": 93,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "cardboard",
+        "box",
+        "crushed",
+        "trash"
+      ],
+      "trim": true,
+      "candidateId": 221
+    },
+    {
+      "name": "blue-trash-bags-pile",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 13,
+        "row": 95,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "trash",
+        "bags",
+        "blue",
+        "pile"
+      ],
+      "trim": true,
+      "candidateId": 231
+    },
+    {
+      "name": "blue-trash-bags-loose",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 14,
+        "row": 95,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "trash",
+        "bags",
+        "blue",
+        "pile"
+      ],
+      "trim": true,
+      "candidateId": 232
+    },
+    {
+      "name": "green-garbage-truck",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 17,
+        "row": 95,
+        "w": 8,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "truck",
+        "garbage",
+        "vehicle",
+        "green"
+      ],
+      "trim": true,
+      "candidateId": 233
+    },
+    {
+      "name": "orange-garbage-truck-front",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 17,
+        "row": 100,
+        "w": 9,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "truck",
+        "garbage",
+        "orange",
+        "vehicle"
+      ],
+      "trim": true,
+      "candidateId": 246
+    },
+    {
+      "name": "electric-utility-box",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 9,
+        "row": 107,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "utility",
+        "box",
+        "electric",
+        "panel"
+      ],
+      "trim": true,
+      "candidateId": 256
+    },
+    {
+      "name": "motorcycle-parked",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 13,
+        "row": 125,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "motorcycle",
+        "bike",
+        "vehicle",
+        "parked"
+      ],
+      "trim": true,
+      "candidateId": 283
+    },
+    {
+      "name": "building-facade-window-square",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 152,
+        "w": 7,
+        "h": 13
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "facade",
+        "window",
+        "square",
+        "wall",
+        "exterior"
+      ],
+      "trim": true,
+      "candidateId": 349
+    },
+    {
+      "name": "building-staircase-exterior",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 15,
+        "row": 152,
+        "w": 9,
+        "h": 14
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "staircase",
+        "exterior",
+        "steps",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 350
+    },
+    {
+      "name": "building-corner-pillar",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 153,
+        "w": 7,
+        "h": 8
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "corner",
+        "pillar",
+        "facade",
+        "exterior"
+      ],
+      "trim": true,
+      "candidateId": 351
+    },
+    {
+      "name": "building-wall-panel-plain",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 154,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "wall",
+        "panel",
+        "plain",
+        "exterior"
+      ],
+      "trim": true,
+      "candidateId": 352
+    },
+    {
+      "name": "building-wall-panel-double",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 154,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "wall",
+        "panel",
+        "double",
+        "exterior"
+      ],
+      "trim": true,
+      "candidateId": 353
+    },
+    {
+      "name": "building-wall-tile-small",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 156,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "wall",
+        "tile",
+        "small",
+        "exterior"
+      ],
+      "trim": true,
+      "candidateId": 354
+    },
+    {
+      "name": "building-wall-tile-medium",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 156,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "wall",
+        "tile",
+        "medium",
+        "exterior"
+      ],
+      "trim": true,
+      "candidateId": 355
+    },
+    {
+      "name": "building-staircase-railing",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 156,
+        "w": 5,
+        "h": 10
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "staircase",
+        "railing",
+        "exterior",
+        "steps"
+      ],
+      "trim": true,
+      "candidateId": 356
+    },
+    {
+      "name": "building-facade-tall-column",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 25,
+        "row": 156,
+        "w": 7,
+        "h": 16
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "facade",
+        "tall",
+        "column",
+        "exterior"
+      ],
+      "trim": true,
+      "candidateId": 357
+    },
+    {
+      "name": "building-wall-wide-panel",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 157,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "wall",
+        "wide",
+        "panel",
+        "exterior"
+      ],
+      "trim": true,
+      "candidateId": 358
+    },
+    {
+      "name": "building-wall-corner-tile",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 157,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "wall",
+        "corner",
+        "tile",
+        "exterior"
+      ],
+      "trim": true,
+      "candidateId": 359
+    },
+    {
+      "name": "concrete-wall-panel-wide",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 159,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "wall",
+        "concrete",
+        "panel",
+        "building"
+      ],
+      "trim": true,
+      "candidateId": 360
+    },
+    {
+      "name": "concrete-wall-panel-large",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 159,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "wall",
+        "concrete",
+        "panel",
+        "building"
+      ],
+      "trim": true,
+      "candidateId": 361
+    },
+    {
+      "name": "concrete-wall-section-tall",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 160,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "wall",
+        "concrete",
+        "section",
+        "building"
+      ],
+      "trim": true,
+      "candidateId": 362
+    },
+    {
+      "name": "arched-concrete-overhang",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 164,
+        "w": 3,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "arch",
+        "overhang",
+        "concrete",
+        "entrance"
+      ],
+      "trim": true,
+      "candidateId": 363
+    },
+    {
+      "name": "arched-concrete-bridge-segment",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 13,
+        "row": 164,
+        "w": 3,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "arch",
+        "bridge",
+        "concrete",
+        "overpass"
+      ],
+      "trim": true,
+      "candidateId": 364
+    },
+    {
+      "name": "concrete-stair-section",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 167,
+        "w": 6,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "stairs",
+        "concrete",
+        "steps",
+        "architecture"
+      ],
+      "trim": true,
+      "candidateId": 368
+    },
+    {
+      "name": "concrete-platform-wide",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 167,
+        "w": 6,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "platform",
+        "concrete",
+        "ledge",
+        "architecture"
+      ],
+      "trim": true,
+      "candidateId": 370
+    },
+    {
+      "name": "concrete-tiered-platform",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 17,
+        "row": 167,
+        "w": 4,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "platform",
+        "tiered",
+        "concrete",
+        "steps"
+      ],
+      "trim": true,
+      "candidateId": 371
+    },
+    {
+      "name": "concrete-retaining-wall-low",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 167,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "wall",
+        "retaining",
+        "concrete",
+        "low"
+      ],
+      "trim": true,
+      "candidateId": 372
+    },
+    {
+      "name": "concrete-low-wall-wide",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 169,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "wall",
+        "low",
+        "concrete",
+        "divider"
+      ],
+      "trim": true,
+      "candidateId": 375
+    },
+    {
+      "name": "concrete-block-flat",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 169,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "block",
+        "concrete",
+        "flat",
+        "slab"
+      ],
+      "trim": true,
+      "candidateId": 376
+    },
+    {
+      "name": "swimming-pool-water-tile",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 19,
+        "row": 171,
+        "w": 5,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "pool",
+        "water",
+        "swimming",
+        "blue",
+        "tile"
+      ],
+      "trim": true,
+      "candidateId": 381
+    },
+    {
+      "name": "concrete-block-step",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 171,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "block",
+        "step",
+        "concrete",
+        "platform"
+      ],
+      "trim": true,
+      "candidateId": 382
+    },
+    {
+      "name": "concrete-block-small",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 30,
+        "row": 171,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "block",
+        "concrete",
+        "small",
+        "bollard"
+      ],
+      "trim": true,
+      "candidateId": 383
+    },
+    {
+      "name": "pool-water-panel-tall",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 17,
+        "row": 173,
+        "w": 3,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "pool",
+        "water",
+        "panel",
+        "blue",
+        "tile"
+      ],
+      "trim": true,
+      "candidateId": 386
+    },
+    {
+      "name": "pool-water-panel-large",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 19,
+        "row": 173,
+        "w": 5,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "pool",
+        "water",
+        "panel",
+        "large",
+        "blue"
+      ],
+      "trim": true,
+      "candidateId": 387
+    },
+    {
+      "name": "concrete-pillar-base",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 173,
+        "w": 3,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "pillar",
+        "base",
+        "concrete",
+        "column"
+      ],
+      "trim": true,
+      "candidateId": 384
+    },
+    {
+      "name": "concrete-pillar-tall",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 30,
+        "row": 173,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "pillar",
+        "column",
+        "concrete",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 385
+    },
+    {
+      "name": "concrete-arched-entrance",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 174,
+        "w": 6,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "arch",
+        "entrance",
+        "concrete",
+        "gateway"
+      ],
+      "trim": true,
+      "candidateId": 392
+    },
+    {
+      "name": "curved-concrete-wall-segment",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 174,
+        "w": 6,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "wall",
+        "curved",
+        "concrete",
+        "segment"
+      ],
+      "trim": true,
+      "candidateId": 394
+    },
+    {
+      "name": "concrete-low-platform",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 25,
+        "row": 174,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "platform",
+        "concrete",
+        "low",
+        "step"
+      ],
+      "trim": true,
+      "candidateId": 388
+    },
+    {
+      "name": "concrete-arched-gate-base",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 29,
+        "row": 174,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "gate",
+        "arch",
+        "concrete",
+        "entrance",
+        "base"
+      ],
+      "trim": true,
+      "candidateId": 391
+    },
+    {
+      "name": "cable-wire-bundle",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 3,
+        "row": 181,
+        "w": 3,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "cable",
+        "wire",
+        "cord",
+        "urban"
+      ],
+      "trim": true,
+      "candidateId": 409
+    },
+    {
+      "name": "cable-wire-single-loop",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 183,
+        "w": 4,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "cable",
+        "wire",
+        "loop",
+        "cord"
+      ],
+      "trim": true,
+      "candidateId": 418
+    },
+    {
+      "name": "receipt-printer-small",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 27,
+        "row": 215,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "printer",
+        "machine",
+        "receipt",
+        "device",
+        "small"
+      ],
+      "trim": true,
+      "candidateId": 453
+    },
+    {
+      "name": "arcade-controller-handheld-alt",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 219,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "controller",
+        "gamepad",
+        "arcade",
+        "handheld",
+        "alternate"
+      ],
+      "trim": true,
+      "candidateId": 458
+    },
+    {
+      "name": "arcade-controller-handheld",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 219,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "controller",
+        "gamepad",
+        "arcade",
+        "handheld",
+        "game"
+      ],
+      "trim": true,
+      "candidateId": 456
+    },
+    {
+      "name": "handheld-game-device",
+      "category": "furniture",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 220,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "handheld",
+        "game",
+        "device",
+        "portable",
+        "gameboy"
+      ],
+      "trim": true,
+      "candidateId": 461
+    },
+    {
+      "name": "rocket-projectile",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 223,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "rocket",
+        "missile",
+        "projectile",
+        "sci-fi",
+        "weapon"
+      ],
+      "trim": true,
+      "candidateId": 464
+    },
+    {
+      "name": "green-bush-cluster-round",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 16,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "bush",
+        "shrub",
+        "green",
+        "round",
+        "cluster"
+      ],
+      "trim": true,
+      "candidateId": 53
+    },
+    {
+      "name": "mossy-rock-pile-large",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 16,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "rocks",
+        "moss",
+        "nature",
+        "pile",
+        "large"
+      ],
+      "trim": true,
+      "candidateId": 52
+    },
+    {
+      "name": "tall-dense-tree-green",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 30,
+        "row": 22,
+        "w": 2,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "tree",
+        "tall",
+        "green",
+        "dense"
+      ],
+      "trim": true,
+      "candidateId": 76
+    },
+    {
+      "name": "climbing-vine-trellis-plant",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 13,
+        "row": 25,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "vine",
+        "trellis",
+        "climbing plant",
+        "green"
+      ],
+      "trim": true,
+      "candidateId": 84
+    },
+    {
+      "name": "round-oak-tree-medium",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 24,
+        "row": 25,
+        "w": 3,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "tree",
+        "oak",
+        "round",
+        "medium",
+        "green"
+      ],
+      "trim": true,
+      "candidateId": 85
+    },
+    {
+      "name": "round-bush-tree-small",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 27,
+        "row": 25,
+        "w": 3,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "tree",
+        "bush",
+        "small",
+        "round",
+        "green"
+      ],
+      "trim": true,
+      "candidateId": 86
+    },
+    {
+      "name": "round-bush-small-green",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 30,
+        "row": 26,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "bush",
+        "round",
+        "small",
+        "green"
+      ],
+      "trim": true,
+      "candidateId": 88
+    },
+    {
+      "name": "potted-tree-round-green",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 24,
+        "row": 29,
+        "w": 3,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "tree",
+        "potted",
+        "round",
+        "green",
+        "planter"
+      ],
+      "trim": true,
+      "candidateId": 100
+    },
+    {
+      "name": "round-bush-large-green",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 30,
+        "row": 29,
+        "w": 2,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "bush",
+        "round",
+        "large",
+        "green"
+      ],
+      "trim": true,
+      "candidateId": 102
+    },
+    {
+      "name": "large-round-tree-wide",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 30,
+        "row": 33,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "tree",
+        "round",
+        "large",
+        "wide",
+        "green"
+      ],
+      "trim": true,
+      "candidateId": 106
+    },
+    {
+      "name": "boulder-large-grey",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 59,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "rock",
+        "boulder",
+        "stone",
+        "obstacle"
+      ],
+      "trim": true,
+      "candidateId": 150
+    },
+    {
+      "name": "log-fallen-large",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 62,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "log",
+        "fallen",
+        "wood",
+        "nature",
+        "obstacle"
+      ],
+      "trim": true,
+      "candidateId": 166
+    },
+    {
+      "name": "dirt-mound-brown",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 72,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "dirt",
+        "mound",
+        "earth",
+        "ground",
+        "natural"
+      ],
+      "trim": true,
+      "candidateId": 177
+    },
+    {
+      "name": "rock-pile-small",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 13,
+        "row": 90,
+        "w": 2,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "rocks",
+        "debris",
+        "ground",
+        "natural"
+      ],
+      "trim": true,
+      "candidateId": 205
+    },
+    {
+      "name": "coal-rubble-pile",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 15,
+        "row": 90,
+        "w": 2,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "coal",
+        "rubble",
+        "pile",
+        "industrial"
+      ],
+      "trim": true,
+      "candidateId": 206
+    },
+    {
+      "name": "grey-boulder-large",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 92,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "rock",
+        "boulder",
+        "stone",
+        "grey"
+      ],
+      "trim": true,
+      "candidateId": 216
+    },
+    {
+      "name": "rock-fragment-rough",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 14,
+        "row": 93,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "rock",
+        "stone",
+        "fragment",
+        "debris"
+      ],
+      "trim": true,
+      "candidateId": 222
+    },
+    {
+      "name": "road-sign-single-warning",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 1,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "warning",
+        "triangle",
+        "road"
+      ],
+      "trim": true,
+      "candidateId": 6
+    },
+    {
+      "name": "road-sign-post-warning",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 4,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "warning",
+        "road",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 10
+    },
+    {
+      "name": "road-sign-warning-angled",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 4,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "warning",
+        "triangle",
+        "road"
+      ],
+      "trim": true,
+      "candidateId": 12
+    },
+    {
+      "name": "security-cctv-post",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 30,
+        "row": 6,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "camera",
+        "cctv",
+        "security",
+        "post",
+        "surveillance"
+      ],
+      "trim": true,
+      "candidateId": 17
+    },
+    {
+      "name": "road-sign-post-blue-circle",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 7,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "road",
+        "blue",
+        "circular",
+        "regulatory"
+      ],
+      "trim": true,
+      "candidateId": 19
+    },
+    {
+      "name": "road-sign-post-blue-arrow",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 7,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "road",
+        "blue",
+        "arrow",
+        "directional",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 21
+    },
+    {
+      "name": "road-sign-electric-hazard",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 13,
+        "row": 7,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "hazard",
+        "electric",
+        "warning",
+        "yellow"
+      ],
+      "trim": true,
+      "candidateId": 22
+    },
+    {
+      "name": "security-bollard-camera",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 30,
+        "row": 8,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "bollard",
+        "camera",
+        "cctv",
+        "security",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 24
+    },
+    {
+      "name": "road-sign-information-post",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 10,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "information",
+        "post",
+        "road",
+        "blue"
+      ],
+      "trim": true,
+      "candidateId": 25
+    },
+    {
+      "name": "road-sign-rectangle-grey",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 10,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "rectangular",
+        "grey",
+        "road",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 26
+    },
+    {
+      "name": "road-sign-green-stripe-post",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 9,
+        "row": 10,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "road",
+        "green",
+        "stripe",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 28
+    },
+    {
+      "name": "road-sign-green-diagonal-post",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 11,
+        "row": 10,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "road",
+        "green",
+        "diagonal",
+        "post",
+        "chevron"
+      ],
+      "trim": true,
+      "candidateId": 29
+    },
+    {
+      "name": "tall-signpost-bare",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 11,
+        "w": 1,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "post",
+        "signpost",
+        "tall",
+        "bare",
+        "road"
+      ],
+      "trim": true,
+      "candidateId": 34
+    },
+    {
+      "name": "road-sign-blue-banner-post",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 11,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "road",
+        "blue",
+        "banner",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 31
+    },
+    {
+      "name": "tall-antenna-post",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 11,
+        "w": 1,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "post",
+        "antenna",
+        "tall",
+        "thin",
+        "road"
+      ],
+      "trim": true,
+      "candidateId": 35
+    },
+    {
+      "name": "road-sign-green-arrow-large",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 11,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "road",
+        "green",
+        "arrow",
+        "large",
+        "directional"
+      ],
+      "trim": true,
+      "candidateId": 33
+    },
+    {
+      "name": "road-sign-blue-horizontal-bar",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 11,
+        "w": 4,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "road",
+        "blue",
+        "horizontal",
+        "bar",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 32
+    },
+    {
+      "name": "road-sign-pole-green",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 12,
+        "w": 3,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "pole",
+        "road",
+        "green",
+        "directional"
+      ],
+      "trim": true,
+      "candidateId": 38
+    },
+    {
+      "name": "red-telephone-box",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 28,
+        "row": 12,
+        "w": 3,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "telephone",
+        "booth",
+        "red",
+        "uk",
+        "phone box"
+      ],
+      "trim": true,
+      "candidateId": 39
+    },
+    {
+      "name": "road-sign-pole-angled-green",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 13,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "pole",
+        "road",
+        "green",
+        "angled"
+      ],
+      "trim": true,
+      "candidateId": 43
+    },
+    {
+      "name": "road-sign-stack-pole",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 9,
+        "row": 13,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "pole",
+        "road",
+        "stack",
+        "directional"
+      ],
+      "trim": true,
+      "candidateId": 46
+    },
+    {
+      "name": "horizontal-green-road-sign",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 13,
+        "w": 4,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "road",
+        "green",
+        "horizontal",
+        "flat"
+      ],
+      "trim": true,
+      "candidateId": 41
+    },
+    {
+      "name": "small-road-sign-pole",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 14,
+        "w": 3,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "pole",
+        "small",
+        "road",
+        "green"
+      ],
+      "trim": true,
+      "candidateId": 47
+    },
+    {
+      "name": "cctv-pole-camera",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 14,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "cctv",
+        "camera",
+        "surveillance",
+        "pole",
+        "security"
+      ],
+      "trim": true,
+      "candidateId": 48
+    },
+    {
+      "name": "flat-road-grate-long",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 16,
+        "w": 6,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "grate",
+        "drain",
+        "road",
+        "flat",
+        "ground"
+      ],
+      "trim": true,
+      "candidateId": 51
+    },
+    {
+      "name": "red-white-striped-barrier",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 14,
+        "row": 16,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "striped",
+        "red",
+        "white",
+        "gate",
+        "level crossing"
+      ],
+      "trim": true,
+      "candidateId": 56
+    },
+    {
+      "name": "striped-road-barrier-horizontal",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 17,
+        "w": 2,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "striped",
+        "horizontal",
+        "road",
+        "blockade"
+      ],
+      "trim": true,
+      "candidateId": 59
+    },
+    {
+      "name": "red-telephone-box-small",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 28,
+        "row": 17,
+        "w": 3,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "telephone",
+        "booth",
+        "red",
+        "small",
+        "uk"
+      ],
+      "trim": true,
+      "candidateId": 58
+    },
+    {
+      "name": "green-dumpster-bin",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 21,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "bin",
+        "green",
+        "waste",
+        "container"
+      ],
+      "trim": true,
+      "candidateId": 71
+    },
+    {
+      "name": "cylindrical-metal-bollard-large",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 22,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "bollard",
+        "metal",
+        "cylinder",
+        "barrier"
+      ],
+      "trim": true,
+      "candidateId": 75
+    },
+    {
+      "name": "sale-billboard-small-standing",
+      "category": "vendor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 21,
+        "row": 28,
+        "w": 3,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "billboard",
+        "sale",
+        "sign",
+        "standing",
+        "small"
+      ],
+      "trim": true,
+      "candidateId": 97
+    },
+    {
+      "name": "car-dealership-billboard-large",
+      "category": "vendor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 3,
+        "row": 29,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "billboard",
+        "cars",
+        "dealership",
+        "sale",
+        "large",
+        "advertisement"
+      ],
+      "trim": true,
+      "candidateId": 99
+    },
+    {
+      "name": "hungry-ad-billboard-large",
+      "category": "vendor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 27,
+        "row": 29,
+        "w": 3,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "billboard",
+        "food",
+        "advertisement",
+        "hungry",
+        "large",
+        "red"
+      ],
+      "trim": true,
+      "candidateId": 101
+    },
+    {
+      "name": "hungry-ad-billboard-small",
+      "category": "vendor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 33,
+        "w": 5,
+        "h": 13
+      },
+      "collides": true,
+      "tags": [
+        "billboard",
+        "food",
+        "advertisement",
+        "hungry",
+        "small",
+        "red"
+      ],
+      "trim": true,
+      "candidateId": 107
+    },
+    {
+      "name": "large-billboard-sign",
+      "category": "vendor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 5,
+        "row": 34,
+        "w": 5,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "billboard",
+        "sign",
+        "advertising",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 108
+    },
+    {
+      "name": "road-sign-gantry-directional",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 40,
+        "w": 7,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "road sign",
+        "gantry",
+        "traffic",
+        "directional",
+        "overhead"
+      ],
+      "trim": true,
+      "candidateId": 111
+    },
+    {
+      "name": "blue-dumpster-container",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 56,
+        "w": 4,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "container",
+        "blue",
+        "waste",
+        "bin"
+      ],
+      "trim": true,
+      "candidateId": 140
+    },
+    {
+      "name": "concrete-barrier-cylinder",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 18,
+        "row": 57,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "concrete",
+        "bollard",
+        "cylinder"
+      ],
+      "trim": true,
+      "candidateId": 144
+    },
+    {
+      "name": "construction-sign-medical",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 60,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "medical",
+        "cross",
+        "construction",
+        "warning"
+      ],
+      "trim": true,
+      "candidateId": 151
+    },
+    {
+      "name": "road-warning-sign-triangle",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 61,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "warning",
+        "triangle",
+        "road",
+        "construction"
+      ],
+      "trim": true,
+      "candidateId": 159
+    },
+    {
+      "name": "tyre-marks-skid",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 61,
+        "w": 2,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "skid",
+        "tyre",
+        "marks",
+        "road",
+        "ground"
+      ],
+      "trim": true,
+      "candidateId": 160
+    },
+    {
+      "name": "tyre-tracks-ground",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 61,
+        "w": 2,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "tyre",
+        "tracks",
+        "ground",
+        "road",
+        "marks"
+      ],
+      "trim": true,
+      "candidateId": 163
+    },
+    {
+      "name": "delivery-van-yellow",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 63,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "van",
+        "vehicle",
+        "delivery",
+        "yellow",
+        "car"
+      ],
+      "trim": true,
+      "candidateId": 167
+    },
+    {
+      "name": "wrecked-car-grey",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 11,
+        "row": 66,
+        "w": 8,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "car",
+        "wrecked",
+        "abandoned",
+        "vehicle",
+        "rust"
+      ],
+      "trim": true,
+      "candidateId": 172
+    },
+    {
+      "name": "industrial-signal-post",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 78,
+        "w": 2,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "signal",
+        "post",
+        "rail",
+        "industrial"
+      ],
+      "trim": true,
+      "candidateId": 186
+    },
+    {
+      "name": "road-construction-cone-barrel",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 8,
+        "row": 78,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "cone",
+        "construction",
+        "barrel",
+        "traffic"
+      ],
+      "trim": true,
+      "candidateId": 187
+    },
+    {
+      "name": "road-barrier-stop-sign",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 81,
+        "w": 5,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "stop sign",
+        "road",
+        "traffic control"
+      ],
+      "trim": true,
+      "candidateId": 194
+    },
+    {
+      "name": "industrial-meter-post",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 83,
+        "w": 3,
+        "h": 8
+      },
+      "collides": true,
+      "tags": [
+        "meter",
+        "post",
+        "gauge",
+        "industrial"
+      ],
+      "trim": true,
+      "candidateId": 198
+    },
+    {
+      "name": "tall-thin-antenna-pole",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 99,
+        "w": 1,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "antenna",
+        "pole",
+        "tall",
+        "thin"
+      ],
+      "trim": true,
+      "candidateId": 243
+    },
+    {
+      "name": "traffic-signal-double-pole",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 99,
+        "w": 2,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "traffic-light",
+        "signal",
+        "double",
+        "pole"
+      ],
+      "trim": true,
+      "candidateId": 244
+    },
+    {
+      "name": "traffic-light-pole-medium",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 3,
+        "row": 99,
+        "w": 1,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "traffic-light",
+        "pole",
+        "signal",
+        "medium"
+      ],
+      "trim": true,
+      "candidateId": 245
+    },
+    {
+      "name": "traffic-light-pole-tall",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 99,
+        "w": 6,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "traffic-light",
+        "pole",
+        "signal",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 241
+    },
+    {
+      "name": "traffic-signal-post-dark",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 14,
+        "row": 105,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "traffic light",
+        "signal",
+        "pole",
+        "dark"
+      ],
+      "trim": true,
+      "candidateId": 253
+    },
+    {
+      "name": "traffic-signal-post-tall",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 15,
+        "row": 105,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "traffic light",
+        "signal",
+        "pole",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 254
+    },
+    {
+      "name": "road-barrier-concrete",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 13,
+        "row": 107,
+        "w": 3,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "concrete",
+        "road",
+        "block"
+      ],
+      "trim": true,
+      "candidateId": 257
+    },
+    {
+      "name": "road-barrier-striped-wide",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 13,
+        "row": 108,
+        "w": 3,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "striped",
+        "road",
+        "wide"
+      ],
+      "trim": true,
+      "candidateId": 259
+    },
+    {
+      "name": "road-chevron-sign-single",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 11,
+        "row": 121,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "chevron",
+        "road sign",
+        "directional",
+        "single",
+        "pole"
+      ],
+      "trim": true,
+      "candidateId": 268
+    },
+    {
+      "name": "road-warning-cone-tall",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 121,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "cone",
+        "warning",
+        "traffic",
+        "orange",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 269
+    },
+    {
+      "name": "give-way-sign-single",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 15,
+        "row": 121,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "give way",
+        "yield",
+        "triangle",
+        "inverted",
+        "pole"
+      ],
+      "trim": true,
+      "candidateId": 271
+    },
+    {
+      "name": "road-warning-sign-diamond",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 121,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "warning",
+        "diamond",
+        "road sign",
+        "yellow",
+        "pole"
+      ],
+      "trim": true,
+      "candidateId": 272
+    },
+    {
+      "name": "traffic-cone-stack",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 21,
+        "row": 121,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "cone",
+        "traffic",
+        "orange",
+        "stack",
+        "roadwork"
+      ],
+      "trim": true,
+      "candidateId": 273
+    },
+    {
+      "name": "road-barrier-striped-horizontal",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 22,
+        "row": 121,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "striped",
+        "horizontal",
+        "road"
+      ],
+      "trim": true,
+      "candidateId": 277
+    },
+    {
+      "name": "road-barrier-striped-angled",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 26,
+        "row": 121,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "striped",
+        "angled",
+        "road",
+        "no entry"
+      ],
+      "trim": true,
+      "candidateId": 276
+    },
+    {
+      "name": "blue-cross-sign-front",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 125,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "cross",
+        "blue",
+        "medical",
+        "directional"
+      ],
+      "trim": true,
+      "candidateId": 288
+    },
+    {
+      "name": "pedestrian-crossing-sign-post",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 125,
+        "w": 5,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "pedestrian",
+        "crossing",
+        "sign",
+        "post",
+        "arrow"
+      ],
+      "trim": true,
+      "candidateId": 279
+    },
+    {
+      "name": "blue-down-arrow-sign",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 125,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "arrow",
+        "blue",
+        "directional"
+      ],
+      "trim": true,
+      "candidateId": 289
+    },
+    {
+      "name": "traffic-control-box",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 125,
+        "w": 3,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "traffic control",
+        "box",
+        "electric",
+        "signal"
+      ],
+      "trim": true,
+      "candidateId": 280
+    },
+    {
+      "name": "red-cross-sign-board",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 11,
+        "row": 125,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "red cross",
+        "sign",
+        "board",
+        "medical",
+        "warning"
+      ],
+      "trim": true,
+      "candidateId": 284
+    },
+    {
+      "name": "red-cross-sign-board-alt",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 125,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "red cross",
+        "sign",
+        "board",
+        "medical",
+        "warning"
+      ],
+      "trim": true,
+      "candidateId": 285
+    },
+    {
+      "name": "cable-wire-post",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 16,
+        "row": 125,
+        "w": 4,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "cable",
+        "wire",
+        "post",
+        "utility"
+      ],
+      "trim": true,
+      "candidateId": 281
+    },
+    {
+      "name": "blue-info-sign-board",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 125,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "info",
+        "sign",
+        "board",
+        "blue",
+        "information"
+      ],
+      "trim": true,
+      "candidateId": 286
+    },
+    {
+      "name": "blue-info-sign-board-alt",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 21,
+        "row": 125,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "info",
+        "sign",
+        "board",
+        "blue",
+        "information"
+      ],
+      "trim": true,
+      "candidateId": 287
+    },
+    {
+      "name": "traffic-signal-box-red",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 26,
+        "row": 125,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "traffic",
+        "signal",
+        "light",
+        "red",
+        "controller"
+      ],
+      "trim": true,
+      "candidateId": 290
+    },
+    {
+      "name": "blue-cross-sign-large",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 127,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "cross",
+        "blue",
+        "medical",
+        "large"
+      ],
+      "trim": true,
+      "candidateId": 296
+    },
+    {
+      "name": "blue-up-arrow-sign-alt",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 127,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "arrow",
+        "blue",
+        "directional",
+        "up"
+      ],
+      "trim": true,
+      "candidateId": 297
+    },
+    {
+      "name": "red-cross-sign-front",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 11,
+        "row": 127,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "cross",
+        "red",
+        "medical",
+        "directional"
+      ],
+      "trim": true,
+      "candidateId": 292
+    },
+    {
+      "name": "red-cross-sign-angled",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 127,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "cross",
+        "red",
+        "directional",
+        "angled"
+      ],
+      "trim": true,
+      "candidateId": 293
+    },
+    {
+      "name": "traffic-signal-box-orange",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 13,
+        "row": 127,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "traffic",
+        "signal",
+        "light",
+        "orange",
+        "controller"
+      ],
+      "trim": true,
+      "candidateId": 291
+    },
+    {
+      "name": "blue-up-arrow-sign",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 127,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "arrow",
+        "blue",
+        "directional",
+        "up"
+      ],
+      "trim": true,
+      "candidateId": 294
+    },
+    {
+      "name": "blue-cross-sign-angled-left",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 21,
+        "row": 127,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "cross",
+        "blue",
+        "directional",
+        "angled"
+      ],
+      "trim": true,
+      "candidateId": 295
+    },
+    {
+      "name": "traffic-signal-box-yellow",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 26,
+        "row": 127,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "traffic",
+        "signal",
+        "light",
+        "yellow",
+        "controller"
+      ],
+      "trim": true,
+      "candidateId": 298
+    },
+    {
+      "name": "traffic-signal-box-green",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 13,
+        "row": 129,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "traffic",
+        "signal",
+        "light",
+        "green",
+        "controller"
+      ],
+      "trim": true,
+      "candidateId": 299
+    },
+    {
+      "name": "traffic-signal-box-green-alt",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 26,
+        "row": 129,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "traffic",
+        "signal",
+        "light",
+        "green",
+        "controller"
+      ],
+      "trim": true,
+      "candidateId": 300
+    },
+    {
+      "name": "traffic-light-controller-panel",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 7,
+        "row": 130,
+        "w": 3,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "traffic",
+        "controller",
+        "panel",
+        "lights",
+        "box"
+      ],
+      "trim": true,
+      "candidateId": 302
+    },
+    {
+      "name": "red-cross-sign-large",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 131,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "cross",
+        "red",
+        "medical",
+        "large"
+      ],
+      "trim": true,
+      "candidateId": 306
+    },
+    {
+      "name": "red-down-arrow-sign",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 131,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "arrow",
+        "red",
+        "directional",
+        "down"
+      ],
+      "trim": true,
+      "candidateId": 307
+    },
+    {
+      "name": "road-barrier-folding",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 21,
+        "row": 132,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "road",
+        "folding",
+        "block",
+        "gate"
+      ],
+      "trim": true,
+      "candidateId": 308
+    },
+    {
+      "name": "red-cross-sign-small",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 133,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "cross",
+        "red",
+        "small",
+        "medical"
+      ],
+      "trim": true,
+      "candidateId": 311
+    },
+    {
+      "name": "red-up-arrow-sign",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 133,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "arrow",
+        "red",
+        "directional",
+        "up"
+      ],
+      "trim": true,
+      "candidateId": 312
+    },
+    {
+      "name": "road-barrier-low-double",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 9,
+        "row": 134,
+        "w": 3,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "road",
+        "low",
+        "double",
+        "block"
+      ],
+      "trim": true,
+      "candidateId": 313
+    },
+    {
+      "name": "road-barrier-low-single",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 134,
+        "w": 3,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "road",
+        "low",
+        "single",
+        "block"
+      ],
+      "trim": true,
+      "candidateId": 314
+    },
+    {
+      "name": "utility-box-grey",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 134,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "utility",
+        "box",
+        "grey",
+        "cabinet",
+        "electrical"
+      ],
+      "trim": true,
+      "candidateId": 315
+    },
+    {
+      "name": "traffic-signal-box-red-angled",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 135,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "traffic",
+        "signal",
+        "red",
+        "angled",
+        "controller"
+      ],
+      "trim": true,
+      "candidateId": 317
+    },
+    {
+      "name": "blue-diagonal-arrow-sign",
+      "category": "street",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 136,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "arrow",
+        "blue",
+        "diagonal",
+        "directional"
+      ],
+      "trim": true,
+      "candidateId": 320
+    },
+    {
+      "name": "blue-lightning-sign",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 2,
+        "row": 136,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "lightning",
+        "blue",
+        "electric",
+        "warning"
+      ],
+      "trim": true,
+      "candidateId": 321
+    },
+    {
+      "name": "road-barrier-low-alt",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 136,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "road",
+        "low",
+        "concrete",
+        "block"
+      ],
+      "trim": true,
+      "candidateId": 322
+    },
+    {
+      "name": "road-barrier-low-wide",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 20,
+        "row": 136,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "road",
+        "low",
+        "wide",
+        "concrete"
+      ],
+      "trim": true,
+      "candidateId": 323
+    },
+    {
+      "name": "street-sign-pole-bare",
+      "category": "nature",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 141,
+        "w": 4,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "pole",
+        "street",
+        "bare",
+        "post"
+      ],
+      "trim": true,
+      "candidateId": 334
+    },
+    {
+      "name": "metal-grate-vent-small",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 1,
+        "row": 171,
+        "w": 5,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "grate",
+        "vent",
+        "metal",
+        "ground",
+        "drain"
+      ],
+      "trim": true,
+      "candidateId": 378
+    },
+    {
+      "name": "concrete-pavement-tile",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 5,
+        "row": 171,
+        "w": 6,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "pavement",
+        "tile",
+        "concrete",
+        "ground"
+      ],
+      "trim": true,
+      "candidateId": 379
+    },
+    {
+      "name": "metal-grate-vent-wide",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 171,
+        "w": 5,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "grate",
+        "vent",
+        "metal",
+        "ground",
+        "drain"
+      ],
+      "trim": true,
+      "candidateId": 380
+    },
+    {
+      "name": "concrete-floor-hatch",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 26,
+        "row": 174,
+        "w": 4,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "hatch",
+        "floor",
+        "concrete",
+        "ground",
+        "utility"
+      ],
+      "trim": true,
+      "candidateId": 390
+    },
+    {
+      "name": "concrete-floor-slab",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 176,
+        "w": 3,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "slab",
+        "floor",
+        "concrete",
+        "ground",
+        "pavement"
+      ],
+      "trim": true,
+      "candidateId": 395
+    },
+    {
+      "name": "road-asphalt-patch-dark",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 25,
+        "row": 176,
+        "w": 2,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "asphalt",
+        "ground",
+        "dark"
+      ],
+      "trim": true,
+      "candidateId": 396
+    },
+    {
+      "name": "road-lane-marking-vertical",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 26,
+        "row": 176,
+        "w": 4,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "lane",
+        "marking",
+        "white-line"
+      ],
+      "trim": true,
+      "candidateId": 397
+    },
+    {
+      "name": "road-asphalt-patch-large",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 29,
+        "row": 176,
+        "w": 2,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "asphalt",
+        "ground",
+        "plain"
+      ],
+      "trim": true,
+      "candidateId": 398
+    },
+    {
+      "name": "road-two-tone-panel",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 30,
+        "row": 176,
+        "w": 2,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "surface",
+        "two-tone",
+        "ground"
+      ],
+      "trim": true,
+      "candidateId": 399
+    },
+    {
+      "name": "road-barrier-bollard-short",
+      "category": "fence",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 178,
+        "w": 3,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "bollard",
+        "barrier",
+        "road",
+        "concrete"
+      ],
+      "trim": true,
+      "candidateId": 401
+    },
+    {
+      "name": "road-curb-corner-dark",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 25,
+        "row": 178,
+        "w": 2,
+        "h": 6
+      },
+      "collides": false,
+      "tags": [
+        "curb",
+        "corner",
+        "road",
+        "asphalt"
+      ],
+      "trim": true,
+      "candidateId": 402
+    },
+    {
+      "name": "road-dashed-center-line",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 26,
+        "row": 178,
+        "w": 4,
+        "h": 5
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "dashed",
+        "center-line",
+        "marking"
+      ],
+      "trim": true,
+      "candidateId": 403
+    },
+    {
+      "name": "road-lane-divider-tall",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 29,
+        "row": 178,
+        "w": 2,
+        "h": 5
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "lane",
+        "divider",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 404
+    },
+    {
+      "name": "traffic-light-post-single",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 30,
+        "row": 178,
+        "w": 2,
+        "h": 7
+      },
+      "collides": true,
+      "tags": [
+        "traffic-light",
+        "post",
+        "signal",
+        "urban"
+      ],
+      "trim": true,
+      "candidateId": 405
+    },
+    {
+      "name": "road-corner-curb-edge",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 180,
+        "w": 4,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "curb",
+        "edge",
+        "corner",
+        "road",
+        "asphalt"
+      ],
+      "trim": true,
+      "candidateId": 407
+    },
+    {
+      "name": "road-raised-curb-angled",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 180,
+        "w": 4,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "curb",
+        "raised",
+        "angled",
+        "road"
+      ],
+      "trim": true,
+      "candidateId": 408
+    },
+    {
+      "name": "tire-tracks-debris",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 183,
+        "w": 2,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "tracks",
+        "marks",
+        "debris",
+        "road"
+      ],
+      "trim": true,
+      "candidateId": 417
+    },
+    {
+      "name": "road-asphalt-edge-diagonal",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 184,
+        "w": 4,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "asphalt",
+        "edge",
+        "diagonal"
+      ],
+      "trim": true,
+      "candidateId": 419
+    },
+    {
+      "name": "road-white-dashes-horizontal",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 3,
+        "row": 184,
+        "w": 4,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "dashes",
+        "marking",
+        "horizontal"
+      ],
+      "trim": true,
+      "candidateId": 420
+    },
+    {
+      "name": "road-diagonal-lane-markings",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 9,
+        "row": 184,
+        "w": 4,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "diagonal",
+        "lane",
+        "markings"
+      ],
+      "trim": true,
+      "candidateId": 421
+    },
+    {
+      "name": "road-corner-asphalt-curve",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 184,
+        "w": 4,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "corner",
+        "curve",
+        "asphalt"
+      ],
+      "trim": true,
+      "candidateId": 422
+    },
+    {
+      "name": "road-intersection-light-patch",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 184,
+        "w": 3,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "intersection",
+        "light",
+        "ground"
+      ],
+      "trim": true,
+      "candidateId": 423
+    },
+    {
+      "name": "road-light-asphalt-section",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 30,
+        "row": 184,
+        "w": 2,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "asphalt",
+        "light",
+        "section"
+      ],
+      "trim": true,
+      "candidateId": 424
+    },
+    {
+      "name": "road-corner-curb-wide",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 187,
+        "w": 6,
+        "h": 10
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "corner",
+        "curb",
+        "wide",
+        "urban"
+      ],
+      "trim": true,
+      "candidateId": 427
+    },
+    {
+      "name": "road-straight-dark-section",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 187,
+        "w": 4,
+        "h": 8
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "straight",
+        "dark",
+        "section"
+      ],
+      "trim": true,
+      "candidateId": 428
+    },
+    {
+      "name": "road-curve-lane-marked",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 187,
+        "w": 6,
+        "h": 10
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "curve",
+        "lane",
+        "marked",
+        "asphalt"
+      ],
+      "trim": true,
+      "candidateId": 429
+    },
+    {
+      "name": "sidewalk-corner-raised",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 187,
+        "w": 4,
+        "h": 5
+      },
+      "collides": false,
+      "tags": [
+        "sidewalk",
+        "corner",
+        "raised",
+        "pavement"
+      ],
+      "trim": true,
+      "candidateId": 425
+    },
+    {
+      "name": "sidewalk-edge-vertical",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 29,
+        "row": 187,
+        "w": 3,
+        "h": 5
+      },
+      "collides": false,
+      "tags": [
+        "sidewalk",
+        "edge",
+        "vertical",
+        "pavement"
+      ],
+      "trim": true,
+      "candidateId": 426
+    },
+    {
+      "name": "road-striped-crosswalk-section",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 26,
+        "row": 188,
+        "w": 4,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "crosswalk",
+        "striped",
+        "pedestrian"
+      ],
+      "trim": true,
+      "candidateId": 430
+    },
+    {
+      "name": "road-light-section-plain",
+      "category": "lighting",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 23,
+        "row": 191,
+        "w": 4,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "light",
+        "plain",
+        "asphalt",
+        "section"
+      ],
+      "trim": true,
+      "candidateId": 431
+    },
+    {
+      "name": "stone-tile-panel-top",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 26,
+        "row": 191,
+        "w": 4,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "tile",
+        "stone",
+        "ground",
+        "pavement"
+      ],
+      "trim": true,
+      "candidateId": 432
+    },
+    {
+      "name": "stone-tile-panel-corner",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 29,
+        "row": 191,
+        "w": 3,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "tile",
+        "stone",
+        "ground",
+        "corner",
+        "pavement"
+      ],
+      "trim": true,
+      "candidateId": 433
+    },
+    {
+      "name": "stone-tile-panel-top-alt",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 26,
+        "row": 194,
+        "w": 4,
+        "h": 6
+      },
+      "collides": false,
+      "tags": [
+        "tile",
+        "stone",
+        "ground",
+        "pavement"
+      ],
+      "trim": true,
+      "candidateId": 435
+    },
+    {
+      "name": "stone-tile-panel-corner-alt",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 0,
+        "row": 197,
+        "w": 6,
+        "h": 6
+      },
+      "collides": false,
+      "tags": [
+        "tile",
+        "stone",
+        "ground",
+        "corner",
+        "pavement"
+      ],
+      "trim": true,
+      "candidateId": 437
+    },
+    {
+      "name": "stone-tile-panel-side",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 6,
+        "row": 197,
+        "w": 4,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "tile",
+        "stone",
+        "ground",
+        "pavement"
+      ],
+      "trim": true,
+      "candidateId": 438
+    },
+    {
+      "name": "stone-tile-panel-curved",
+      "category": "misc",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 10,
+        "row": 197,
+        "w": 6,
+        "h": 6
+      },
+      "collides": false,
+      "tags": [
+        "tile",
+        "stone",
+        "ground",
+        "curved",
+        "pavement"
+      ],
+      "trim": true,
+      "candidateId": 439
+    },
+    {
+      "name": "vendor-stall-awning-brown-open",
+      "category": "vendor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 214,
+        "w": 7,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "stall",
+        "awning",
+        "booth",
+        "vendor",
+        "brown",
+        "market"
+      ],
+      "trim": true,
+      "candidateId": 450
+    },
+    {
+      "name": "vendor-stall-awning-brown-closed",
+      "category": "vendor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 19,
+        "row": 214,
+        "w": 8,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "stall",
+        "awning",
+        "booth",
+        "vendor",
+        "brown",
+        "market",
+        "closed"
+      ],
+      "trim": true,
+      "candidateId": 451
+    },
+    {
+      "name": "vendor-stall-awning-brown-front",
+      "category": "vendor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 5,
+        "row": 216,
+        "w": 8,
+        "h": 8
+      },
+      "collides": true,
+      "tags": [
+        "stall",
+        "awning",
+        "booth",
+        "vendor",
+        "brown",
+        "market",
+        "front"
+      ],
+      "trim": true,
+      "candidateId": 454
+    },
+    {
+      "name": "vending-machine-small",
+      "category": "decor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 4,
+        "row": 218,
+        "w": 1,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "vending",
+        "machine",
+        "small",
+        "dispenser"
+      ],
+      "trim": true,
+      "candidateId": 455
+    },
+    {
+      "name": "vendor-stall-awning-open-front",
+      "category": "vendor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 12,
+        "row": 219,
+        "w": 7,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "stall",
+        "awning",
+        "booth",
+        "vendor",
+        "market",
+        "open",
+        "front"
+      ],
+      "trim": true,
+      "candidateId": 459
+    },
+    {
+      "name": "vendor-stall-awning-closed-front",
+      "category": "vendor",
+      "source": {
+        "sheet": "exterior/3_City_Props_16x16.png",
+        "col": 19,
+        "row": 219,
+        "w": 8,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "stall",
+        "awning",
+        "booth",
+        "vendor",
+        "market",
+        "closed",
+        "front"
+      ],
+      "trim": true,
+      "candidateId": 460
+    }
+  ]
+}

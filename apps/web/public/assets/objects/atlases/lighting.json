@@ -1,0 +1,413 @@
+{
+  "frames": {
+    "hanging-light-blue-blouse": {
+      "frame": {
+        "x": 427,
+        "y": 0,
+        "w": 13,
+        "h": 11
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 11
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 11
+      }
+    },
+    "hanging-light-blue-shirt": {
+      "frame": {
+        "x": 233,
+        "y": 0,
+        "w": 7,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 7,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 7,
+        "h": 30
+      }
+    },
+    "hanging-sign-orange-light": {
+      "frame": {
+        "x": 275,
+        "y": 0,
+        "w": 21,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 21,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 21,
+        "h": 21
+      }
+    },
+    "hanging-sign-green-light": {
+      "frame": {
+        "x": 297,
+        "y": 0,
+        "w": 21,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 21,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 21,
+        "h": 21
+      }
+    },
+    "hanging-sign-red-light": {
+      "frame": {
+        "x": 328,
+        "y": 0,
+        "w": 19,
+        "h": 17
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 17
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 17
+      }
+    },
+    "bollard-lamp-post-short": {
+      "frame": {
+        "x": 319,
+        "y": 0,
+        "w": 8,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 21
+      }
+    },
+    "globe-lamp-post-short": {
+      "frame": {
+        "x": 164,
+        "y": 0,
+        "w": 11,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 40
+      }
+    },
+    "globe-lamp-post-corner": {
+      "frame": {
+        "x": 176,
+        "y": 0,
+        "w": 11,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 40
+      }
+    },
+    "globe-lamp-post-ornate": {
+      "frame": {
+        "x": 188,
+        "y": 0,
+        "w": 11,
+        "h": 33
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 33
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 33
+      }
+    },
+    "decorative-wall-sconce-small": {
+      "frame": {
+        "x": 382,
+        "y": 0,
+        "w": 44,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 12
+      }
+    },
+    "paper-lantern-white": {
+      "frame": {
+        "x": 241,
+        "y": 0,
+        "w": 19,
+        "h": 25
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 25
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 25
+      }
+    },
+    "traffic-signal-double-pole": {
+      "frame": {
+        "x": 65,
+        "y": 0,
+        "w": 26,
+        "h": 88
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 88
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 88
+      }
+    },
+    "traffic-light-pole-medium": {
+      "frame": {
+        "x": 92,
+        "y": 0,
+        "w": 13,
+        "h": 88
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 88
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 88
+      }
+    },
+    "traffic-light-pole-tall": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 91
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 91
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 91
+      }
+    },
+    "traffic-light-controller-panel": {
+      "frame": {
+        "x": 139,
+        "y": 0,
+        "w": 24,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 24,
+        "h": 46
+      }
+    },
+    "blue-lightning-sign": {
+      "frame": {
+        "x": 261,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 22
+      }
+    },
+    "traffic-light-post-single": {
+      "frame": {
+        "x": 106,
+        "y": 0,
+        "w": 32,
+        "h": 80
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 80
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 80
+      }
+    },
+    "road-intersection-light-patch": {
+      "frame": {
+        "x": 348,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    "road-light-asphalt-section": {
+      "frame": {
+        "x": 365,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    "road-light-section-plain": {
+      "frame": {
+        "x": 200,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    }
+  },
+  "meta": {
+    "image": "lighting.png",
+    "size": {
+      "w": 441,
+      "h": 92
+    },
+    "scale": 1,
+    "app": "thomas-town/pack_atlas.py"
+  }
+}

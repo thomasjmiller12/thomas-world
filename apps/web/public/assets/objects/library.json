@@ -1,0 +1,8130 @@
+{
+  "version": 1,
+  "categories": {
+    "decor": {
+      "atlas": "atlases/decor.png",
+      "json": "atlases/decor.json",
+      "count": 47
+    },
+    "fence": {
+      "atlas": "atlases/fence.png",
+      "json": "atlases/fence.json",
+      "count": 22
+    },
+    "furniture": {
+      "atlas": "atlases/furniture.png",
+      "json": "atlases/furniture.json",
+      "count": 7
+    },
+    "lighting": {
+      "atlas": "atlases/lighting.png",
+      "json": "atlases/lighting.json",
+      "count": 20
+    },
+    "misc": {
+      "atlas": "atlases/misc.png",
+      "json": "atlases/misc.json",
+      "count": 146
+    },
+    "nature": {
+      "atlas": "atlases/nature.png",
+      "json": "atlases/nature.json",
+      "count": 48
+    },
+    "street": {
+      "atlas": "atlases/street.png",
+      "json": "atlases/street.json",
+      "count": 86
+    },
+    "vendor": {
+      "atlas": "atlases/vendor.png",
+      "json": "atlases/vendor.json",
+      "count": 14
+    }
+  },
+  "objects": {
+    "concrete-fountain-base": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "concrete-fountain-base",
+      "px": {
+        "w": 64,
+        "h": 55
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 3.44
+      },
+      "collides": true,
+      "tags": [
+        "fountain",
+        "base",
+        "concrete",
+        "plaza"
+      ]
+    },
+    "heart-ad-flag-blue": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "heart-ad-flag-blue",
+      "px": {
+        "w": 19,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 1.25
+      },
+      "collides": true,
+      "tags": [
+        "flag",
+        "heart",
+        "advertisement",
+        "blue",
+        "banner"
+      ]
+    },
+    "heart-ad-flag-red": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "heart-ad-flag-red",
+      "px": {
+        "w": 21,
+        "h": 26
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 1.62
+      },
+      "collides": true,
+      "tags": [
+        "flag",
+        "heart",
+        "advertisement",
+        "red",
+        "banner"
+      ]
+    },
+    "heart-ad-flag-red-alt": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "heart-ad-flag-red-alt",
+      "px": {
+        "w": 19,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 1.25
+      },
+      "collides": true,
+      "tags": [
+        "flag",
+        "heart",
+        "advertisement",
+        "red",
+        "banner",
+        "alternate"
+      ]
+    },
+    "metal-trash-can-closed": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "metal-trash-can-closed",
+      "px": {
+        "w": 11,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "trash can",
+        "bin",
+        "metal",
+        "garbage",
+        "closed"
+      ]
+    },
+    "metal-trash-can-open-lit": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "metal-trash-can-open-lit",
+      "px": {
+        "w": 12,
+        "h": 20
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.25
+      },
+      "collides": true,
+      "tags": [
+        "trash can",
+        "bin",
+        "metal",
+        "open",
+        "fire",
+        "lit"
+      ]
+    },
+    "metal-trash-can-closed-dented": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "metal-trash-can-closed-dented",
+      "px": {
+        "w": 11,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "trash can",
+        "bin",
+        "metal",
+        "dented",
+        "gray"
+      ]
+    },
+    "metal-trash-can-open-overflow": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "metal-trash-can-open-overflow",
+      "px": {
+        "w": 12,
+        "h": 20
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.25
+      },
+      "collides": true,
+      "tags": [
+        "trash can",
+        "bin",
+        "open",
+        "overflow",
+        "full"
+      ]
+    },
+    "computer-terminal-industrial": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "computer-terminal-industrial",
+      "px": {
+        "w": 95,
+        "h": 96
+      },
+      "tiles": {
+        "w": 5.94,
+        "h": 6.0
+      },
+      "collides": true,
+      "tags": [
+        "computer",
+        "terminal",
+        "industrial",
+        "monitor"
+      ]
+    },
+    "metal-dumpster-open-top": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "metal-dumpster-open-top",
+      "px": {
+        "w": 29,
+        "h": 56
+      },
+      "tiles": {
+        "w": 1.81,
+        "h": 3.5
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "bin",
+        "open",
+        "metal"
+      ]
+    },
+    "waste-bin-filled": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "waste-bin-filled",
+      "px": {
+        "w": 29,
+        "h": 56
+      },
+      "tiles": {
+        "w": 1.81,
+        "h": 3.5
+      },
+      "collides": true,
+      "tags": [
+        "bin",
+        "waste",
+        "filled",
+        "container"
+      ]
+    },
+    "large-metal-dumpster-grey": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "large-metal-dumpster-grey",
+      "px": {
+        "w": 22,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "large",
+        "grey",
+        "metal"
+      ]
+    },
+    "metal-dumpster-small-grey": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "metal-dumpster-small-grey",
+      "px": {
+        "w": 22,
+        "h": 58
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 3.62
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "bin",
+        "waste",
+        "metal"
+      ]
+    },
+    "waste-bin-metal-side": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "waste-bin-metal-side",
+      "px": {
+        "w": 22,
+        "h": 58
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 3.62
+      },
+      "collides": true,
+      "tags": [
+        "bin",
+        "waste",
+        "metal",
+        "container"
+      ]
+    },
+    "large-industrial-dumpster-grey": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "large-industrial-dumpster-grey",
+      "px": {
+        "w": 29,
+        "h": 26
+      },
+      "tiles": {
+        "w": 1.81,
+        "h": 1.62
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "industrial",
+        "large",
+        "grey"
+      ]
+    },
+    "metal-skip-container-small": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "metal-skip-container-small",
+      "px": {
+        "w": 29,
+        "h": 55
+      },
+      "tiles": {
+        "w": 1.81,
+        "h": 3.44
+      },
+      "collides": true,
+      "tags": [
+        "skip",
+        "container",
+        "metal",
+        "small"
+      ]
+    },
+    "small-dumpster-with-waste": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "small-dumpster-with-waste",
+      "px": {
+        "w": 28,
+        "h": 55
+      },
+      "tiles": {
+        "w": 1.75,
+        "h": 3.44
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "waste",
+        "small",
+        "metal"
+      ]
+    },
+    "grey-multi-bin-rack": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "grey-multi-bin-rack",
+      "px": {
+        "w": 26,
+        "h": 48
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 3.0
+      },
+      "collides": true,
+      "tags": [
+        "bin",
+        "rack",
+        "grey",
+        "recycling"
+      ]
+    },
+    "small-grey-dumpster-closed": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "small-grey-dumpster-closed",
+      "px": {
+        "w": 22,
+        "h": 58
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 3.62
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "small",
+        "closed",
+        "grey"
+      ]
+    },
+    "dumpster-with-trash-overflow": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "dumpster-with-trash-overflow",
+      "px": {
+        "w": 22,
+        "h": 42
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 2.62
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "overflow",
+        "trash",
+        "full"
+      ]
+    },
+    "small-waste-bin-grey": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "small-waste-bin-grey",
+      "px": {
+        "w": 28,
+        "h": 41
+      },
+      "tiles": {
+        "w": 1.75,
+        "h": 2.56
+      },
+      "collides": true,
+      "tags": [
+        "bin",
+        "waste",
+        "small",
+        "grey"
+      ]
+    },
+    "orange-dumpster-large": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "orange-dumpster-large",
+      "px": {
+        "w": 44,
+        "h": 120
+      },
+      "tiles": {
+        "w": 2.75,
+        "h": 7.5
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "orange",
+        "large",
+        "container"
+      ]
+    },
+    "orange-industrial-skip": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "orange-industrial-skip",
+      "px": {
+        "w": 42,
+        "h": 118
+      },
+      "tiles": {
+        "w": 2.62,
+        "h": 7.38
+      },
+      "collides": true,
+      "tags": [
+        "skip",
+        "orange",
+        "industrial",
+        "container"
+      ]
+    },
+    "green-industrial-barrel": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "green-industrial-barrel",
+      "px": {
+        "w": 29,
+        "h": 56
+      },
+      "tiles": {
+        "w": 1.81,
+        "h": 3.5
+      },
+      "collides": true,
+      "tags": [
+        "barrel",
+        "drum",
+        "green",
+        "industrial",
+        "container"
+      ]
+    },
+    "green-waste-barrel-open": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "green-waste-barrel-open",
+      "px": {
+        "w": 29,
+        "h": 56
+      },
+      "tiles": {
+        "w": 1.81,
+        "h": 3.5
+      },
+      "collides": true,
+      "tags": [
+        "barrel",
+        "waste",
+        "green",
+        "open",
+        "container"
+      ]
+    },
+    "wind-turbine": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wind-turbine",
+      "px": {
+        "w": 92,
+        "h": 165
+      },
+      "tiles": {
+        "w": 5.75,
+        "h": 10.31
+      },
+      "collides": true,
+      "tags": [
+        "wind turbine",
+        "energy",
+        "tall",
+        "industrial",
+        "windmill"
+      ]
+    },
+    "wooden-pallet-stack": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wooden-pallet-stack",
+      "px": {
+        "w": 52,
+        "h": 43
+      },
+      "tiles": {
+        "w": 3.25,
+        "h": 2.69
+      },
+      "collides": true,
+      "tags": [
+        "pallet",
+        "wooden",
+        "cargo",
+        "storage",
+        "stack"
+      ]
+    },
+    "wooden-crate-large": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wooden-crate-large",
+      "px": {
+        "w": 52,
+        "h": 43
+      },
+      "tiles": {
+        "w": 3.25,
+        "h": 2.69
+      },
+      "collides": true,
+      "tags": [
+        "crate",
+        "wooden",
+        "cargo",
+        "storage",
+        "box"
+      ]
+    },
+    "cardboard-box-crushed": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "cardboard-box-crushed",
+      "px": {
+        "w": 11,
+        "h": 14
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 0.88
+      },
+      "collides": false,
+      "tags": [
+        "box",
+        "cardboard",
+        "trash",
+        "debris"
+      ]
+    },
+    "biohazard-barrel-single": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "biohazard-barrel-single",
+      "px": {
+        "w": 48,
+        "h": 48
+      },
+      "tiles": {
+        "w": 3.0,
+        "h": 3.0
+      },
+      "collides": true,
+      "tags": [
+        "barrel",
+        "biohazard",
+        "single",
+        "hazard",
+        "green"
+      ]
+    },
+    "oil-drum-rusty": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "oil-drum-rusty",
+      "px": {
+        "w": 13,
+        "h": 20
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.25
+      },
+      "collides": true,
+      "tags": [
+        "drum",
+        "oil",
+        "rusty",
+        "barrel",
+        "industrial"
+      ]
+    },
+    "wooden-crate-flat": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wooden-crate-flat",
+      "px": {
+        "w": 39,
+        "h": 16
+      },
+      "tiles": {
+        "w": 2.44,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "crate",
+        "wooden",
+        "box",
+        "cargo"
+      ]
+    },
+    "wooden-crate-medium": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wooden-crate-medium",
+      "px": {
+        "w": 39,
+        "h": 16
+      },
+      "tiles": {
+        "w": 2.44,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "crate",
+        "wooden",
+        "box",
+        "cargo"
+      ]
+    },
+    "dumpster-green-small": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "dumpster-green-small",
+      "px": {
+        "w": 28,
+        "h": 55
+      },
+      "tiles": {
+        "w": 1.75,
+        "h": 3.44
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "trash",
+        "green",
+        "waste"
+      ]
+    },
+    "cardboard-box-open-flat": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "cardboard-box-open-flat",
+      "px": {
+        "w": 13,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "cardboard",
+        "box",
+        "trash",
+        "litter"
+      ]
+    },
+    "paper-trash-pile": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "paper-trash-pile",
+      "px": {
+        "w": 9,
+        "h": 9
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 0.56
+      },
+      "collides": false,
+      "tags": [
+        "litter",
+        "trash",
+        "paper",
+        "ground"
+      ]
+    },
+    "small-debris-pile": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "small-debris-pile",
+      "px": {
+        "w": 48,
+        "h": 61
+      },
+      "tiles": {
+        "w": 3.0,
+        "h": 3.81
+      },
+      "collides": false,
+      "tags": [
+        "debris",
+        "litter",
+        "trash",
+        "ground"
+      ]
+    },
+    "crushed-cardboard-box": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "crushed-cardboard-box",
+      "px": {
+        "w": 14,
+        "h": 12
+      },
+      "tiles": {
+        "w": 0.88,
+        "h": 0.75
+      },
+      "collides": false,
+      "tags": [
+        "cardboard",
+        "box",
+        "crushed",
+        "trash"
+      ]
+    },
+    "blue-trash-bags-pile": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "blue-trash-bags-pile",
+      "px": {
+        "w": 11,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 0.62
+      },
+      "collides": true,
+      "tags": [
+        "trash",
+        "bags",
+        "blue",
+        "pile"
+      ]
+    },
+    "blue-trash-bags-loose": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "blue-trash-bags-loose",
+      "px": {
+        "w": 11,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "trash",
+        "bags",
+        "blue",
+        "pile"
+      ]
+    },
+    "flat-road-grate-long": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "flat-road-grate-long",
+      "px": {
+        "w": 94,
+        "h": 29
+      },
+      "tiles": {
+        "w": 5.88,
+        "h": 1.81
+      },
+      "collides": false,
+      "tags": [
+        "grate",
+        "drain",
+        "road",
+        "flat",
+        "ground"
+      ]
+    },
+    "green-dumpster-bin": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "green-dumpster-bin",
+      "px": {
+        "w": 29,
+        "h": 43
+      },
+      "tiles": {
+        "w": 1.81,
+        "h": 2.69
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "bin",
+        "green",
+        "waste",
+        "container"
+      ]
+    },
+    "blue-dumpster-container": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "blue-dumpster-container",
+      "px": {
+        "w": 55,
+        "h": 94
+      },
+      "tiles": {
+        "w": 3.44,
+        "h": 5.88
+      },
+      "collides": true,
+      "tags": [
+        "dumpster",
+        "container",
+        "blue",
+        "waste",
+        "bin"
+      ]
+    },
+    "utility-box-grey": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "utility-box-grey",
+      "px": {
+        "w": 12,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "utility",
+        "box",
+        "grey",
+        "cabinet",
+        "electrical"
+      ]
+    },
+    "metal-grate-vent-small": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "metal-grate-vent-small",
+      "px": {
+        "w": 60,
+        "h": 32
+      },
+      "tiles": {
+        "w": 3.75,
+        "h": 2.0
+      },
+      "collides": false,
+      "tags": [
+        "grate",
+        "vent",
+        "metal",
+        "ground",
+        "drain"
+      ]
+    },
+    "metal-grate-vent-wide": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "metal-grate-vent-wide",
+      "px": {
+        "w": 60,
+        "h": 32
+      },
+      "tiles": {
+        "w": 3.75,
+        "h": 2.0
+      },
+      "collides": false,
+      "tags": [
+        "grate",
+        "vent",
+        "metal",
+        "ground",
+        "drain"
+      ]
+    },
+    "vending-machine-small": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "vending-machine-small",
+      "px": {
+        "w": 16,
+        "h": 64
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 4.0
+      },
+      "collides": true,
+      "tags": [
+        "vending",
+        "machine",
+        "small",
+        "dispenser"
+      ]
+    },
+    "metal-double-gate": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "metal-double-gate",
+      "px": {
+        "w": 31,
+        "h": 37
+      },
+      "tiles": {
+        "w": 1.94,
+        "h": 2.31
+      },
+      "collides": true,
+      "tags": [
+        "gate",
+        "metal",
+        "door",
+        "fence",
+        "entrance"
+      ]
+    },
+    "metal-gate-barred-large": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "metal-gate-barred-large",
+      "px": {
+        "w": 11,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 0.81
+      },
+      "collides": true,
+      "tags": [
+        "gate",
+        "metal",
+        "barred",
+        "large",
+        "door"
+      ]
+    },
+    "metal-gate-barred-narrow": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "metal-gate-barred-narrow",
+      "px": {
+        "w": 11,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 0.62
+      },
+      "collides": true,
+      "tags": [
+        "gate",
+        "metal",
+        "barred",
+        "narrow",
+        "door"
+      ]
+    },
+    "concrete-barrier-rail": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "concrete-barrier-rail",
+      "px": {
+        "w": 16,
+        "h": 16
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "railing",
+        "concrete",
+        "guard"
+      ]
+    },
+    "building-staircase-railing": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "building-staircase-railing",
+      "px": {
+        "w": 77,
+        "h": 141
+      },
+      "tiles": {
+        "w": 4.81,
+        "h": 8.81
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "staircase",
+        "railing",
+        "exterior",
+        "steps"
+      ]
+    },
+    "concrete-arched-entrance": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "concrete-arched-entrance",
+      "px": {
+        "w": 64,
+        "h": 80
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 5.0
+      },
+      "collides": true,
+      "tags": [
+        "arch",
+        "entrance",
+        "concrete",
+        "gateway"
+      ]
+    },
+    "concrete-arched-gate-base": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "concrete-arched-gate-base",
+      "px": {
+        "w": 13,
+        "h": 19
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.19
+      },
+      "collides": true,
+      "tags": [
+        "gate",
+        "arch",
+        "concrete",
+        "entrance",
+        "base"
+      ]
+    },
+    "red-white-striped-barrier": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "red-white-striped-barrier",
+      "px": {
+        "w": 15,
+        "h": 18
+      },
+      "tiles": {
+        "w": 0.94,
+        "h": 1.12
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "striped",
+        "red",
+        "white",
+        "gate",
+        "level crossing"
+      ]
+    },
+    "striped-road-barrier-horizontal": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "striped-road-barrier-horizontal",
+      "px": {
+        "w": 22,
+        "h": 8
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 0.5
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "striped",
+        "horizontal",
+        "road",
+        "blockade"
+      ]
+    },
+    "cylindrical-metal-bollard-large": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "cylindrical-metal-bollard-large",
+      "px": {
+        "w": 11,
+        "h": 20
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 1.25
+      },
+      "collides": true,
+      "tags": [
+        "bollard",
+        "metal",
+        "cylinder",
+        "barrier"
+      ]
+    },
+    "concrete-barrier-cylinder": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "concrete-barrier-cylinder",
+      "px": {
+        "w": 13,
+        "h": 20
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.25
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "concrete",
+        "bollard",
+        "cylinder"
+      ]
+    },
+    "road-barrier-stop-sign": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "road-barrier-stop-sign",
+      "px": {
+        "w": 72,
+        "h": 42
+      },
+      "tiles": {
+        "w": 4.5,
+        "h": 2.62
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "stop sign",
+        "road",
+        "traffic control"
+      ]
+    },
+    "road-barrier-concrete": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "road-barrier-concrete",
+      "px": {
+        "w": 16,
+        "h": 12
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 0.75
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "concrete",
+        "road",
+        "block"
+      ]
+    },
+    "road-barrier-striped-wide": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "road-barrier-striped-wide",
+      "px": {
+        "w": 16,
+        "h": 12
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 0.75
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "striped",
+        "road",
+        "wide"
+      ]
+    },
+    "road-barrier-striped-horizontal": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "road-barrier-striped-horizontal",
+      "px": {
+        "w": 46,
+        "h": 21
+      },
+      "tiles": {
+        "w": 2.88,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "striped",
+        "horizontal",
+        "road"
+      ]
+    },
+    "road-barrier-striped-angled": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "road-barrier-striped-angled",
+      "px": {
+        "w": 26,
+        "h": 45
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 2.81
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "striped",
+        "angled",
+        "road",
+        "no entry"
+      ]
+    },
+    "road-barrier-folding": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "road-barrier-folding",
+      "px": {
+        "w": 20,
+        "h": 22
+      },
+      "tiles": {
+        "w": 1.25,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "road",
+        "folding",
+        "block",
+        "gate"
+      ]
+    },
+    "road-barrier-low-double": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "road-barrier-low-double",
+      "px": {
+        "w": 24,
+        "h": 14
+      },
+      "tiles": {
+        "w": 1.5,
+        "h": 0.88
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "road",
+        "low",
+        "double",
+        "block"
+      ]
+    },
+    "road-barrier-low-single": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "road-barrier-low-single",
+      "px": {
+        "w": 24,
+        "h": 14
+      },
+      "tiles": {
+        "w": 1.5,
+        "h": 0.88
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "road",
+        "low",
+        "single",
+        "block"
+      ]
+    },
+    "road-barrier-low-alt": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "road-barrier-low-alt",
+      "px": {
+        "w": 20,
+        "h": 22
+      },
+      "tiles": {
+        "w": 1.25,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "road",
+        "low",
+        "concrete",
+        "block"
+      ]
+    },
+    "road-barrier-low-wide": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "road-barrier-low-wide",
+      "px": {
+        "w": 20,
+        "h": 22
+      },
+      "tiles": {
+        "w": 1.25,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "barrier",
+        "road",
+        "low",
+        "wide",
+        "concrete"
+      ]
+    },
+    "road-barrier-bollard-short": {
+      "category": "fence",
+      "atlasKey": "obj-fence",
+      "frame": "road-barrier-bollard-short",
+      "px": {
+        "w": 32,
+        "h": 80
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 5.0
+      },
+      "collides": true,
+      "tags": [
+        "bollard",
+        "barrier",
+        "road",
+        "concrete"
+      ]
+    },
+    "wooden-park-bench": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "wooden-park-bench",
+      "px": {
+        "w": 26,
+        "h": 22
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "bench",
+        "seat",
+        "park",
+        "wood",
+        "outdoor"
+      ]
+    },
+    "wooden-park-bench-side": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "wooden-park-bench-side",
+      "px": {
+        "w": 42,
+        "h": 22
+      },
+      "tiles": {
+        "w": 2.62,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "bench",
+        "seat",
+        "park",
+        "wood",
+        "outdoor"
+      ]
+    },
+    "industrial-workbench": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "industrial-workbench",
+      "px": {
+        "w": 60,
+        "h": 32
+      },
+      "tiles": {
+        "w": 3.75,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "workbench",
+        "industrial",
+        "table",
+        "workshop"
+      ]
+    },
+    "concrete-bench-long": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "concrete-bench-long",
+      "px": {
+        "w": 32,
+        "h": 16
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "bench",
+        "concrete",
+        "seating",
+        "public"
+      ]
+    },
+    "concrete-bench-with-back": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "concrete-bench-with-back",
+      "px": {
+        "w": 16,
+        "h": 16
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "bench",
+        "concrete",
+        "backrest",
+        "seating"
+      ]
+    },
+    "curved-concrete-bench": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "curved-concrete-bench",
+      "px": {
+        "w": 64,
+        "h": 61
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 3.81
+      },
+      "collides": true,
+      "tags": [
+        "bench",
+        "curved",
+        "concrete",
+        "seating"
+      ]
+    },
+    "handheld-game-device": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "handheld-game-device",
+      "px": {
+        "w": 32,
+        "h": 29
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 1.81
+      },
+      "collides": false,
+      "tags": [
+        "handheld",
+        "game",
+        "device",
+        "portable",
+        "gameboy"
+      ]
+    },
+    "hanging-light-blue-blouse": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "hanging-light-blue-blouse",
+      "px": {
+        "w": 13,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "blouse",
+        "shirt",
+        "hanging",
+        "clothespin"
+      ]
+    },
+    "hanging-light-blue-shirt": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "hanging-light-blue-shirt",
+      "px": {
+        "w": 7,
+        "h": 30
+      },
+      "tiles": {
+        "w": 0.44,
+        "h": 1.88
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "light blue",
+        "hanging"
+      ]
+    },
+    "hanging-sign-orange-light": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "hanging-sign-orange-light",
+      "px": {
+        "w": 21,
+        "h": 21
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 1.31
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "orange",
+        "illuminated",
+        "shop"
+      ]
+    },
+    "hanging-sign-green-light": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "hanging-sign-green-light",
+      "px": {
+        "w": 21,
+        "h": 21
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 1.31
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "green",
+        "illuminated",
+        "shop"
+      ]
+    },
+    "hanging-sign-red-light": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "hanging-sign-red-light",
+      "px": {
+        "w": 19,
+        "h": 17
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 1.06
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "red",
+        "illuminated",
+        "shop"
+      ]
+    },
+    "bollard-lamp-post-short": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "bollard-lamp-post-short",
+      "px": {
+        "w": 8,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.5,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "bollard",
+        "lamp",
+        "short",
+        "post",
+        "light"
+      ]
+    },
+    "globe-lamp-post-short": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "globe-lamp-post-short",
+      "px": {
+        "w": 11,
+        "h": 40
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 2.5
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "globe",
+        "post",
+        "light",
+        "short"
+      ]
+    },
+    "globe-lamp-post-corner": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "globe-lamp-post-corner",
+      "px": {
+        "w": 11,
+        "h": 40
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 2.5
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "globe",
+        "post",
+        "corner",
+        "light"
+      ]
+    },
+    "globe-lamp-post-ornate": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "globe-lamp-post-ornate",
+      "px": {
+        "w": 11,
+        "h": 33
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 2.06
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "globe",
+        "ornate",
+        "post",
+        "light"
+      ]
+    },
+    "decorative-wall-sconce-small": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "decorative-wall-sconce-small",
+      "px": {
+        "w": 44,
+        "h": 12
+      },
+      "tiles": {
+        "w": 2.75,
+        "h": 0.75
+      },
+      "collides": false,
+      "tags": [
+        "sconce",
+        "wall-light",
+        "small",
+        "decorative"
+      ]
+    },
+    "paper-lantern-white": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "paper-lantern-white",
+      "px": {
+        "w": 19,
+        "h": 25
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 1.56
+      },
+      "collides": false,
+      "tags": [
+        "lantern",
+        "paper",
+        "white",
+        "round",
+        "decoration",
+        "festival"
+      ]
+    },
+    "traffic-signal-double-pole": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "traffic-signal-double-pole",
+      "px": {
+        "w": 26,
+        "h": 88
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 5.5
+      },
+      "collides": true,
+      "tags": [
+        "traffic-light",
+        "signal",
+        "double",
+        "pole"
+      ]
+    },
+    "traffic-light-pole-medium": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "traffic-light-pole-medium",
+      "px": {
+        "w": 13,
+        "h": 88
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 5.5
+      },
+      "collides": true,
+      "tags": [
+        "traffic-light",
+        "pole",
+        "signal",
+        "medium"
+      ]
+    },
+    "traffic-light-pole-tall": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "traffic-light-pole-tall",
+      "px": {
+        "w": 64,
+        "h": 91
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 5.69
+      },
+      "collides": true,
+      "tags": [
+        "traffic-light",
+        "pole",
+        "signal",
+        "tall"
+      ]
+    },
+    "traffic-light-controller-panel": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "traffic-light-controller-panel",
+      "px": {
+        "w": 24,
+        "h": 46
+      },
+      "tiles": {
+        "w": 1.5,
+        "h": 2.88
+      },
+      "collides": true,
+      "tags": [
+        "traffic",
+        "controller",
+        "panel",
+        "lights",
+        "box"
+      ]
+    },
+    "blue-lightning-sign": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "blue-lightning-sign",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "lightning",
+        "blue",
+        "electric",
+        "warning"
+      ]
+    },
+    "traffic-light-post-single": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "traffic-light-post-single",
+      "px": {
+        "w": 32,
+        "h": 80
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 5.0
+      },
+      "collides": true,
+      "tags": [
+        "traffic-light",
+        "post",
+        "signal",
+        "urban"
+      ]
+    },
+    "road-intersection-light-patch": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "road-intersection-light-patch",
+      "px": {
+        "w": 16,
+        "h": 16
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 1.0
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "intersection",
+        "light",
+        "ground"
+      ]
+    },
+    "road-light-asphalt-section": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "road-light-asphalt-section",
+      "px": {
+        "w": 16,
+        "h": 16
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 1.0
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "asphalt",
+        "light",
+        "section"
+      ]
+    },
+    "road-light-section-plain": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "road-light-section-plain",
+      "px": {
+        "w": 32,
+        "h": 32
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 2.0
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "light",
+        "plain",
+        "asphalt",
+        "section"
+      ]
+    },
+    "blue-liquid-spill-puddle": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "blue-liquid-spill-puddle",
+      "px": {
+        "w": 13,
+        "h": 28
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.75
+      },
+      "collides": false,
+      "tags": [
+        "puddle",
+        "liquid",
+        "spill",
+        "blue",
+        "ground"
+      ]
+    },
+    "hanging-brown-jacket": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hanging-brown-jacket",
+      "px": {
+        "w": 12,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.31
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "jacket",
+        "hanging",
+        "clothespin"
+      ]
+    },
+    "hanging-grey-dress": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hanging-grey-dress",
+      "px": {
+        "w": 7,
+        "h": 30
+      },
+      "tiles": {
+        "w": 0.44,
+        "h": 1.88
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "dress",
+        "grey",
+        "hanging",
+        "clothespin"
+      ]
+    },
+    "hanging-pink-dress": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hanging-pink-dress",
+      "px": {
+        "w": 8,
+        "h": 30
+      },
+      "tiles": {
+        "w": 0.5,
+        "h": 1.88
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "dress",
+        "pink",
+        "hanging",
+        "clothespin"
+      ]
+    },
+    "hanging-blue-overalls": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hanging-blue-overalls",
+      "px": {
+        "w": 12,
+        "h": 30
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.88
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "overalls",
+        "pants",
+        "blue",
+        "hanging"
+      ]
+    },
+    "hanging-green-shirt": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hanging-green-shirt",
+      "px": {
+        "w": 12,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "green",
+        "hanging",
+        "clothespin"
+      ]
+    },
+    "hanging-tan-shirt": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hanging-tan-shirt",
+      "px": {
+        "w": 12,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "tan",
+        "hanging",
+        "clothespin"
+      ]
+    },
+    "hanging-blue-shorts": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hanging-blue-shorts",
+      "px": {
+        "w": 8,
+        "h": 30
+      },
+      "tiles": {
+        "w": 0.5,
+        "h": 1.88
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shorts",
+        "blue",
+        "hanging",
+        "clothespin"
+      ]
+    },
+    "hanging-floral-dress": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hanging-floral-dress",
+      "px": {
+        "w": 13,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "dress",
+        "floral",
+        "blue",
+        "hanging"
+      ]
+    },
+    "hanging-grey-shirt-small": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hanging-grey-shirt-small",
+      "px": {
+        "w": 12,
+        "h": 30
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.88
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "grey",
+        "hanging",
+        "clothespin"
+      ]
+    },
+    "hanging-blue-patterned-shirt": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hanging-blue-patterned-shirt",
+      "px": {
+        "w": 12,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "blue",
+        "patterned",
+        "hanging"
+      ]
+    },
+    "hanging-brown-patterned-shirt": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hanging-brown-patterned-shirt",
+      "px": {
+        "w": 12,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "brown",
+        "patterned",
+        "hanging"
+      ]
+    },
+    "hanging-white-floral-shirt": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hanging-white-floral-shirt",
+      "px": {
+        "w": 13,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "white",
+        "floral",
+        "hanging"
+      ]
+    },
+    "hanging-white-shirt-green-pin": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hanging-white-shirt-green-pin",
+      "px": {
+        "w": 12,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "white",
+        "hanging",
+        "clothespin"
+      ]
+    },
+    "hanging-white-dress-shirt": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hanging-white-dress-shirt",
+      "px": {
+        "w": 12,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "laundry",
+        "shirt",
+        "white",
+        "hanging",
+        "clothespin"
+      ]
+    },
+    "rust-stain-wall-patch": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "rust-stain-wall-patch",
+      "px": {
+        "w": 10,
+        "h": 14
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 0.88
+      },
+      "collides": false,
+      "tags": [
+        "rust",
+        "stain",
+        "wall",
+        "decor",
+        "grunge"
+      ]
+    },
+    "blue-water-puddle": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "blue-water-puddle",
+      "px": {
+        "w": 10,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "puddle",
+        "water",
+        "wet",
+        "ground"
+      ]
+    },
+    "bulletin-board-blank": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "bulletin-board-blank",
+      "px": {
+        "w": 9,
+        "h": 12
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 0.75
+      },
+      "collides": true,
+      "tags": [
+        "bulletin-board",
+        "board",
+        "notice",
+        "blank"
+      ]
+    },
+    "ufo-alien-ship": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "ufo-alien-ship",
+      "px": {
+        "w": 14,
+        "h": 9
+      },
+      "tiles": {
+        "w": 0.88,
+        "h": 0.56
+      },
+      "collides": true,
+      "tags": [
+        "ufo",
+        "alien",
+        "spaceship",
+        "flying saucer",
+        "sci-fi"
+      ]
+    },
+    "robot-mech-dark": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "robot-mech-dark",
+      "px": {
+        "w": 33,
+        "h": 17
+      },
+      "tiles": {
+        "w": 2.06,
+        "h": 1.06
+      },
+      "collides": true,
+      "tags": [
+        "robot",
+        "mech",
+        "machine",
+        "sci-fi",
+        "dark",
+        "mechanical"
+      ]
+    },
+    "robot-mech-small": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "robot-mech-small",
+      "px": {
+        "w": 33,
+        "h": 20
+      },
+      "tiles": {
+        "w": 2.06,
+        "h": 1.25
+      },
+      "collides": true,
+      "tags": [
+        "robot",
+        "mech",
+        "machine",
+        "sci-fi",
+        "mechanical"
+      ]
+    },
+    "metal-pergola-frame": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "metal-pergola-frame",
+      "px": {
+        "w": 72,
+        "h": 71
+      },
+      "tiles": {
+        "w": 4.5,
+        "h": 4.44
+      },
+      "collides": true,
+      "tags": [
+        "pergola",
+        "frame",
+        "metal",
+        "arch",
+        "outdoor"
+      ]
+    },
+    "robot-npc-figure": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "robot-npc-figure",
+      "px": {
+        "w": 13,
+        "h": 27
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.69
+      },
+      "collides": true,
+      "tags": [
+        "robot",
+        "figure",
+        "npc",
+        "mechanical",
+        "character"
+      ]
+    },
+    "rubble-debris-pile": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "rubble-debris-pile",
+      "px": {
+        "w": 45,
+        "h": 32
+      },
+      "tiles": {
+        "w": 2.81,
+        "h": 2.0
+      },
+      "collides": false,
+      "tags": [
+        "rubble",
+        "debris",
+        "pile",
+        "scatter",
+        "ground"
+      ]
+    },
+    "smoke-cloud-effect": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "smoke-cloud-effect",
+      "px": {
+        "w": 11,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "smoke",
+        "cloud",
+        "effect",
+        "fog",
+        "particle"
+      ]
+    },
+    "large-smoke-cloud-effect": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "large-smoke-cloud-effect",
+      "px": {
+        "w": 11,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "smoke",
+        "cloud",
+        "large",
+        "effect",
+        "fog"
+      ]
+    },
+    "gray-blimp-airship": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "gray-blimp-airship",
+      "px": {
+        "w": 47,
+        "h": 24
+      },
+      "tiles": {
+        "w": 2.94,
+        "h": 1.5
+      },
+      "collides": false,
+      "tags": [
+        "blimp",
+        "airship",
+        "floating",
+        "vehicle"
+      ]
+    },
+    "thin-metal-dumbbell-bar": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "thin-metal-dumbbell-bar",
+      "px": {
+        "w": 26,
+        "h": 11
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "dumbbell",
+        "barbell",
+        "weight",
+        "gym",
+        "bar"
+      ]
+    },
+    "industrial-building-facade": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "industrial-building-facade",
+      "px": {
+        "w": 173,
+        "h": 140
+      },
+      "tiles": {
+        "w": 10.81,
+        "h": 8.75
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "industrial",
+        "factory",
+        "facade",
+        "grey"
+      ]
+    },
+    "large-water-tower-brown": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "large-water-tower-brown",
+      "px": {
+        "w": 74,
+        "h": 103
+      },
+      "tiles": {
+        "w": 4.62,
+        "h": 6.44
+      },
+      "collides": true,
+      "tags": [
+        "water tower",
+        "tank",
+        "industrial",
+        "tall",
+        "brown"
+      ]
+    },
+    "small-water-tower-tan": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "small-water-tower-tan",
+      "px": {
+        "w": 48,
+        "h": 93
+      },
+      "tiles": {
+        "w": 3.0,
+        "h": 5.81
+      },
+      "collides": true,
+      "tags": [
+        "water tower",
+        "tank",
+        "industrial",
+        "tan",
+        "small"
+      ]
+    },
+    "circular-industrial-tank": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "circular-industrial-tank",
+      "px": {
+        "w": 74,
+        "h": 103
+      },
+      "tiles": {
+        "w": 4.62,
+        "h": 6.44
+      },
+      "collides": true,
+      "tags": [
+        "tank",
+        "industrial",
+        "circular",
+        "storage"
+      ]
+    },
+    "rubble-pile-small": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "rubble-pile-small",
+      "px": {
+        "w": 59,
+        "h": 52
+      },
+      "tiles": {
+        "w": 3.69,
+        "h": 3.25
+      },
+      "collides": false,
+      "tags": [
+        "rubble",
+        "debris",
+        "dirt",
+        "pile"
+      ]
+    },
+    "pickaxe-leaning": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "pickaxe-leaning",
+      "px": {
+        "w": 8,
+        "h": 12
+      },
+      "tiles": {
+        "w": 0.5,
+        "h": 0.75
+      },
+      "collides": false,
+      "tags": [
+        "pickaxe",
+        "tool",
+        "construction",
+        "leaning"
+      ]
+    },
+    "wooden-ladder-horizontal": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "wooden-ladder-horizontal",
+      "px": {
+        "w": 19,
+        "h": 24
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 1.5
+      },
+      "collides": false,
+      "tags": [
+        "ladder",
+        "wood",
+        "construction",
+        "horizontal"
+      ]
+    },
+    "tarp-bundle-grey": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "tarp-bundle-grey",
+      "px": {
+        "w": 15,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.94,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "tarp",
+        "bundle",
+        "construction",
+        "cloth"
+      ]
+    },
+    "cauldron-iron-large": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "cauldron-iron-large",
+      "px": {
+        "w": 10,
+        "h": 12
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 0.75
+      },
+      "collides": true,
+      "tags": [
+        "cauldron",
+        "pot",
+        "iron",
+        "industrial"
+      ]
+    },
+    "shipping-container-blue": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shipping-container-blue",
+      "px": {
+        "w": 52,
+        "h": 43
+      },
+      "tiles": {
+        "w": 3.25,
+        "h": 2.69
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "shipping",
+        "blue",
+        "industrial"
+      ]
+    },
+    "shipping-container-labelled": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shipping-container-labelled",
+      "px": {
+        "w": 52,
+        "h": 43
+      },
+      "tiles": {
+        "w": 3.25,
+        "h": 2.69
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "shipping",
+        "cbrc",
+        "industrial",
+        "label"
+      ]
+    },
+    "wooden-ladder-vertical": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "wooden-ladder-vertical",
+      "px": {
+        "w": 14,
+        "h": 27
+      },
+      "tiles": {
+        "w": 0.88,
+        "h": 1.69
+      },
+      "collides": true,
+      "tags": [
+        "ladder",
+        "wood",
+        "vertical",
+        "construction"
+      ]
+    },
+    "pipe-curved-rusty": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "pipe-curved-rusty",
+      "px": {
+        "w": 19,
+        "h": 10
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "pipe",
+        "rusty",
+        "curved",
+        "industrial"
+      ]
+    },
+    "building-facade-fragment": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "building-facade-fragment",
+      "px": {
+        "w": 22,
+        "h": 24
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 1.5
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "facade",
+        "windows",
+        "fragment",
+        "structure"
+      ]
+    },
+    "window-frame-boarded": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "window-frame-boarded",
+      "px": {
+        "w": 8,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.5,
+        "h": 0.62
+      },
+      "collides": true,
+      "tags": [
+        "window",
+        "boarded",
+        "building",
+        "frame"
+      ]
+    },
+    "doorway-frame-ruined": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "doorway-frame-ruined",
+      "px": {
+        "w": 8,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.5,
+        "h": 0.62
+      },
+      "collides": true,
+      "tags": [
+        "door",
+        "frame",
+        "ruined",
+        "building",
+        "entrance"
+      ]
+    },
+    "window-arched-damaged": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "window-arched-damaged",
+      "px": {
+        "w": 8,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.5,
+        "h": 0.62
+      },
+      "collides": true,
+      "tags": [
+        "window",
+        "arched",
+        "damaged",
+        "building",
+        "ruined"
+      ]
+    },
+    "shop-front-small": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shop-front-small",
+      "px": {
+        "w": 71,
+        "h": 66
+      },
+      "tiles": {
+        "w": 4.44,
+        "h": 4.12
+      },
+      "collides": true,
+      "tags": [
+        "shop",
+        "storefront",
+        "building",
+        "facade"
+      ]
+    },
+    "toxic-pool-green": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "toxic-pool-green",
+      "px": {
+        "w": 13,
+        "h": 20
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.25
+      },
+      "collides": false,
+      "tags": [
+        "toxic",
+        "pool",
+        "green",
+        "hazard",
+        "ground"
+      ]
+    },
+    "dark-puddle-shadow": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "dark-puddle-shadow",
+      "px": {
+        "w": 8,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.5,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "puddle",
+        "dark",
+        "shadow",
+        "ground",
+        "wet"
+      ]
+    },
+    "rubble-pile-large": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "rubble-pile-large",
+      "px": {
+        "w": 95,
+        "h": 80
+      },
+      "tiles": {
+        "w": 5.94,
+        "h": 5.0
+      },
+      "collides": false,
+      "tags": [
+        "rubble",
+        "pile",
+        "debris",
+        "large",
+        "construction"
+      ]
+    },
+    "debris-ground-scatter": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "debris-ground-scatter",
+      "px": {
+        "w": 13,
+        "h": 25
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.56
+      },
+      "collides": false,
+      "tags": [
+        "debris",
+        "scatter",
+        "ground",
+        "dirt",
+        "misc"
+      ]
+    },
+    "industrial-locomotive-engine": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "industrial-locomotive-engine",
+      "px": {
+        "w": 224,
+        "h": 48
+      },
+      "tiles": {
+        "w": 14.0,
+        "h": 3.0
+      },
+      "collides": true,
+      "tags": [
+        "train",
+        "locomotive",
+        "industrial",
+        "vehicle"
+      ]
+    },
+    "industrial-control-panel-generator": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "industrial-control-panel-generator",
+      "px": {
+        "w": 92,
+        "h": 91
+      },
+      "tiles": {
+        "w": 5.75,
+        "h": 5.69
+      },
+      "collides": true,
+      "tags": [
+        "control panel",
+        "generator",
+        "industrial",
+        "machine"
+      ]
+    },
+    "shipping-container-tan-small": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shipping-container-tan-small",
+      "px": {
+        "w": 84,
+        "h": 43
+      },
+      "tiles": {
+        "w": 5.25,
+        "h": 2.69
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "cargo",
+        "industrial",
+        "tan"
+      ]
+    },
+    "shipping-container-tan-large": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shipping-container-tan-large",
+      "px": {
+        "w": 48,
+        "h": 43
+      },
+      "tiles": {
+        "w": 3.0,
+        "h": 2.69
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "cargo",
+        "industrial",
+        "large"
+      ]
+    },
+    "shipping-container-tan-wide": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shipping-container-tan-wide",
+      "px": {
+        "w": 39,
+        "h": 26
+      },
+      "tiles": {
+        "w": 2.44,
+        "h": 1.62
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "cargo",
+        "tan",
+        "wide"
+      ]
+    },
+    "shipping-container-teal-small": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shipping-container-teal-small",
+      "px": {
+        "w": 55,
+        "h": 42
+      },
+      "tiles": {
+        "w": 3.44,
+        "h": 2.62
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "cargo",
+        "teal",
+        "small"
+      ]
+    },
+    "shipping-container-teal-medium": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shipping-container-teal-medium",
+      "px": {
+        "w": 55,
+        "h": 48
+      },
+      "tiles": {
+        "w": 3.44,
+        "h": 3.0
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "teal",
+        "cargo",
+        "medium"
+      ]
+    },
+    "shipping-container-blue-large": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shipping-container-blue-large",
+      "px": {
+        "w": 84,
+        "h": 43
+      },
+      "tiles": {
+        "w": 5.25,
+        "h": 2.69
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "blue",
+        "cargo",
+        "large"
+      ]
+    },
+    "shipping-container-teal-small-alt": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shipping-container-teal-small-alt",
+      "px": {
+        "w": 55,
+        "h": 32
+      },
+      "tiles": {
+        "w": 3.44,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "teal",
+        "small",
+        "cargo"
+      ]
+    },
+    "industrial-machine-unit": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "industrial-machine-unit",
+      "px": {
+        "w": 60,
+        "h": 32
+      },
+      "tiles": {
+        "w": 3.75,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "machine",
+        "industrial",
+        "unit",
+        "equipment"
+      ]
+    },
+    "industrial-conveyor-belt": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "industrial-conveyor-belt",
+      "px": {
+        "w": 76,
+        "h": 42
+      },
+      "tiles": {
+        "w": 4.75,
+        "h": 2.62
+      },
+      "collides": true,
+      "tags": [
+        "conveyor",
+        "belt",
+        "industrial",
+        "machine"
+      ]
+    },
+    "industrial-hvac-unit": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "industrial-hvac-unit",
+      "px": {
+        "w": 108,
+        "h": 73
+      },
+      "tiles": {
+        "w": 6.75,
+        "h": 4.56
+      },
+      "collides": true,
+      "tags": [
+        "hvac",
+        "air conditioning",
+        "industrial",
+        "unit"
+      ]
+    },
+    "solar-panel-array": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "solar-panel-array",
+      "px": {
+        "w": 26,
+        "h": 41
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 2.56
+      },
+      "collides": true,
+      "tags": [
+        "solar panel",
+        "energy",
+        "renewable",
+        "technology"
+      ]
+    },
+    "industrial-window-unit": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "industrial-window-unit",
+      "px": {
+        "w": 26,
+        "h": 41
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 2.56
+      },
+      "collides": true,
+      "tags": [
+        "window",
+        "industrial",
+        "building",
+        "gray"
+      ]
+    },
+    "industrial-junction-box": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "industrial-junction-box",
+      "px": {
+        "w": 27,
+        "h": 39
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 2.44
+      },
+      "collides": true,
+      "tags": [
+        "junction box",
+        "electrical",
+        "industrial",
+        "equipment"
+      ]
+    },
+    "industrial-server-rack": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "industrial-server-rack",
+      "px": {
+        "w": 22,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "server",
+        "rack",
+        "technology",
+        "industrial"
+      ]
+    },
+    "industrial-storage-unit-green": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "industrial-storage-unit-green",
+      "px": {
+        "w": 22,
+        "h": 58
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 3.62
+      },
+      "collides": true,
+      "tags": [
+        "storage",
+        "unit",
+        "green",
+        "industrial"
+      ]
+    },
+    "industrial-small-vehicle": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "industrial-small-vehicle",
+      "px": {
+        "w": 22,
+        "h": 58
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 3.62
+      },
+      "collides": true,
+      "tags": [
+        "vehicle",
+        "small",
+        "industrial",
+        "forklift"
+      ]
+    },
+    "industrial-truck-cargo": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "industrial-truck-cargo",
+      "px": {
+        "w": 116,
+        "h": 92
+      },
+      "tiles": {
+        "w": 7.25,
+        "h": 5.75
+      },
+      "collides": true,
+      "tags": [
+        "truck",
+        "cargo",
+        "vehicle",
+        "industrial"
+      ]
+    },
+    "shipping-container-gray-medium": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shipping-container-gray-medium",
+      "px": {
+        "w": 28,
+        "h": 25
+      },
+      "tiles": {
+        "w": 1.75,
+        "h": 1.56
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "gray",
+        "cargo",
+        "medium"
+      ]
+    },
+    "shipping-container-green-large": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shipping-container-green-large",
+      "px": {
+        "w": 44,
+        "h": 120
+      },
+      "tiles": {
+        "w": 2.75,
+        "h": 7.5
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "green",
+        "cargo",
+        "large"
+      ]
+    },
+    "shipping-container-green-medium": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shipping-container-green-medium",
+      "px": {
+        "w": 42,
+        "h": 118
+      },
+      "tiles": {
+        "w": 2.62,
+        "h": 7.38
+      },
+      "collides": true,
+      "tags": [
+        "container",
+        "green",
+        "cargo",
+        "medium"
+      ]
+    },
+    "green-garbage-truck": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "green-garbage-truck",
+      "px": {
+        "w": 120,
+        "h": 92
+      },
+      "tiles": {
+        "w": 7.5,
+        "h": 5.75
+      },
+      "collides": true,
+      "tags": [
+        "truck",
+        "garbage",
+        "vehicle",
+        "green"
+      ]
+    },
+    "orange-garbage-truck-front": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "orange-garbage-truck-front",
+      "px": {
+        "w": 140,
+        "h": 92
+      },
+      "tiles": {
+        "w": 8.75,
+        "h": 5.75
+      },
+      "collides": true,
+      "tags": [
+        "truck",
+        "garbage",
+        "orange",
+        "vehicle"
+      ]
+    },
+    "electric-utility-box": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "electric-utility-box",
+      "px": {
+        "w": 24,
+        "h": 30
+      },
+      "tiles": {
+        "w": 1.5,
+        "h": 1.88
+      },
+      "collides": true,
+      "tags": [
+        "utility",
+        "box",
+        "electric",
+        "panel"
+      ]
+    },
+    "motorcycle-parked": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "motorcycle-parked",
+      "px": {
+        "w": 19,
+        "h": 17
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 1.06
+      },
+      "collides": true,
+      "tags": [
+        "motorcycle",
+        "bike",
+        "vehicle",
+        "parked"
+      ]
+    },
+    "building-facade-window-square": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "building-facade-window-square",
+      "px": {
+        "w": 80,
+        "h": 176
+      },
+      "tiles": {
+        "w": 5.0,
+        "h": 11.0
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "facade",
+        "window",
+        "square",
+        "wall",
+        "exterior"
+      ]
+    },
+    "building-staircase-exterior": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "building-staircase-exterior",
+      "px": {
+        "w": 144,
+        "h": 208
+      },
+      "tiles": {
+        "w": 9.0,
+        "h": 13.0
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "staircase",
+        "exterior",
+        "steps",
+        "wall"
+      ]
+    },
+    "building-corner-pillar": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "building-corner-pillar",
+      "px": {
+        "w": 96,
+        "h": 112
+      },
+      "tiles": {
+        "w": 6.0,
+        "h": 7.0
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "corner",
+        "pillar",
+        "facade",
+        "exterior"
+      ]
+    },
+    "building-wall-panel-plain": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "building-wall-panel-plain",
+      "px": {
+        "w": 16,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "wall",
+        "panel",
+        "plain",
+        "exterior"
+      ]
+    },
+    "building-wall-panel-double": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "building-wall-panel-double",
+      "px": {
+        "w": 16,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "wall",
+        "panel",
+        "double",
+        "exterior"
+      ]
+    },
+    "building-wall-tile-small": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "building-wall-tile-small",
+      "px": {
+        "w": 16,
+        "h": 13
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 0.81
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "wall",
+        "tile",
+        "small",
+        "exterior"
+      ]
+    },
+    "building-wall-tile-medium": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "building-wall-tile-medium",
+      "px": {
+        "w": 16,
+        "h": 13
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 0.81
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "wall",
+        "tile",
+        "medium",
+        "exterior"
+      ]
+    },
+    "building-facade-tall-column": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "building-facade-tall-column",
+      "px": {
+        "w": 112,
+        "h": 237
+      },
+      "tiles": {
+        "w": 7.0,
+        "h": 14.81
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "facade",
+        "tall",
+        "column",
+        "exterior"
+      ]
+    },
+    "building-wall-wide-panel": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "building-wall-wide-panel",
+      "px": {
+        "w": 16,
+        "h": 16
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "wall",
+        "wide",
+        "panel",
+        "exterior"
+      ]
+    },
+    "building-wall-corner-tile": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "building-wall-corner-tile",
+      "px": {
+        "w": 16,
+        "h": 16
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "building",
+        "wall",
+        "corner",
+        "tile",
+        "exterior"
+      ]
+    },
+    "concrete-wall-panel-wide": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-wall-panel-wide",
+      "px": {
+        "w": 16,
+        "h": 16
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "wall",
+        "concrete",
+        "panel",
+        "building"
+      ]
+    },
+    "concrete-wall-panel-large": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-wall-panel-large",
+      "px": {
+        "w": 16,
+        "h": 16
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "wall",
+        "concrete",
+        "panel",
+        "building"
+      ]
+    },
+    "concrete-wall-section-tall": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-wall-section-tall",
+      "px": {
+        "w": 16,
+        "h": 29
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 1.81
+      },
+      "collides": true,
+      "tags": [
+        "wall",
+        "concrete",
+        "section",
+        "building"
+      ]
+    },
+    "arched-concrete-overhang": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "arched-concrete-overhang",
+      "px": {
+        "w": 32,
+        "h": 48
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 3.0
+      },
+      "collides": true,
+      "tags": [
+        "arch",
+        "overhang",
+        "concrete",
+        "entrance"
+      ]
+    },
+    "arched-concrete-bridge-segment": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "arched-concrete-bridge-segment",
+      "px": {
+        "w": 32,
+        "h": 48
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 3.0
+      },
+      "collides": true,
+      "tags": [
+        "arch",
+        "bridge",
+        "concrete",
+        "overpass"
+      ]
+    },
+    "concrete-stair-section": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-stair-section",
+      "px": {
+        "w": 64,
+        "h": 61
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 3.81
+      },
+      "collides": true,
+      "tags": [
+        "stairs",
+        "concrete",
+        "steps",
+        "architecture"
+      ]
+    },
+    "concrete-platform-wide": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-platform-wide",
+      "px": {
+        "w": 64,
+        "h": 61
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 3.81
+      },
+      "collides": true,
+      "tags": [
+        "platform",
+        "concrete",
+        "ledge",
+        "architecture"
+      ]
+    },
+    "concrete-tiered-platform": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-tiered-platform",
+      "px": {
+        "w": 32,
+        "h": 32
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "platform",
+        "tiered",
+        "concrete",
+        "steps"
+      ]
+    },
+    "concrete-retaining-wall-low": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-retaining-wall-low",
+      "px": {
+        "w": 32,
+        "h": 16
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "wall",
+        "retaining",
+        "concrete",
+        "low"
+      ]
+    },
+    "concrete-low-wall-wide": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-low-wall-wide",
+      "px": {
+        "w": 32,
+        "h": 16
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "wall",
+        "low",
+        "concrete",
+        "divider"
+      ]
+    },
+    "concrete-block-flat": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-block-flat",
+      "px": {
+        "w": 16,
+        "h": 16
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "block",
+        "concrete",
+        "flat",
+        "slab"
+      ]
+    },
+    "swimming-pool-water-tile": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "swimming-pool-water-tile",
+      "px": {
+        "w": 48,
+        "h": 16
+      },
+      "tiles": {
+        "w": 3.0,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "pool",
+        "water",
+        "swimming",
+        "blue",
+        "tile"
+      ]
+    },
+    "concrete-block-step": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-block-step",
+      "px": {
+        "w": 16,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "block",
+        "step",
+        "concrete",
+        "platform"
+      ]
+    },
+    "pool-water-panel-tall": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "pool-water-panel-tall",
+      "px": {
+        "w": 16,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "pool",
+        "water",
+        "panel",
+        "blue",
+        "tile"
+      ]
+    },
+    "pool-water-panel-large": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "pool-water-panel-large",
+      "px": {
+        "w": 48,
+        "h": 48
+      },
+      "tiles": {
+        "w": 3.0,
+        "h": 3.0
+      },
+      "collides": true,
+      "tags": [
+        "pool",
+        "water",
+        "panel",
+        "large",
+        "blue"
+      ]
+    },
+    "concrete-pillar-base": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-pillar-base",
+      "px": {
+        "w": 32,
+        "h": 45
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 2.81
+      },
+      "collides": true,
+      "tags": [
+        "pillar",
+        "base",
+        "concrete",
+        "column"
+      ]
+    },
+    "concrete-pillar-tall": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-pillar-tall",
+      "px": {
+        "w": 32,
+        "h": 45
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 2.81
+      },
+      "collides": true,
+      "tags": [
+        "pillar",
+        "column",
+        "concrete",
+        "tall"
+      ]
+    },
+    "curved-concrete-wall-segment": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "curved-concrete-wall-segment",
+      "px": {
+        "w": 64,
+        "h": 80
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 5.0
+      },
+      "collides": true,
+      "tags": [
+        "wall",
+        "curved",
+        "concrete",
+        "segment"
+      ]
+    },
+    "concrete-low-platform": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-low-platform",
+      "px": {
+        "w": 13,
+        "h": 25
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.56
+      },
+      "collides": true,
+      "tags": [
+        "platform",
+        "concrete",
+        "low",
+        "step"
+      ]
+    },
+    "cable-wire-bundle": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "cable-wire-bundle",
+      "px": {
+        "w": 43,
+        "h": 44
+      },
+      "tiles": {
+        "w": 2.69,
+        "h": 2.75
+      },
+      "collides": false,
+      "tags": [
+        "cable",
+        "wire",
+        "cord",
+        "urban"
+      ]
+    },
+    "cable-wire-single-loop": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "cable-wire-single-loop",
+      "px": {
+        "w": 61,
+        "h": 17
+      },
+      "tiles": {
+        "w": 3.81,
+        "h": 1.06
+      },
+      "collides": false,
+      "tags": [
+        "cable",
+        "wire",
+        "loop",
+        "cord"
+      ]
+    },
+    "receipt-printer-small": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "receipt-printer-small",
+      "px": {
+        "w": 30,
+        "h": 12
+      },
+      "tiles": {
+        "w": 1.88,
+        "h": 0.75
+      },
+      "collides": true,
+      "tags": [
+        "printer",
+        "machine",
+        "receipt",
+        "device",
+        "small"
+      ]
+    },
+    "arcade-controller-handheld-alt": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "arcade-controller-handheld-alt",
+      "px": {
+        "w": 24,
+        "h": 24
+      },
+      "tiles": {
+        "w": 1.5,
+        "h": 1.5
+      },
+      "collides": true,
+      "tags": [
+        "controller",
+        "gamepad",
+        "arcade",
+        "handheld",
+        "alternate"
+      ]
+    },
+    "arcade-controller-handheld": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "arcade-controller-handheld",
+      "px": {
+        "w": 19,
+        "h": 31
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "controller",
+        "gamepad",
+        "arcade",
+        "handheld",
+        "game"
+      ]
+    },
+    "dirt-mound-brown": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "dirt-mound-brown",
+      "px": {
+        "w": 15,
+        "h": 25
+      },
+      "tiles": {
+        "w": 0.94,
+        "h": 1.56
+      },
+      "collides": false,
+      "tags": [
+        "dirt",
+        "mound",
+        "earth",
+        "ground",
+        "natural"
+      ]
+    },
+    "coal-rubble-pile": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "coal-rubble-pile",
+      "px": {
+        "w": 28,
+        "h": 44
+      },
+      "tiles": {
+        "w": 1.75,
+        "h": 2.75
+      },
+      "collides": false,
+      "tags": [
+        "coal",
+        "rubble",
+        "pile",
+        "industrial"
+      ]
+    },
+    "tyre-marks-skid": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "tyre-marks-skid",
+      "px": {
+        "w": 22,
+        "h": 8
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 0.5
+      },
+      "collides": false,
+      "tags": [
+        "skid",
+        "tyre",
+        "marks",
+        "road",
+        "ground"
+      ]
+    },
+    "tyre-tracks-ground": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "tyre-tracks-ground",
+      "px": {
+        "w": 28,
+        "h": 44
+      },
+      "tiles": {
+        "w": 1.75,
+        "h": 2.75
+      },
+      "collides": false,
+      "tags": [
+        "tyre",
+        "tracks",
+        "ground",
+        "road",
+        "marks"
+      ]
+    },
+    "delivery-van-yellow": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "delivery-van-yellow",
+      "px": {
+        "w": 62,
+        "h": 36
+      },
+      "tiles": {
+        "w": 3.88,
+        "h": 2.25
+      },
+      "collides": true,
+      "tags": [
+        "van",
+        "vehicle",
+        "delivery",
+        "yellow",
+        "car"
+      ]
+    },
+    "wrecked-car-grey": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "wrecked-car-grey",
+      "px": {
+        "w": 127,
+        "h": 80
+      },
+      "tiles": {
+        "w": 7.94,
+        "h": 5.0
+      },
+      "collides": true,
+      "tags": [
+        "car",
+        "wrecked",
+        "abandoned",
+        "vehicle",
+        "rust"
+      ]
+    },
+    "cable-wire-post": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "cable-wire-post",
+      "px": {
+        "w": 52,
+        "h": 78
+      },
+      "tiles": {
+        "w": 3.25,
+        "h": 4.88
+      },
+      "collides": true,
+      "tags": [
+        "cable",
+        "wire",
+        "post",
+        "utility"
+      ]
+    },
+    "concrete-pavement-tile": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-pavement-tile",
+      "px": {
+        "w": 64,
+        "h": 32
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 2.0
+      },
+      "collides": false,
+      "tags": [
+        "pavement",
+        "tile",
+        "concrete",
+        "ground"
+      ]
+    },
+    "concrete-floor-hatch": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-floor-hatch",
+      "px": {
+        "w": 32,
+        "h": 19
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 1.19
+      },
+      "collides": false,
+      "tags": [
+        "hatch",
+        "floor",
+        "concrete",
+        "ground",
+        "utility"
+      ]
+    },
+    "concrete-floor-slab": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "concrete-floor-slab",
+      "px": {
+        "w": 32,
+        "h": 16
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 1.0
+      },
+      "collides": false,
+      "tags": [
+        "slab",
+        "floor",
+        "concrete",
+        "ground",
+        "pavement"
+      ]
+    },
+    "road-asphalt-patch-dark": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-asphalt-patch-dark",
+      "px": {
+        "w": 13,
+        "h": 16
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.0
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "asphalt",
+        "ground",
+        "dark"
+      ]
+    },
+    "road-lane-marking-vertical": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-lane-marking-vertical",
+      "px": {
+        "w": 32,
+        "h": 16
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 1.0
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "lane",
+        "marking",
+        "white-line"
+      ]
+    },
+    "road-asphalt-patch-large": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-asphalt-patch-large",
+      "px": {
+        "w": 13,
+        "h": 16
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.0
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "asphalt",
+        "ground",
+        "plain"
+      ]
+    },
+    "road-two-tone-panel": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-two-tone-panel",
+      "px": {
+        "w": 32,
+        "h": 16
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 1.0
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "surface",
+        "two-tone",
+        "ground"
+      ]
+    },
+    "road-curb-corner-dark": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-curb-corner-dark",
+      "px": {
+        "w": 13,
+        "h": 64
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 4.0
+      },
+      "collides": false,
+      "tags": [
+        "curb",
+        "corner",
+        "road",
+        "asphalt"
+      ]
+    },
+    "road-dashed-center-line": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-dashed-center-line",
+      "px": {
+        "w": 32,
+        "h": 63
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 3.94
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "dashed",
+        "center-line",
+        "marking"
+      ]
+    },
+    "road-lane-divider-tall": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-lane-divider-tall",
+      "px": {
+        "w": 13,
+        "h": 63
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 3.94
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "lane",
+        "divider",
+        "tall"
+      ]
+    },
+    "road-corner-curb-edge": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-corner-curb-edge",
+      "px": {
+        "w": 48,
+        "h": 29
+      },
+      "tiles": {
+        "w": 3.0,
+        "h": 1.81
+      },
+      "collides": false,
+      "tags": [
+        "curb",
+        "edge",
+        "corner",
+        "road",
+        "asphalt"
+      ]
+    },
+    "road-raised-curb-angled": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-raised-curb-angled",
+      "px": {
+        "w": 32,
+        "h": 16
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 1.0
+      },
+      "collides": false,
+      "tags": [
+        "curb",
+        "raised",
+        "angled",
+        "road"
+      ]
+    },
+    "tire-tracks-debris": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "tire-tracks-debris",
+      "px": {
+        "w": 29,
+        "h": 13
+      },
+      "tiles": {
+        "w": 1.81,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "tracks",
+        "marks",
+        "debris",
+        "road"
+      ]
+    },
+    "road-asphalt-edge-diagonal": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-asphalt-edge-diagonal",
+      "px": {
+        "w": 32,
+        "h": 32
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 2.0
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "asphalt",
+        "edge",
+        "diagonal"
+      ]
+    },
+    "road-white-dashes-horizontal": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-white-dashes-horizontal",
+      "px": {
+        "w": 48,
+        "h": 48
+      },
+      "tiles": {
+        "w": 3.0,
+        "h": 3.0
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "dashes",
+        "marking",
+        "horizontal"
+      ]
+    },
+    "road-diagonal-lane-markings": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-diagonal-lane-markings",
+      "px": {
+        "w": 32,
+        "h": 32
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 2.0
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "diagonal",
+        "lane",
+        "markings"
+      ]
+    },
+    "road-corner-asphalt-curve": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-corner-asphalt-curve",
+      "px": {
+        "w": 32,
+        "h": 32
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 2.0
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "corner",
+        "curve",
+        "asphalt"
+      ]
+    },
+    "road-corner-curb-wide": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-corner-curb-wide",
+      "px": {
+        "w": 64,
+        "h": 128
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 8.0
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "corner",
+        "curb",
+        "wide",
+        "urban"
+      ]
+    },
+    "road-straight-dark-section": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-straight-dark-section",
+      "px": {
+        "w": 32,
+        "h": 103
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 6.44
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "straight",
+        "dark",
+        "section"
+      ]
+    },
+    "road-curve-lane-marked": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-curve-lane-marked",
+      "px": {
+        "w": 64,
+        "h": 128
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 8.0
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "curve",
+        "lane",
+        "marked",
+        "asphalt"
+      ]
+    },
+    "sidewalk-corner-raised": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "sidewalk-corner-raised",
+      "px": {
+        "w": 32,
+        "h": 61
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 3.81
+      },
+      "collides": false,
+      "tags": [
+        "sidewalk",
+        "corner",
+        "raised",
+        "pavement"
+      ]
+    },
+    "sidewalk-edge-vertical": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "sidewalk-edge-vertical",
+      "px": {
+        "w": 32,
+        "h": 61
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 3.81
+      },
+      "collides": false,
+      "tags": [
+        "sidewalk",
+        "edge",
+        "vertical",
+        "pavement"
+      ]
+    },
+    "road-striped-crosswalk-section": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "road-striped-crosswalk-section",
+      "px": {
+        "w": 32,
+        "h": 38
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 2.38
+      },
+      "collides": false,
+      "tags": [
+        "road",
+        "crosswalk",
+        "striped",
+        "pedestrian"
+      ]
+    },
+    "stone-tile-panel-top": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "stone-tile-panel-top",
+      "px": {
+        "w": 32,
+        "h": 32
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 2.0
+      },
+      "collides": false,
+      "tags": [
+        "tile",
+        "stone",
+        "ground",
+        "pavement"
+      ]
+    },
+    "stone-tile-panel-corner": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "stone-tile-panel-corner",
+      "px": {
+        "w": 32,
+        "h": 32
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 2.0
+      },
+      "collides": false,
+      "tags": [
+        "tile",
+        "stone",
+        "ground",
+        "corner",
+        "pavement"
+      ]
+    },
+    "stone-tile-panel-top-alt": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "stone-tile-panel-top-alt",
+      "px": {
+        "w": 32,
+        "h": 64
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 4.0
+      },
+      "collides": false,
+      "tags": [
+        "tile",
+        "stone",
+        "ground",
+        "pavement"
+      ]
+    },
+    "stone-tile-panel-corner-alt": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "stone-tile-panel-corner-alt",
+      "px": {
+        "w": 64,
+        "h": 77
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 4.81
+      },
+      "collides": false,
+      "tags": [
+        "tile",
+        "stone",
+        "ground",
+        "corner",
+        "pavement"
+      ]
+    },
+    "stone-tile-panel-side": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "stone-tile-panel-side",
+      "px": {
+        "w": 32,
+        "h": 52
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 3.25
+      },
+      "collides": false,
+      "tags": [
+        "tile",
+        "stone",
+        "ground",
+        "pavement"
+      ]
+    },
+    "stone-tile-panel-curved": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "stone-tile-panel-curved",
+      "px": {
+        "w": 80,
+        "h": 93
+      },
+      "tiles": {
+        "w": 5.0,
+        "h": 5.81
+      },
+      "collides": false,
+      "tags": [
+        "tile",
+        "stone",
+        "ground",
+        "curved",
+        "pavement"
+      ]
+    },
+    "mushroom-building-top": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "mushroom-building-top",
+      "px": {
+        "w": 32,
+        "h": 80
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 5.0
+      },
+      "collides": true,
+      "tags": [
+        "mushroom",
+        "building",
+        "red",
+        "polka-dot",
+        "whimsical",
+        "roof"
+      ]
+    },
+    "mushroom-building-full": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "mushroom-building-full",
+      "px": {
+        "w": 96,
+        "h": 252
+      },
+      "tiles": {
+        "w": 6.0,
+        "h": 15.75
+      },
+      "collides": true,
+      "tags": [
+        "mushroom",
+        "building",
+        "red",
+        "polka-dot",
+        "whimsical",
+        "tower",
+        "full"
+      ]
+    },
+    "mushroom-building-small": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "mushroom-building-small",
+      "px": {
+        "w": 110,
+        "h": 117
+      },
+      "tiles": {
+        "w": 6.88,
+        "h": 7.31
+      },
+      "collides": true,
+      "tags": [
+        "mushroom",
+        "building",
+        "red",
+        "polka-dot",
+        "whimsical",
+        "small"
+      ]
+    },
+    "double-arm-street-lamp": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "double-arm-street-lamp",
+      "px": {
+        "w": 30,
+        "h": 75
+      },
+      "tiles": {
+        "w": 1.88,
+        "h": 4.69
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "post",
+        "street-light",
+        "double",
+        "lantern"
+      ]
+    },
+    "ornate-double-street-lamp": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "ornate-double-street-lamp",
+      "px": {
+        "w": 46,
+        "h": 75
+      },
+      "tiles": {
+        "w": 2.88,
+        "h": 4.69
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "post",
+        "street-light",
+        "double",
+        "decorative"
+      ]
+    },
+    "ornate-street-lamp-single": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "ornate-street-lamp-single",
+      "px": {
+        "w": 14,
+        "h": 61
+      },
+      "tiles": {
+        "w": 0.88,
+        "h": 3.81
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "post",
+        "street-light",
+        "tall"
+      ]
+    },
+    "street-lamp-ornate": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-ornate",
+      "px": {
+        "w": 13,
+        "h": 27
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.69
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "light",
+        "ornate",
+        "pole"
+      ]
+    },
+    "street-lamp-double-arm": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-double-arm",
+      "px": {
+        "w": 12,
+        "h": 26
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.62
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "double",
+        "arm",
+        "pole"
+      ]
+    },
+    "tall-thin-street-lamp-dark": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "tall-thin-street-lamp-dark",
+      "px": {
+        "w": 12,
+        "h": 62
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 3.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street light",
+        "tall",
+        "thin",
+        "dark"
+      ]
+    },
+    "double-arm-street-lamp-post": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "double-arm-street-lamp-post",
+      "px": {
+        "w": 64,
+        "h": 59
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 3.69
+      },
+      "collides": true,
+      "tags": [
+        "lamp post",
+        "street light",
+        "double arm",
+        "dark",
+        "metal"
+      ]
+    },
+    "single-arm-street-lamp-post": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "single-arm-street-lamp-post",
+      "px": {
+        "w": 60,
+        "h": 59
+      },
+      "tiles": {
+        "w": 3.75,
+        "h": 3.69
+      },
+      "collides": true,
+      "tags": [
+        "lamp post",
+        "street light",
+        "single arm",
+        "metal",
+        "dark"
+      ]
+    },
+    "street-light-pole-thin": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-light-pole-thin",
+      "px": {
+        "w": 8,
+        "h": 88
+      },
+      "tiles": {
+        "w": 0.5,
+        "h": 5.5
+      },
+      "collides": true,
+      "tags": [
+        "street-light",
+        "pole",
+        "thin",
+        "lamp"
+      ]
+    },
+    "street-lamp-arm-post": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-arm-post",
+      "px": {
+        "w": 64,
+        "h": 93
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 5.81
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "arm",
+        "post",
+        "street light"
+      ]
+    },
+    "street-lamp-pole-single": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-pole-single",
+      "px": {
+        "w": 75,
+        "h": 94
+      },
+      "tiles": {
+        "w": 4.69,
+        "h": 5.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "pole",
+        "street",
+        "light",
+        "tall"
+      ]
+    },
+    "street-lamp-pole-branched": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-pole-branched",
+      "px": {
+        "w": 75,
+        "h": 158
+      },
+      "tiles": {
+        "w": 4.69,
+        "h": 9.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "pole",
+        "street",
+        "branched",
+        "tall"
+      ]
+    },
+    "street-lamp-pole-tall": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-pole-tall",
+      "px": {
+        "w": 80,
+        "h": 94
+      },
+      "tiles": {
+        "w": 5.0,
+        "h": 5.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "pole",
+        "street",
+        "tall",
+        "single"
+      ]
+    },
+    "street-lamp-horizontal-arm": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-horizontal-arm",
+      "px": {
+        "w": 52,
+        "h": 78
+      },
+      "tiles": {
+        "w": 3.25,
+        "h": 4.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "arm",
+        "horizontal",
+        "street",
+        "overhead"
+      ]
+    },
+    "street-lamp-arm-curved": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-arm-curved",
+      "px": {
+        "w": 64,
+        "h": 93
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 5.81
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "arm",
+        "curved",
+        "street",
+        "bracket"
+      ]
+    },
+    "street-lamp-pole-angled-arm": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-pole-angled-arm",
+      "px": {
+        "w": 48,
+        "h": 78
+      },
+      "tiles": {
+        "w": 3.0,
+        "h": 4.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "pole",
+        "angled",
+        "arm",
+        "street"
+      ]
+    },
+    "street-lamp-pole-thin": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-pole-thin",
+      "px": {
+        "w": 51,
+        "h": 78
+      },
+      "tiles": {
+        "w": 3.19,
+        "h": 4.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "pole",
+        "thin",
+        "street",
+        "tall"
+      ]
+    },
+    "street-lamp-double-arm-r147c0": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-double-arm-r147c0",
+      "px": {
+        "w": 75,
+        "h": 78
+      },
+      "tiles": {
+        "w": 4.69,
+        "h": 4.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "double",
+        "arm",
+        "post",
+        "light"
+      ]
+    },
+    "street-lamp-sign-arm-left": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-sign-arm-left",
+      "px": {
+        "w": 51,
+        "h": 78
+      },
+      "tiles": {
+        "w": 3.19,
+        "h": 4.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "sign",
+        "arm",
+        "left",
+        "post"
+      ]
+    },
+    "street-lamp-hanging-sign-blue": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-hanging-sign-blue",
+      "px": {
+        "w": 80,
+        "h": 78
+      },
+      "tiles": {
+        "w": 5.0,
+        "h": 4.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "sign",
+        "blue",
+        "hanging",
+        "post"
+      ]
+    },
+    "street-lamp-hanging-sign-red-cross": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-hanging-sign-red-cross",
+      "px": {
+        "w": 52,
+        "h": 78
+      },
+      "tiles": {
+        "w": 3.25,
+        "h": 4.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "sign",
+        "red",
+        "cross",
+        "hanging",
+        "post",
+        "pharmacy"
+      ]
+    },
+    "street-lamp-hanging-sign-arrow": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-hanging-sign-arrow",
+      "px": {
+        "w": 64,
+        "h": 78
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 4.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "sign",
+        "arrow",
+        "hanging",
+        "post"
+      ]
+    },
+    "street-lamp-hanging-sign-green": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-hanging-sign-green",
+      "px": {
+        "w": 59,
+        "h": 78
+      },
+      "tiles": {
+        "w": 3.69,
+        "h": 4.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "sign",
+        "green",
+        "hanging",
+        "post"
+      ]
+    },
+    "street-lamp-hanging-sign-down-arrow": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-hanging-sign-down-arrow",
+      "px": {
+        "w": 59,
+        "h": 78
+      },
+      "tiles": {
+        "w": 3.69,
+        "h": 4.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "sign",
+        "arrow",
+        "down",
+        "hanging",
+        "post"
+      ]
+    },
+    "street-lamp-sign-arm-right": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-lamp-sign-arm-right",
+      "px": {
+        "w": 51,
+        "h": 78
+      },
+      "tiles": {
+        "w": 3.19,
+        "h": 4.88
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street",
+        "sign",
+        "arm",
+        "right",
+        "post"
+      ]
+    },
+    "globe-street-lamp-tall": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "globe-street-lamp-tall",
+      "px": {
+        "w": 11,
+        "h": 40
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 2.5
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "globe",
+        "street",
+        "light",
+        "post"
+      ]
+    },
+    "globe-street-lamp-post": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "globe-street-lamp-post",
+      "px": {
+        "w": 11,
+        "h": 33
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 2.06
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "street-light",
+        "globe",
+        "post",
+        "urban"
+      ]
+    },
+    "globe-street-lamp-short": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "globe-street-lamp-short",
+      "px": {
+        "w": 11,
+        "h": 33
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 2.06
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "globe",
+        "street-light",
+        "short",
+        "post"
+      ]
+    },
+    "rocket-projectile": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "rocket-projectile",
+      "px": {
+        "w": 12,
+        "h": 9
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.56
+      },
+      "collides": false,
+      "tags": [
+        "rocket",
+        "missile",
+        "projectile",
+        "sci-fi",
+        "weapon"
+      ]
+    },
+    "green-bush-cluster-round": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "green-bush-cluster-round",
+      "px": {
+        "w": 19,
+        "h": 23
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "bush",
+        "shrub",
+        "green",
+        "round",
+        "cluster"
+      ]
+    },
+    "mossy-rock-pile-large": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "mossy-rock-pile-large",
+      "px": {
+        "w": 21,
+        "h": 24
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 1.5
+      },
+      "collides": true,
+      "tags": [
+        "rocks",
+        "moss",
+        "nature",
+        "pile",
+        "large"
+      ]
+    },
+    "tall-dense-tree-green": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "tall-dense-tree-green",
+      "px": {
+        "w": 28,
+        "h": 69
+      },
+      "tiles": {
+        "w": 1.75,
+        "h": 4.31
+      },
+      "collides": true,
+      "tags": [
+        "tree",
+        "tall",
+        "green",
+        "dense"
+      ]
+    },
+    "climbing-vine-trellis-plant": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "climbing-vine-trellis-plant",
+      "px": {
+        "w": 9,
+        "h": 24
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 1.5
+      },
+      "collides": true,
+      "tags": [
+        "vine",
+        "trellis",
+        "climbing plant",
+        "green"
+      ]
+    },
+    "round-oak-tree-medium": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "round-oak-tree-medium",
+      "px": {
+        "w": 42,
+        "h": 73
+      },
+      "tiles": {
+        "w": 2.62,
+        "h": 4.56
+      },
+      "collides": true,
+      "tags": [
+        "tree",
+        "oak",
+        "round",
+        "medium",
+        "green"
+      ]
+    },
+    "round-bush-tree-small": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "round-bush-tree-small",
+      "px": {
+        "w": 42,
+        "h": 54
+      },
+      "tiles": {
+        "w": 2.62,
+        "h": 3.38
+      },
+      "collides": true,
+      "tags": [
+        "tree",
+        "bush",
+        "small",
+        "round",
+        "green"
+      ]
+    },
+    "round-bush-small-green": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "round-bush-small-green",
+      "px": {
+        "w": 30,
+        "h": 57
+      },
+      "tiles": {
+        "w": 1.88,
+        "h": 3.56
+      },
+      "collides": true,
+      "tags": [
+        "bush",
+        "round",
+        "small",
+        "green"
+      ]
+    },
+    "potted-tree-round-green": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "potted-tree-round-green",
+      "px": {
+        "w": 42,
+        "h": 64
+      },
+      "tiles": {
+        "w": 2.62,
+        "h": 4.0
+      },
+      "collides": true,
+      "tags": [
+        "tree",
+        "potted",
+        "round",
+        "green",
+        "planter"
+      ]
+    },
+    "round-bush-large-green": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "round-bush-large-green",
+      "px": {
+        "w": 28,
+        "h": 69
+      },
+      "tiles": {
+        "w": 1.75,
+        "h": 4.31
+      },
+      "collides": true,
+      "tags": [
+        "bush",
+        "round",
+        "large",
+        "green"
+      ]
+    },
+    "large-round-tree-wide": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "large-round-tree-wide",
+      "px": {
+        "w": 30,
+        "h": 41
+      },
+      "tiles": {
+        "w": 1.88,
+        "h": 2.56
+      },
+      "collides": true,
+      "tags": [
+        "tree",
+        "round",
+        "large",
+        "wide",
+        "green"
+      ]
+    },
+    "boulder-large-grey": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "boulder-large-grey",
+      "px": {
+        "w": 11,
+        "h": 12
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 0.75
+      },
+      "collides": true,
+      "tags": [
+        "rock",
+        "boulder",
+        "stone",
+        "obstacle"
+      ]
+    },
+    "log-fallen-large": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "log-fallen-large",
+      "px": {
+        "w": 14,
+        "h": 9
+      },
+      "tiles": {
+        "w": 0.88,
+        "h": 0.56
+      },
+      "collides": true,
+      "tags": [
+        "log",
+        "fallen",
+        "wood",
+        "nature",
+        "obstacle"
+      ]
+    },
+    "rock-pile-small": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "rock-pile-small",
+      "px": {
+        "w": 29,
+        "h": 12
+      },
+      "tiles": {
+        "w": 1.81,
+        "h": 0.75
+      },
+      "collides": false,
+      "tags": [
+        "rocks",
+        "debris",
+        "ground",
+        "natural"
+      ]
+    },
+    "grey-boulder-large": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "grey-boulder-large",
+      "px": {
+        "w": 11,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 0.69
+      },
+      "collides": true,
+      "tags": [
+        "rock",
+        "boulder",
+        "stone",
+        "grey"
+      ]
+    },
+    "rock-fragment-rough": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "rock-fragment-rough",
+      "px": {
+        "w": 8,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.5,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "rock",
+        "stone",
+        "fragment",
+        "debris"
+      ]
+    },
+    "street-sign-pole-bare": {
+      "category": "nature",
+      "atlasKey": "obj-nature",
+      "frame": "street-sign-pole-bare",
+      "px": {
+        "w": 51,
+        "h": 78
+      },
+      "tiles": {
+        "w": 3.19,
+        "h": 4.88
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "pole",
+        "street",
+        "bare",
+        "post"
+      ]
+    },
+    "hanging-sign-bracket-left": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "hanging-sign-bracket-left",
+      "px": {
+        "w": 20,
+        "h": 22
+      },
+      "tiles": {
+        "w": 1.25,
+        "h": 1.38
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "wall-mounted",
+        "hanging",
+        "bracket",
+        "shop"
+      ]
+    },
+    "hanging-sign-blue-cross": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "hanging-sign-blue-cross",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "blue",
+        "cross",
+        "pharmacy",
+        "medical"
+      ]
+    },
+    "hanging-sign-blue-cross-lit": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "hanging-sign-blue-cross-lit",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "blue",
+        "cross",
+        "pharmacy",
+        "illuminated"
+      ]
+    },
+    "hanging-sign-blank-small": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "hanging-sign-blank-small",
+      "px": {
+        "w": 12,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.38
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "blank",
+        "shop",
+        "frame"
+      ]
+    },
+    "hanging-sign-blank-large": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "hanging-sign-blank-large",
+      "px": {
+        "w": 12,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.38
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "blank",
+        "large",
+        "frame"
+      ]
+    },
+    "wall-sign-blank": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "wall-sign-blank",
+      "px": {
+        "w": 12,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.38
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "wall",
+        "blank",
+        "frame",
+        "mounted"
+      ]
+    },
+    "hanging-sign-red-cross": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "hanging-sign-red-cross",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "red",
+        "cross",
+        "pharmacy",
+        "medical"
+      ]
+    },
+    "hanging-sign-red-cross-large": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "hanging-sign-red-cross-large",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "red",
+        "cross",
+        "pharmacy",
+        "large"
+      ]
+    },
+    "wall-sign-red-cross-mounted": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "wall-sign-red-cross-mounted",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "wall",
+        "red",
+        "cross",
+        "pharmacy",
+        "mounted"
+      ]
+    },
+    "wall-sign-red-cross-angled": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "wall-sign-red-cross-angled",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "wall",
+        "red",
+        "cross",
+        "pharmacy",
+        "angled"
+      ]
+    },
+    "hanging-sign-orange-dim": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "hanging-sign-orange-dim",
+      "px": {
+        "w": 19,
+        "h": 17
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 1.06
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "orange",
+        "dim",
+        "shop"
+      ]
+    },
+    "hanging-sign-green-dim": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "hanging-sign-green-dim",
+      "px": {
+        "w": 19,
+        "h": 17
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 1.06
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "hanging",
+        "green",
+        "dim",
+        "shop"
+      ]
+    },
+    "wanted-poster-single-silhouette": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "wanted-poster-single-silhouette",
+      "px": {
+        "w": 10,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "poster",
+        "wanted",
+        "sign",
+        "notice-board"
+      ]
+    },
+    "prohibition-sign-board": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "prohibition-sign-board",
+      "px": {
+        "w": 9,
+        "h": 12
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 0.75
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "prohibition",
+        "no-entry",
+        "board",
+        "red"
+      ]
+    },
+    "wanted-poster-single-framed": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "wanted-poster-single-framed",
+      "px": {
+        "w": 10,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "poster",
+        "wanted",
+        "framed",
+        "sign"
+      ]
+    },
+    "roman-numeral-sign-board": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "roman-numeral-sign-board",
+      "px": {
+        "w": 9,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 0.69
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "board",
+        "roman-numeral",
+        "yellow"
+      ]
+    },
+    "heart-ad-board-blue": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "heart-ad-board-blue",
+      "px": {
+        "w": 21,
+        "h": 26
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 1.62
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "board",
+        "heart",
+        "advertisement",
+        "blue",
+        "love"
+      ]
+    },
+    "heart-ad-sign-round-blue": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "heart-ad-sign-round-blue",
+      "px": {
+        "w": 19,
+        "h": 25
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 1.56
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "round",
+        "heart",
+        "advertisement",
+        "blue",
+        "pole"
+      ]
+    },
+    "heart-ad-sign-round-red": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "heart-ad-sign-round-red",
+      "px": {
+        "w": 19,
+        "h": 25
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 1.56
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "round",
+        "heart",
+        "advertisement",
+        "red",
+        "pole"
+      ]
+    },
+    "antenna-pole-tall": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "antenna-pole-tall",
+      "px": {
+        "w": 31,
+        "h": 78
+      },
+      "tiles": {
+        "w": 1.94,
+        "h": 4.88
+      },
+      "collides": true,
+      "tags": [
+        "antenna",
+        "pole",
+        "tall",
+        "tower",
+        "signal"
+      ]
+    },
+    "satellite-dish-small": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "satellite-dish-small",
+      "px": {
+        "w": 36,
+        "h": 57
+      },
+      "tiles": {
+        "w": 2.25,
+        "h": 3.56
+      },
+      "collides": true,
+      "tags": [
+        "satellite",
+        "dish",
+        "antenna",
+        "communication"
+      ]
+    },
+    "concrete-block-small": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "concrete-block-small",
+      "px": {
+        "w": 16,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "block",
+        "concrete",
+        "small",
+        "bollard"
+      ]
+    },
+    "road-sign-single-warning": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-single-warning",
+      "px": {
+        "w": 20,
+        "h": 59
+      },
+      "tiles": {
+        "w": 1.25,
+        "h": 3.69
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "warning",
+        "triangle",
+        "road"
+      ]
+    },
+    "road-sign-post-warning": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-post-warning",
+      "px": {
+        "w": 27,
+        "h": 59
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 3.69
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "warning",
+        "road",
+        "post"
+      ]
+    },
+    "road-sign-warning-angled": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-warning-angled",
+      "px": {
+        "w": 22,
+        "h": 59
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 3.69
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "warning",
+        "triangle",
+        "road"
+      ]
+    },
+    "security-cctv-post": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "security-cctv-post",
+      "px": {
+        "w": 21,
+        "h": 40
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 2.5
+      },
+      "collides": true,
+      "tags": [
+        "camera",
+        "cctv",
+        "security",
+        "post",
+        "surveillance"
+      ]
+    },
+    "road-sign-post-blue-circle": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-post-blue-circle",
+      "px": {
+        "w": 29,
+        "h": 59
+      },
+      "tiles": {
+        "w": 1.81,
+        "h": 3.69
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "road",
+        "blue",
+        "circular",
+        "regulatory"
+      ]
+    },
+    "road-sign-post-blue-arrow": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-post-blue-arrow",
+      "px": {
+        "w": 28,
+        "h": 59
+      },
+      "tiles": {
+        "w": 1.75,
+        "h": 3.69
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "road",
+        "blue",
+        "arrow",
+        "directional",
+        "post"
+      ]
+    },
+    "road-sign-electric-hazard": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-electric-hazard",
+      "px": {
+        "w": 31,
+        "h": 43
+      },
+      "tiles": {
+        "w": 1.94,
+        "h": 2.69
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "hazard",
+        "electric",
+        "warning",
+        "yellow"
+      ]
+    },
+    "security-bollard-camera": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "security-bollard-camera",
+      "px": {
+        "w": 21,
+        "h": 43
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 2.69
+      },
+      "collides": true,
+      "tags": [
+        "bollard",
+        "camera",
+        "cctv",
+        "security",
+        "post"
+      ]
+    },
+    "road-sign-information-post": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-information-post",
+      "px": {
+        "w": 12,
+        "h": 27
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.69
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "information",
+        "post",
+        "road",
+        "blue"
+      ]
+    },
+    "road-sign-rectangle-grey": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-rectangle-grey",
+      "px": {
+        "w": 10,
+        "h": 27
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 1.69
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "rectangular",
+        "grey",
+        "road",
+        "post"
+      ]
+    },
+    "road-sign-green-stripe-post": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-green-stripe-post",
+      "px": {
+        "w": 20,
+        "h": 42
+      },
+      "tiles": {
+        "w": 1.25,
+        "h": 2.62
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "road",
+        "green",
+        "stripe",
+        "post"
+      ]
+    },
+    "road-sign-green-diagonal-post": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-green-diagonal-post",
+      "px": {
+        "w": 20,
+        "h": 42
+      },
+      "tiles": {
+        "w": 1.25,
+        "h": 2.62
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "road",
+        "green",
+        "diagonal",
+        "post",
+        "chevron"
+      ]
+    },
+    "tall-signpost-bare": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "tall-signpost-bare",
+      "px": {
+        "w": 6,
+        "h": 49
+      },
+      "tiles": {
+        "w": 0.38,
+        "h": 3.06
+      },
+      "collides": true,
+      "tags": [
+        "post",
+        "signpost",
+        "tall",
+        "bare",
+        "road"
+      ]
+    },
+    "road-sign-blue-banner-post": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-blue-banner-post",
+      "px": {
+        "w": 38,
+        "h": 28
+      },
+      "tiles": {
+        "w": 2.38,
+        "h": 1.75
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "road",
+        "blue",
+        "banner",
+        "post"
+      ]
+    },
+    "tall-antenna-post": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "tall-antenna-post",
+      "px": {
+        "w": 6,
+        "h": 49
+      },
+      "tiles": {
+        "w": 0.38,
+        "h": 3.06
+      },
+      "collides": true,
+      "tags": [
+        "post",
+        "antenna",
+        "tall",
+        "thin",
+        "road"
+      ]
+    },
+    "road-sign-green-arrow-large": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-green-arrow-large",
+      "px": {
+        "w": 11,
+        "h": 19
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 1.19
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "road",
+        "green",
+        "arrow",
+        "large",
+        "directional"
+      ]
+    },
+    "road-sign-blue-horizontal-bar": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-blue-horizontal-bar",
+      "px": {
+        "w": 48,
+        "h": 16
+      },
+      "tiles": {
+        "w": 3.0,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "road",
+        "blue",
+        "horizontal",
+        "bar",
+        "post"
+      ]
+    },
+    "road-sign-pole-green": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-pole-green",
+      "px": {
+        "w": 38,
+        "h": 16
+      },
+      "tiles": {
+        "w": 2.38,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "pole",
+        "road",
+        "green",
+        "directional"
+      ]
+    },
+    "red-telephone-box": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "red-telephone-box",
+      "px": {
+        "w": 41,
+        "h": 92
+      },
+      "tiles": {
+        "w": 2.56,
+        "h": 5.75
+      },
+      "collides": true,
+      "tags": [
+        "telephone",
+        "booth",
+        "red",
+        "uk",
+        "phone box"
+      ]
+    },
+    "road-sign-pole-angled-green": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-pole-angled-green",
+      "px": {
+        "w": 38,
+        "h": 30
+      },
+      "tiles": {
+        "w": 2.38,
+        "h": 1.88
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "pole",
+        "road",
+        "green",
+        "angled"
+      ]
+    },
+    "road-sign-stack-pole": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-stack-pole",
+      "px": {
+        "w": 16,
+        "h": 39
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 2.44
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "pole",
+        "road",
+        "stack",
+        "directional"
+      ]
+    },
+    "horizontal-green-road-sign": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "horizontal-green-road-sign",
+      "px": {
+        "w": 48,
+        "h": 11
+      },
+      "tiles": {
+        "w": 3.0,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "sign",
+        "road",
+        "green",
+        "horizontal",
+        "flat"
+      ]
+    },
+    "small-road-sign-pole": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "small-road-sign-pole",
+      "px": {
+        "w": 38,
+        "h": 14
+      },
+      "tiles": {
+        "w": 2.38,
+        "h": 0.88
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "pole",
+        "small",
+        "road",
+        "green"
+      ]
+    },
+    "cctv-pole-camera": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "cctv-pole-camera",
+      "px": {
+        "w": 13,
+        "h": 42
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 2.62
+      },
+      "collides": true,
+      "tags": [
+        "cctv",
+        "camera",
+        "surveillance",
+        "pole",
+        "security"
+      ]
+    },
+    "red-telephone-box-small": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "red-telephone-box-small",
+      "px": {
+        "w": 44,
+        "h": 108
+      },
+      "tiles": {
+        "w": 2.75,
+        "h": 6.75
+      },
+      "collides": true,
+      "tags": [
+        "telephone",
+        "booth",
+        "red",
+        "small",
+        "uk"
+      ]
+    },
+    "road-sign-gantry-directional": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-sign-gantry-directional",
+      "px": {
+        "w": 110,
+        "h": 102
+      },
+      "tiles": {
+        "w": 6.88,
+        "h": 6.38
+      },
+      "collides": true,
+      "tags": [
+        "road sign",
+        "gantry",
+        "traffic",
+        "directional",
+        "overhead"
+      ]
+    },
+    "construction-sign-medical": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "construction-sign-medical",
+      "px": {
+        "w": 11,
+        "h": 14
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 0.88
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "medical",
+        "cross",
+        "construction",
+        "warning"
+      ]
+    },
+    "road-warning-sign-triangle": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-warning-sign-triangle",
+      "px": {
+        "w": 30,
+        "h": 29
+      },
+      "tiles": {
+        "w": 1.88,
+        "h": 1.81
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "warning",
+        "triangle",
+        "road",
+        "construction"
+      ]
+    },
+    "industrial-signal-post": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "industrial-signal-post",
+      "px": {
+        "w": 18,
+        "h": 88
+      },
+      "tiles": {
+        "w": 1.12,
+        "h": 5.5
+      },
+      "collides": true,
+      "tags": [
+        "signal",
+        "post",
+        "rail",
+        "industrial"
+      ]
+    },
+    "road-construction-cone-barrel": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-construction-cone-barrel",
+      "px": {
+        "w": 7,
+        "h": 31
+      },
+      "tiles": {
+        "w": 0.44,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "cone",
+        "construction",
+        "barrel",
+        "traffic"
+      ]
+    },
+    "industrial-meter-post": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "industrial-meter-post",
+      "px": {
+        "w": 28,
+        "h": 120
+      },
+      "tiles": {
+        "w": 1.75,
+        "h": 7.5
+      },
+      "collides": true,
+      "tags": [
+        "meter",
+        "post",
+        "gauge",
+        "industrial"
+      ]
+    },
+    "tall-thin-antenna-pole": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "tall-thin-antenna-pole",
+      "px": {
+        "w": 8,
+        "h": 88
+      },
+      "tiles": {
+        "w": 0.5,
+        "h": 5.5
+      },
+      "collides": true,
+      "tags": [
+        "antenna",
+        "pole",
+        "tall",
+        "thin"
+      ]
+    },
+    "traffic-signal-post-dark": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "traffic-signal-post-dark",
+      "px": {
+        "w": 6,
+        "h": 15
+      },
+      "tiles": {
+        "w": 0.38,
+        "h": 0.94
+      },
+      "collides": true,
+      "tags": [
+        "traffic light",
+        "signal",
+        "pole",
+        "dark"
+      ]
+    },
+    "traffic-signal-post-tall": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "traffic-signal-post-tall",
+      "px": {
+        "w": 6,
+        "h": 15
+      },
+      "tiles": {
+        "w": 0.38,
+        "h": 0.94
+      },
+      "collides": true,
+      "tags": [
+        "traffic light",
+        "signal",
+        "pole",
+        "tall"
+      ]
+    },
+    "road-chevron-sign-single": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-chevron-sign-single",
+      "px": {
+        "w": 11,
+        "h": 31
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "chevron",
+        "road sign",
+        "directional",
+        "single",
+        "pole"
+      ]
+    },
+    "road-warning-cone-tall": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-warning-cone-tall",
+      "px": {
+        "w": 11,
+        "h": 31
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "cone",
+        "warning",
+        "traffic",
+        "orange",
+        "tall"
+      ]
+    },
+    "give-way-sign-single": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "give-way-sign-single",
+      "px": {
+        "w": 11,
+        "h": 31
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "give way",
+        "yield",
+        "triangle",
+        "inverted",
+        "pole"
+      ]
+    },
+    "road-warning-sign-diamond": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "road-warning-sign-diamond",
+      "px": {
+        "w": 11,
+        "h": 31
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "warning",
+        "diamond",
+        "road sign",
+        "yellow",
+        "pole"
+      ]
+    },
+    "traffic-cone-stack": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "traffic-cone-stack",
+      "px": {
+        "w": 13,
+        "h": 23
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "cone",
+        "traffic",
+        "orange",
+        "stack",
+        "roadwork"
+      ]
+    },
+    "blue-cross-sign-front": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "blue-cross-sign-front",
+      "px": {
+        "w": 12,
+        "h": 16
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "cross",
+        "blue",
+        "medical",
+        "directional"
+      ]
+    },
+    "pedestrian-crossing-sign-post": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "pedestrian-crossing-sign-post",
+      "px": {
+        "w": 74,
+        "h": 94
+      },
+      "tiles": {
+        "w": 4.62,
+        "h": 5.88
+      },
+      "collides": true,
+      "tags": [
+        "pedestrian",
+        "crossing",
+        "sign",
+        "post",
+        "arrow"
+      ]
+    },
+    "blue-down-arrow-sign": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "blue-down-arrow-sign",
+      "px": {
+        "w": 12,
+        "h": 16
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "arrow",
+        "blue",
+        "directional"
+      ]
+    },
+    "traffic-control-box": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "traffic-control-box",
+      "px": {
+        "w": 40,
+        "h": 46
+      },
+      "tiles": {
+        "w": 2.5,
+        "h": 2.88
+      },
+      "collides": true,
+      "tags": [
+        "traffic control",
+        "box",
+        "electric",
+        "signal"
+      ]
+    },
+    "red-cross-sign-board": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "red-cross-sign-board",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "red cross",
+        "sign",
+        "board",
+        "medical",
+        "warning"
+      ]
+    },
+    "red-cross-sign-board-alt": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "red-cross-sign-board-alt",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "red cross",
+        "sign",
+        "board",
+        "medical",
+        "warning"
+      ]
+    },
+    "blue-info-sign-board": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "blue-info-sign-board",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "info",
+        "sign",
+        "board",
+        "blue",
+        "information"
+      ]
+    },
+    "blue-info-sign-board-alt": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "blue-info-sign-board-alt",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "info",
+        "sign",
+        "board",
+        "blue",
+        "information"
+      ]
+    },
+    "traffic-signal-box-red": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "traffic-signal-box-red",
+      "px": {
+        "w": 21,
+        "h": 21
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "traffic",
+        "signal",
+        "light",
+        "red",
+        "controller"
+      ]
+    },
+    "blue-cross-sign-large": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "blue-cross-sign-large",
+      "px": {
+        "w": 12,
+        "h": 16
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "cross",
+        "blue",
+        "medical",
+        "large"
+      ]
+    },
+    "blue-up-arrow-sign-alt": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "blue-up-arrow-sign-alt",
+      "px": {
+        "w": 12,
+        "h": 16
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "arrow",
+        "blue",
+        "directional",
+        "up"
+      ]
+    },
+    "red-cross-sign-front": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "red-cross-sign-front",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "cross",
+        "red",
+        "medical",
+        "directional"
+      ]
+    },
+    "red-cross-sign-angled": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "red-cross-sign-angled",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "cross",
+        "red",
+        "directional",
+        "angled"
+      ]
+    },
+    "traffic-signal-box-orange": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "traffic-signal-box-orange",
+      "px": {
+        "w": 19,
+        "h": 17
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 1.06
+      },
+      "collides": true,
+      "tags": [
+        "traffic",
+        "signal",
+        "light",
+        "orange",
+        "controller"
+      ]
+    },
+    "blue-up-arrow-sign": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "blue-up-arrow-sign",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "arrow",
+        "blue",
+        "directional",
+        "up"
+      ]
+    },
+    "blue-cross-sign-angled-left": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "blue-cross-sign-angled-left",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "cross",
+        "blue",
+        "directional",
+        "angled"
+      ]
+    },
+    "traffic-signal-box-yellow": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "traffic-signal-box-yellow",
+      "px": {
+        "w": 21,
+        "h": 21
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "traffic",
+        "signal",
+        "light",
+        "yellow",
+        "controller"
+      ]
+    },
+    "traffic-signal-box-green": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "traffic-signal-box-green",
+      "px": {
+        "w": 19,
+        "h": 17
+      },
+      "tiles": {
+        "w": 1.19,
+        "h": 1.06
+      },
+      "collides": true,
+      "tags": [
+        "traffic",
+        "signal",
+        "light",
+        "green",
+        "controller"
+      ]
+    },
+    "traffic-signal-box-green-alt": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "traffic-signal-box-green-alt",
+      "px": {
+        "w": 21,
+        "h": 21
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "traffic",
+        "signal",
+        "light",
+        "green",
+        "controller"
+      ]
+    },
+    "red-cross-sign-large": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "red-cross-sign-large",
+      "px": {
+        "w": 12,
+        "h": 16
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "cross",
+        "red",
+        "medical",
+        "large"
+      ]
+    },
+    "red-down-arrow-sign": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "red-down-arrow-sign",
+      "px": {
+        "w": 12,
+        "h": 16
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "arrow",
+        "red",
+        "directional",
+        "down"
+      ]
+    },
+    "red-cross-sign-small": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "red-cross-sign-small",
+      "px": {
+        "w": 12,
+        "h": 16
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "cross",
+        "red",
+        "small",
+        "medical"
+      ]
+    },
+    "red-up-arrow-sign": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "red-up-arrow-sign",
+      "px": {
+        "w": 12,
+        "h": 16
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.0
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "arrow",
+        "red",
+        "directional",
+        "up"
+      ]
+    },
+    "traffic-signal-box-red-angled": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "traffic-signal-box-red-angled",
+      "px": {
+        "w": 21,
+        "h": 21
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "traffic",
+        "signal",
+        "red",
+        "angled",
+        "controller"
+      ]
+    },
+    "blue-diagonal-arrow-sign": {
+      "category": "street",
+      "atlasKey": "obj-street",
+      "frame": "blue-diagonal-arrow-sign",
+      "px": {
+        "w": 13,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "sign",
+        "arrow",
+        "blue",
+        "diagonal",
+        "directional"
+      ]
+    },
+    "billboard-blue-diagonal": {
+      "category": "vendor",
+      "atlasKey": "obj-vendor",
+      "frame": "billboard-blue-diagonal",
+      "px": {
+        "w": 11,
+        "h": 19
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 1.19
+      },
+      "collides": true,
+      "tags": [
+        "billboard",
+        "sign",
+        "blue",
+        "diagonal",
+        "advertising"
+      ]
+    },
+    "ice-cream-swirl-tower-top": {
+      "category": "vendor",
+      "atlasKey": "obj-vendor",
+      "frame": "ice-cream-swirl-tower-top",
+      "px": {
+        "w": 32,
+        "h": 80
+      },
+      "tiles": {
+        "w": 2.0,
+        "h": 5.0
+      },
+      "collides": true,
+      "tags": [
+        "ice cream",
+        "swirl",
+        "cone",
+        "vendor",
+        "tower",
+        "food"
+      ]
+    },
+    "ice-cream-swirl-tower-full": {
+      "category": "vendor",
+      "atlasKey": "obj-vendor",
+      "frame": "ice-cream-swirl-tower-full",
+      "px": {
+        "w": 125,
+        "h": 188
+      },
+      "tiles": {
+        "w": 7.81,
+        "h": 11.75
+      },
+      "collides": true,
+      "tags": [
+        "ice cream",
+        "swirl",
+        "cone",
+        "vendor",
+        "tower",
+        "food",
+        "building"
+      ]
+    },
+    "ice-cream-swirl-tower-cherry": {
+      "category": "vendor",
+      "atlasKey": "obj-vendor",
+      "frame": "ice-cream-swirl-tower-cherry",
+      "px": {
+        "w": 107,
+        "h": 124
+      },
+      "tiles": {
+        "w": 6.69,
+        "h": 7.75
+      },
+      "collides": true,
+      "tags": [
+        "ice cream",
+        "swirl",
+        "cherry",
+        "vendor",
+        "tower",
+        "food",
+        "building"
+      ]
+    },
+    "sale-billboard-small-standing": {
+      "category": "vendor",
+      "atlasKey": "obj-vendor",
+      "frame": "sale-billboard-small-standing",
+      "px": {
+        "w": 47,
+        "h": 64
+      },
+      "tiles": {
+        "w": 2.94,
+        "h": 4.0
+      },
+      "collides": true,
+      "tags": [
+        "billboard",
+        "sale",
+        "sign",
+        "standing",
+        "small"
+      ]
+    },
+    "car-dealership-billboard-large": {
+      "category": "vendor",
+      "atlasKey": "obj-vendor",
+      "frame": "car-dealership-billboard-large",
+      "px": {
+        "w": 26,
+        "h": 11
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 0.69
+      },
+      "collides": true,
+      "tags": [
+        "billboard",
+        "cars",
+        "dealership",
+        "sale",
+        "large",
+        "advertisement"
+      ]
+    },
+    "hungry-ad-billboard-large": {
+      "category": "vendor",
+      "atlasKey": "obj-vendor",
+      "frame": "hungry-ad-billboard-large",
+      "px": {
+        "w": 42,
+        "h": 63
+      },
+      "tiles": {
+        "w": 2.62,
+        "h": 3.94
+      },
+      "collides": true,
+      "tags": [
+        "billboard",
+        "food",
+        "advertisement",
+        "hungry",
+        "large",
+        "red"
+      ]
+    },
+    "hungry-ad-billboard-small": {
+      "category": "vendor",
+      "atlasKey": "obj-vendor",
+      "frame": "hungry-ad-billboard-small",
+      "px": {
+        "w": 77,
+        "h": 192
+      },
+      "tiles": {
+        "w": 4.81,
+        "h": 12.0
+      },
+      "collides": true,
+      "tags": [
+        "billboard",
+        "food",
+        "advertisement",
+        "hungry",
+        "small",
+        "red"
+      ]
+    },
+    "large-billboard-sign": {
+      "category": "vendor",
+      "atlasKey": "obj-vendor",
+      "frame": "large-billboard-sign",
+      "px": {
+        "w": 74,
+        "h": 91
+      },
+      "tiles": {
+        "w": 4.62,
+        "h": 5.69
+      },
+      "collides": true,
+      "tags": [
+        "billboard",
+        "sign",
+        "advertising",
+        "tall"
+      ]
+    },
+    "vendor-stall-awning-brown-open": {
+      "category": "vendor",
+      "atlasKey": "obj-vendor",
+      "frame": "vendor-stall-awning-brown-open",
+      "px": {
+        "w": 93,
+        "h": 63
+      },
+      "tiles": {
+        "w": 5.81,
+        "h": 3.94
+      },
+      "collides": true,
+      "tags": [
+        "stall",
+        "awning",
+        "booth",
+        "vendor",
+        "brown",
+        "market"
+      ]
+    },
+    "vendor-stall-awning-brown-closed": {
+      "category": "vendor",
+      "atlasKey": "obj-vendor",
+      "frame": "vendor-stall-awning-brown-closed",
+      "px": {
+        "w": 102,
+        "h": 64
+      },
+      "tiles": {
+        "w": 6.38,
+        "h": 4.0
+      },
+      "collides": true,
+      "tags": [
+        "stall",
+        "awning",
+        "booth",
+        "vendor",
+        "brown",
+        "market",
+        "closed"
+      ]
+    },
+    "vendor-stall-awning-brown-front": {
+      "category": "vendor",
+      "atlasKey": "obj-vendor",
+      "frame": "vendor-stall-awning-brown-front",
+      "px": {
+        "w": 128,
+        "h": 128
+      },
+      "tiles": {
+        "w": 8.0,
+        "h": 8.0
+      },
+      "collides": true,
+      "tags": [
+        "stall",
+        "awning",
+        "booth",
+        "vendor",
+        "brown",
+        "market",
+        "front"
+      ]
+    },
+    "vendor-stall-awning-open-front": {
+      "category": "vendor",
+      "atlasKey": "obj-vendor",
+      "frame": "vendor-stall-awning-open-front",
+      "px": {
+        "w": 93,
+        "h": 63
+      },
+      "tiles": {
+        "w": 5.81,
+        "h": 3.94
+      },
+      "collides": true,
+      "tags": [
+        "stall",
+        "awning",
+        "booth",
+        "vendor",
+        "market",
+        "open",
+        "front"
+      ]
+    },
+    "vendor-stall-awning-closed-front": {
+      "category": "vendor",
+      "atlasKey": "obj-vendor",
+      "frame": "vendor-stall-awning-closed-front",
+      "px": {
+        "w": 102,
+        "h": 64
+      },
+      "tiles": {
+        "w": 6.38,
+        "h": 4.0
+      },
+      "collides": true,
+      "tags": [
+        "stall",
+        "awning",
+        "booth",
+        "vendor",
+        "market",
+        "closed",
+        "front"
+      ]
+    }
+  }
+}

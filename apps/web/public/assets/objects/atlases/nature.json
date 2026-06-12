@@ -1,0 +1,973 @@
+{
+  "frames": {
+    "mushroom-building-top": {
+      "frame": {
+        "x": 580,
+        "y": 0,
+        "w": 32,
+        "h": 80
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 80
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 80
+      }
+    },
+    "mushroom-building-full": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 252
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 252
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 252
+      }
+    },
+    "mushroom-building-small": {
+      "frame": {
+        "x": 173,
+        "y": 0,
+        "w": 110,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 110,
+        "h": 117
+      },
+      "sourceSize": {
+        "w": 110,
+        "h": 117
+      }
+    },
+    "double-arm-street-lamp": {
+      "frame": {
+        "x": 342,
+        "y": 253,
+        "w": 30,
+        "h": 75
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 75
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 75
+      }
+    },
+    "ornate-double-street-lamp": {
+      "frame": {
+        "x": 373,
+        "y": 253,
+        "w": 46,
+        "h": 75
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 75
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 75
+      }
+    },
+    "ornate-street-lamp-single": {
+      "frame": {
+        "x": 577,
+        "y": 253,
+        "w": 14,
+        "h": 61
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 61
+      },
+      "sourceSize": {
+        "w": 14,
+        "h": 61
+      }
+    },
+    "street-lamp-ornate": {
+      "frame": {
+        "x": 859,
+        "y": 253,
+        "w": 13,
+        "h": 27
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 27
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 27
+      }
+    },
+    "street-lamp-double-arm": {
+      "frame": {
+        "x": 873,
+        "y": 253,
+        "w": 12,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 26
+      }
+    },
+    "tall-thin-street-lamp-dark": {
+      "frame": {
+        "x": 564,
+        "y": 253,
+        "w": 12,
+        "h": 62
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 62
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 62
+      }
+    },
+    "double-arm-street-lamp-post": {
+      "frame": {
+        "x": 592,
+        "y": 253,
+        "w": 64,
+        "h": 59
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 59
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 59
+      }
+    },
+    "single-arm-street-lamp-post": {
+      "frame": {
+        "x": 657,
+        "y": 253,
+        "w": 60,
+        "h": 59
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 59
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 59
+      }
+    },
+    "street-light-pole-thin": {
+      "frame": {
+        "x": 571,
+        "y": 0,
+        "w": 8,
+        "h": 88
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 88
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 88
+      }
+    },
+    "street-lamp-arm-post": {
+      "frame": {
+        "x": 441,
+        "y": 0,
+        "w": 64,
+        "h": 93
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 93
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 93
+      }
+    },
+    "street-lamp-pole-single": {
+      "frame": {
+        "x": 284,
+        "y": 0,
+        "w": 75,
+        "h": 94
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 75,
+        "h": 94
+      },
+      "sourceSize": {
+        "w": 75,
+        "h": 94
+      }
+    },
+    "street-lamp-pole-branched": {
+      "frame": {
+        "x": 97,
+        "y": 0,
+        "w": 75,
+        "h": 158
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 75,
+        "h": 158
+      },
+      "sourceSize": {
+        "w": 75,
+        "h": 158
+      }
+    },
+    "street-lamp-pole-tall": {
+      "frame": {
+        "x": 360,
+        "y": 0,
+        "w": 80,
+        "h": 94
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 80,
+        "h": 94
+      },
+      "sourceSize": {
+        "w": 80,
+        "h": 94
+      }
+    },
+    "street-lamp-horizontal-arm": {
+      "frame": {
+        "x": 613,
+        "y": 0,
+        "w": 52,
+        "h": 78
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 78
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 78
+      }
+    },
+    "street-lamp-arm-curved": {
+      "frame": {
+        "x": 506,
+        "y": 0,
+        "w": 64,
+        "h": 93
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 93
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 93
+      }
+    },
+    "street-lamp-pole-angled-arm": {
+      "frame": {
+        "x": 666,
+        "y": 0,
+        "w": 48,
+        "h": 78
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 78
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 78
+      }
+    },
+    "street-lamp-pole-thin": {
+      "frame": {
+        "x": 715,
+        "y": 0,
+        "w": 51,
+        "h": 78
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 51,
+        "h": 78
+      },
+      "sourceSize": {
+        "w": 51,
+        "h": 78
+      }
+    },
+    "street-lamp-double-arm-r147c0": {
+      "frame": {
+        "x": 767,
+        "y": 0,
+        "w": 75,
+        "h": 78
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 75,
+        "h": 78
+      },
+      "sourceSize": {
+        "w": 75,
+        "h": 78
+      }
+    },
+    "street-lamp-sign-arm-left": {
+      "frame": {
+        "x": 843,
+        "y": 0,
+        "w": 51,
+        "h": 78
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 51,
+        "h": 78
+      },
+      "sourceSize": {
+        "w": 51,
+        "h": 78
+      }
+    },
+    "street-lamp-hanging-sign-blue": {
+      "frame": {
+        "x": 895,
+        "y": 0,
+        "w": 80,
+        "h": 78
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 80,
+        "h": 78
+      },
+      "sourceSize": {
+        "w": 80,
+        "h": 78
+      }
+    },
+    "street-lamp-hanging-sign-red-cross": {
+      "frame": {
+        "x": 0,
+        "y": 253,
+        "w": 52,
+        "h": 78
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 78
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 78
+      }
+    },
+    "street-lamp-hanging-sign-arrow": {
+      "frame": {
+        "x": 53,
+        "y": 253,
+        "w": 64,
+        "h": 78
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 78
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 78
+      }
+    },
+    "street-lamp-hanging-sign-green": {
+      "frame": {
+        "x": 118,
+        "y": 253,
+        "w": 59,
+        "h": 78
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 59,
+        "h": 78
+      },
+      "sourceSize": {
+        "w": 59,
+        "h": 78
+      }
+    },
+    "street-lamp-hanging-sign-down-arrow": {
+      "frame": {
+        "x": 178,
+        "y": 253,
+        "w": 59,
+        "h": 78
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 59,
+        "h": 78
+      },
+      "sourceSize": {
+        "w": 59,
+        "h": 78
+      }
+    },
+    "street-lamp-sign-arm-right": {
+      "frame": {
+        "x": 238,
+        "y": 253,
+        "w": 51,
+        "h": 78
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 51,
+        "h": 78
+      },
+      "sourceSize": {
+        "w": 51,
+        "h": 78
+      }
+    },
+    "globe-street-lamp-tall": {
+      "frame": {
+        "x": 823,
+        "y": 253,
+        "w": 11,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 40
+      }
+    },
+    "globe-street-lamp-post": {
+      "frame": {
+        "x": 835,
+        "y": 253,
+        "w": 11,
+        "h": 33
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 33
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 33
+      }
+    },
+    "globe-street-lamp-short": {
+      "frame": {
+        "x": 847,
+        "y": 253,
+        "w": 11,
+        "h": 33
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 33
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 33
+      }
+    },
+    "rocket-projectile": {
+      "frame": {
+        "x": 1001,
+        "y": 253,
+        "w": 12,
+        "h": 9
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 9
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 9
+      }
+    },
+    "green-bush-cluster-round": {
+      "frame": {
+        "x": 918,
+        "y": 253,
+        "w": 19,
+        "h": 23
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 23
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 23
+      }
+    },
+    "mossy-rock-pile-large": {
+      "frame": {
+        "x": 886,
+        "y": 253,
+        "w": 21,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 21,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 21,
+        "h": 24
+      }
+    },
+    "tall-dense-tree-green": {
+      "frame": {
+        "x": 463,
+        "y": 253,
+        "w": 28,
+        "h": 69
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 69
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 69
+      }
+    },
+    "climbing-vine-trellis-plant": {
+      "frame": {
+        "x": 908,
+        "y": 253,
+        "w": 9,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 9,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 9,
+        "h": 24
+      }
+    },
+    "round-oak-tree-medium": {
+      "frame": {
+        "x": 420,
+        "y": 253,
+        "w": 42,
+        "h": 73
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 73
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 73
+      }
+    },
+    "round-bush-tree-small": {
+      "frame": {
+        "x": 749,
+        "y": 253,
+        "w": 42,
+        "h": 54
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 54
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 54
+      }
+    },
+    "round-bush-small-green": {
+      "frame": {
+        "x": 718,
+        "y": 253,
+        "w": 30,
+        "h": 57
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 57
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 57
+      }
+    },
+    "potted-tree-round-green": {
+      "frame": {
+        "x": 521,
+        "y": 253,
+        "w": 42,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 64
+      }
+    },
+    "round-bush-large-green": {
+      "frame": {
+        "x": 492,
+        "y": 253,
+        "w": 28,
+        "h": 69
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 69
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 69
+      }
+    },
+    "large-round-tree-wide": {
+      "frame": {
+        "x": 792,
+        "y": 253,
+        "w": 30,
+        "h": 41
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 41
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 41
+      }
+    },
+    "boulder-large-grey": {
+      "frame": {
+        "x": 938,
+        "y": 253,
+        "w": 11,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 12
+      }
+    },
+    "log-fallen-large": {
+      "frame": {
+        "x": 0,
+        "y": 332,
+        "w": 14,
+        "h": 9
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 9
+      },
+      "sourceSize": {
+        "w": 14,
+        "h": 9
+      }
+    },
+    "rock-pile-small": {
+      "frame": {
+        "x": 950,
+        "y": 253,
+        "w": 29,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 29,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 29,
+        "h": 12
+      }
+    },
+    "grey-boulder-large": {
+      "frame": {
+        "x": 980,
+        "y": 253,
+        "w": 11,
+        "h": 11
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 11
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 11
+      }
+    },
+    "rock-fragment-rough": {
+      "frame": {
+        "x": 992,
+        "y": 253,
+        "w": 8,
+        "h": 11
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 11
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 11
+      }
+    },
+    "street-sign-pole-bare": {
+      "frame": {
+        "x": 290,
+        "y": 253,
+        "w": 51,
+        "h": 78
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 51,
+        "h": 78
+      },
+      "sourceSize": {
+        "w": 51,
+        "h": 78
+      }
+    }
+  },
+  "meta": {
+    "image": "nature.png",
+    "size": {
+      "w": 1014,
+      "h": 342
+    },
+    "scale": 1,
+    "app": "thomas-town/pack_atlas.py"
+  }
+}

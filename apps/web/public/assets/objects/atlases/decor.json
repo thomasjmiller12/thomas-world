@@ -1,0 +1,953 @@
+{
+  "frames": {
+    "concrete-fountain-base": {
+      "frame": {
+        "x": 588,
+        "y": 0,
+        "w": 64,
+        "h": 55
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 55
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 55
+      }
+    },
+    "heart-ad-flag-blue": {
+      "frame": {
+        "x": 329,
+        "y": 166,
+        "w": 19,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 20
+      }
+    },
+    "heart-ad-flag-red": {
+      "frame": {
+        "x": 240,
+        "y": 166,
+        "w": 21,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 21,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 21,
+        "h": 26
+      }
+    },
+    "heart-ad-flag-red-alt": {
+      "frame": {
+        "x": 349,
+        "y": 166,
+        "w": 19,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 20
+      }
+    },
+    "metal-trash-can-closed": {
+      "frame": {
+        "x": 305,
+        "y": 166,
+        "w": 11,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 21
+      }
+    },
+    "metal-trash-can-open-lit": {
+      "frame": {
+        "x": 369,
+        "y": 166,
+        "w": 12,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 20
+      }
+    },
+    "metal-trash-can-closed-dented": {
+      "frame": {
+        "x": 317,
+        "y": 166,
+        "w": 11,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 21
+      }
+    },
+    "metal-trash-can-open-overflow": {
+      "frame": {
+        "x": 382,
+        "y": 166,
+        "w": 12,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 20
+      }
+    },
+    "computer-terminal-industrial": {
+      "frame": {
+        "x": 181,
+        "y": 0,
+        "w": 95,
+        "h": 96
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 95,
+        "h": 96
+      },
+      "sourceSize": {
+        "w": 95,
+        "h": 96
+      }
+    },
+    "metal-dumpster-open-top": {
+      "frame": {
+        "x": 468,
+        "y": 0,
+        "w": 29,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 29,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 29,
+        "h": 56
+      }
+    },
+    "waste-bin-filled": {
+      "frame": {
+        "x": 498,
+        "y": 0,
+        "w": 29,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 29,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 29,
+        "h": 56
+      }
+    },
+    "large-metal-dumpster-grey": {
+      "frame": {
+        "x": 0,
+        "y": 166,
+        "w": 22,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 32
+      }
+    },
+    "metal-dumpster-small-grey": {
+      "frame": {
+        "x": 399,
+        "y": 0,
+        "w": 22,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 58
+      }
+    },
+    "waste-bin-metal-side": {
+      "frame": {
+        "x": 422,
+        "y": 0,
+        "w": 22,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 58
+      }
+    },
+    "large-industrial-dumpster-grey": {
+      "frame": {
+        "x": 262,
+        "y": 166,
+        "w": 29,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 29,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 29,
+        "h": 26
+      }
+    },
+    "metal-skip-container-small": {
+      "frame": {
+        "x": 653,
+        "y": 0,
+        "w": 29,
+        "h": 55
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 29,
+        "h": 55
+      },
+      "sourceSize": {
+        "w": 29,
+        "h": 55
+      }
+    },
+    "small-dumpster-with-waste": {
+      "frame": {
+        "x": 683,
+        "y": 0,
+        "w": 28,
+        "h": 55
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 55
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 55
+      }
+    },
+    "grey-multi-bin-rack": {
+      "frame": {
+        "x": 741,
+        "y": 0,
+        "w": 26,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 48
+      }
+    },
+    "small-grey-dumpster-closed": {
+      "frame": {
+        "x": 445,
+        "y": 0,
+        "w": 22,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 58
+      }
+    },
+    "dumpster-with-trash-overflow": {
+      "frame": {
+        "x": 953,
+        "y": 0,
+        "w": 22,
+        "h": 42
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 42
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 42
+      }
+    },
+    "small-waste-bin-grey": {
+      "frame": {
+        "x": 976,
+        "y": 0,
+        "w": 28,
+        "h": 41
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 41
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 41
+      }
+    },
+    "orange-dumpster-large": {
+      "frame": {
+        "x": 93,
+        "y": 0,
+        "w": 44,
+        "h": 120
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 120
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 120
+      }
+    },
+    "orange-industrial-skip": {
+      "frame": {
+        "x": 138,
+        "y": 0,
+        "w": 42,
+        "h": 118
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 118
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 118
+      }
+    },
+    "green-industrial-barrel": {
+      "frame": {
+        "x": 528,
+        "y": 0,
+        "w": 29,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 29,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 29,
+        "h": 56
+      }
+    },
+    "green-waste-barrel-open": {
+      "frame": {
+        "x": 558,
+        "y": 0,
+        "w": 29,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 29,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 29,
+        "h": 56
+      }
+    },
+    "wind-turbine": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 92,
+        "h": 165
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 92,
+        "h": 165
+      },
+      "sourceSize": {
+        "w": 92,
+        "h": 165
+      }
+    },
+    "wooden-pallet-stack": {
+      "frame": {
+        "x": 817,
+        "y": 0,
+        "w": 52,
+        "h": 43
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 43
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 43
+      }
+    },
+    "wooden-crate-large": {
+      "frame": {
+        "x": 870,
+        "y": 0,
+        "w": 52,
+        "h": 43
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 43
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 43
+      }
+    },
+    "cardboard-box-crushed": {
+      "frame": {
+        "x": 489,
+        "y": 166,
+        "w": 11,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 14
+      }
+    },
+    "biohazard-barrel-single": {
+      "frame": {
+        "x": 768,
+        "y": 0,
+        "w": 48,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 48
+      }
+    },
+    "oil-drum-rusty": {
+      "frame": {
+        "x": 395,
+        "y": 166,
+        "w": 13,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 20
+      }
+    },
+    "wooden-crate-flat": {
+      "frame": {
+        "x": 409,
+        "y": 166,
+        "w": 39,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 39,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 39,
+        "h": 16
+      }
+    },
+    "wooden-crate-medium": {
+      "frame": {
+        "x": 449,
+        "y": 166,
+        "w": 39,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 39,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 39,
+        "h": 16
+      }
+    },
+    "dumpster-green-small": {
+      "frame": {
+        "x": 712,
+        "y": 0,
+        "w": 28,
+        "h": 55
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 55
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 55
+      }
+    },
+    "cardboard-box-open-flat": {
+      "frame": {
+        "x": 516,
+        "y": 166,
+        "w": 13,
+        "h": 10
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 10
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 10
+      }
+    },
+    "paper-trash-pile": {
+      "frame": {
+        "x": 554,
+        "y": 166,
+        "w": 9,
+        "h": 9
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 9,
+        "h": 9
+      },
+      "sourceSize": {
+        "w": 9,
+        "h": 9
+      }
+    },
+    "small-debris-pile": {
+      "frame": {
+        "x": 350,
+        "y": 0,
+        "w": 48,
+        "h": 61
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 61
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 61
+      }
+    },
+    "crushed-cardboard-box": {
+      "frame": {
+        "x": 501,
+        "y": 166,
+        "w": 14,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 14,
+        "h": 12
+      }
+    },
+    "blue-trash-bags-pile": {
+      "frame": {
+        "x": 530,
+        "y": 166,
+        "w": 11,
+        "h": 10
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 10
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 10
+      }
+    },
+    "blue-trash-bags-loose": {
+      "frame": {
+        "x": 542,
+        "y": 166,
+        "w": 11,
+        "h": 10
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 10
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 10
+      }
+    },
+    "flat-road-grate-long": {
+      "frame": {
+        "x": 145,
+        "y": 166,
+        "w": 94,
+        "h": 29
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 94,
+        "h": 29
+      },
+      "sourceSize": {
+        "w": 94,
+        "h": 29
+      }
+    },
+    "green-dumpster-bin": {
+      "frame": {
+        "x": 923,
+        "y": 0,
+        "w": 29,
+        "h": 43
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 29,
+        "h": 43
+      },
+      "sourceSize": {
+        "w": 29,
+        "h": 43
+      }
+    },
+    "blue-dumpster-container": {
+      "frame": {
+        "x": 277,
+        "y": 0,
+        "w": 55,
+        "h": 94
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 55,
+        "h": 94
+      },
+      "sourceSize": {
+        "w": 55,
+        "h": 94
+      }
+    },
+    "utility-box-grey": {
+      "frame": {
+        "x": 292,
+        "y": 166,
+        "w": 12,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 22
+      }
+    },
+    "metal-grate-vent-small": {
+      "frame": {
+        "x": 23,
+        "y": 166,
+        "w": 60,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 32
+      }
+    },
+    "metal-grate-vent-wide": {
+      "frame": {
+        "x": 84,
+        "y": 166,
+        "w": 60,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 32
+      }
+    },
+    "vending-machine-small": {
+      "frame": {
+        "x": 333,
+        "y": 0,
+        "w": 16,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 64
+      }
+    }
+  },
+  "meta": {
+    "image": "decor.png",
+    "size": {
+      "w": 1005,
+      "h": 199
+    },
+    "scale": 1,
+    "app": "thomas-town/pack_atlas.py"
+  }
+}

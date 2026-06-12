@@ -1,0 +1,2933 @@
+{
+  "frames": {
+    "blue-liquid-spill-puddle": {
+      "frame": {
+        "x": 634,
+        "y": 455,
+        "w": 13,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 28
+      }
+    },
+    "hanging-brown-jacket": {
+      "frame": {
+        "x": 906,
+        "y": 455,
+        "w": 12,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 21
+      }
+    },
+    "hanging-grey-dress": {
+      "frame": {
+        "x": 491,
+        "y": 455,
+        "w": 7,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 7,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 7,
+        "h": 30
+      }
+    },
+    "hanging-pink-dress": {
+      "frame": {
+        "x": 499,
+        "y": 455,
+        "w": 8,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 30
+      }
+    },
+    "hanging-blue-overalls": {
+      "frame": {
+        "x": 508,
+        "y": 455,
+        "w": 12,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 30
+      }
+    },
+    "hanging-green-shirt": {
+      "frame": {
+        "x": 487,
+        "y": 488,
+        "w": 12,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 13
+      }
+    },
+    "hanging-tan-shirt": {
+      "frame": {
+        "x": 500,
+        "y": 488,
+        "w": 12,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 13
+      }
+    },
+    "hanging-blue-shorts": {
+      "frame": {
+        "x": 521,
+        "y": 455,
+        "w": 8,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 30
+      }
+    },
+    "hanging-floral-dress": {
+      "frame": {
+        "x": 715,
+        "y": 488,
+        "w": 13,
+        "h": 11
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 11
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 11
+      }
+    },
+    "hanging-grey-shirt-small": {
+      "frame": {
+        "x": 530,
+        "y": 455,
+        "w": 12,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 30
+      }
+    },
+    "hanging-blue-patterned-shirt": {
+      "frame": {
+        "x": 513,
+        "y": 488,
+        "w": 12,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 13
+      }
+    },
+    "hanging-brown-patterned-shirt": {
+      "frame": {
+        "x": 526,
+        "y": 488,
+        "w": 12,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 13
+      }
+    },
+    "hanging-white-floral-shirt": {
+      "frame": {
+        "x": 729,
+        "y": 488,
+        "w": 13,
+        "h": 11
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 11
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 11
+      }
+    },
+    "hanging-white-shirt-green-pin": {
+      "frame": {
+        "x": 539,
+        "y": 488,
+        "w": 12,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 13
+      }
+    },
+    "hanging-white-dress-shirt": {
+      "frame": {
+        "x": 552,
+        "y": 488,
+        "w": 12,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 13
+      }
+    },
+    "rust-stain-wall-patch": {
+      "frame": {
+        "x": 476,
+        "y": 488,
+        "w": 10,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 10,
+        "h": 14
+      }
+    },
+    "blue-water-puddle": {
+      "frame": {
+        "x": 794,
+        "y": 488,
+        "w": 10,
+        "h": 10
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 10
+      },
+      "sourceSize": {
+        "w": 10,
+        "h": 10
+      }
+    },
+    "bulletin-board-blank": {
+      "frame": {
+        "x": 654,
+        "y": 488,
+        "w": 9,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 9,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 9,
+        "h": 12
+      }
+    },
+    "ufo-alien-ship": {
+      "frame": {
+        "x": 852,
+        "y": 488,
+        "w": 14,
+        "h": 9
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 9
+      },
+      "sourceSize": {
+        "w": 14,
+        "h": 9
+      }
+    },
+    "robot-mech-dark": {
+      "frame": {
+        "x": 0,
+        "y": 488,
+        "w": 33,
+        "h": 17
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 33,
+        "h": 17
+      },
+      "sourceSize": {
+        "w": 33,
+        "h": 17
+      }
+    },
+    "robot-mech-small": {
+      "frame": {
+        "x": 919,
+        "y": 455,
+        "w": 33,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 33,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 33,
+        "h": 20
+      }
+    },
+    "metal-pergola-frame": {
+      "frame": {
+        "x": 109,
+        "y": 332,
+        "w": 72,
+        "h": 71
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 72,
+        "h": 71
+      },
+      "sourceSize": {
+        "w": 72,
+        "h": 71
+      }
+    },
+    "robot-npc-figure": {
+      "frame": {
+        "x": 648,
+        "y": 455,
+        "w": 13,
+        "h": 27
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 27
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 27
+      }
+    },
+    "rubble-debris-pile": {
+      "frame": {
+        "x": 935,
+        "y": 406,
+        "w": 45,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 32
+      }
+    },
+    "smoke-cloud-effect": {
+      "frame": {
+        "x": 743,
+        "y": 488,
+        "w": 11,
+        "h": 11
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 11
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 11
+      }
+    },
+    "large-smoke-cloud-effect": {
+      "frame": {
+        "x": 755,
+        "y": 488,
+        "w": 11,
+        "h": 11
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 11
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 11
+      }
+    },
+    "gray-blimp-airship": {
+      "frame": {
+        "x": 790,
+        "y": 455,
+        "w": 47,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 47,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 47,
+        "h": 24
+      }
+    },
+    "thin-metal-dumbbell-bar": {
+      "frame": {
+        "x": 767,
+        "y": 488,
+        "w": 26,
+        "h": 11
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 11
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 11
+      }
+    },
+    "industrial-building-facade": {
+      "frame": {
+        "x": 339,
+        "y": 0,
+        "w": 173,
+        "h": 140
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 173,
+        "h": 140
+      },
+      "sourceSize": {
+        "w": 173,
+        "h": 140
+      }
+    },
+    "large-water-tower-brown": {
+      "frame": {
+        "x": 828,
+        "y": 0,
+        "w": 74,
+        "h": 103
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 74,
+        "h": 103
+      },
+      "sourceSize": {
+        "w": 74,
+        "h": 103
+      }
+    },
+    "small-water-tower-tan": {
+      "frame": {
+        "x": 0,
+        "y": 238,
+        "w": 48,
+        "h": 93
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 93
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 93
+      }
+    },
+    "circular-industrial-tank": {
+      "frame": {
+        "x": 903,
+        "y": 0,
+        "w": 74,
+        "h": 103
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 74,
+        "h": 103
+      },
+      "sourceSize": {
+        "w": 74,
+        "h": 103
+      }
+    },
+    "rubble-pile-small": {
+      "frame": {
+        "x": 590,
+        "y": 332,
+        "w": 59,
+        "h": 52
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 59,
+        "h": 52
+      },
+      "sourceSize": {
+        "w": 59,
+        "h": 52
+      }
+    },
+    "pickaxe-leaning": {
+      "frame": {
+        "x": 664,
+        "y": 488,
+        "w": 8,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 12
+      }
+    },
+    "wooden-ladder-horizontal": {
+      "frame": {
+        "x": 838,
+        "y": 455,
+        "w": 19,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 24
+      }
+    },
+    "tarp-bundle-grey": {
+      "frame": {
+        "x": 565,
+        "y": 488,
+        "w": 15,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 15,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 15,
+        "h": 13
+      }
+    },
+    "cauldron-iron-large": {
+      "frame": {
+        "x": 673,
+        "y": 488,
+        "w": 10,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 10,
+        "h": 12
+      }
+    },
+    "shipping-container-blue": {
+      "frame": {
+        "x": 299,
+        "y": 406,
+        "w": 52,
+        "h": 43
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 43
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 43
+      }
+    },
+    "shipping-container-labelled": {
+      "frame": {
+        "x": 352,
+        "y": 406,
+        "w": 52,
+        "h": 43
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 43
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 43
+      }
+    },
+    "wooden-ladder-vertical": {
+      "frame": {
+        "x": 662,
+        "y": 455,
+        "w": 14,
+        "h": 27
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 27
+      },
+      "sourceSize": {
+        "w": 14,
+        "h": 27
+      }
+    },
+    "pipe-curved-rusty": {
+      "frame": {
+        "x": 805,
+        "y": 488,
+        "w": 19,
+        "h": 10
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 10
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 10
+      }
+    },
+    "building-facade-fragment": {
+      "frame": {
+        "x": 858,
+        "y": 455,
+        "w": 22,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 24
+      }
+    },
+    "window-frame-boarded": {
+      "frame": {
+        "x": 825,
+        "y": 488,
+        "w": 8,
+        "h": 10
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 10
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 10
+      }
+    },
+    "doorway-frame-ruined": {
+      "frame": {
+        "x": 834,
+        "y": 488,
+        "w": 8,
+        "h": 10
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 10
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 10
+      }
+    },
+    "window-arched-damaged": {
+      "frame": {
+        "x": 843,
+        "y": 488,
+        "w": 8,
+        "h": 10
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 10
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 10
+      }
+    },
+    "shop-front-small": {
+      "frame": {
+        "x": 182,
+        "y": 332,
+        "w": 71,
+        "h": 66
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 71,
+        "h": 66
+      },
+      "sourceSize": {
+        "w": 71,
+        "h": 66
+      }
+    },
+    "toxic-pool-green": {
+      "frame": {
+        "x": 953,
+        "y": 455,
+        "w": 13,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 20
+      }
+    },
+    "dark-puddle-shadow": {
+      "frame": {
+        "x": 581,
+        "y": 488,
+        "w": 8,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 13
+      }
+    },
+    "rubble-pile-large": {
+      "frame": {
+        "x": 602,
+        "y": 238,
+        "w": 95,
+        "h": 80
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 95,
+        "h": 80
+      },
+      "sourceSize": {
+        "w": 95,
+        "h": 80
+      }
+    },
+    "debris-ground-scatter": {
+      "frame": {
+        "x": 717,
+        "y": 455,
+        "w": 13,
+        "h": 25
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 25
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 25
+      }
+    },
+    "industrial-locomotive-engine": {
+      "frame": {
+        "x": 683,
+        "y": 332,
+        "w": 224,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 224,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 224,
+        "h": 48
+      }
+    },
+    "industrial-control-panel-generator": {
+      "frame": {
+        "x": 509,
+        "y": 238,
+        "w": 92,
+        "h": 91
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 92,
+        "h": 91
+      },
+      "sourceSize": {
+        "w": 92,
+        "h": 91
+      }
+    },
+    "shipping-container-tan-small": {
+      "frame": {
+        "x": 405,
+        "y": 406,
+        "w": 84,
+        "h": 43
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 84,
+        "h": 43
+      },
+      "sourceSize": {
+        "w": 84,
+        "h": 43
+      }
+    },
+    "shipping-container-tan-large": {
+      "frame": {
+        "x": 490,
+        "y": 406,
+        "w": 48,
+        "h": 43
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 43
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 43
+      }
+    },
+    "shipping-container-tan-wide": {
+      "frame": {
+        "x": 677,
+        "y": 455,
+        "w": 39,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 39,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 39,
+        "h": 26
+      }
+    },
+    "shipping-container-teal-small": {
+      "frame": {
+        "x": 624,
+        "y": 406,
+        "w": 55,
+        "h": 42
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 55,
+        "h": 42
+      },
+      "sourceSize": {
+        "w": 55,
+        "h": 42
+      }
+    },
+    "shipping-container-teal-medium": {
+      "frame": {
+        "x": 908,
+        "y": 332,
+        "w": 55,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 55,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 55,
+        "h": 48
+      }
+    },
+    "shipping-container-blue-large": {
+      "frame": {
+        "x": 539,
+        "y": 406,
+        "w": 84,
+        "h": 43
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 84,
+        "h": 43
+      },
+      "sourceSize": {
+        "w": 84,
+        "h": 43
+      }
+    },
+    "shipping-container-teal-small-alt": {
+      "frame": {
+        "x": 0,
+        "y": 455,
+        "w": 55,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 55,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 55,
+        "h": 32
+      }
+    },
+    "industrial-machine-unit": {
+      "frame": {
+        "x": 56,
+        "y": 455,
+        "w": 60,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 32
+      }
+    },
+    "industrial-conveyor-belt": {
+      "frame": {
+        "x": 680,
+        "y": 406,
+        "w": 76,
+        "h": 42
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 76,
+        "h": 42
+      },
+      "sourceSize": {
+        "w": 76,
+        "h": 42
+      }
+    },
+    "industrial-hvac-unit": {
+      "frame": {
+        "x": 0,
+        "y": 332,
+        "w": 108,
+        "h": 73
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 108,
+        "h": 73
+      },
+      "sourceSize": {
+        "w": 108,
+        "h": 73
+      }
+    },
+    "solar-panel-array": {
+      "frame": {
+        "x": 757,
+        "y": 406,
+        "w": 26,
+        "h": 41
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 41
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 41
+      }
+    },
+    "industrial-window-unit": {
+      "frame": {
+        "x": 784,
+        "y": 406,
+        "w": 26,
+        "h": 41
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 41
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 41
+      }
+    },
+    "industrial-junction-box": {
+      "frame": {
+        "x": 811,
+        "y": 406,
+        "w": 27,
+        "h": 39
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 39
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 39
+      }
+    },
+    "industrial-server-rack": {
+      "frame": {
+        "x": 117,
+        "y": 455,
+        "w": 22,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 32
+      }
+    },
+    "industrial-storage-unit-green": {
+      "frame": {
+        "x": 544,
+        "y": 332,
+        "w": 22,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 58
+      }
+    },
+    "industrial-small-vehicle": {
+      "frame": {
+        "x": 567,
+        "y": 332,
+        "w": 22,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 58
+      }
+    },
+    "industrial-truck-cargo": {
+      "frame": {
+        "x": 130,
+        "y": 238,
+        "w": 116,
+        "h": 92
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 116,
+        "h": 92
+      },
+      "sourceSize": {
+        "w": 116,
+        "h": 92
+      }
+    },
+    "shipping-container-gray-medium": {
+      "frame": {
+        "x": 731,
+        "y": 455,
+        "w": 28,
+        "h": 25
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 25
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 25
+      }
+    },
+    "shipping-container-green-large": {
+      "frame": {
+        "x": 643,
+        "y": 0,
+        "w": 44,
+        "h": 120
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 120
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 120
+      }
+    },
+    "shipping-container-green-medium": {
+      "frame": {
+        "x": 688,
+        "y": 0,
+        "w": 42,
+        "h": 118
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 118
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 118
+      }
+    },
+    "green-garbage-truck": {
+      "frame": {
+        "x": 247,
+        "y": 238,
+        "w": 120,
+        "h": 92
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 120,
+        "h": 92
+      },
+      "sourceSize": {
+        "w": 120,
+        "h": 92
+      }
+    },
+    "orange-garbage-truck-front": {
+      "frame": {
+        "x": 368,
+        "y": 238,
+        "w": 140,
+        "h": 92
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 140,
+        "h": 92
+      },
+      "sourceSize": {
+        "w": 140,
+        "h": 92
+      }
+    },
+    "electric-utility-box": {
+      "frame": {
+        "x": 543,
+        "y": 455,
+        "w": 24,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 24,
+        "h": 30
+      }
+    },
+    "motorcycle-parked": {
+      "frame": {
+        "x": 34,
+        "y": 488,
+        "w": 19,
+        "h": 17
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 17
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 17
+      }
+    },
+    "building-facade-window-square": {
+      "frame": {
+        "x": 258,
+        "y": 0,
+        "w": 80,
+        "h": 176
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 80,
+        "h": 176
+      },
+      "sourceSize": {
+        "w": 80,
+        "h": 176
+      }
+    },
+    "building-staircase-exterior": {
+      "frame": {
+        "x": 113,
+        "y": 0,
+        "w": 144,
+        "h": 208
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 144,
+        "h": 208
+      },
+      "sourceSize": {
+        "w": 144,
+        "h": 208
+      }
+    },
+    "building-corner-pillar": {
+      "frame": {
+        "x": 731,
+        "y": 0,
+        "w": 96,
+        "h": 112
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 112
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 112
+      }
+    },
+    "building-wall-panel-plain": {
+      "frame": {
+        "x": 140,
+        "y": 455,
+        "w": 16,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 32
+      }
+    },
+    "building-wall-panel-double": {
+      "frame": {
+        "x": 157,
+        "y": 455,
+        "w": 16,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 32
+      }
+    },
+    "building-wall-tile-small": {
+      "frame": {
+        "x": 590,
+        "y": 488,
+        "w": 16,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 13
+      }
+    },
+    "building-wall-tile-medium": {
+      "frame": {
+        "x": 607,
+        "y": 488,
+        "w": 16,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 13
+      }
+    },
+    "building-facade-tall-column": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 112,
+        "h": 237
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 112,
+        "h": 237
+      },
+      "sourceSize": {
+        "w": 112,
+        "h": 237
+      }
+    },
+    "building-wall-wide-panel": {
+      "frame": {
+        "x": 116,
+        "y": 488,
+        "w": 16,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    "building-wall-corner-tile": {
+      "frame": {
+        "x": 133,
+        "y": 488,
+        "w": 16,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    "concrete-wall-panel-wide": {
+      "frame": {
+        "x": 150,
+        "y": 488,
+        "w": 16,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    "concrete-wall-panel-large": {
+      "frame": {
+        "x": 167,
+        "y": 488,
+        "w": 16,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    "concrete-wall-section-tall": {
+      "frame": {
+        "x": 568,
+        "y": 455,
+        "w": 16,
+        "h": 29
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 29
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 29
+      }
+    },
+    "arched-concrete-overhang": {
+      "frame": {
+        "x": 964,
+        "y": 332,
+        "w": 32,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 48
+      }
+    },
+    "arched-concrete-bridge-segment": {
+      "frame": {
+        "x": 0,
+        "y": 406,
+        "w": 32,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 48
+      }
+    },
+    "concrete-stair-section": {
+      "frame": {
+        "x": 348,
+        "y": 332,
+        "w": 64,
+        "h": 61
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 61
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 61
+      }
+    },
+    "concrete-platform-wide": {
+      "frame": {
+        "x": 413,
+        "y": 332,
+        "w": 64,
+        "h": 61
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 61
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 61
+      }
+    },
+    "concrete-tiered-platform": {
+      "frame": {
+        "x": 174,
+        "y": 455,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    },
+    "concrete-retaining-wall-low": {
+      "frame": {
+        "x": 184,
+        "y": 488,
+        "w": 32,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 16
+      }
+    },
+    "concrete-low-wall-wide": {
+      "frame": {
+        "x": 217,
+        "y": 488,
+        "w": 32,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 16
+      }
+    },
+    "concrete-block-flat": {
+      "frame": {
+        "x": 250,
+        "y": 488,
+        "w": 16,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    "swimming-pool-water-tile": {
+      "frame": {
+        "x": 267,
+        "y": 488,
+        "w": 48,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 16
+      }
+    },
+    "concrete-block-step": {
+      "frame": {
+        "x": 207,
+        "y": 455,
+        "w": 16,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 32
+      }
+    },
+    "pool-water-panel-tall": {
+      "frame": {
+        "x": 224,
+        "y": 455,
+        "w": 16,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 32
+      }
+    },
+    "pool-water-panel-large": {
+      "frame": {
+        "x": 33,
+        "y": 406,
+        "w": 48,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 48
+      }
+    },
+    "concrete-pillar-base": {
+      "frame": {
+        "x": 131,
+        "y": 406,
+        "w": 32,
+        "h": 45
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 45
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 45
+      }
+    },
+    "concrete-pillar-tall": {
+      "frame": {
+        "x": 164,
+        "y": 406,
+        "w": 32,
+        "h": 45
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 45
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 45
+      }
+    },
+    "curved-concrete-wall-segment": {
+      "frame": {
+        "x": 698,
+        "y": 238,
+        "w": 64,
+        "h": 80
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 80
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 80
+      }
+    },
+    "concrete-low-platform": {
+      "frame": {
+        "x": 760,
+        "y": 455,
+        "w": 13,
+        "h": 25
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 25
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 25
+      }
+    },
+    "cable-wire-bundle": {
+      "frame": {
+        "x": 197,
+        "y": 406,
+        "w": 43,
+        "h": 44
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 43,
+        "h": 44
+      },
+      "sourceSize": {
+        "w": 43,
+        "h": 44
+      }
+    },
+    "cable-wire-single-loop": {
+      "frame": {
+        "x": 54,
+        "y": 488,
+        "w": 61,
+        "h": 17
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 61,
+        "h": 17
+      },
+      "sourceSize": {
+        "w": 61,
+        "h": 17
+      }
+    },
+    "receipt-printer-small": {
+      "frame": {
+        "x": 684,
+        "y": 488,
+        "w": 30,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 12
+      }
+    },
+    "arcade-controller-handheld-alt": {
+      "frame": {
+        "x": 881,
+        "y": 455,
+        "w": 24,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 24,
+        "h": 24
+      }
+    },
+    "arcade-controller-handheld": {
+      "frame": {
+        "x": 471,
+        "y": 455,
+        "w": 19,
+        "h": 31
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 19,
+        "h": 31
+      },
+      "sourceSize": {
+        "w": 19,
+        "h": 31
+      }
+    },
+    "dirt-mound-brown": {
+      "frame": {
+        "x": 774,
+        "y": 455,
+        "w": 15,
+        "h": 25
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 15,
+        "h": 25
+      },
+      "sourceSize": {
+        "w": 15,
+        "h": 25
+      }
+    },
+    "coal-rubble-pile": {
+      "frame": {
+        "x": 241,
+        "y": 406,
+        "w": 28,
+        "h": 44
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 44
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 44
+      }
+    },
+    "tyre-marks-skid": {
+      "frame": {
+        "x": 867,
+        "y": 488,
+        "w": 22,
+        "h": 8
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 8
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 8
+      }
+    },
+    "tyre-tracks-ground": {
+      "frame": {
+        "x": 270,
+        "y": 406,
+        "w": 28,
+        "h": 44
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 44
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 44
+      }
+    },
+    "delivery-van-yellow": {
+      "frame": {
+        "x": 872,
+        "y": 406,
+        "w": 62,
+        "h": 36
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 62,
+        "h": 36
+      },
+      "sourceSize": {
+        "w": 62,
+        "h": 36
+      }
+    },
+    "wrecked-car-grey": {
+      "frame": {
+        "x": 763,
+        "y": 238,
+        "w": 127,
+        "h": 80
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 127,
+        "h": 80
+      },
+      "sourceSize": {
+        "w": 127,
+        "h": 80
+      }
+    },
+    "cable-wire-post": {
+      "frame": {
+        "x": 891,
+        "y": 238,
+        "w": 52,
+        "h": 78
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 78
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 78
+      }
+    },
+    "concrete-pavement-tile": {
+      "frame": {
+        "x": 241,
+        "y": 455,
+        "w": 64,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 32
+      }
+    },
+    "concrete-floor-hatch": {
+      "frame": {
+        "x": 967,
+        "y": 455,
+        "w": 32,
+        "h": 19
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 19
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 19
+      }
+    },
+    "concrete-floor-slab": {
+      "frame": {
+        "x": 316,
+        "y": 488,
+        "w": 32,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 16
+      }
+    },
+    "road-asphalt-patch-dark": {
+      "frame": {
+        "x": 349,
+        "y": 488,
+        "w": 13,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 16
+      }
+    },
+    "road-lane-marking-vertical": {
+      "frame": {
+        "x": 363,
+        "y": 488,
+        "w": 32,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 16
+      }
+    },
+    "road-asphalt-patch-large": {
+      "frame": {
+        "x": 396,
+        "y": 488,
+        "w": 13,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 16
+      }
+    },
+    "road-two-tone-panel": {
+      "frame": {
+        "x": 410,
+        "y": 488,
+        "w": 32,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 16
+      }
+    },
+    "road-curb-corner-dark": {
+      "frame": {
+        "x": 254,
+        "y": 332,
+        "w": 13,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 64
+      }
+    },
+    "road-dashed-center-line": {
+      "frame": {
+        "x": 301,
+        "y": 332,
+        "w": 32,
+        "h": 63
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 63
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 63
+      }
+    },
+    "road-lane-divider-tall": {
+      "frame": {
+        "x": 334,
+        "y": 332,
+        "w": 13,
+        "h": 63
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 63
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 63
+      }
+    },
+    "road-corner-curb-edge": {
+      "frame": {
+        "x": 585,
+        "y": 455,
+        "w": 48,
+        "h": 29
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 29
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 29
+      }
+    },
+    "road-raised-curb-angled": {
+      "frame": {
+        "x": 443,
+        "y": 488,
+        "w": 32,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 16
+      }
+    },
+    "tire-tracks-debris": {
+      "frame": {
+        "x": 624,
+        "y": 488,
+        "w": 29,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 29,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 29,
+        "h": 13
+      }
+    },
+    "road-asphalt-edge-diagonal": {
+      "frame": {
+        "x": 306,
+        "y": 455,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    },
+    "road-white-dashes-horizontal": {
+      "frame": {
+        "x": 82,
+        "y": 406,
+        "w": 48,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 48
+      }
+    },
+    "road-diagonal-lane-markings": {
+      "frame": {
+        "x": 339,
+        "y": 455,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    },
+    "road-corner-asphalt-curve": {
+      "frame": {
+        "x": 372,
+        "y": 455,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    },
+    "road-corner-curb-wide": {
+      "frame": {
+        "x": 513,
+        "y": 0,
+        "w": 64,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 128
+      }
+    },
+    "road-straight-dark-section": {
+      "frame": {
+        "x": 978,
+        "y": 0,
+        "w": 32,
+        "h": 103
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 103
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 103
+      }
+    },
+    "road-curve-lane-marked": {
+      "frame": {
+        "x": 578,
+        "y": 0,
+        "w": 64,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 128
+      }
+    },
+    "sidewalk-corner-raised": {
+      "frame": {
+        "x": 478,
+        "y": 332,
+        "w": 32,
+        "h": 61
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 61
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 61
+      }
+    },
+    "sidewalk-edge-vertical": {
+      "frame": {
+        "x": 511,
+        "y": 332,
+        "w": 32,
+        "h": 61
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 61
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 61
+      }
+    },
+    "road-striped-crosswalk-section": {
+      "frame": {
+        "x": 839,
+        "y": 406,
+        "w": 32,
+        "h": 38
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 38
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 38
+      }
+    },
+    "stone-tile-panel-top": {
+      "frame": {
+        "x": 405,
+        "y": 455,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    },
+    "stone-tile-panel-corner": {
+      "frame": {
+        "x": 438,
+        "y": 455,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    },
+    "stone-tile-panel-top-alt": {
+      "frame": {
+        "x": 268,
+        "y": 332,
+        "w": 32,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 64
+      }
+    },
+    "stone-tile-panel-corner-alt": {
+      "frame": {
+        "x": 944,
+        "y": 238,
+        "w": 64,
+        "h": 77
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 77
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 77
+      }
+    },
+    "stone-tile-panel-side": {
+      "frame": {
+        "x": 650,
+        "y": 332,
+        "w": 32,
+        "h": 52
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 52
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 52
+      }
+    },
+    "stone-tile-panel-curved": {
+      "frame": {
+        "x": 49,
+        "y": 238,
+        "w": 80,
+        "h": 93
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 80,
+        "h": 93
+      },
+      "sourceSize": {
+        "w": 80,
+        "h": 93
+      }
+    }
+  },
+  "meta": {
+    "image": "misc.png",
+    "size": {
+      "w": 1011,
+      "h": 506
+    },
+    "scale": 1,
+    "app": "thomas-town/pack_atlas.py"
+  }
+}

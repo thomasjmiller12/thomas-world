@@ -1,0 +1,453 @@
+{
+  "frames": {
+    "metal-double-gate": {
+      "frame": {
+        "x": 276,
+        "y": 0,
+        "w": 31,
+        "h": 37
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 31,
+        "h": 37
+      },
+      "sourceSize": {
+        "w": 31,
+        "h": 37
+      }
+    },
+    "metal-gate-barred-large": {
+      "frame": {
+        "x": 541,
+        "y": 0,
+        "w": 11,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 13
+      }
+    },
+    "metal-gate-barred-narrow": {
+      "frame": {
+        "x": 587,
+        "y": 0,
+        "w": 11,
+        "h": 10
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 10
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 10
+      }
+    },
+    "concrete-barrier-rail": {
+      "frame": {
+        "x": 474,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    "building-staircase-railing": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 77,
+        "h": 141
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 77,
+        "h": 141
+      },
+      "sourceSize": {
+        "w": 77,
+        "h": 141
+      }
+    },
+    "concrete-arched-entrance": {
+      "frame": {
+        "x": 78,
+        "y": 0,
+        "w": 64,
+        "h": 80
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 80
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 80
+      }
+    },
+    "concrete-arched-gate-base": {
+      "frame": {
+        "x": 444,
+        "y": 0,
+        "w": 13,
+        "h": 19
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 19
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 19
+      }
+    },
+    "red-white-striped-barrier": {
+      "frame": {
+        "x": 458,
+        "y": 0,
+        "w": 15,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 15,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 15,
+        "h": 18
+      }
+    },
+    "striped-road-barrier-horizontal": {
+      "frame": {
+        "x": 599,
+        "y": 0,
+        "w": 22,
+        "h": 8
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 8
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 8
+      }
+    },
+    "cylindrical-metal-bollard-large": {
+      "frame": {
+        "x": 418,
+        "y": 0,
+        "w": 11,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 20
+      }
+    },
+    "concrete-barrier-cylinder": {
+      "frame": {
+        "x": 430,
+        "y": 0,
+        "w": 13,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 20
+      }
+    },
+    "road-barrier-stop-sign": {
+      "frame": {
+        "x": 203,
+        "y": 0,
+        "w": 72,
+        "h": 42
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 72,
+        "h": 42
+      },
+      "sourceSize": {
+        "w": 72,
+        "h": 42
+      }
+    },
+    "road-barrier-concrete": {
+      "frame": {
+        "x": 553,
+        "y": 0,
+        "w": 16,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 12
+      }
+    },
+    "road-barrier-striped-wide": {
+      "frame": {
+        "x": 570,
+        "y": 0,
+        "w": 16,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 12
+      }
+    },
+    "road-barrier-striped-horizontal": {
+      "frame": {
+        "x": 371,
+        "y": 0,
+        "w": 46,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 21
+      }
+    },
+    "road-barrier-striped-angled": {
+      "frame": {
+        "x": 176,
+        "y": 0,
+        "w": 26,
+        "h": 45
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 45
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 45
+      }
+    },
+    "road-barrier-folding": {
+      "frame": {
+        "x": 308,
+        "y": 0,
+        "w": 20,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 22
+      }
+    },
+    "road-barrier-low-double": {
+      "frame": {
+        "x": 491,
+        "y": 0,
+        "w": 24,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 24,
+        "h": 14
+      }
+    },
+    "road-barrier-low-single": {
+      "frame": {
+        "x": 516,
+        "y": 0,
+        "w": 24,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 24,
+        "h": 14
+      }
+    },
+    "road-barrier-low-alt": {
+      "frame": {
+        "x": 329,
+        "y": 0,
+        "w": 20,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 22
+      }
+    },
+    "road-barrier-low-wide": {
+      "frame": {
+        "x": 350,
+        "y": 0,
+        "w": 20,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 22
+      }
+    },
+    "road-barrier-bollard-short": {
+      "frame": {
+        "x": 143,
+        "y": 0,
+        "w": 32,
+        "h": 80
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 80
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 80
+      }
+    }
+  },
+  "meta": {
+    "image": "fence.png",
+    "size": {
+      "w": 622,
+      "h": 142
+    },
+    "scale": 1,
+    "app": "thomas-town/pack_atlas.py"
+  }
+}
