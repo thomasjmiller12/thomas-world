@@ -415,43 +415,6 @@ function recallLabel(toolName: string): string {
   return toolName === "recall" ? "recalled from earlier" : "drew on a memory";
 }
 
-// Narrate a world-mutating tool the agent invoked MID-CHAT into an inline action
-// frame detail (M2.1 full-agency chat): the panel surfaces "walks to the cafe"
-// inline so the visitor sees the agent keep living during the conversation.
-// Returns null for tools we don't narrate (memory has its own memory_recalled
-// special-case; leave_chat / invite_to_chat surface via their own frames). Pure
-// so the narration map is unit-testable. `input` is the tool_use block's parsed
-// args (best-effort field reads — a missing field falls back gracefully).
-export function narrateAction(tool: string, input: Record<string, unknown>): string | null {
-  switch (tool) {
-    case "move_to": {
-      const loc = typeof input.location === "string" ? input.location : "somewhere";
-      return `walks to the ${loc}`;
-    }
-    case "use_fixture": {
-      const action = typeof input.action === "string" ? input.action : "fiddles with";
-      const fixture = typeof input.fixture === "string" ? input.fixture : "fixture";
-      return `${action}s the ${fixture}`;
-    }
-    case "create_artifact": {
-      const title = typeof input.title === "string" ? input.title : "something";
-      return `starts writing "${title}"`;
-    }
-    case "update_artifact":
-      return "revises an artifact";
-    case "set_activity": {
-      const text = typeof input.text === "string" ? input.text : "busy";
-      return `is now ${text}`;
-    }
-    case "say": {
-      const text = typeof input.text === "string" ? input.text : "";
-      return `says aloud: "${text}"`;
-    }
-    default:
-      return null;
-  }
-}
-
 // Director addressing (design doc §3.3): which agent replies FIRST to a visitor
 // message. Deterministic, no LLM router:
 //   1. a participant named in the visitor text → that agent
@@ -519,6 +482,11 @@ async function streamAgentTurn(args: {
     agentId,
     location: (agent?.locationId as LocationId) ?? "town",
     chatSessionId: sessionId,
+    // Tools narrate their own success (tools.ts onAction): the frame fires from
+    // inside the tool's run, so a refused action can never reach the panel.
+    onAction: async (tool, detail) => {
+      await handlers.onFrame({ type: "action", agent: agentId, tool, detail });
+    },
   };
   const tools = buildChatTools(ctx);
 
@@ -562,10 +530,10 @@ async function streamAgentTurn(args: {
       const message = await stream.finalMessage();
       // Record usage per tool round so the chat turn counts against the budget.
       await recordChatUsage(agentId, chatModel, sessionId, message.usage);
-      // Scan this round's tool_use blocks (M2.1): a recall surfaces the
-      // memory_recalled annotation (once per turn); a world-mutating tool
-      // surfaces an inline `action` frame so the panel shows the agent living
-      // mid-chat. narrateAction returns null for tools with their own frames.
+      // Scan this round's tool_use blocks for the memory_recalled annotation
+      // (once per turn). World-mutating tools narrate THEMSELVES via
+      // ctx.onAction at their success point (tools.ts) — narrating from the
+      // tool_use block here described actions the tool then refused.
       for (const block of message.content) {
         if (block.type !== "tool_use") continue;
         if (!recalledThisTurn && RECALL_TOOLS.has(block.name)) {
@@ -575,11 +543,6 @@ async function streamAgentTurn(args: {
             label: recallLabel(block.name),
             agent: agentId,
           });
-          continue;
-        }
-        const detail = narrateAction(block.name, (block.input ?? {}) as Record<string, unknown>);
-        if (detail) {
-          await handlers.onFrame({ type: "action", agent: agentId, tool: block.name, detail });
         }
       }
       if (message.stop_reason === "tool_use") {

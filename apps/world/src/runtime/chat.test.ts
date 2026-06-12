@@ -8,7 +8,6 @@ import {
   isInterjectPass,
   interactionOperatorNote,
   pickRoutedSession,
-  narrateAction,
   movementOperatorNote,
   type ChatRowLike,
   type RoutableSession,
@@ -368,47 +367,9 @@ describe("visitor speaks first (M2.1 — no forced greeting)", () => {
 
 // Mid-chat action-frame narration (M2.1 full agency). Pure map from a tool +
 // its parsed args to the inline `detail` the panel renders.
-describe("narrateAction — mid-chat tool narration map (M2.1)", () => {
-  it("narrates move_to with the destination", () => {
-    expect(narrateAction("move_to", { location: "cafe" })).toBe("walks to the cafe");
-  });
-
-  it("narrates use_fixture as '<action>s the <fixture>'", () => {
-    expect(narrateAction("use_fixture", { fixture: "phone", action: "ring" })).toBe("rings the phone");
-  });
-
-  it("narrates create_artifact with the title in quotes", () => {
-    expect(narrateAction("create_artifact", { title: "Eval design", kind: "blog_post" })).toBe(
-      'starts writing "Eval design"',
-    );
-  });
-
-  it("narrates update_artifact generically", () => {
-    expect(narrateAction("update_artifact", { id: "42" })).toBe("revises an artifact");
-  });
-
-  it("narrates set_activity with the text", () => {
-    expect(narrateAction("set_activity", { text: "sketching a marble run" })).toBe(
-      "is now sketching a marble run",
-    );
-  });
-
-  it("narrates say with the spoken text in quotes", () => {
-    expect(narrateAction("say", { text: "anyone around?" })).toBe('says aloud: "anyone around?"');
-  });
-
-  it("returns null for tools with their own frames / no narration", () => {
-    expect(narrateAction("memory", { command: "view" })).toBeNull();
-    expect(narrateAction("recall", { query: "x" })).toBeNull();
-    expect(narrateAction("leave_chat", { reason: "bye" })).toBeNull();
-    expect(narrateAction("invite_to_chat", { agent: "builder" })).toBeNull();
-  });
-
-  it("falls back gracefully when an expected field is missing", () => {
-    expect(narrateAction("move_to", {})).toBe("walks to the somewhere");
-    expect(narrateAction("create_artifact", {})).toBe('starts writing "something"');
-  });
-});
+// Mid-chat action narration moved INTO the tools (tools.ts ctx.onAction at each
+// success point) so a refused action can never be narrated — the old pure
+// narrateAction map narrated from the tool_use block regardless of outcome.
 
 // Visitor-movement routing note (M2.1). Pure decision: phrasing depends only on
 // whether a participant agent is at the destination the visitor walked to.

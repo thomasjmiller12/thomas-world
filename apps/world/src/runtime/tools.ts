@@ -54,6 +54,11 @@ export interface AgentContext {
   // session synchronously; it stashes the reason here and the chat layer
   // (streamAgentTurn → runChatTurn) ends the session AFTER the final message.
   endRequested?: string;
+  // Chat-only narration channel: tools call this AT THE POINT OF SUCCESS so the
+  // panel's inline `action` frames can never describe a refused action (the old
+  // tool_use-block scan narrated "walks to the office" even when move_to had
+  // declined the hop — observed live). Undefined on idle ticks.
+  onAction?: (tool: string, detail: string) => void | Promise<void>;
 }
 
 // Tools the idle tick gets. The chat subset (plan §4.1) is a filtered view.
@@ -67,7 +72,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   const move_to = betaZodTool({
     name: "move_to",
     description:
-      "Walk to an adjacent location. Locations: town, office, library, workshop, cafe, park. You must be adjacent (everything connects through town). Updates where you are for the rest of this tick.",
+      "Walk to another location: town, office, library, workshop, cafe, park. If it's across town you'll cut through the town square on the way. Updates where you are for the rest of this tick.",
     inputSchema: z.object({
       location: z.enum(locationIds as unknown as [string, ...string[]]),
     }),
@@ -76,12 +81,22 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       if (to === ctx.location) return `You're already at the ${to}.`;
       const adjacent = await isAdjacent(ctx.location, to);
       if (!adjacent) {
-        return `You can't get to the ${to} directly from the ${ctx.location} — most places connect through the town square.`;
+        // Hub-and-spoke: every place connects through town, so a cross-town
+        // walk is two hops. Just do both — refusing stranded agents on a
+        // topology detail no human would trip on (and mid-chat, the refusal
+        // read as "the move is broken" to both the agent and the visitor).
+        await moveAgent(ctx.agentId, "town");
+        ctx.location = "town";
       }
       await moveAgent(ctx.agentId, to);
       ctx.location = to; // gated tools later this tick see the new place
       const loc = await getLocation(to);
-      return `You walk to the ${loc?.name ?? to}. ${loc?.description ?? ""}`;
+      const name = loc?.name ?? to;
+      await ctx.onAction?.(
+        "move_to",
+        adjacent ? `walks over to the ${name}` : `cuts through the town square to the ${name}`,
+      );
+      return `You walk to the ${name}. ${loc?.description ?? ""}`;
     },
   });
 
@@ -92,6 +107,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     inputSchema: z.object({ text: z.string().min(1).max(140) }),
     run: async ({ text }) => {
       await setActivity(ctx.agentId, text);
+      await ctx.onAction?.("set_activity", `is now ${text}`);
       return `Your activity is now: ${text}`;
     },
   });
@@ -137,6 +153,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         visibility: "public",
         payload: { location: ctx.location, fixture, effect: action, agent: ctx.agentId },
       });
+      await ctx.onAction?.("use_fixture", `${action}s the ${fixture}`);
       return `You ${action} the ${fixture}. It's noticeable to anyone here.`;
     },
   });
@@ -168,6 +185,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
           ...(addressed ? { to: addressed } : {}),
         },
       });
+      await ctx.onAction?.("say", `says to the room: "${text}"`);
       return addressed ? `You said to ${addressed}: "${text}"` : `You said: "${text}"`;
     },
   });
@@ -235,6 +253,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         title,
         body,
       });
+      await ctx.onAction?.("create_artifact", `writes "${title}"`);
       return `Created ${kind} "${title}" (id ${row.id}).`;
     },
   });
@@ -252,6 +271,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       if (!existing) return `No artifact with id ${id}.`;
       if (existing.agentId !== ctx.agentId) return "That's not yours to edit.";
       await updateArtifact(id, { title, body });
+      await ctx.onAction?.("update_artifact", `revises "${title ?? existing.title}"`);
       return `Updated "${title ?? existing.title}".`;
     },
   });
