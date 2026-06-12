@@ -87,7 +87,9 @@ export function DockedPanel({
         top: 0,
         right: 0,
         bottom: 0,
-        width: 368,
+        // Rail on desktop; full-screen overlay on a narrow viewport (panel
+        // coexistence rule, design §6.3) — min() caps it to the screen width.
+        width: 'min(368px, 100vw)',
         background: 'var(--paper-2)',
         borderLeft: '1px solid var(--line)',
         display: 'flex',

@@ -100,3 +100,18 @@ body {
 .pixel-frame-inner {
   border: 2px solid var(--frame-ink);
 }
+
+/* Sleeping fallback — drifting Z's over the dreaming town (SleepOverlay). */
+@keyframes zfloat {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.9);
+  }
+  35% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-22px) scale(1.15);
+  }
+}

@@ -1,73 +1,78 @@
 import { useState } from 'react';
+import type { LocationId } from '@town/contract';
 import { NPC_CONFIGS } from '@/game/data/npc-configs';
+import { THOMAS_COLORS } from '@/lib/constants';
 import type { ThomasId, NPCConfig } from '@/lib/types';
 import { useAgentStatuses, statusLine, type AgentStatusMap } from '@/lib/useAgentStatuses';
+import { SpritePortrait, StatusDot, agentShortName } from '@/components/chat/primitives';
+import { locationLabel } from '@/components/feed/feedPresentation';
 
-const BUILDING_LABELS: Record<string, string> = {
-  office: 'Office',
-  library: 'Library',
-  workshop: 'Workshop',
-  cafe: 'Cafe',
-  park: 'Town',
-  town: 'Town',
+// AgentRoster — restyled to the design system and fully live (design doc §6.2 +
+// §6.3). Each row shows the agent's color-keyed name, live location, and a
+// status line. Engagement rows ("💬 in conversation — Workshop") are CLICKABLE:
+// the row resolves the agent's live location into a camera move (travel) so the
+// visitor can go listen in. Proximity + selected states read in the agent color.
+
+const HOME_FALLBACK: Record<string, LocationId> = {
+  office: 'office',
+  library: 'library',
+  workshop: 'workshop',
+  cafe: 'cafe',
+  park: 'park',
+  town: 'town',
 };
-
-// Sprite sheets are 64x96 with 16x24 frames (4 cols x 4 rows)
-// Frame 0 (top-left) is the front-facing idle pose
-function SpriteIcon({ sprite }: { sprite: string }) {
-  return (
-    <div
-      className="shrink-0"
-      style={{
-        width: 16,
-        height: 24,
-        backgroundImage: `url(/assets/sprites/${sprite}.png)`,
-        backgroundPosition: '0 0',
-        backgroundSize: '64px 96px',
-        imageRendering: 'pixelated',
-        transform: 'scale(1.5)',
-        transformOrigin: 'center',
-      }}
-    />
-  );
-}
 
 interface AgentRosterProps {
   proximityNpcId: ThomasId | null;
   chatNpcId: ThomasId | null;
   selectedNpcId: ThomasId | null;
   onNpcClick: (id: ThomasId) => void;
+  // Travel/listen-in: go to where this agent is (engagement rows + dblclick).
+  onTravelToAgent: (id: ThomasId, locationId: LocationId) => void;
 }
 
-export function AgentRoster({ proximityNpcId, chatNpcId, selectedNpcId, onNpcClick }: AgentRosterProps) {
+export function AgentRoster({
+  proximityNpcId,
+  chatNpcId,
+  selectedNpcId,
+  onNpcClick,
+  onTravelToAgent,
+}: AgentRosterProps) {
   const [collapsed, setCollapsed] = useState(false);
   const statuses = useAgentStatuses();
   const npcs = Object.values(NPC_CONFIGS);
 
   if (collapsed) {
     return (
-      <div className="w-10 h-full bg-[#1e1b2e] border-r border-[#3d3654]/40 flex flex-col items-center pt-2 gap-2">
+      <div
+        className="h-full flex flex-col items-center pt-3 gap-3"
+        style={{ width: 44, background: 'var(--paper-2)', borderRight: '1px solid var(--line)' }}
+      >
         <button
           onClick={() => setCollapsed(false)}
-          className="text-[#c4b5a0]/60 hover:text-[#c4b5a0] text-sm mb-1"
           title="Show residents"
+          style={{ color: 'var(--ink-3)', fontSize: 14, lineHeight: 1, background: 'transparent', border: 'none', cursor: 'pointer' }}
         >
           &rsaquo;
         </button>
-        {npcs.map(config => (
+        {npcs.map((config) => (
           <button
             key={config.id}
             onClick={() => { setCollapsed(false); onNpcClick(config.id); }}
-            className="relative group"
             title={config.displayName}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
           >
-            <div
-              className="w-2 h-2 rounded-full transition-all"
+            <span
               style={{
-                backgroundColor: config.color,
-                boxShadow: (proximityNpcId === config.id || chatNpcId === config.id)
-                  ? `0 0 6px ${config.color}80`
-                  : 'none',
+                display: 'block',
+                width: 9,
+                height: 9,
+                borderRadius: '50%',
+                background: config.color,
+                boxShadow:
+                  proximityNpcId === config.id || chatNpcId === config.id
+                    ? `0 0 0 3px ${config.color}40`
+                    : 'none',
               }}
             />
           </button>
@@ -77,20 +82,28 @@ export function AgentRoster({ proximityNpcId, chatNpcId, selectedNpcId, onNpcCli
   }
 
   return (
-    <div className="w-48 h-full bg-[#1e1b2e] border-r border-[#3d3654]/40 flex flex-col overflow-hidden">
-      <div className="px-3 py-2 border-b border-[#3d3654]/40 flex items-center justify-between">
-        <p className="text-[#c4b5a0]/60 text-[10px] font-mono uppercase tracking-widest">Residents</p>
+    <div
+      className="h-full flex flex-col overflow-hidden"
+      style={{ width: 208, background: 'var(--paper-2)', borderRight: '1px solid var(--line)' }}
+    >
+      <div
+        className="flex items-center justify-between"
+        style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--line)' }}
+      >
+        <span style={{ font: '700 10px var(--mono)', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
+          Residents
+        </span>
         <button
           onClick={() => setCollapsed(true)}
-          className="text-[#c4b5a0]/40 hover:text-[#c4b5a0] text-xs"
           title="Collapse"
+          style={{ color: 'var(--ink-3)', fontSize: 13, background: 'transparent', border: 'none', cursor: 'pointer' }}
         >
           &lsaquo;
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {npcs.map(config => (
+        {npcs.map((config) => (
           <RosterEntry
             key={config.id}
             config={config}
@@ -99,6 +112,7 @@ export function AgentRoster({ proximityNpcId, chatNpcId, selectedNpcId, onNpcCli
             isChatting={chatNpcId === config.id}
             isSelected={selectedNpcId === config.id}
             onClick={() => onNpcClick(config.id)}
+            onTravel={onTravelToAgent}
           />
         ))}
       </div>
@@ -106,60 +120,77 @@ export function AgentRoster({ proximityNpcId, chatNpcId, selectedNpcId, onNpcCli
   );
 }
 
-function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick }: {
+function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick, onTravel }: {
   config: NPCConfig;
   status: AgentStatusMap;
   isNear: boolean;
   isChatting: boolean;
   isSelected: boolean;
   onClick: () => void;
+  onTravel: (id: ThomasId, locationId: LocationId) => void;
 }) {
   const live = status[config.id];
+  const color = config.color;
   // Live location when known, else the home building as a placeholder.
-  const locationKey = live?.locationId ?? config.homeBuilding;
-  const location = BUILDING_LABELS[locationKey] || locationKey;
-  // Live-scene indicator: an engaged agent shows "in conversation — <where>"
-  // (minimal wiring; full restyle lands in build step F).
-  const inScene = live?.engagement?.kind === 'scene';
-  const inChat = live?.engagement?.kind === 'chat';
+  const locationId: LocationId =
+    live?.locationId ?? HOME_FALLBACK[config.homeBuilding] ?? 'town';
+  const location = locationLabel(locationId);
+  const engaged = live?.engagement?.kind === 'scene' || live?.engagement?.kind === 'chat';
+  const highlight = isChatting || isSelected;
 
   return (
     <button
       onClick={onClick}
-      className={`
-        w-full text-left px-3 py-2 border-b border-[#3d3654]/20 transition-colors
-        hover:bg-[#2a2540]
-        ${isChatting ? 'bg-[#2a2540]' : ''}
-        ${isSelected && !isChatting ? 'bg-[#252040]' : ''}
-      `}
+      style={{
+        width: '100%',
+        textAlign: 'left',
+        padding: '11px 14px',
+        borderBottom: '1px solid var(--line)',
+        borderLeft: `3px solid ${highlight || isNear ? color : 'transparent'}`,
+        background: highlight ? `${color}12` : 'transparent',
+        cursor: 'pointer',
+        transition: 'background .15s',
+      }}
     >
-      <div className="flex items-center gap-2">
-        <SpriteIcon sprite={config.sprite} />
-        <div className="min-w-0 flex-1 ml-1">
-          <div className="flex items-center gap-1.5">
-            <span
-              className="text-xs font-bold truncate"
-              style={{ color: config.color }}
-            >
-              {config.displayName.replace('Thomas', '').trim()}
-            </span>
-            {isNear && (
-              <span className="text-[8px] text-emerald-400/80">~</span>
-            )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+        <div
+          style={{ width: 26, height: 26, borderRadius: 8, background: `${color}1c`, display: 'grid', placeItems: 'center', overflow: 'hidden', flexShrink: 0 }}
+        >
+          <SpritePortrait npcId={config.id} scale={1.2} />
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ font: '700 12.5px var(--sans)', color }}>{agentShortName(config.id)}</span>
+            {isNear && <StatusDot color={color} size={6} />}
           </div>
-          <div className="flex items-center gap-1 mt-0.5">
-            <span className="text-[9px] text-[#c4b5a0]/40 bg-[#c4b5a0]/8 px-1 py-px rounded">
-              {location}
-            </span>
+          <div style={{ font: '400 9px var(--mono)', letterSpacing: '.04em', color: 'var(--ink-3)', marginTop: 2 }}>
+            {location}
           </div>
         </div>
       </div>
-      {inScene || inChat ? (
-        <p className="text-[10px] text-emerald-300/70 mt-1 leading-snug line-clamp-1 pl-1">
-          &#128172; in conversation — {location}
-        </p>
+      {engaged ? (
+        // CLICKABLE engagement row: travel to where the agent is (listen-in).
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => { e.stopPropagation(); onTravel(config.id, locationId); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onTravel(config.id, locationId); }
+          }}
+          style={{
+            display: 'block',
+            marginTop: 7,
+            paddingLeft: 1,
+            fontSize: 10.5,
+            color,
+            cursor: 'pointer',
+            lineHeight: 1.3,
+          }}
+        >
+          💬 in conversation — {location} ›
+        </span>
       ) : (
-        <p className="text-[10px] text-[#c4b5a0]/45 mt-1 leading-snug line-clamp-1 pl-1">
+        <p style={{ marginTop: 6, paddingLeft: 1, fontSize: 10.5, color: 'var(--ink-2)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {statusLine(live)}
         </p>
       )}

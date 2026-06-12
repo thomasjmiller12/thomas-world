@@ -10,6 +10,8 @@ import { NPC } from '../entities/NPC';
 import { NPCManager } from '../systems/NPCManager';
 import { EventBus } from '../EventBus';
 import { DOOR_CONFIGS, type DoorConfig } from '../data/door-configs';
+import { resolveTravel } from '../data/travel';
+import type { LocationId } from '@town/contract';
 /* END-USER-IMPORTS */
 
 export default class Town extends Phaser.Scene {
@@ -273,6 +275,9 @@ export default class Town extends Phaser.Scene {
 	// Scoped handler ref so we remove ONLY this scene's player-interact listener
 	// on transition (never a bare removeAllListeners that wipes other scenes').
 	private onPlayerInteract?: () => void;
+	// Scoped handler refs for the show-in-town travel + tap-to-move seams, removed
+	// (only these) on transition.
+	private onTravel?: (p: { locationId: LocationId; anchor?: { x: number; y: number } }) => void;
 	private static readonly DOOR_INTERACTION_RANGE = 20;
 	private static readonly PLAYER_SPAWN = { x: 152, y: 456 };
 
@@ -362,8 +367,77 @@ export default class Town extends Phaser.Scene {
 		};
 		EventBus.on('player-interact', this.onPlayerInteract);
 
+		// Show-in-town: pan to a town/park anchor when it's here, else open the
+		// building door and (on arrival) center on the anchor (design §6.3).
+		this.onTravel = (p) => {
+			if (this.isTransitioning) return;
+			const plan = resolveTravel(SCENE_KEYS.TOWN, p.locationId, p.anchor);
+			if (plan.kind === 'pan' || plan.kind === 'to-town') {
+				// Pan away from the player to the anchor, then resume following so
+				// the visitor stays oriented (camera fights follow otherwise).
+				this.panTo(plan.anchor.x, plan.anchor.y);
+			} else {
+				// Stash the anchor so the interior centers on it after the fade.
+				this.registry.set('travelCenter', plan.anchor);
+				this.enterBuilding(plan.door);
+			}
+		};
+		EventBus.on('travel-to-location', this.onTravel);
+
+		// Minimal touch: a tap on the canvas walks the player toward the world
+		// point in a straight line (the Player consumes `tap-move`).
+		this.input.on('pointerdown', this.handlePointerDown, this);
+
+		// Arrival re-center if a travel transition asked for it (set by another
+		// scene before this one started). Pan the camera there once.
+		const pendingCenter = this.consumePendingCenter();
+		if (pendingCenter) {
+			this.panTo(pendingCenter.x, pendingCenter.y);
+		}
+
 		EventBus.emit('scene-changed', { scene: SCENE_KEYS.TOWN, locationName: "Thomas's Town", locationId: 'town' });
 		EventBus.emit('current-scene-ready', this);
+
+		// A cross-interior travel hops through town — pick up the pending target
+		// and re-issue the travel now that town is ready (enters the destination).
+		const pending = this.registry.get('pendingTravel') as
+			{ locationId: LocationId; anchor?: { x: number; y: number } } | undefined;
+		if (pending) {
+			this.registry.set('pendingTravel', undefined);
+			this.time.delayedCall(50, () => this.onTravel?.(pending));
+		}
+	}
+
+	// Pan the camera to a point then resume following the player (show-in-town).
+	// Stopping follow first stops it fighting the pan; following resumes on
+	// completion so the visitor stays oriented after a peek.
+	private panTo(x: number, y: number) {
+		const cam = this.cameras.main;
+		cam.stopFollow();
+		cam.pan(x, y, 450, 'Sine.easeInOut', false, (_c, progress) => {
+			if (progress === 1) cam.startFollow(this.player, true, 0.1, 0.1);
+		});
+	}
+
+	private handlePointerDown(pointer: Phaser.Input.Pointer) {
+		if (this.isTransitioning) return;
+		// Tap an agent → open Tier-1 dialog (minimal touch). Otherwise tap-to-move.
+		const tapped = this.npcManager.npcAt(pointer.worldX, pointer.worldY);
+		if (tapped) {
+			tapped.enterEngaged(this.player.x, this.player.y);
+			EventBus.emit('npc-interaction', { npcId: tapped.npcId, npcName: tapped.displayName });
+			EventBus.emit('chat-opened', { npcId: tapped.npcId });
+			return;
+		}
+		EventBus.emit('tap-move', { worldX: pointer.worldX, worldY: pointer.worldY });
+	}
+
+	// A travel target stashed in the registry by a prior scene (door-path
+	// transition into this scene) — consumed once so the camera centers on it.
+	private consumePendingCenter(): { x: number; y: number } | null {
+		const c = this.registry.get('travelCenter') as { x: number; y: number } | undefined;
+		if (c) this.registry.set('travelCenter', undefined);
+		return c ?? null;
 	}
 
 	private enterBuilding(door: DoorConfig) {
@@ -374,6 +448,11 @@ export default class Town extends Phaser.Scene {
 				EventBus.off('player-interact', this.onPlayerInteract);
 				this.onPlayerInteract = undefined;
 			}
+			if (this.onTravel) {
+				EventBus.off('travel-to-location', this.onTravel);
+				this.onTravel = undefined;
+			}
+			this.input.off('pointerdown', this.handlePointerDown, this);
 			this.npcManager.destroy();
 			this.scene.start(door.sceneKey, {
 				returnX: this.player.x,

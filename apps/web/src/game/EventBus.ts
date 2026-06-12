@@ -100,6 +100,20 @@ export interface WorldEvents {
   'show-dialog': DialogData;
   'dialog-closed': undefined;
   'dialog-opened': undefined;
+
+  // --- show-in-town / travel (feed + roster → canvas) ----------------------
+  // Resolve a location into a camera move: the active scene pans to the anchor
+  // when the location is in the current scene, else it starts the door-path
+  // transition to that location's scene (and centers on arrival). `anchor`
+  // (when given) is the precise standing point to center on — e.g. an agent's
+  // resident/guest anchor; otherwise the location's resident anchor is used.
+  // The active scene owns the handler (one per scene; re-subscribed in create).
+  'travel-to-location': { locationId: LocationId; anchor?: { x: number; y: number } };
+
+  // --- minimal touch (overlay → canvas) ------------------------------------
+  // A tap on the world canvas: walk the player toward a world point in a
+  // straight line, stopping on collision (Phaser pointer → player target).
+  'tap-move': { worldX: number; worldY: number };
 }
 
 export type WorldEventName = keyof WorldEvents;

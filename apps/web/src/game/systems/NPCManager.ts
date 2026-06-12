@@ -317,6 +317,22 @@ export class NPCManager {
     return this.sprites.get(id);
   }
 
+  // The NPC at/near a world point — for tap-an-agent (minimal touch). Returns
+  // the nearest rendered, non-walking agent within `radius` px, else null.
+  npcAt(worldX: number, worldY: number, radius = 14): NPC | null {
+    let nearest: NPC | null = null;
+    let nearestDist = radius;
+    for (const npc of this.sprites.values()) {
+      if (npc.getState() === 'walking') continue;
+      const dist = Phaser.Math.Distance.Between(worldX, worldY, npc.x, npc.y);
+      if (dist <= nearestDist) {
+        nearestDist = dist;
+        nearest = npc;
+      }
+    }
+    return nearest;
+  }
+
   destroy(): void {
     this.unwire();
     for (const npc of this.sprites.values()) npc.destroy();

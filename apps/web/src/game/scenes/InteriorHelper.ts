@@ -5,7 +5,9 @@ import { NPC } from '../entities/NPC';
 import { NPCManager } from '../systems/NPCManager';
 import { EventBus } from '../EventBus';
 import { getDoorByScene, type DoorConfig } from '../data/door-configs';
-import { locationForScene } from '../data/location-anchors';
+import { locationForScene, locationInScene, LOCATION_ANCHORS } from '../data/location-anchors';
+import { resolveTravel } from '../data/travel';
+import type { LocationId } from '@town/contract';
 
 const EXIT_INTERACTION_RANGE = 20;
 
@@ -24,6 +26,8 @@ export interface InteriorState {
   // Scoped player-interact handler ref — removed (only it) on exit so we never
   // wipe other scenes' listeners with a bare removeAllListeners.
   onPlayerInteract?: () => void;
+  // Scoped show-in-town handler ref (removed on exit).
+  onTravel?: (p: { locationId: LocationId; anchor?: { x: number; y: number } }) => void;
 }
 
 export function initInterior(
@@ -124,6 +128,44 @@ export function setupInterior(
   };
   EventBus.on('player-interact', state.onPlayerInteract);
 
+  // Show-in-town: pan when the target is THIS interior, else exit to town and
+  // let the town scene resolve the rest (stashing the target as a pending hop
+  // so a different building still gets reached — design §6.3).
+  state.onTravel = (p) => {
+    if (state.isExiting) return;
+    if (locationInScene(p.locationId, scene.scene.key)) {
+      const target = p.anchor ?? LOCATION_ANCHORS[p.locationId].resident;
+      const cam = scene.cameras.main;
+      cam.stopFollow();
+      cam.pan(target.x, target.y, 450, 'Sine.easeInOut', false, (_c, progress) => {
+        if (progress === 1) cam.startFollow(state.player, true, 0.1, 0.1);
+      });
+      return;
+    }
+    const plan = resolveTravel(scene.scene.key, p.locationId, p.anchor);
+    if (plan.kind === 'to-town') {
+      scene.registry.set('travelCenter', plan.anchor);
+    } else {
+      // Different interior: hop via town, then re-issue the travel from there.
+      scene.registry.set('pendingTravel', { locationId: p.locationId, anchor: p.anchor });
+    }
+    handleExit(scene, state);
+  };
+  EventBus.on('travel-to-location', state.onTravel);
+
+  // Minimal touch: tap an agent → Tier-1 dialog, else tap-to-move.
+  scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+    if (state.isExiting) return;
+    const tapped = state.npcManager.npcAt(pointer.worldX, pointer.worldY);
+    if (tapped) {
+      tapped.enterEngaged(state.player.x, state.player.y);
+      EventBus.emit('npc-interaction', { npcId: tapped.npcId, npcName: tapped.displayName });
+      EventBus.emit('chat-opened', { npcId: tapped.npcId });
+      return;
+    }
+    EventBus.emit('tap-move', { worldX: pointer.worldX, worldY: pointer.worldY });
+  });
+
   EventBus.emit('scene-changed', {
     scene: scene.scene.key,
     locationName,
@@ -163,6 +205,11 @@ function handleExit(scene: Phaser.Scene, state: InteriorState) {
       EventBus.off('player-interact', state.onPlayerInteract);
       state.onPlayerInteract = undefined;
     }
+    if (state.onTravel) {
+      EventBus.off('travel-to-location', state.onTravel);
+      state.onTravel = undefined;
+    }
+    scene.input.removeAllListeners('pointerdown');
     state.npcManager.destroy();
     scene.scene.start(SCENE_KEYS.TOWN, {
       spawnX: state.returnX,

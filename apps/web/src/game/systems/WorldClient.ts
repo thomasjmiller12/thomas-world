@@ -24,6 +24,10 @@ const STORAGE_KEYS = {
   id: 'town.visitorId',
   token: 'town.visitorToken',
   name: 'town.visitorName',
+  // Last good snapshot — replayed when the server is unreachable so a returning
+  // (or even first-time, once cached) visitor sees a populated dreaming town
+  // rather than an empty one (design doc §7).
+  snapshot: 'town.lastSnapshot',
 } as const;
 
 const PING_INTERVAL_MS = 60_000;
@@ -99,6 +103,11 @@ export class WorldClient {
       await this.hydrateSnapshot();
       this.openStream();
     } catch {
+      // Server unreachable: replay the last cached snapshot so the dreaming town
+      // is populated (sprites + roster + a starting point for the feed), then
+      // fall asleep. A first-time visitor with no cache still gets dream mode +
+      // whatever the (independent) feed fetch can load.
+      this.replayCachedSnapshot();
       this.goToSleep('server-down');
     }
   }
@@ -198,8 +207,17 @@ export class WorldClient {
     if (this.visitorId) url.searchParams.set('visitorId', this.visitorId);
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error(`snapshot failed: ${res.status}`);
-    const snapshot = SnapshotResponse.parse(await res.json());
+    const raw = await res.json();
+    const snapshot = SnapshotResponse.parse(raw);
+    // Cache the last good snapshot for the server-down fallback.
+    this.cacheSnapshot(raw);
+    this.applySnapshot(snapshot);
+  }
 
+  // Emit the EventBus state for a snapshot (live or cached-replay). When
+  // `cached`, the world reads as not-awake regardless — a cached snapshot is a
+  // memory, the town is asleep until a live tick proves otherwise.
+  private applySnapshot(snapshot: SnapshotResponse, cached = false): void {
     // Initial per-agent state (positions/status/engagement).
     for (const agent of snapshot.agents) {
       const { name, payload } = mapAgentStatus(agent);
@@ -208,8 +226,8 @@ export class WorldClient {
 
     // World-level state drives the tint + sleeping flag.
     EventBus.emit('world-state', snapshot.world);
-    if (!snapshot.world.awake) {
-      this.goToSleep('budget');
+    if (cached || !snapshot.world.awake) {
+      this.goToSleep(cached ? 'server-down' : 'budget');
     } else {
       EventBus.emit('world-sleeping', { sleeping: false, reason: null });
     }
@@ -217,6 +235,27 @@ export class WorldClient {
     // Replay recent events so late joiners see the scene already in motion.
     for (const ev of snapshot.recentEvents) {
       this.dispatchWorldEvent(ev);
+    }
+  }
+
+  private cacheSnapshot(raw: unknown): void {
+    try {
+      this.writeStored(STORAGE_KEYS.snapshot, JSON.stringify(raw));
+    } catch {
+      /* quota / private mode — caching is best-effort */
+    }
+  }
+
+  // Replay the last cached snapshot (server-down boot). Silent on miss / parse
+  // failure — the town just dreams empty + the feed loads whatever it can.
+  private replayCachedSnapshot(): void {
+    const stored = this.readStored(STORAGE_KEYS.snapshot);
+    if (!stored) return;
+    try {
+      const snapshot = SnapshotResponse.parse(JSON.parse(stored));
+      this.applySnapshot(snapshot, /* cached */ true);
+    } catch {
+      /* stale/incompatible cache — ignore */
     }
   }
 

@@ -12,8 +12,11 @@ import { SceneTranscriptStrip, type TranscriptLine } from './components/SceneTra
 import { ChatSession } from './components/chat/ChatSession';
 import type { BusyAlternative } from './components/chat/types';
 import { HUD } from './components/HUD';
+import { SleepOverlay } from './components/SleepOverlay';
+import { FeedTimeline } from './components/feed/FeedTimeline';
+import { useViewport } from './lib/useViewport';
 import { locationForScene, sameScene } from './game/data/location-anchors';
-import type { LocationId } from '@town/contract';
+import type { LocationId, DayPhase } from '@town/contract';
 import type { ThomasId, ThoughtBubbleData, DialogData } from './lib/types';
 
 // A Tier-0 speech bubble (ambient or scene turn), positioned via the NPC's live
@@ -69,11 +72,29 @@ function App({ visitorName }: AppProps) {
   const [proximityNpcId, setProximityNpcId] = useState<ThomasId | null>(null);
   const [selectedNpcId, setSelectedNpcId] = useState<ThomasId | null>(null);
   const [rightPanelVisible, setRightPanelVisible] = useState(false);
+  // Feed slide-over. Mutually exclusive with the docked chat (panel coexistence).
+  const [feedOpen, setFeedOpen] = useState(false);
+  // Day-phase canvas tint + sleeping/dream fallback (design §7).
+  const [worldPhase, setWorldPhase] = useState<DayPhase>('afternoon');
+  const [sleeping, setSleeping] = useState(false);
+  const [sleepReason, setSleepReason] = useState<'budget' | 'server-down' | null>(null);
+  // Ref mirror so the sleeping-gated chat-open closure reads current state.
+  const sleepingRef = useRef(false);
+  sleepingRef.current = sleeping;
+  const viewport = useViewport();
 
   // ── ChatSession seam (the container drives WorldClient through these) ──────
   const handleChatOpen = useCallback((npcId: ThomasId) => {
+    // Chat is disabled while the town sleeps — the agents aren't awake to think.
+    // The local (free) gate still opened; surface cozy copy instead of a turn.
+    if (sleepingRef.current) {
+      EventBus.emit('chat-error', { npcId, reason: 'sleeping' });
+      return;
+    }
     setChatNpcId(npcId);
     setSelectedNpcId(npcId);
+    // Opening a chat collapses the feed (feed ⟷ docked chat are exclusive).
+    setFeedOpen(false);
     void worldRef.current?.openChat(npcId);
   }, []);
 
@@ -116,6 +137,33 @@ function App({ visitorName }: AppProps) {
   // ⊕ Join in: escalate a listen-in scene to a group chat (Tier 1.5 → chat).
   const handleJoinScene = useCallback((conversationId: string) => {
     void worldRef.current?.joinConversation(conversationId);
+  }, []);
+
+  // Feed toggle. Panel coexistence: opening the feed collapses any docked chat
+  // (and vice-versa); below the narrow breakpoint both render full-screen.
+  const handleToggleFeed = useCallback(() => {
+    setFeedOpen((prev) => {
+      const next = !prev;
+      if (next && chatNpcId) {
+        // Closing the chat to make room for the feed.
+        setChatNpcId(null);
+        worldRef.current?.closeChat();
+      }
+      return next;
+    });
+  }, [chatNpcId]);
+
+  // Show-in-town (feed row) / travel-to-agent (roster engagement row): resolve a
+  // location into a camera move via the active Phaser scene (design §6.3).
+  const handleShowInTown = useCallback((locationId: LocationId) => {
+    EventBus.emit('travel-to-location', { locationId });
+    // On a narrow viewport the feed is a full-screen overlay covering the canvas
+    // — close it so the move is visible.
+    if (viewport.narrow) setFeedOpen(false);
+  }, [viewport.narrow]);
+
+  const handleTravelToAgent = useCallback((_id: ThomasId, locationId: LocationId) => {
+    EventBus.emit('travel-to-location', { locationId });
   }, []);
 
   useEffect(() => {
@@ -236,9 +284,16 @@ function App({ visitorName }: AppProps) {
     const onProximityExit = (data: { npcId: ThomasId }) => {
       setProximityNpcId(prev => prev === data.npcId ? null : prev);
     };
+    // Day-phase tint (world.time / snapshot world block).
+    const onWorldState = (data: { phase: DayPhase }) => {
+      setWorldPhase(data.phase);
+    };
     // Degraded mode: if WorldClient can't reach the server / budget is gone,
-    // run the free scripted dream layer so the town reads asleep, not broken.
-    const onWorldSleeping = (data: { sleeping: boolean }) => {
+    // run the free scripted dream layer so the town reads asleep, not broken,
+    // and surface the night tint + Z's + cozy copy (SleepOverlay).
+    const onWorldSleeping = (data: { sleeping: boolean; reason: 'budget' | 'server-down' | null }) => {
+      setSleeping(data.sleeping);
+      setSleepReason(data.reason);
       if (data.sleeping) dream.start();
       else dream.stop();
     };
@@ -255,6 +310,7 @@ function App({ visitorName }: AppProps) {
     EventBus.on('npc-screen-position', onNpcScreenPosition);
     EventBus.on('npc-proximity-enter', onProximityEnter);
     EventBus.on('npc-proximity-exit', onProximityExit);
+    EventBus.on('world-state', onWorldState);
     EventBus.on('world-sleeping', onWorldSleeping);
 
     return () => {
@@ -272,6 +328,7 @@ function App({ visitorName }: AppProps) {
       EventBus.off('npc-screen-position', onNpcScreenPosition);
       EventBus.off('npc-proximity-enter', onProximityEnter);
       EventBus.off('npc-proximity-exit', onProximityExit);
+      EventBus.off('world-state', onWorldState);
       EventBus.off('world-sleeping', onWorldSleeping);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -285,18 +342,32 @@ function App({ visitorName }: AppProps) {
 
   return (
     <div className="flex w-screen h-screen overflow-hidden" style={{ background: 'var(--paper)' }}>
-      <AgentRoster
-        proximityNpcId={proximityNpcId}
-        chatNpcId={chatNpcId}
-        selectedNpcId={selectedNpcId}
-        onNpcClick={handleRosterClick}
-      />
+      {/* On a narrow viewport the roster collapses out of the way — the world
+          + bottom-sheet panels own the screen (panel coexistence). */}
+      {!viewport.narrow && (
+        <AgentRoster
+          proximityNpcId={proximityNpcId}
+          chatNpcId={chatNpcId}
+          selectedNpcId={selectedNpcId}
+          onNpcClick={handleRosterClick}
+          onTravelToAgent={handleTravelToAgent}
+        />
+      )}
 
       <div className="flex-1 relative overflow-hidden" style={{ background: 'var(--paper)' }}>
         <PhaserGame />
 
+        {/* Day-phase tint + sleeping/dream fallback over the canvas. */}
+        <SleepOverlay phase={worldPhase} sleeping={sleeping} reason={sleepReason} />
+
         <div className="absolute inset-0 pointer-events-none">
-          <HUD locationName={locationName} visitorName={visitorName} />
+          <HUD
+            locationName={locationName}
+            visitorName={visitorName}
+            onToggleFeed={handleToggleFeed}
+            feedOpen={feedOpen}
+            touch={viewport.touch}
+          />
 
           {dialogOpen && dialogData && (
             <DialogBox
@@ -348,13 +419,24 @@ function App({ visitorName }: AppProps) {
             currentLocationId={currentLocationId}
             liveScenes={liveScenes}
           />
+
+          {/* FeedTimeline slide-over — mutually exclusive with the docked chat
+              (handleToggleFeed closes the chat when opening). Full-screen below
+              the narrow breakpoint (panel coexistence). */}
+          {feedOpen && (
+            <FeedTimeline
+              onClose={() => setFeedOpen(false)}
+              onShowInTown={handleShowInTown}
+              fullScreen={viewport.narrow}
+            />
+          )}
         </div>
       </div>
 
-      {/* Profile rail (roster click). The docked chat (ChatSession) takes the
-          right rail when engaged; this profile-only panel collapses to make
-          room. Its full restyle lands in F2. */}
-      {!chatNpcId && (
+      {/* Profile rail (roster click). The docked chat (ChatSession) and the feed
+          both take the right rail when active; this profile-only panel hides to
+          make room (panel coexistence). Also hidden on narrow viewports. */}
+      {!chatNpcId && !feedOpen && !viewport.narrow && (
         <RightPanel
           selectedNpcId={selectedNpcId}
           visible={rightPanelVisible}
