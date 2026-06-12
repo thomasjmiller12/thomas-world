@@ -23,11 +23,23 @@ export function useAgentStatuses(): AgentStatusMap {
         return { ...prev, [a.npcId]: { ...cur, activity: a.activity } };
       });
     };
+    // Walks don't re-emit npc-status, so track them here — otherwise the map's
+    // locationId goes stale the moment an agent moves (visible mid-chat, where
+    // the panel header shows where the agent is right now).
+    const onMove = (m: WorldEvents['npc-move-to']) => {
+      setStatuses(prev => {
+        const cur = prev[m.npcId];
+        if (!cur) return prev;
+        return { ...prev, [m.npcId]: { ...cur, locationId: m.to } };
+      });
+    };
     EventBus.on('npc-status', onStatus);
     EventBus.on('npc-activity', onActivity);
+    EventBus.on('npc-move-to', onMove);
     return () => {
       EventBus.off('npc-status', onStatus);
       EventBus.off('npc-activity', onActivity);
+      EventBus.off('npc-move-to', onMove);
     };
   }, []);
 

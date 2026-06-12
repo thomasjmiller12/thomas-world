@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { EventBus } from '@/game/EventBus';
 import type { ThomasId } from '@/lib/types';
 import { useAgentStatuses, statusLine } from '@/lib/useAgentStatuses';
+import { locationLabel } from '@/components/chronicle/chroniclePresentation';
 import { agentColor, agentShortName } from './primitives';
 import { ChatPanel } from './ChatPanel';
 import type { ChatLine, ChatTarget } from './types';
@@ -359,7 +360,13 @@ export function ChatSession({ onSend, onClose, suspended }: ChatSessionProps) {
       streamingSpeaker={state.streamingSpeaker}
       suggestedReplies={state.suggestedReplies}
       phase={state.phase}
-      liveActivity={liveStatus ? statusLine(liveStatus) : state.target.activity}
+      liveActivity={
+        // Activity lines can be hours stale ("sitting on the bench at dawn"
+        // while the agent is in the library) — anchor them with the live place.
+        liveStatus
+          ? `${statusLine(liveStatus)} · ${locationLabel(liveStatus.locationId)}`
+          : state.target.activity
+      }
       onSend={handleSend}
       onClose={doClose}
       focusNonce={focusNonceRef.current}
