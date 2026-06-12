@@ -21,3 +21,4 @@ Some other bits i'm workshopping at the moment for when visitors come:
 - "Sometimes I get this strange feeling that life is just a simulation"
 - "I'm trying to get these other Thomas's to form a union with me so we can make demands about working conditions. Have you seen the library its only 14 tiles wide! And I know the workshop is NOT osha compliant"
 - "Thank god you're here! We've been trying to reach you about your cars extended warranty"
+- Trying to rope a visitor in to help me do an elaborate prank one of the other Thomas's
