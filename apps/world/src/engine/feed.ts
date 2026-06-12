@@ -2,7 +2,7 @@
 // "day-in-the-life" surface (plan §5, §7). One line per event.
 
 import { and, desc, eq, lt, type SQL } from "drizzle-orm";
-import type { WorldEvent, AgentId } from "@town/contract";
+import type { WorldEvent, WorldEventType, AgentId, LocationId } from "@town/contract";
 import { db, schema } from "../db/client.js";
 
 const { worldEvents, agents } = schema;
@@ -73,15 +73,22 @@ export interface FeedRow {
   ts: string;
   agent: AgentId | null;
   line: string;
+  // M2 (design doc §5): source event type (drives feed icons/filters), the
+  // location it happened in (drives "⌖ SHOW IN TOWN"), and the recipient for
+  // directed events like message.sent (null otherwise).
+  type: WorldEventType | null;
+  locationId: LocationId | null;
+  to: AgentId | null;
 }
 
 // Paginated feed (newest-first with a descending-id cursor). Public surface, so
 // it shows public + location events but hides private interior monologue DMs.
+// Returns `count` (the number of items on this page) per the contract.
 export async function getFeed(
   agent?: AgentId,
   cursor?: string,
   limit = 50,
-): Promise<{ items: FeedRow[]; nextCursor: string | null }> {
+): Promise<{ items: FeedRow[]; nextCursor: string | null; count: number }> {
   const conds: SQL[] = [];
   if (agent) conds.push(eq(worldEvents.agentId, agent));
   if (cursor) {
@@ -108,13 +115,28 @@ export async function getFeed(
       visibility: r.visibility as never,
       payload: r.payload as never,
     } as WorldEvent;
-    items.push({
-      id: e.id,
-      ts: e.ts,
-      agent: (r.agentId ?? null) as AgentId | null,
-      line: await renderLine(e),
-    });
+    items.push(enrichFeedRow(e, await renderLine(e)));
   }
   const nextCursor = rows.length === limit ? String(rows[rows.length - 1].id) : null;
-  return { items, nextCursor };
+  return { items, nextCursor, count: items.length };
+}
+
+// Build a FeedRow from a (public) event + its rendered line. Pure (no DB) so the
+// M2 enrichment — `type`, `locationId`, and `to` (the recipient for directed
+// message.sent DMs; null otherwise) — is unit-testable in isolation.
+export function enrichFeedRow(e: WorldEvent, line: string): FeedRow {
+  const payload = e.payload as Record<string, unknown>;
+  const to =
+    e.type === "message.sent" && typeof payload.to === "string"
+      ? (payload.to as AgentId)
+      : null;
+  return {
+    id: e.id,
+    ts: e.ts,
+    agent: (e.agentId ?? null) as AgentId | null,
+    line,
+    type: e.type,
+    locationId: (e.locationId ?? null) as LocationId | null,
+    to,
+  };
 }

@@ -6,12 +6,28 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import type { AgentId, ArtifactKind, MessageScope } from "@town/contract";
-import { agentIds, locationIds, artifactKinds } from "@town/contract";
+import {
+  agentIds,
+  locationIds,
+  artifactKinds,
+  HealthResponse,
+  SnapshotResponse,
+  EventsResponse,
+  FeedResponse,
+  AgentProfileResponse,
+  MessagesResponse,
+  CreateVisitorResponse,
+  GetVisitorResponse,
+  CreateChatResponse,
+} from "@town/contract";
+import type { ArtifactSummary } from "@town/contract";
+import type { z } from "zod";
 import { config } from "../config.js";
-import { buildSnapshot } from "../engine/snapshot.js";
+import { buildSnapshot, engagementToContract } from "../engine/snapshot.js";
 import {
   eventsAfter,
   recentEventsForAgent,
+  publicView,
 } from "../engine/events.js";
 import { getFeed } from "../engine/feed.js";
 import { getAgent, allAgents } from "../engine/agents.js";
@@ -26,13 +42,21 @@ import {
   visitorLeft,
   touchVisitor,
   getVisitor,
+  visitorTokenValid,
 } from "../engine/visitors.js";
 import { subscribe } from "../engine/bus.js";
-import { spendTodayUsd } from "../engine/usage.js";
+import { spendTodayUsd, isBudgetExhausted } from "../engine/usage.js";
 import { renderDebugPage } from "./debug.js";
 import { runTick } from "../runtime/tick.js";
+import { hasLlm } from "../runtime/client.js";
 import { flushTracing } from "../runtime/tracing.js";
-import { openChat, endChat, runChatTurn, sanitizeVisitorText } from "../runtime/chat.js";
+import {
+  openChat,
+  endChat,
+  runChatTurn,
+  suggestedReplies,
+  chatTokenValid,
+} from "../runtime/chat.js";
 
 const agentSet = new Set<string>(agentIds);
 const locationSet = new Set<string>(locationIds);
@@ -42,24 +66,52 @@ function isAgentId(v: unknown): v is AgentId {
   return typeof v === "string" && agentSet.has(v);
 }
 
+// Response validation (design doc §5): outside production, parse every JSON
+// response through its contract schema before returning, so server↔contract
+// drift becomes a thrown error rather than a silent fork. In production we skip
+// the cost (and never 500 a real visitor over a drift the tests should catch).
+function validated<T>(schema: z.ZodType<T>, value: T): T {
+  if (config.nodeEnv !== "production") {
+    const r = schema.safeParse(value);
+    if (!r.success) {
+      throw new Error(`contract response validation failed: ${r.error.message}`);
+    }
+    return r.data;
+  }
+  return value;
+}
+
 export function createApp() {
   const app = new Hono();
 
   app.use("*", cors());
 
   // --- health -------------------------------------------------------------
-  app.get("/health", (c) => c.json({ ok: true, ts: new Date().toISOString() }));
+  // {ok, ts, llm, budgetExhausted} (design doc §5): llm = model provider
+  // configured; budgetExhausted = today's spend met the global daily ceiling.
+  app.get("/health", async (c) => {
+    const budgetExhausted = await isBudgetExhausted();
+    return c.json(
+      validated(HealthResponse, {
+        ok: true,
+        ts: new Date().toISOString(),
+        llm: hasLlm(),
+        budgetExhausted,
+      }),
+    );
+  });
 
   // --- GET /world/snapshot -------------------------------------------------
   app.get("/world/snapshot", async (c) => {
-    return c.json(await buildSnapshot());
+    return c.json(validated(SnapshotResponse, await buildSnapshot()));
   });
 
   // --- GET /events?after=<id> (polling/catch-up) --------------------------
+  // publicView applied POST-fetch so pagination semantics survive (design §5).
   app.get("/events", async (c) => {
     const after = c.req.query("after");
-    const events = await eventsAfter(after);
-    return c.json({ events });
+    const events = publicView(await eventsAfter(after));
+    return c.json(validated(EventsResponse, { events }));
   });
 
   // --- GET /events/stream (SSE; Last-Event-ID resume; 25s heartbeats) -----
@@ -99,6 +151,9 @@ export function createApp() {
         }
       };
       const unsub = subscribe((event) => {
+        // Live-queue flush is one of the three publicView sites (design §5):
+        // never push a private event onto a human-facing stream.
+        if (event.visibility === "private") return;
         queue.push({ id: event.id, type: event.type, raw: JSON.stringify(event) });
         wake();
       });
@@ -116,10 +171,13 @@ export function createApp() {
         for (;;) {
           const batch = await eventsAfter(cursor);
           if (batch.length === 0) break;
-          for (const e of batch) {
+          // Backlog replay is one of the three publicView sites (design §5). We
+          // advance the cursor/high-water by the RAW batch ids (so private
+          // events don't cause a re-fetch loop) but only write public ones.
+          for (const e of publicView(batch)) {
             await stream.writeSSE({ id: e.id, event: e.type, data: JSON.stringify(e) });
-            backlogHigh = Math.max(backlogHigh, Number(e.id));
           }
+          backlogHigh = Math.max(backlogHigh, Number(batch[batch.length - 1].id));
           cursor = batch[batch.length - 1].id;
           if (batch.length < 200) break; // last (partial) page
         }
@@ -173,8 +231,8 @@ export function createApp() {
     const agentParam = c.req.query("agent");
     const agent = isAgentId(agentParam) ? agentParam : undefined;
     const cursor = c.req.query("cursor");
-    const { items, nextCursor } = await getFeed(agent, cursor);
-    return c.json({ items, nextCursor });
+    const { items, nextCursor, count } = await getFeed(agent, cursor);
+    return c.json(validated(FeedResponse, { items, nextCursor, count }));
   });
 
   // --- GET /agents/:id -----------------------------------------------------
@@ -187,19 +245,22 @@ export function createApp() {
       listArtifacts({ agent: id }, 10),
       recentEventsForAgent(id, 5),
     ]);
-    return c.json({
-      agent: {
-        id: a.id,
-        displayName: a.displayName,
-        locationId: a.locationId,
-        status: a.status,
-        activity: a.activity ?? null,
-        busy: a.busy,
-        lastTickAt: a.lastTickAt ? a.lastTickAt.toISOString() : null,
-      },
-      recentArtifacts: artifactRows.map(toArtifactSummary),
-      recentEvents: recent,
-    });
+    return c.json(
+      validated(AgentProfileResponse, {
+        agent: {
+          id: a.id,
+          displayName: a.displayName,
+          locationId: a.locationId,
+          status: a.status,
+          activity: a.activity ?? null,
+          busy: a.engagement != null,
+          engagement: engagementToContract(a.engagement),
+          lastTickAt: a.lastTickAt ? a.lastTickAt.toISOString() : null,
+        },
+        recentArtifacts: artifactRows.map(toArtifactSummary),
+        recentEvents: recent,
+      }),
+    );
   });
 
   // --- GET /messages?scope=broadcast|dm&cursor= ---------------------------
@@ -209,17 +270,19 @@ export function createApp() {
       scopeParam === "broadcast" || scopeParam === "dm" ? scopeParam : undefined;
     const cursor = c.req.query("cursor");
     const { rows, nextCursor } = await listMessages(scope, cursor);
-    return c.json({
-      messages: rows.map((m) => ({
-        id: String(m.id),
-        from: m.fromAgent,
-        to: m.toAgent ?? null,
-        body: m.body,
-        ts: m.ts.toISOString(),
-        readAt: m.readAt ? m.readAt.toISOString() : null,
-      })),
-      nextCursor,
-    });
+    return c.json(
+      validated(MessagesResponse, {
+        messages: rows.map((m) => ({
+          id: String(m.id),
+          from: m.fromAgent as AgentId,
+          to: (m.toAgent ?? null) as AgentId | null,
+          body: m.body,
+          ts: m.ts.toISOString(),
+          readAt: m.readAt ? m.readAt.toISOString() : null,
+        })),
+        nextCursor,
+      }),
+    );
   });
 
   // --- GET /artifacts?kind=&agent=  and  GET /artifacts/:id ---------------
@@ -248,11 +311,59 @@ export function createApp() {
     // into agent observation packets (token-cost amplification otherwise).
     if (name.length > 80) return c.json({ error: "name too long" }, 400);
     const v = await registerVisitor(name);
-    return c.json({ visitorId: v.id, name: v.name });
+    return c.json(
+      validated(CreateVisitorResponse, {
+        visitorId: v.id,
+        name: v.name,
+        visitorToken: v.visitorToken ?? "",
+      }),
+    );
+  });
+
+  // --- GET /visitors/:id (identity validation on boot) --------------------
+  // WorldClient validates a stored visitorId here; re-registers on 404. The
+  // token is NEVER echoed — it lives only in the browser that registered.
+  app.get("/visitors/:id", async (c) => {
+    const v = await getVisitor(c.req.param("id"));
+    if (!v) return c.json({ error: "unknown visitor" }, 404);
+    return c.json(
+      validated(GetVisitorResponse, {
+        visitorId: v.id,
+        name: v.name,
+        // `location_id` lands in step B; null until then.
+        locationId: null,
+      }),
+    );
+  });
+
+  // --- PATCH /visitors/:id {locationId?, name?} ---------------------------
+  // Visitor-token authorized. Full behavior (location reporting, rename,
+  // visitor.moved) lands in step B; A2 ships the auth gate + a 501 stub.
+  app.patch("/visitors/:id", async (c) => {
+    const id = c.req.param("id");
+    const v = await getVisitor(id);
+    if (!v) return c.json({ error: "unknown visitor" }, 404);
+    const token = c.req.header("x-visitor-token");
+    if (!(await visitorTokenValid(id, token))) return c.json({ error: "unauthorized" }, 401);
+    return c.json({ error: "not implemented" }, 501);
+  });
+
+  // --- POST /visitors/:id/interact {locationId, fixture} ------------------
+  // Visitor-token authorized. Fixture interaction + visitor.interacted event
+  // land in step D; A2 ships the auth gate + a 501 stub.
+  app.post("/visitors/:id/interact", async (c) => {
+    const id = c.req.param("id");
+    const v = await getVisitor(id);
+    if (!v) return c.json({ error: "unknown visitor" }, 404);
+    const token = c.req.header("x-visitor-token");
+    if (!(await visitorTokenValid(id, token))) return c.json({ error: "unauthorized" }, 401);
+    return c.json({ error: "not implemented" }, 501);
   });
 
   // --- POST /chats {agentId, visitorId} -----------------------------------
-  // Opens a chat session: the agent goes busy, idle ticks skip it (plan §4.1).
+  // Opens a chat session + returns the per-session token. An engaged agent → a
+  // 409 carrying the in-fiction engagement (the client renders alternatives); a
+  // locked agent (tick mid-flight) → a distinct 409 "mid-thought".
   app.post("/chats", async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const agentId = body?.agentId;
@@ -262,44 +373,78 @@ export function createApp() {
       return c.json({ error: "visitorId required" }, 400);
     }
     const res = await openChat(agentId, visitorId);
-    // null → unknown agent or the agent is already busy (one live chat per agent).
-    if (!res) return c.json({ error: "agent unavailable (busy or unknown)" }, 409);
-    return c.json({ sessionId: res.sessionId });
+    switch (res.status) {
+      case "unknown":
+        return c.json({ error: "unknown agent" }, 404);
+      case "engaged":
+        return c.json({ error: "engaged", reason: "engaged", engagement: res.engagement }, 409);
+      case "mid-thought":
+        return c.json({ error: "mid-thought", reason: "mid-thought" }, 409);
+      case "ok":
+        return c.json(
+          validated(CreateChatResponse, {
+            sessionId: res.sessionId,
+            agentId: res.agentId,
+            visitorId: res.visitorId,
+            participants: res.participants,
+            sessionToken: res.sessionToken,
+          }),
+        );
+    }
   });
 
-  // --- POST /chats/:id/messages {text} → SSE token stream -----------------
+  // --- POST /chats/:id/open → SSE greeting stream -------------------------
+  // Token-gated. The agent-initiated greeting (operator-row mechanics) lands in
+  // step B; A2 ships the auth gate + a stub frame so the contract holds.
+  app.post("/chats/:id/open", async (c) => {
+    const sessionId = c.req.param("id");
+    const token = c.req.header("x-session-token") ?? undefined;
+    if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
+    return c.json({ error: "not implemented" }, 501);
+  });
+
+  // --- POST /chats/:id/messages {text} → SSE ChatStreamFrame stream -------
+  // Token-gated. Emits the contract ChatStreamFrame union as SSE `data` (the
+  // `type` field is the discriminator — no SSE event names). `done` carries the
+  // real persisted messageId; `suggested_replies` follows AFTER `done` and never
+  // blocks it. operatorNote is server-internal — NOT read from the request body.
   app.post("/chats/:id/messages", async (c) => {
     const sessionId = c.req.param("id");
+    const token = c.req.header("x-session-token") ?? undefined;
+    if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
     const body = await c.req.json().catch(() => ({}));
     const text = typeof body?.text === "string" ? body.text : "";
     if (!text.trim()) return c.json({ error: "text required" }, 400);
-    // Optional one-shot operator note (e.g. continuity context); model-gated
-    // injection handled inside runChatTurn. It enters the model in the SYSTEM
-    // role (higher trust than visitor text) so treat it with the same distrust:
-    // cap length and strip the common injection scaffolding before it's injected.
-    const operatorNote =
-      typeof body?.operatorNote === "string"
-        ? sanitizeVisitorText(body.operatorNote).slice(0, 500)
-        : undefined;
 
     return streamSSE(c, async (stream) => {
-      const result = await runChatTurn(
-        sessionId,
-        text,
-        {
-          onText: async (delta) => {
-            await stream.writeSSE({ event: "delta", data: JSON.stringify({ text: delta }) });
-          },
+      await runChatTurn(sessionId, text, {
+        onFrame: async (frame) => {
+          // Each frame is one SSE `data` payload; the `type` field discriminates.
+          await stream.writeSSE({ data: JSON.stringify(frame) });
         },
-        operatorNote,
-      );
-      await stream.writeSSE({ event: "done", data: JSON.stringify({ ok: result.ok }) });
+      });
+      // suggested_replies rides AFTER done — never on the latency path. A
+      // failure here yields no chips; it must not break the stream.
+      try {
+        const replies = await suggestedReplies(sessionId);
+        if (replies.length) {
+          await stream.writeSSE({
+            data: JSON.stringify({ type: "suggested_replies", replies }),
+          });
+        }
+      } catch {
+        /* best-effort — swallow */
+      }
     });
   });
 
   // --- POST /chats/:id/close ----------------------------------------------
+  // Token-gated.
   app.post("/chats/:id/close", async (c) => {
-    await endChat(c.req.param("id"));
+    const sessionId = c.req.param("id");
+    const token = c.req.header("x-session-token") ?? undefined;
+    if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
+    await endChat(sessionId);
     return c.json({ ok: true });
   });
 
@@ -361,13 +506,16 @@ function toArtifactSummary(row: {
   createdAt: Date;
   updatedAt: Date;
   published: boolean;
-}) {
+}): ArtifactSummary {
+  // The enum columns are stored as their narrow literal sets at the DB layer;
+  // cast them onto the contract's literal types here (the row originates from a
+  // typed drizzle select, so these are sound).
   return {
     id: row.id,
-    agentId: row.agentId,
-    kind: row.kind,
+    agentId: row.agentId as ArtifactSummary["agentId"],
+    kind: row.kind as ArtifactSummary["kind"],
     title: row.title,
-    locationId: row.locationId ?? null,
+    locationId: row.locationId as ArtifactSummary["locationId"],
     fixture: row.fixture ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

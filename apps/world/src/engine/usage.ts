@@ -5,6 +5,7 @@
 import { and, gte, sql, eq } from "drizzle-orm";
 import type { AgentId } from "@town/contract";
 import { db, schema } from "../db/client.js";
+import { config } from "../config.js";
 
 const { llmUsage } = schema;
 
@@ -53,4 +54,13 @@ export async function spendTodayForAgent(agentId: AgentId): Promise<number> {
     .from(llmUsage)
     .where(and(gte(llmUsage.ts, startOfTodayUtc()), eq(llmUsage.agentId, agentId)));
   return Number(row?.total ?? 0);
+}
+
+// Whether the GLOBAL daily budget is exhausted (design doc §7 + /health). True
+// once today's total spend meets the configured ceiling — the town goes to
+// "dream mode" (ticks/chat pause; reads stay live). Per-role caps gate
+// individual agents separately (see budgetExceeded in tick.ts).
+export async function isBudgetExhausted(): Promise<boolean> {
+  const spend = await spendTodayUsd();
+  return spend >= config.dailyBudgetUsd;
 }

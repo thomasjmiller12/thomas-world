@@ -162,6 +162,16 @@ export async function perceivedEventsSince(
   return { events: scopeEventsForAgent(all, agentId, agentLocation), maxConsideredId };
 }
 
+// Public read filter (design doc §5). Drops `private` events entirely, leaving
+// `public` + `location` events for surfaces humans see. Applied at EXACTLY three
+// HTTP read sites — SSE live-queue flush, SSE backlog replay, and GET /events
+// (post-fetch, so pagination semantics survive) — never on `eventsAfter` itself,
+// which also feeds agent perception (an agent must keep seeing its own private
+// events). Pure + synchronous so it's trivially unit-testable.
+export function publicView(events: WorldEvent[]): WorldEvent[] {
+  return events.filter((e) => e.visibility !== "private");
+}
+
 // Helper for callers that want events of specific types only.
 export async function eventsOfTypes(types: WorldEventType[], limit = 100): Promise<WorldEvent[]> {
   const rows = await db

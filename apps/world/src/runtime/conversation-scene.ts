@@ -18,7 +18,7 @@ import {
   addTurn,
   endConversation,
 } from "../engine/conversations.js";
-import { getAgent, setBusy } from "../engine/agents.js";
+import { getAgent, setEngagement, clearEngagement } from "../engine/agents.js";
 import { agentsAtLocation } from "../engine/locations.js";
 import { recordUsage } from "../engine/usage.js";
 import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
@@ -108,8 +108,8 @@ export async function maybeRunConversationScene(
   if (!a || !b) return;
   // Co-location guard: target must actually be here.
   if (!here.some((x) => x.id === target)) return;
-  // Don't barge into a busy participant.
-  if (b.busy) return;
+  // Don't barge into an engaged participant (in a chat/scene already).
+  if (b.engagement) return;
 
   // Take both agents' process locks so a scheduled tick can't fire mid-scene.
   // The initiator's tick lock has already been released by the caller (runTick
@@ -122,14 +122,15 @@ export async function maybeRunConversationScene(
     return;
   }
 
-  // Set busy + run the scene inside the try so the finally ALWAYS clears busy
-  // and releases the locks, even if startConversation or a line throws.
+  // Open the scene + set engagement inside the try so the finally ALWAYS clears
+  // engagement and releases the locks, even if a line throws. Engagement is
+  // keyed to the scene id so clearEngagement frees both participants at once.
   const lines: Line[] = [];
   let sceneId: string | null = null;
   try {
-    await Promise.all([setBusy(initiator, true), setBusy(target, true)]);
     const scene = await startConversation(location, [initiator, target]);
     sceneId = scene.id;
+    await setEngagement("scene", scene.id, [initiator, target]);
     // Alternate speakers, initiator first, up to MAX_TURNS_EACH rounds.
     const order: AgentId[] = [initiator, target];
     for (let round = 0; round < MAX_TURNS_EACH; round++) {
@@ -151,8 +152,10 @@ export async function maybeRunConversationScene(
   } catch (err) {
     console.warn(`[scene ${sceneId ?? "?"}] error:`, (err as Error).message);
   } finally {
-    if (sceneId) await endConversation(sceneId);
-    await Promise.all([setBusy(initiator, false), setBusy(target, false)]);
+    if (sceneId) {
+      await endConversation(sceneId);
+      await clearEngagement("scene", sceneId);
+    }
     relTarget();
     relInitiator();
   }

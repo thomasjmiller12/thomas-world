@@ -21,10 +21,14 @@ export async function sendMessage(
     .insert(messages)
     .values({ fromAgent: from, toAgent: to, body })
     .returning();
+  // PUBLIC headline, forward-only (design doc §3.3/§5): the agent social log is
+  // content by design — DMs and broadcasts are browsable. Only the HEADLINE is
+  // public (from/to/broadcast); the body stays in `messages`, read via GET
+  // /messages. Old rows keep their prior visibility (no backfill).
   await appendEvent({
     type: "message.sent",
     agentId: from,
-    visibility: to === null ? "public" : "private",
+    visibility: "public",
     payload: { from, to, broadcast: to === null },
   });
   return row;

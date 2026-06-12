@@ -16,10 +16,12 @@
 //      the DB pool, then exit.
 
 import { serve } from "@hono/node-server";
-import { eq, sql } from "drizzle-orm";
+import { eq, isNull, sql } from "drizzle-orm";
+import type { AgentId, LocationId } from "@town/contract";
 import { config, featureSummary } from "./config.js";
 import { db, pool, schema } from "./db/client.js";
 import { createApp } from "./http/app.js";
+import { appendEvent } from "./engine/events.js";
 import { startScheduler, stopScheduler } from "./runtime/scheduler.js";
 import { initTracing, shutdownTracing } from "./runtime/tracing.js";
 
@@ -44,21 +46,63 @@ async function migrationsCheck(): Promise<void> {
   }
 }
 
-// No chat session or conversation scene survives a process restart, so any
-// `busy=true` left in the DB is stale (a crash mid-scene/mid-chat). Clearing it
-// at boot prevents an agent from being permanently skipped by the scheduler
-// (runTick returns reason "busy" forever otherwise) with no log line.
-async function clearStaleBusy(): Promise<void> {
+// No chat session or conversation scene survives a process restart, so any open
+// session row (and the engagement it set) left in the DB is stale (a crash
+// mid-scene/mid-chat). The boot sweep closes every conversation/chat_session
+// with a null ended_at, clears ALL engagement, and EMITS the matching
+// conversation.ended / chat.ended events — so a reconnecting frontend reconciles
+// orphaned scene/chat bubbles instead of waiting forever on an end that the
+// crashed process never sent. Runs after migrations, before seed + scheduler.
+async function clearStaleEngagement(): Promise<void> {
+  const now = new Date();
+
+  // Open conversation scenes → close + emit conversation.ended.
+  const openConvs = await db
+    .select()
+    .from(schema.conversations)
+    .where(isNull(schema.conversations.endedAt));
+  for (const c of openConvs) {
+    await db
+      .update(schema.conversations)
+      .set({ endedAt: now })
+      .where(eq(schema.conversations.id, c.id));
+    await appendEvent({
+      type: "conversation.ended",
+      locationId: c.locationId as LocationId,
+      visibility: "location",
+      payload: { conversationId: c.id, participants: c.participantIds as AgentId[] },
+    });
+  }
+
+  // Open chat sessions → close + emit chat.ended.
+  const openChats = await db
+    .select()
+    .from(schema.chatSessions)
+    .where(isNull(schema.chatSessions.endedAt));
+  for (const s of openChats) {
+    await db
+      .update(schema.chatSessions)
+      .set({ endedAt: now })
+      .where(eq(schema.chatSessions.id, s.id));
+    await appendEvent({
+      type: "chat.ended",
+      agentId: s.agentId as AgentId,
+      visibility: "public",
+      payload: { agent: s.agentId, visitorId: s.visitorId, sessionId: s.id },
+    });
+  }
+
+  // Clear ANY engagement left on agents (belt-and-suspenders: an engagement
+  // whose session row is somehow already closed still gets cleared).
   const cleared = await db
     .update(schema.agents)
-    .set({ busy: false })
-    .where(eq(schema.agents.busy, true))
+    .set({ engagement: null })
+    .where(sql`${schema.agents.engagement} IS NOT NULL`)
     .returning({ id: schema.agents.id });
-  if (cleared.length) {
+  if (cleared.length || openConvs.length || openChats.length) {
     console.log(
-      `[boot] reset stale busy flag on ${cleared.length} agent(s): ${cleared
-        .map((a) => a.id)
-        .join(", ")}`,
+      `[boot] swept stale engagement: ${cleared.length} agent(s), ` +
+        `${openConvs.length} scene(s), ${openChats.length} chat(s) closed.`,
     );
   }
 }
@@ -97,7 +141,7 @@ async function main(): Promise<void> {
   await initTracing();
 
   await migrationsCheck();
-  await clearStaleBusy();
+  await clearStaleEngagement();
 
   // Boot summary — log feature flags up front, before the scheduler ticks.
   console.log(`[boot] world server starting (${config.nodeEnv}) on [${config.host}]:${config.port}`);

@@ -92,6 +92,19 @@ void [
   _eventCover,
 ];
 
+// What an agent is currently engaged in (design doc §3.2). Replaces the old
+// `busy` boolean: an agent is either in a `chat` (visitor ± a second agent) or
+// a `scene` (agent↔agent). `participants` lists the OTHER agents engaged in the
+// same session, so `clearEngagement(kind, id)` can release every holder at once
+// (a 2-agent chat would otherwise strand the second agent engaged forever).
+// Mirrors the contract's AgentEngagement but stores agent participants only —
+// the `with` field the contract exposes derives from this plus visitor presence.
+export interface Engagement {
+  kind: "chat" | "scene";
+  id: string;
+  participants: AgentId[];
+}
+
 // --- agents -----------------------------------------------------------------
 export const agents = pgTable("agents", {
   id: text("id", { enum: agentEnum }).primaryKey(),
@@ -100,7 +113,9 @@ export const agents = pgTable("agents", {
   locationId: text("location_id", { enum: locationEnum }).notNull(),
   status: text("status").notNull().default("idle"),
   activity: text("activity"),
-  busy: boolean("busy").notNull().default(false),
+  // Nullable engagement reference (design doc §3.2). null => unengaged. The
+  // derived `busy` boolean (engagement != null) is what surfaces in the contract.
+  engagement: jsonb("engagement").$type<Engagement | null>(),
   lastTickAt: timestamp("last_tick_at", { withTimezone: true }),
 });
 
@@ -213,6 +228,10 @@ export const memoryFiles = pgTable("memory_files", {
 export const visitors = pgTable("visitors", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  // Returned to the registering browser at creation; required to authorize
+  // PATCH /visitors/:id and POST /visitors/:id/interact (design doc §5 Auth).
+  // It lives only in that browser — never echoed by GET /visitors/:id.
+  visitorToken: text("visitor_token"),
   connectedAt: timestamp("connected_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -226,6 +245,10 @@ export const chatSessions = pgTable("chat_sessions", {
   id: text("id").primaryKey(),
   agentId: text("agent_id", { enum: agentEnum }).notNull(),
   visitorId: text("visitor_id").notNull(),
+  // Per-session bearer required on /open, /messages, /close, /ping (design doc
+  // §3.3). Makes visitor↔agent chat content private and enforced. Returned only
+  // in the POST /chats response to the browser that opened the session.
+  sessionToken: text("session_token"),
   startedAt: timestamp("started_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

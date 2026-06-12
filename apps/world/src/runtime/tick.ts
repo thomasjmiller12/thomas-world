@@ -16,7 +16,7 @@ import { getProfile, soulGitHash } from "./roles.js";
 import { buildTools, type AgentContext } from "./tools.js";
 import { buildObservation, writeCursor } from "./observation.js";
 import { coreMemorySnapshot } from "../engine/memory.js";
-import { getAgent, setStatus, setActivity, markTicked } from "../engine/agents.js";
+import { getAgent, setStatus, setActivity, markTicked, isBusy } from "../engine/agents.js";
 import { appendEvent } from "../engine/events.js";
 import { markRead } from "../engine/messages.js";
 import { recordUsage, spendTodayUsd, spendTodayForAgent } from "../engine/usage.js";
@@ -88,7 +88,12 @@ async function runTickLocked(
 ): Promise<TickResult & { _conversationTarget?: AgentId | null; _location?: LocationId }> {
   const agent = await getAgent(agentId);
   if (!agent) return { ran: false, reason: "error" };
-  if (agent.busy) return { ran: false, reason: "busy" };
+  // Engaged in a live chat/scene (design doc §3.2) → skip the idle tick. The
+  // scheduler logs this as a distinct, visible reason rather than silently.
+  if (isBusy(agent.engagement)) {
+    console.log(`[tick ${agentId}] skipped — engaged:${agent.engagement!.kind}.`);
+    return { ran: false, reason: "busy" };
+  }
 
   // Budget gates (brief): global hard ceiling + per-role soft cap. Either trips
   // → status "sleeping (budget)" and the scheduler skips until UTC midnight.
@@ -195,15 +200,17 @@ async function runTickLocked(
         break;
       }
 
-      // Persist any public-safe assistant text as a thought (location-private:
-      // the agent's interior monologue, only it perceives it back).
+      // Persist any public-safe assistant text as a thought. PUBLIC (design doc
+      // §5): the protocol frames thoughts as public-safe performance — thought
+      // bubbles are the point of the surface — so they materialize on the feed
+      // and over sprites. (Truly private cognition simply isn't emitted.)
       const text = extractText(message);
       if (text && message.stop_reason === "end_turn") {
         await appendEvent({
           type: "agent.thought",
           agentId,
           locationId: ctx.location,
-          visibility: "private",
+          visibility: "public",
           payload: { agent: agentId, text: text.slice(0, 600) },
         });
       }

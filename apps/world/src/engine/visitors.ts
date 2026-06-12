@@ -12,8 +12,23 @@ export type VisitorRow = typeof visitors.$inferSelect;
 
 export async function registerVisitor(name: string): Promise<VisitorRow> {
   const id = randomUUID();
-  const [row] = await db.insert(visitors).values({ id, name }).returning();
+  // visitorToken is returned to the registering browser and required to
+  // authorize PATCH /visitors/:id and POST /visitors/:id/interact (design §5).
+  const visitorToken = randomUUID();
+  const [row] = await db.insert(visitors).values({ id, name, visitorToken }).returning();
   return row;
+}
+
+// Auth check for visitor-scoped mutations. True iff the visitor exists and the
+// supplied token matches the one minted at registration. Rows created before
+// this migration (null token) cannot be authorized — treat as 401.
+export async function visitorTokenValid(id: string, token: string | undefined): Promise<boolean> {
+  if (!token) return false;
+  const [v] = await db
+    .select({ token: visitors.visitorToken })
+    .from(visitors)
+    .where(eq(visitors.id, id));
+  return Boolean(v && v.token && v.token === token);
 }
 
 // Emitted when the visitor's SSE stream opens. Public — agents can perceive

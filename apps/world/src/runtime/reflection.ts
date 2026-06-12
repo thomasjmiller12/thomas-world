@@ -22,7 +22,9 @@ import {
   coreMemorySnapshot,
 } from "../engine/memory.js";
 import { recentEventsForAgent } from "../engine/events.js";
+import { getAgent, isBusy } from "../engine/agents.js";
 import { createArtifact } from "../engine/artifacts.js";
+import { tryAcquire } from "./agent-lock.js";
 import { recordUsage } from "../engine/usage.js";
 import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
 import { reflect as hindsightReflect } from "./hindsight.js";
@@ -46,6 +48,23 @@ write it as text). It'll be part of the day's record.`;
 
 export async function runReflection(agentId: AgentId): Promise<{ ran: boolean }> {
   if (!hasLlm()) return { ran: false };
+  // Reflection must respect the same engagement + lock discipline as a tick
+  // (design doc §3.2): a nightly reflection running concurrently with a live
+  // chat would race memory-tool writes. Take the lock; bail if a tick/chat
+  // holds it or the agent is engaged. The scheduler marks reflectedThisNight
+  // only when this returns ran:true, so a skipped reflection retries.
+  const release = tryAcquire(agentId);
+  if (!release) return { ran: false };
+  try {
+    const agent = await getAgent(agentId);
+    if (!agent || isBusy(agent.engagement)) return { ran: false };
+    return await runReflectionLocked(agentId);
+  } finally {
+    release();
+  }
+}
+
+async function runReflectionLocked(agentId: AgentId): Promise<{ ran: boolean }> {
   const profile = getProfile(agentId);
   const tickId = `reflect-${agentId}-${randomUUID().slice(0, 8)}`;
   const trace = startTrace("reflection", {

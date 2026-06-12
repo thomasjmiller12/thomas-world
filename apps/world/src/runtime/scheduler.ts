@@ -100,9 +100,12 @@ async function overBudget(agentId: AgentId): Promise<boolean> {
 async function tickAgent(agentId: AgentId): Promise<void> {
   try {
     if (isOvernight() && !reflectedThisNight.has(agentId)) {
-      reflectedThisNight.add(agentId);
       if (await overBudget(agentId)) return; // honor the daily cap for reflection too
-      await runReflection(agentId);
+      // Mark reflected only on SUCCESS (design doc §3.2): a reflection skipped
+      // because the agent was locked/engaged should retry on the next loop,
+      // not be lost for the whole night session.
+      const { ran } = await runReflection(agentId);
+      if (ran) reflectedThisNight.add(agentId);
       return;
     }
     await runTick(agentId);

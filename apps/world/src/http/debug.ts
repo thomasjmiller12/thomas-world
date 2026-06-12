@@ -15,7 +15,15 @@ function esc(s: unknown): string {
 
 export interface DebugData {
   snapshot: SnapshotResponse;
-  agents: { id: string; displayName: string; locationId: string; status: string; activity: string | null; busy: boolean; lastTickAt: Date | null }[];
+  agents: {
+    id: string;
+    displayName: string;
+    locationId: string;
+    status: string;
+    activity: string | null;
+    engagement: { kind: "chat" | "scene"; id: string; participants: string[] } | null;
+    lastTickAt: Date | null;
+  }[];
   spendTodayUsd: number;
   feed: FeedRow[];
 }
@@ -28,7 +36,7 @@ export function renderDebugPage(d: DebugData): string {
         <td>${esc(a.locationId)}</td>
         <td>${esc(a.status)}</td>
         <td>${esc(a.activity ?? "—")}</td>
-        <td>${a.busy ? "busy" : "free"}</td>
+        <td>${a.engagement ? esc(`${a.engagement.kind}`) : "free"}</td>
         <td>${a.lastTickAt ? esc(a.lastTickAt.toISOString()) : "never"}</td>
       </tr>`,
     )
@@ -69,7 +77,7 @@ export function renderDebugPage(d: DebugData): string {
 
 <h2>Agents</h2>
 <table>
-  <tr><th>agent</th><th>location</th><th>status</th><th>activity</th><th>busy</th><th>last tick</th></tr>
+  <tr><th>agent</th><th>location</th><th>status</th><th>activity</th><th>engaged</th><th>last tick</th></tr>
   ${agentRows}
 </table>
 

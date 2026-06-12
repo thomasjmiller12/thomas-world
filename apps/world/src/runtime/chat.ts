@@ -12,15 +12,18 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { randomUUID } from "node:crypto";
 import { eq, isNull, desc } from "drizzle-orm";
-import type { AgentId, LocationId } from "@town/contract";
+import type { AgentId, LocationId, ChatStreamFrame } from "@town/contract";
+import { z } from "zod";
+import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { db, schema } from "../db/client.js";
 import { anthropic, systemBlocks, hasLlm, TICK_BETAS, MID_CONV_SYSTEM_BETA } from "./client.js";
 import { getProfile } from "./roles.js";
 import { buildChatTools, type AgentContext } from "./tools.js";
-import { getAgent, setBusy } from "../engine/agents.js";
+import { getAgent, setEngagement, clearEngagement } from "../engine/agents.js";
 import { appendEvent } from "../engine/events.js";
 import { recordUsage } from "../engine/usage.js";
 import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
+import { tryAcquire } from "./agent-lock.js";
 
 const { chatSessions, chatMessages } = schema;
 
@@ -40,42 +43,97 @@ export function sanitizeVisitorText(raw: string): string {
     .trim();
 }
 
-export interface OpenChatResult {
-  sessionId: string;
-}
+// openChat outcomes (design doc §3.2/§3.4):
+//   - ok        → session opened; carries the id, token and participants
+//   - unknown   → no such agent (HTTP 404)
+//   - engaged   → agent is in a live chat/scene (HTTP 409, in-fiction alternatives)
+//   - mid-thought → the agent-lock was held this instant (a tick is mid-flight);
+//                   distinct from `engaged` so the HTTP layer can render
+//                   "mid-thought, try in a moment" rather than the engaged copy.
+export type OpenChatResult =
+  | {
+      status: "ok";
+      sessionId: string;
+      agentId: AgentId;
+      visitorId: string;
+      participants: AgentId[];
+      sessionToken: string;
+    }
+  | { status: "unknown" }
+  | { status: "engaged"; engagement: { kind: "chat" | "scene"; with: (AgentId | "visitor")[] } }
+  | { status: "mid-thought" };
 
-// Open a chat session: mark agent busy, persist the session row, emit
-// chat.started. Returns the session id the browser POSTs messages to.
-export async function openChat(agentId: AgentId, visitorId: string): Promise<OpenChatResult | null> {
+// Open a chat session: take the agent-lock for the instant, set engagement,
+// persist the session row + token, emit chat.started, release the lock. The
+// lock guards the instant (no in-flight tick); engagement guards the session.
+export async function openChat(agentId: AgentId, visitorId: string): Promise<OpenChatResult> {
   const agent = await getAgent(agentId);
-  if (!agent) return null;
-  // Don't open a second concurrent session on a busy agent: `busy` is a single
-  // boolean, so overlapping chats/scenes would corrupt it (the first to close
-  // clears it while another holder is still active). One live chat per agent.
-  if (agent.busy) return null;
-  const sessionId = randomUUID();
-  await db.insert(chatSessions).values({ id: sessionId, agentId, visitorId });
-  await setBusy(agentId, true);
-  await appendEvent({
-    type: "chat.started",
-    agentId,
-    visibility: "public",
-    payload: { agent: agentId, visitorId, sessionId },
-  });
-  return { sessionId };
+  if (!agent) return { status: "unknown" };
+  // Already in a chat/scene → in-fiction 409 with actionable alternatives.
+  if (agent.engagement) {
+    const eng = agent.engagement;
+    const withList: (AgentId | "visitor")[] = [...eng.participants];
+    if (eng.kind === "chat") withList.push("visitor");
+    return { status: "engaged", engagement: { kind: eng.kind, with: withList } };
+  }
+  // Lock held → a tick is mid-flight for this agent. Engagement alone doesn't
+  // serialize against an in-process tick, so acquire the lock before setting it.
+  const release = tryAcquire(agentId);
+  if (!release) return { status: "mid-thought" };
+  try {
+    const sessionId = randomUUID();
+    const sessionToken = randomUUID();
+    await db.insert(chatSessions).values({ id: sessionId, agentId, visitorId, sessionToken });
+    await setEngagement("chat", sessionId, [agentId]);
+    // chat.started is PUBLIC presence only — NO sessionId (design doc §3.3:
+    // visitor↔agent chat content is private; the public event carries presence).
+    await appendEvent({
+      type: "chat.started",
+      agentId,
+      visibility: "public",
+      payload: { agent: agentId, visitorId },
+    });
+    return {
+      status: "ok",
+      sessionId,
+      agentId,
+      visitorId,
+      participants: [agentId],
+      sessionToken,
+    };
+  } finally {
+    // Release after engagement is set: the lock guarded the instant; engagement
+    // now guards the session for its lifetime.
+    release();
+  }
 }
 
 export async function endChat(sessionId: string): Promise<void> {
   const [session] = await db.select().from(chatSessions).where(eq(chatSessions.id, sessionId));
   if (!session) return;
   await db.update(chatSessions).set({ endedAt: new Date() }).where(eq(chatSessions.id, sessionId));
-  await setBusy(session.agentId as AgentId, false);
+  // clearEngagement releases every participant of this session (a group chat
+  // has two agents engaged under the same id) — the single owner of clearing.
+  await clearEngagement("chat", sessionId);
   await appendEvent({
     type: "chat.ended",
     agentId: session.agentId as AgentId,
     visibility: "public",
     payload: { agent: session.agentId, visitorId: session.visitorId, sessionId },
   });
+}
+
+// Token check for the auth-gated chat endpoints (/open, /messages, /close,
+// /ping). Returns true iff the session exists and the token matches. A session
+// created before this migration (null token) cannot be authorized — callers
+// treat a mismatch as 401.
+export async function chatTokenValid(sessionId: string, token: string | undefined): Promise<boolean> {
+  if (!token) return false;
+  const [s] = await db
+    .select({ token: chatSessions.sessionToken })
+    .from(chatSessions)
+    .where(eq(chatSessions.id, sessionId));
+  return Boolean(s && s.token && s.token === token);
 }
 
 // Auto-close chat sessions abandoned without a /chats/:id/close call (the common
@@ -123,27 +181,45 @@ function systemReminderTurn(text: string): Anthropic.Beta.BetaMessageParam {
 }
 
 export interface ChatTurnHandlers {
-  onText: (delta: string) => void | Promise<void>;
+  // Emits one contract ChatStreamFrame. The HTTP layer serializes it as the SSE
+  // `data` payload (the `type` field is the discriminator — no SSE event names).
+  onFrame: (frame: ChatStreamFrame) => void | Promise<void>;
+}
+
+// Memory tool names that, when invoked mid-turn, justify a `memory_recalled`
+// annotation (design doc §5). `recall` is episodic (Hindsight); `memory` is the
+// SDK core-memory tool — a `view` on it is the recall signal.
+const RECALL_TOOLS = new Set(["recall", "memory"]);
+
+// Map a memory tool-use to a human recency label. We don't have per-result
+// timing here, so we label by source: episodic recall reads across days, the
+// core-memory view is always-loaded context.
+function recallLabel(toolName: string): string {
+  return toolName === "recall" ? "recalled from earlier" : "drew on a memory";
 }
 
 // Run one visitor turn: append the (sanitized) visitor message, stream the
-// agent's reply to the caller, persist both, return the full reply text.
-// `operatorNote` is optional mid-conversation context (e.g. "the visitor just
-// arrived from the town square") injected per the model gate.
+// agent's reply as contract frames, persist the turn, emit a `done` frame
+// carrying the REAL persisted messageId. `operatorNote` is optional, internal
+// mid-conversation context injected per the model gate (never client-supplied).
 export async function runChatTurn(
   sessionId: string,
   visitorText: string,
   handlers: ChatTurnHandlers,
   operatorNote?: string,
 ): Promise<{ text: string; ok: boolean }> {
-  if (!hasLlm()) {
-    const text = "The town's a little quiet right now — the agents can't chat yet.";
-    await handlers.onText(text);
-    return { text, ok: false };
-  }
   const [session] = await db.select().from(chatSessions).where(eq(chatSessions.id, sessionId));
   if (!session) return { text: "", ok: false };
   const agentId = session.agentId as AgentId;
+
+  if (!hasLlm()) {
+    const text = "The town's a little quiet right now — the agents can't chat yet.";
+    await handlers.onFrame({ type: "turn_started", agent: agentId });
+    await handlers.onFrame({ type: "text", text, agent: agentId });
+    const id = await persistAgentTurn(sessionId, text);
+    await handlers.onFrame({ type: "done", messageId: id, agent: agentId });
+    return { text, ok: false };
+  }
   const profile = getProfile(agentId);
   const isOpus = profile.role.chatModel.startsWith("claude-opus");
 
@@ -177,6 +253,8 @@ export async function runChatTurn(
   const tools = buildChatTools(ctx);
 
   let full = "";
+  let recalledThisTurn = false;
+  await handlers.onFrame({ type: "turn_started", agent: agentId });
   try {
     const runner = anthropic.beta.messages.toolRunner({
       model: profile.role.chatModel,
@@ -192,12 +270,28 @@ export async function runChatTurn(
     for await (const stream of runner) {
       stream.on("text", (delta) => {
         full += delta;
-        void handlers.onText(delta);
+        void handlers.onFrame({ type: "text", text: delta, agent: agentId });
       });
       const message = await stream.finalMessage();
+      // memory_recalled: emit when a recall/memory tool ACTUALLY ran this turn
+      // (hooked at the toolRunner iteration — design doc §5). Once per turn so
+      // it's a restrained marker, never a counter.
+      if (!recalledThisTurn) {
+        for (const block of message.content) {
+          if (block.type === "tool_use" && RECALL_TOOLS.has(block.name)) {
+            recalledThisTurn = true;
+            await handlers.onFrame({
+              type: "memory_recalled",
+              label: recallLabel(block.name),
+              agent: agentId,
+            });
+            break;
+          }
+        }
+      }
       if (message.stop_reason === "refusal") {
         const note = "\n(— the agent declined to continue down that path.)";
-        await handlers.onText(note);
+        await handlers.onFrame({ type: "text", text: note, agent: agentId });
         full += note;
         break;
       }
@@ -205,12 +299,95 @@ export async function runChatTurn(
   } catch (err) {
     console.warn(`[chat ${sessionId}] error:`, (err as Error).message);
     const note = "Sorry — something glitched on our end.";
-    await handlers.onText(note);
+    await handlers.onFrame({ type: "text", text: note, agent: agentId });
+    const id = await persistAgentTurn(sessionId, note);
+    await handlers.onFrame({ type: "done", messageId: id, agent: agentId });
     return { text: note, ok: false };
   }
 
-  if (full.trim()) {
-    await db.insert(chatMessages).values({ sessionId, sender: "agent", body: full.trim() });
+  const text = full.trim();
+  const messageId = await persistAgentTurn(sessionId, text);
+  await handlers.onFrame({ type: "done", messageId, agent: agentId });
+  return { text, ok: true };
+}
+
+// Persist the agent's turn and return the REAL row id (captured via .returning())
+// so the `done` frame carries the persisted messageId the contract requires.
+// An empty turn isn't stored; we still need a stable id for the frame, so a
+// sentinel is returned (the client only uses it to dedupe a rendered bubble).
+async function persistAgentTurn(sessionId: string, text: string): Promise<string> {
+  if (!text) return "empty";
+  const [row] = await db
+    .insert(chatMessages)
+    .values({ sessionId, sender: "agent", body: text })
+    .returning({ id: chatMessages.id });
+  return String(row.id);
+}
+
+// Post-turn suggested replies (design doc §5): a cheap Haiku call that NEVER
+// blocks `done` — the HTTP layer fires it after the done frame. Uses the SDK's
+// structured-output parse when available, falling back to JSON extraction from a
+// plain call; any failure yields no chips (the feature is best-effort).
+const SuggestedReplies = z.object({
+  replies: z.array(z.string()).max(3),
+});
+
+export async function suggestedReplies(sessionId: string): Promise<string[]> {
+  if (!hasLlm()) return [];
+  try {
+    const rows = await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.sessionId, sessionId));
+    rows.sort((a, b) => a.ts.getTime() - b.ts.getTime());
+    const recent = rows.slice(-6);
+    if (recent.length === 0) return [];
+    const transcript = recent
+      .map((r) => `${r.sender === "visitor" ? "Visitor" : "Agent"}: ${r.body}`)
+      .join("\n");
+    const prompt = [
+      "Given this short conversation between a visitor and a town character,",
+      "suggest up to 3 brief, natural replies the VISITOR might tap next.",
+      "Each ≤ 8 words. Return only the replies.",
+      "",
+      transcript,
+    ].join("\n");
+
+    // Preferred: structured output via messages.parse + betaZodOutputFormat.
+    try {
+      const parsed = await anthropic.beta.messages.parse({
+        model: "claude-haiku-4-5",
+        max_tokens: 256,
+        messages: [{ role: "user", content: prompt }],
+        output_config: { format: betaZodOutputFormat(SuggestedReplies) },
+      });
+      const out = parsed.parsed_output;
+      if (out?.replies) return out.replies.slice(0, 3);
+    } catch {
+      // Fall through to a plain call + JSON extraction below.
+    }
+
+    const res = await anthropic.beta.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 256,
+      messages: [
+        {
+          role: "user",
+          content: `${prompt}\n\nReturn a JSON object: {"replies": ["...", "..."]}`,
+        },
+      ],
+    });
+    const raw = res.content
+      .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return [];
+    const obj = JSON.parse(match[0]);
+    const parsed = SuggestedReplies.safeParse(obj);
+    return parsed.success ? parsed.data.replies.slice(0, 3) : [];
+  } catch (err) {
+    console.warn(`[chat ${sessionId}] suggested_replies failed:`, (err as Error).message);
+    return [];
   }
-  return { text: full.trim(), ok: true };
 }
