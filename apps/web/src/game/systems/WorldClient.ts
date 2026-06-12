@@ -337,8 +337,27 @@ export class WorldClient {
   private dispatchWorldEvent(ev: WorldEvent): void {
     // A live tick means the town is awake — clear any sleeping flag.
     EventBus.emit('world-sleeping', { sleeping: false, reason: null });
+    this.patchSnapshot(ev);
     for (const { name, payload } of mapWorldEvent(ev)) {
       EventBus.emit(name, payload);
+    }
+  }
+
+  // Keep the cached snapshot's per-agent state LIVE as events stream in.
+  // resyncScene() replays this cache into every fresh NPCManager on a scene
+  // transition — without patching, agents respawn at their boot-time positions
+  // (observed live: Builder walked to the office mid-chat, the visitor followed
+  // through the door, and the office scene spawned him back in the workshop —
+  // i.e. nowhere — so neither the sprite nor his speech bubble ever appeared).
+  private patchSnapshot(ev: WorldEvent): void {
+    const snapshot = this.lastSnapshot;
+    if (!snapshot) return;
+    if (ev.type === 'agent.moved') {
+      const agent = snapshot.agents.find((a) => a.id === ev.payload.agent);
+      if (agent) agent.locationId = ev.payload.to;
+    } else if (ev.type === 'agent.activity') {
+      const agent = snapshot.agents.find((a) => a.id === ev.payload.agent);
+      if (agent) agent.activity = ev.payload.activity;
     }
   }
 
