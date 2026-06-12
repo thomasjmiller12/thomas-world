@@ -26,11 +26,20 @@ Three layers; the middle one is canonical:
 
 Agents never see the frontend (no screenshots/pixels) — only the observation packet the world server hands them each tick. The frontend's existing `EventBus` is the seam: a new `WorldClient` will replace the scripted `AgentSimulator`/`simulation-scripts.ts` as the *source* of the same events the UI already consumes.
 
-## Current state
+## Current state (2026-06-12: Milestone 1 SHIPPED, soak running)
 
-- **V1 (this repo): frontend only.** Next.js 15 + Phaser 3 + TypeScript, React overlay for UI, static-exported to Vercel. Town + 4 interiors, player movement, door transitions, NPC chat — all behavior is **scripted simulation** (`src/game/systems/AgentSimulator.ts`, `src/game/data/simulation-scripts.ts`). No backend, DB, or LLM yet.
-- **Design**: hi-fi mockups for the chat and activity-feed surfaces are in `design/town-concepts-handoff/` (open `project/Town Concepts.html` and the `screens/*.jsx`; `00 Design Approach.html` has the design system — palette, type, agent colors). These drive Milestone 2's UI.
-- **Next step: Milestone 1** ("the town lives offline") — stand up the world server + 5 agents, soak for 48h, judge the activity log. Pre-reqs: account setup (§10 of the plan, in progress) + the monorepo restructure + soul-file skeletons. Start there.
+- **Monorepo** (pnpm v11): `apps/web` (the Phaser frontend, static-exported to Vercel from `main`, Root Directory `apps/web`, output `dist/`), `apps/world` (the world server — live), `packages/contract` (`@town/contract`, shared zod schemas: event taxonomy, REST shapes, agent/location IDs — the single source of truth both sides import).
+- **The world is LIVE on Railway** (project `thomas-town`: `world` + `hindsight` + Postgres/pgvector): `https://world-production-4aa5.up.railway.app` — `/feed`, `/debug` (agent states + spend), `/world/snapshot`, SSE at `/events/stream`. Five agents tick 24/7 on Sonnet 4.6 (chat: Opus 4.8); all integrations on (Hindsight episodic memory, Langfuse tracing, Resend→thomasjmiller12@gmail.com, vault sync from `thomas-world-vault`). `apps/world/README.md` documents env + local run (docker compose postgres+hindsight, migrate, seed, dev).
+- **Souls** live in `apps/world/souls/` (Thomas's first-person `base.md` + five facet files) with role configs (cadence/model/budget) in `apps/world/roles/`. Souls are personality canon — edit with care, redeploy to take effect.
+- **Frontend is still scripted simulation** (`apps/web/src/game/systems/AgentSimulator.ts` + `data/simulation-scripts.ts`) — replacing it with a `WorldClient` over the live API is Milestone 2 (plan §8; an "M2 handoff" callout there has the full checklist). Design mocks for M2 UI: `design/town-concepts-handoff/`.
+
+### Operational gotchas (learned the hard way)
+- The **world server is NOT GitHub-connected**: pushing to `main` redeploys Vercel only. Redeploy the world with `railway link` (thomas-town) + `railway up --service world`. `POST /admin/tick/:agent` requires the `x-admin-token` header (token in Railway service vars).
+- `@town/contract` exports point at `dist/` — run `pnpm --filter @town/contract build` after pulling before running world/web dev (tsx hid this in dev; plain node in prod does not).
+- pnpm build-script approvals live in `pnpm-workspace.yaml` under `allowBuilds` (Railway ignores `onlyBuiltDependencies` alone; missing approvals fail the deploy install).
+- `seed.ts` runs on every boot — it must never reset agent `locationId`/state on conflict (only insert-time defaults).
+- Tick cadences in `roles/*.yaml` are 10×-slowed (110–150 min) for the early soak per Thomas; divide by 10 to restore. Budget: global `DAILY_BUDGET_USD` env (hard) + per-role `daily_token_budget` (soft).
+- Secrets: `scratch.env` (repo root) and `apps/world/.env` are gitignored — never commit or print them.
 
 ## Stack decisions (full rationale in the plan §2)
 
