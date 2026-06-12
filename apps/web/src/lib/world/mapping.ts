@@ -1,4 +1,4 @@
-import type { AgentId, WorldEvent, AgentStatus } from '@town/contract';
+import type { WorldEvent, AgentStatus } from '@town/contract';
 import type { WorldEventName, WorldEvents } from '@/game/EventBus';
 
 // Pure mapping from contract WorldEvents → the typed EventBus events the UI
@@ -45,16 +45,6 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
         }),
       ];
 
-    case 'conversation.turn':
-      return [
-        spec('npc-speech', {
-          npcId: ev.payload.agent,
-          message: ev.payload.text,
-          audience: 'scene',
-          conversationId: ev.payload.conversationId,
-        }),
-      ];
-
     case 'agent.activity':
       return [spec('npc-activity', { npcId: ev.payload.agent, activity: ev.payload.activity })];
 
@@ -67,24 +57,6 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
           npcId: ev.payload.agent,
         }),
       ];
-
-    case 'conversation.started':
-      return [
-        spec('scene-started', {
-          conversationId: ev.payload.conversationId,
-          location: ev.payload.location,
-          participants: ev.payload.participants as AgentId[],
-        }),
-      ];
-
-    case 'conversation.ended':
-      return [spec('scene-ended', { conversationId: ev.payload.conversationId })];
-
-    case 'conversation.converted':
-      return [spec('scene-converted', { conversationId: ev.payload.conversationId })];
-
-    case 'chat.joined':
-      return [spec('chat-joined', { sessionId: ev.payload.sessionId, npcId: ev.payload.agent })];
 
     case 'world.time':
       // Phase change updates only the tint; visitor count / awake come from the
@@ -110,6 +82,14 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
     case 'visitor.interacted':
     case 'chat.started':
     case 'chat.ended':
+    // Paced scenes were removed in M2.1 — these types are no longer emitted but
+    // are kept in the contract so historical world_events rows still parse on
+    // SSE resume / feed reads. They have no canvas surface now.
+    case 'conversation.started':
+    case 'conversation.turn':
+    case 'conversation.ended':
+    case 'conversation.converted':
+    case 'chat.joined':
       return [];
 
     default: {

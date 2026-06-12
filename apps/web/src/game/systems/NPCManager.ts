@@ -15,16 +15,15 @@ import type { ThomasId } from '@/lib/types';
 // Per-scene dynamic NPC presence (design doc §6.2). Replaces the old single
 // hardcoded NPC per scene: ANY agent whose server-authoritative locationId maps
 // to this scene is rendered, and the sprite reflects the agent's live state —
-// arrivals walk in from the door, departures walk to the door and despawn,
-// agents in a live scene face each other, and an agent the visitor is chatting
-// with faces the player.
+// arrivals walk in from the door, departures walk to the door and despawn, and
+// an agent the visitor is chatting with faces the player (but can still walk
+// away mid-chat — agent.moved keeps flowing for a chatting agent).
 //
 // Driven entirely by the typed EventBus (WorldClient / snapshot / DreamMode):
 //   npc-status        → authoritative location + engagement (spawn/despawn here)
 //   npc-move-to       → an agent changed location (arrival / departure animation)
-//   scene-started/-ended/-converted → live agent↔agent scene framing (in-scene state)
-//   npc-speech        → drive the "next speaker thinks" bubble between turns
-//   chat-opened/-closed → the visitor engaged this agent (face the player)
+//   chat-opened       → the visitor engaged this agent (face the player)
+//   chat-closed/-ended → the chat ended (visitor- or agent-initiated)
 //
 // One manager per scene. It tracks only agents currently in THIS scene's
 // locations; off-scene agents are not rendered (their life rides the roster +
@@ -45,8 +44,6 @@ export class NPCManager {
   private readonly placedAt = new Map<ThomasId, LocationId>();
   // Agents the manager has marked as engaged-with-visitor (face the player).
   private readonly chatting = new Set<ThomasId>();
-  // conversationId → participants, for the in-scene facing + thinking cues.
-  private readonly scenes = new Map<string, ThomasId[]>();
   // Which guest-anchor slots are taken, per location, so co-located agents fan
   // out instead of stacking on one tile.
   private readonly guestSlots = new Map<LocationId, Map<ThomasId, number>>();
@@ -78,40 +75,12 @@ export class NPCManager {
   };
 
   private readonly onMoveTo = (m: WorldEvents['npc-move-to']) => {
+    // An agent moved — walk its sprite even while it's chatting (a chatting
+    // agent retains full agency mid-chat: it can get up and walk away).
     const prev = this.agentLocations.get(m.npcId);
     this.agentLocations.set(m.npcId, m.to);
     if (prev === m.to) return;
     this.reconcile(m.npcId);
-  };
-
-  private readonly onSceneStarted = (e: WorldEvents['scene-started']) => {
-    this.scenes.set(e.conversationId, e.participants);
-    for (const id of e.participants) this.applyStateFor(id);
-  };
-
-  private readonly onSceneEnded = (e: WorldEvents['scene-ended']) => {
-    const participants = this.scenes.get(e.conversationId) ?? [];
-    this.scenes.delete(e.conversationId);
-    for (const id of participants) {
-      this.sprites.get(id)?.setThinking(false);
-      this.applyStateFor(id);
-    }
-  };
-
-  private readonly onSceneConverted = (e: WorldEvents['scene-converted']) => {
-    // Converted → group chat; the scene framing is over for canvas purposes.
-    this.onSceneEnded({ conversationId: e.conversationId });
-  };
-
-  // A scene turn arrived: clear everyone's thinking bubble, then the NEXT
-  // speaker (the *other* participant) shows the "…" between turns.
-  private readonly onSpeech = (s: WorldEvents['npc-speech']) => {
-    if (!s.conversationId) return;
-    const participants = this.scenes.get(s.conversationId);
-    if (!participants) return;
-    for (const id of participants) this.sprites.get(id)?.setThinking(false);
-    const next = participants.find((id) => id !== s.npcId);
-    if (next) this.sprites.get(next)?.setThinking(true);
   };
 
   private readonly onChatOpened = (c: WorldEvents['chat-opened']) => {
@@ -119,7 +88,14 @@ export class NPCManager {
     this.applyStateFor(c.npcId);
   };
 
+  // Both close paths (visitor-initiated chat-closed, agent-initiated chat-ended)
+  // clear the chatting mark; npc-status remains the authoritative resync source.
   private readonly onChatClosed = (c: WorldEvents['chat-closed']) => {
+    this.chatting.delete(c.npcId);
+    this.applyStateFor(c.npcId);
+  };
+
+  private readonly onChatEnded = (c: WorldEvents['chat-ended']) => {
     this.chatting.delete(c.npcId);
     this.applyStateFor(c.npcId);
   };
@@ -127,23 +103,17 @@ export class NPCManager {
   private wire(): void {
     EventBus.on('npc-status', this.onStatus);
     EventBus.on('npc-move-to', this.onMoveTo);
-    EventBus.on('scene-started', this.onSceneStarted);
-    EventBus.on('scene-ended', this.onSceneEnded);
-    EventBus.on('scene-converted', this.onSceneConverted);
-    EventBus.on('npc-speech', this.onSpeech);
     EventBus.on('chat-opened', this.onChatOpened);
     EventBus.on('chat-closed', this.onChatClosed);
+    EventBus.on('chat-ended', this.onChatEnded);
   }
 
   private unwire(): void {
     EventBus.off('npc-status', this.onStatus);
     EventBus.off('npc-move-to', this.onMoveTo);
-    EventBus.off('scene-started', this.onSceneStarted);
-    EventBus.off('scene-ended', this.onSceneEnded);
-    EventBus.off('scene-converted', this.onSceneConverted);
-    EventBus.off('npc-speech', this.onSpeech);
     EventBus.off('chat-opened', this.onChatOpened);
     EventBus.off('chat-closed', this.onChatClosed);
+    EventBus.off('chat-ended', this.onChatEnded);
   }
 
   // --- spawn / despawn ------------------------------------------------------
@@ -233,29 +203,9 @@ export class NPCManager {
       return;
     }
 
-    const sceneId = this.sceneFor(id);
-    if (sceneId) {
-      const partner = this.partnerSprite(sceneId, id);
-      sprite.enterScene(partner ? { x: partner.x, y: partner.y } : undefined);
-      return;
-    }
-
     const location = this.agentLocations.get(id);
     const home = location ? this.anchorFor(id, location) : undefined;
     sprite.enterWander(home);
-  }
-
-  private sceneFor(id: ThomasId): string | null {
-    for (const [convId, participants] of this.scenes) {
-      if (participants.includes(id)) return convId;
-    }
-    return null;
-  }
-
-  private partnerSprite(conversationId: string, id: ThomasId): NPC | null {
-    const participants = this.scenes.get(conversationId) ?? [];
-    const partnerId = participants.find((p) => p !== id);
-    return partnerId ? this.sprites.get(partnerId) ?? null : null;
   }
 
   // --- anchor / slot bookkeeping --------------------------------------------
@@ -309,11 +259,9 @@ export class NPCManager {
     for (const npc of this.sprites.values()) {
       npc.update();
       npc.checkProximity(this.player.x, this.player.y);
-      // Only an agent locked in a live scene is off-limits; a WALKING agent is
-      // still a chat target (pressing talk stops them — "hey, got a sec?").
-      // Excluding 'walking' here once made every agent unchattable when a bad
-      // anchor left sprites stuck mid-walk.
-      if (npc.getState() === 'in-scene') continue;
+      // Every rendered agent is a chat target — even a WALKING one (pressing
+      // talk reaches them — "hey, got a sec?"). Excluding states here once made
+      // agents unchattable when a bad anchor left a sprite stuck mid-walk.
       const dist = Phaser.Math.Distance.Between(
         this.player.x, this.player.y, npc.x, npc.y
       );
@@ -336,7 +284,6 @@ export class NPCManager {
     let nearest: NPC | null = null;
     let nearestDist = radius;
     for (const npc of this.sprites.values()) {
-      if (npc.getState() === 'in-scene') continue;
       const dist = Phaser.Math.Distance.Between(worldX, worldY, npc.x, npc.y);
       if (dist <= nearestDist) {
         nearestDist = dist;
@@ -350,7 +297,6 @@ export class NPCManager {
     this.unwire();
     for (const npc of this.sprites.values()) npc.destroy();
     this.sprites.clear();
-    this.scenes.clear();
     this.guestSlots.clear();
     this.chatting.clear();
     this.placedAt.clear();

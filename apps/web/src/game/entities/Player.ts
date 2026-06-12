@@ -21,14 +21,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private stallFrames = 0;
   private static readonly TAP_ARRIVE_DIST = 6;
   // Scoped handler refs so destroy() removes ONLY this player's listeners.
-  private readonly onChatOpened = () => {
-    this.isInteracting = true;
-    this.scene.input.keyboard?.disableGlobalCapture();
+  // The visitor can WALK while chatting (M2.1): movement freezes ONLY while the
+  // chat input is focused (typing-focus), not for the whole chat. Canvas
+  // pointerdown blurs the input → walking resumes, panel stays open + streaming.
+  private readonly onTypingFocus = (p: { focused: boolean }) => {
+    this.isInteracting = p.focused;
+    if (p.focused) this.scene.input.keyboard?.disableGlobalCapture();
+    else this.scene.input.keyboard?.enableGlobalCapture();
   };
-  private readonly onChatClosed = () => {
-    this.isInteracting = false;
-    this.scene.input.keyboard?.enableGlobalCapture();
-  };
+  // Full-screen overlays (the Chronicle hub) still freeze the player entirely.
   private readonly onDialogOpened = () => {
     this.isInteracting = true;
     this.scene.input.keyboard?.disableGlobalCapture();
@@ -73,8 +74,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       });
     }
 
-    EventBus.on('chat-opened', this.onChatOpened);
-    EventBus.on('chat-closed', this.onChatClosed);
+    EventBus.on('typing-focus', this.onTypingFocus);
     EventBus.on('dialog-opened', this.onDialogOpened);
     EventBus.on('dialog-closed', this.onDialogClosed);
     EventBus.on('tap-move', this.onTapMove);
@@ -176,8 +176,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   destroy(fromScene?: boolean) {
-    EventBus.off('chat-opened', this.onChatOpened);
-    EventBus.off('chat-closed', this.onChatClosed);
+    EventBus.off('typing-focus', this.onTypingFocus);
     EventBus.off('dialog-opened', this.onDialogOpened);
     EventBus.off('dialog-closed', this.onDialogClosed);
     EventBus.off('tap-move', this.onTapMove);

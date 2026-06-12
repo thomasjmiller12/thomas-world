@@ -71,19 +71,17 @@ export class WorldClient {
   private activeChat: ActiveChat | null = null;
   private stopped = false;
   // start() is idempotent: scene transitions re-emit `current-scene-ready`, but
-  // boot (identity + stream + bridge wiring) must happen exactly once per client.
-  // Re-running it would duplicate the overlay-bridge listeners (K× chat POSTs)
-  // and leak EventSource connections. Per-scene re-sync goes through
-  // resyncScene(), not start().
+  // boot (identity + stream wiring) must happen exactly once per client.
+  // Re-running it would leak EventSource connections. Per-scene re-sync goes
+  // through resyncScene(), not start().
   private started = false;
   // The last applied snapshot, kept so resyncScene() can re-emit per-agent
   // status to a freshly-created NPCManager WITHOUT re-opening streams.
   private lastSnapshot: SnapshotResponse | null = null;
-  // A visitor line typed during the two-step greeting gate (before /chats has
-  // resolved) is parked here and flushed once the session exists + the greeting
-  // turn completes — so the first keystroke opens the greeting and the typed
-  // line still lands, without racing the open POST.
-  private pendingMessage: string | null = null;
+  // Single-slot queue: a visitor send that arrives while a turn is streaming is
+  // parked here and flushed when the current turn's stream finishes (one body,
+  // one turn at a time). Newer sends overwrite an older queued one.
+  private queuedMessage: string | null = null;
 
   constructor(visitorName: string, envUrl?: string) {
     this.visitorName = visitorName || 'Visitor';
@@ -95,14 +93,13 @@ export class WorldClient {
   // --- lifecycle ------------------------------------------------------------
 
   // Boot: validate/establish identity, hydrate the snapshot, open the stream.
-  // Wires the overlay→client chat requests. Degrades to dream mode on failure.
+  // Degrades to dream mode on failure.
   async start(): Promise<void> {
     // Idempotent: re-entry (e.g. a second `current-scene-ready`) is a no-op so we
-    // never double-wire the overlay bridge or open a second EventSource.
+    // never open a second EventSource.
     if (this.started) return;
     this.started = true;
     this.stopped = false;
-    this.wireOverlayBridge();
     this.wirePageHide();
 
     try {
@@ -130,7 +127,6 @@ export class WorldClient {
     this.started = false;
     this.closeStream();
     this.closeActiveChat();
-    this.unwireOverlayBridge();
     this.unwirePageHide();
   }
 
@@ -396,21 +392,47 @@ export class WorldClient {
 
   // --- chat lifecycle -------------------------------------------------------
 
-  // Open a chat with an agent (Tier-1 escalate): POST /chats then stream the
-  // agent-initiated greeting from /open. On a 409 (engaged) the panel gets an
-  // in-fiction error to render Tier-1 alternatives.
-  async openChat(agentId: ThomasId): Promise<void> {
-    if (!this.visitorId) {
-      EventBus.emit('chat-error', { npcId: agentId, reason: 'not-connected' });
+  // The single chat entry point (M2.1): the visitor speaks first — there is no
+  // greeting. If no session exists for this agent, POST /chats to create one
+  // (with the mid-thought 409 retry loop), then stream the visitor's line via
+  // POST /chats/:id/messages. A send that arrives while a turn is streaming is
+  // queued (single slot) and flushed when the current stream finishes.
+  async sendMessage(agentId: ThomasId, text: string): Promise<void> {
+    if (!text.trim()) return;
+
+    // A turn is already streaming for the active session → queue this send and
+    // let the streamTurn finally-block flush it (one body, one turn at a time).
+    if (this.activeChat && this.activeChat.abort) {
+      this.queuedMessage = text;
       return;
     }
-    // One body, one conversation on the visitor side too: close any prior chat.
+
+    // No session (or a session for a different agent) → open one first.
+    if (!this.activeChat || this.activeChat.primaryAgent !== agentId) {
+      const opened = await this.openSession(agentId);
+      if (!opened) return; // openSession surfaced the error
+    }
+
+    const chat = this.activeChat;
+    if (!chat) return;
+    await this.streamTurn(
+      `${this.baseUrl}/chats/${encodeURIComponent(chat.sessionId)}/messages`,
+      { text }
+    );
+  }
+
+  // Create a session for an agent (POST /chats). Closes any prior session first
+  // (one body, one conversation). `mid-thought` 409s are transient (the agent's
+  // tick is mid-flight — common right after a visitor arrives, since presence
+  // boosts tick rates), so retry a few times before surfacing; `engaged` (a real
+  // chat) surfaces immediately. Returns true iff a session is now active.
+  private async openSession(agentId: ThomasId): Promise<boolean> {
+    if (!this.visitorId) {
+      EventBus.emit('chat-error', { npcId: agentId, reason: 'not-connected' });
+      return false;
+    }
     this.closeActiveChat();
 
-    // `mid-thought` 409s are transient (the agent's tick is mid-flight — common
-    // right after a visitor arrives, since presence boosts tick rates). Retry a
-    // few times before surfacing it; `engaged` (a real chat/scene) surfaces
-    // immediately with the busy alternatives.
     const MID_THOUGHT_RETRIES = 3;
     const MID_THOUGHT_DELAY_MS = 4_000;
     let res: Response | null = null;
@@ -423,23 +445,23 @@ export class WorldClient {
         });
       } catch {
         EventBus.emit('chat-error', { npcId: agentId, reason: 'server-down' });
-        return;
+        return false;
       }
       if (res.status !== 409) break;
       const body = (await res.json().catch(() => ({}))) as { reason?: string };
       if (body.reason !== 'mid-thought') {
         EventBus.emit('chat-error', { npcId: agentId, reason: 'engaged' });
-        return;
+        return false;
       }
       if (attempt >= MID_THOUGHT_RETRIES) {
         EventBus.emit('chat-error', { npcId: agentId, reason: 'mid-thought' });
-        return;
+        return false;
       }
       await new Promise((r) => setTimeout(r, MID_THOUGHT_DELAY_MS));
     }
     if (!res.ok) {
       EventBus.emit('chat-error', { npcId: agentId, reason: `error-${res.status}` });
-      return;
+      return false;
     }
 
     const session = CreateChatResponse.parse(await res.json());
@@ -453,32 +475,8 @@ export class WorldClient {
       turnText: new Map(),
     };
     this.startPing();
-
-    // Stream the greeting turn.
-    await this.streamTurn(`${this.baseUrl}/chats/${encodeURIComponent(session.sessionId)}/open`, {});
-
-    // Flush a line the visitor typed during the gate (one body, one turn at a
-    // time — the greeting has streamed, so the reply turn is safe to start).
-    if (this.pendingMessage && this.activeChat) {
-      const text = this.pendingMessage;
-      this.pendingMessage = null;
-      await this.sendMessage(text);
-    }
-  }
-
-  // Send a visitor line and stream the reply (POST /chats/:id/messages). If the
-  // session is still opening (gate keystroke beat the open POST), park the line
-  // for openChat to flush once the greeting completes.
-  async sendMessage(text: string): Promise<void> {
-    const chat = this.activeChat;
-    if (!chat) {
-      this.pendingMessage = text;
-      return;
-    }
-    await this.streamTurn(
-      `${this.baseUrl}/chats/${encodeURIComponent(chat.sessionId)}/messages`,
-      { text }
-    );
+    EventBus.emit('chat-opened', { npcId: agentId });
+    return true;
   }
 
   // Shared POST-SSE turn streamer: fetch + ReadableStream parse of
@@ -527,7 +525,16 @@ export class WorldClient {
     } catch {
       // Aborted (new turn / close) or network drop — silent; panel keeps state.
     } finally {
-      chat.abort = null;
+      // Clear the abort only if it's still ours (a chat_ended frame may have
+      // torn the session down mid-stream).
+      if (this.activeChat === chat) chat.abort = null;
+    }
+
+    // Flush a single queued send (a visitor line typed while this turn streamed).
+    if (this.queuedMessage && this.activeChat === chat) {
+      const text = this.queuedMessage;
+      this.queuedMessage = null;
+      await this.sendMessage(chat.primaryAgent, text);
     }
   }
 
@@ -598,6 +605,25 @@ export class WorldClient {
         break;
       }
 
+      case 'action':
+        // The agent ran a tool mid-chat (walked, made something). Surface it as
+        // a diegetic action line; the agent.moved stream walks the sprite.
+        EventBus.emit('chat-action', {
+          npcId: frame.agent,
+          sessionId: chat.sessionId,
+          tool: frame.tool,
+          detail: frame.detail,
+        });
+        break;
+
+      case 'chat_ended':
+        // The agent ended the chat itself — the server already closed the
+        // session, so tear down ping/activeChat WITHOUT a POST /close. Emit
+        // chat-ended so the panel shows the goodbye + [wave goodbye] button.
+        EventBus.emit('chat-ended', { npcId: frame.agent, sessionId: chat.sessionId });
+        this.teardownActiveChat();
+        break;
+
       default: {
         const _never: never = frame;
         void _never;
@@ -618,40 +644,6 @@ export class WorldClient {
     }
   }
 
-  // POST /conversations/:id/join — interject into a live scene (Tier-1.5).
-  async joinConversation(conversationId: string): Promise<void> {
-    if (!this.visitorId) return;
-    try {
-      const res = await fetch(
-        `${this.baseUrl}/conversations/${encodeURIComponent(conversationId)}/join`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ visitorId: this.visitorId }),
-        }
-      );
-      if (res.status === 409) {
-        EventBus.emit('chat-error', { reason: 'join-lost-race' });
-        return;
-      }
-      if (!res.ok) return;
-      this.closeActiveChat();
-      const session = CreateChatResponse.parse(await res.json());
-      this.activeChat = {
-        sessionId: session.sessionId,
-        sessionToken: session.sessionToken,
-        participants: session.participants,
-        primaryAgent: session.participants[0] ?? session.agentId,
-        pingTimer: null,
-        abort: null,
-        turnText: new Map(),
-      };
-      this.startPing();
-    } catch {
-      /* degrade to listen-in */
-    }
-  }
-
   // Visitor closed the panel — POST /close + tear down ping/stream.
   closeChat(): void {
     this.closeActiveChat();
@@ -668,41 +660,28 @@ export class WorldClient {
     }, PING_INTERVAL_MS);
   }
 
+  // Visitor-initiated teardown: tells the server to close the session (POST
+  // /close), aborts any in-flight stream, and clears local state.
   private closeActiveChat(): void {
-    this.pendingMessage = null;
     const chat = this.activeChat;
-    if (!chat) return;
-    this.activeChat = null;
-    if (chat.pingTimer) clearInterval(chat.pingTimer);
-    if (chat.abort) chat.abort.abort();
-    void fetch(`${this.baseUrl}/chats/${encodeURIComponent(chat.sessionId)}/close`, {
+    if (!this.teardownActiveChat()) return;
+    void fetch(`${this.baseUrl}/chats/${encodeURIComponent(chat!.sessionId)}/close`, {
       method: 'POST',
-      headers: { 'x-session-token': chat.sessionToken },
+      headers: { 'x-session-token': chat!.sessionToken },
     }).catch(() => undefined);
   }
 
-  // --- overlay bridge (EventBus → client methods) ---------------------------
-
-  private onChatOpenRequest = (p: { npcId: ThomasId }) => {
-    void this.openChat(p.npcId);
-  };
-  private onChatMessageSent = (p: { npcId: ThomasId; message: string }) => {
-    void this.sendMessage(p.message);
-  };
-  private onChatClosed = () => {
-    this.closeChat();
-  };
-
-  private wireOverlayBridge(): void {
-    EventBus.on('chat-open-request', this.onChatOpenRequest);
-    EventBus.on('chat-message-sent', this.onChatMessageSent);
-    EventBus.on('chat-closed', this.onChatClosed);
-  }
-
-  private unwireOverlayBridge(): void {
-    EventBus.off('chat-open-request', this.onChatOpenRequest);
-    EventBus.off('chat-message-sent', this.onChatMessageSent);
-    EventBus.off('chat-closed', this.onChatClosed);
+  // Local teardown WITHOUT a POST /close — used when the server already ended
+  // the session (a chat_ended frame). Clears ping/abort/queue/activeChat.
+  // Returns true iff there was an active chat to tear down.
+  private teardownActiveChat(): boolean {
+    this.queuedMessage = null;
+    const chat = this.activeChat;
+    if (!chat) return false;
+    this.activeChat = null;
+    if (chat.pingTimer) clearInterval(chat.pingTimer);
+    if (chat.abort) chat.abort.abort();
+    return true;
   }
 
   // --- pagehide: best-effort close via sendBeacon ---------------------------

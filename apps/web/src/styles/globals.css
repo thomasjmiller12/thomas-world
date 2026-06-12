@@ -60,10 +60,8 @@ body {
   }
 }
 
-/* The docked panel slides in from the right as the world letterboxes; the
-   diegetic dialog rises from the bottom. One container, two transitions — the
-   morph between them animates via CSS transitions on the container itself
-   (see ChatSession), these are just the mount entrances. */
+/* The docked chat panel slides in from the right (ChatPanel desktop entrance);
+   on a narrow viewport it becomes a bottom sheet that slides up. */
 @keyframes slideInRight {
   from {
     opacity: 0;
@@ -75,30 +73,37 @@ body {
   }
 }
 
-@keyframes riseIn {
+@keyframes slideUpSheet {
   from {
     opacity: 0;
-    transform: translate(-50%, 16px);
+    transform: translateY(28px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translateY(0);
   }
 }
 
-/* The diegetic pixel frame: a chunky 4px ink border with a double outline,
-   straight from the handoff mock (chat.jsx .pixel-frame). No border-radius —
-   it reads as an RPG dialog box. */
-.pixel-frame {
-  border: 4px solid var(--frame-ink);
-  box-shadow:
-    0 0 0 2px var(--paper-2),
-    0 0 0 6px var(--frame-ink),
-    8px 10px 0 rgba(36, 26, 16, 0.22);
+/* Town Chronicle hub (ChroniclePanel): the ink scrim fades in; the paper card
+   rises a touch as it scales in. The town stays visible behind the scrim. */
+@keyframes fadeInScrim {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
-.pixel-frame-inner {
-  border: 2px solid var(--frame-ink);
+@keyframes riseInHub {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Sleeping fallback — drifting Z's over the dreaming town (SleepOverlay). */

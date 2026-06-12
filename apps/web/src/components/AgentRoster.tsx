@@ -1,17 +1,20 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { LocationId } from '@town/contract';
 import { NPC_CONFIGS } from '@/game/data/npc-configs';
 import { THOMAS_COLORS } from '@/lib/constants';
 import type { ThomasId, NPCConfig } from '@/lib/types';
 import { useAgentStatuses, statusLine, type AgentStatusMap } from '@/lib/useAgentStatuses';
 import { SpritePortrait, StatusDot, agentShortName } from '@/components/chat/primitives';
-import { locationLabel } from '@/components/feed/feedPresentation';
+import { locationLabel } from '@/components/chronicle/chroniclePresentation';
+import { ProfilePopover } from '@/components/ProfilePopover';
 
 // AgentRoster — restyled to the design system and fully live (design doc §6.2 +
 // §6.3). Each row shows the agent's color-keyed name, live location, and a
-// status line. Engagement rows ("💬 in conversation — Workshop") are CLICKABLE:
-// the row resolves the agent's live location into a camera move (travel) so the
-// visitor can go listen in. Proximity + selected states read in the agent color.
+// status line. Engagement rows ("with a visitor — Workshop") are CLICKABLE: the
+// row resolves the agent's live location into a camera move (travel) so the
+// visitor can go find them. Proximity + selected states read in the agent color.
+// Clicking a row's portrait/name opens a lightweight ProfilePopover (M2.1,
+// replaces the old RightPanel rail) anchored beside the rail.
 
 const HOME_FALLBACK: Record<string, LocationId> = {
   office: 'office',
@@ -27,8 +30,10 @@ interface AgentRosterProps {
   chatNpcId: ThomasId | null;
   selectedNpcId: ThomasId | null;
   onNpcClick: (id: ThomasId) => void;
-  // Travel/listen-in: go to where this agent is (engagement rows + dblclick).
+  // Travel/listen-in: go to where this agent is (engagement rows + profile).
   onTravelToAgent: (id: ThomasId, locationId: LocationId) => void;
+  // "see their day →" (profile popover): open the Chronicle scoped to this agent.
+  onSeeTheirDay: (id: ThomasId) => void;
 }
 
 export function AgentRoster({
@@ -37,10 +42,28 @@ export function AgentRoster({
   selectedNpcId,
   onNpcClick,
   onTravelToAgent,
+  onSeeTheirDay,
 }: AgentRosterProps) {
   const [collapsed, setCollapsed] = useState(false);
+  // The agent whose ProfilePopover is open + the row's top offset to anchor it.
+  const [profile, setProfile] = useState<{ id: ThomasId; top: number } | null>(null);
+  const railRef = useRef<HTMLDivElement>(null);
   const statuses = useAgentStatuses();
   const npcs = Object.values(NPC_CONFIGS);
+
+  // Toggle the popover for a row; anchor it to the row's top (relative to the
+  // rail) so it lines up beside the resident that opened it. Also forwards the
+  // roster-highlight selection to App.
+  const handleRowClick = (id: ThomasId, rowEl: HTMLElement | null) => {
+    onNpcClick(id);
+    setProfile((cur) => {
+      if (cur?.id === id) return null; // toggle off
+      // Viewport-space top of the row — the popover is position:fixed so the
+      // 208px overflow-hidden rail can't clip it.
+      const rowTop = rowEl?.getBoundingClientRect().top ?? 0;
+      return { id, top: rowTop };
+    });
+  };
 
   if (collapsed) {
     return (
@@ -83,8 +106,9 @@ export function AgentRoster({
 
   return (
     <div
+      ref={railRef}
       className="h-full flex flex-col overflow-hidden"
-      style={{ width: 208, background: 'var(--paper-2)', borderRight: '1px solid var(--line)' }}
+      style={{ width: 208, background: 'var(--paper-2)', borderRight: '1px solid var(--line)', position: 'relative' }}
     >
       <div
         className="flex items-center justify-between"
@@ -110,12 +134,28 @@ export function AgentRoster({
             status={statuses}
             isNear={proximityNpcId === config.id}
             isChatting={chatNpcId === config.id}
-            isSelected={selectedNpcId === config.id}
-            onClick={() => onNpcClick(config.id)}
+            isSelected={selectedNpcId === config.id || profile?.id === config.id}
+            onClick={(rowEl) => handleRowClick(config.id, rowEl)}
             onTravel={onTravelToAgent}
           />
         ))}
       </div>
+
+      {profile && (
+        <ProfilePopover
+          npcId={profile.id}
+          anchorTop={profile.top}
+          onClose={() => setProfile(null)}
+          onFindThem={(id, locationId) => {
+            onTravelToAgent(id, locationId);
+            setProfile(null);
+          }}
+          onSeeTheirDay={(id) => {
+            onSeeTheirDay(id);
+            setProfile(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -126,7 +166,7 @@ function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick, 
   isNear: boolean;
   isChatting: boolean;
   isSelected: boolean;
-  onClick: () => void;
+  onClick: (rowEl: HTMLElement) => void;
   onTravel: (id: ThomasId, locationId: LocationId) => void;
 }) {
   const live = status[config.id];
@@ -135,12 +175,13 @@ function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick, 
   const locationId: LocationId =
     live?.locationId ?? HOME_FALLBACK[config.homeBuilding] ?? 'town';
   const location = locationLabel(locationId);
-  const engaged = live?.engagement?.kind === 'scene' || live?.engagement?.kind === 'chat';
+  // The only engagement now is a visitor chat (paced scenes removed in M2.1).
+  const engaged = live?.engagement?.kind === 'chat';
   const highlight = isChatting || isSelected;
 
   return (
     <button
-      onClick={onClick}
+      onClick={(e) => onClick(e.currentTarget)}
       style={{
         width: '100%',
         textAlign: 'left',
@@ -169,7 +210,7 @@ function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick, 
         </div>
       </div>
       {engaged ? (
-        // CLICKABLE engagement chip: travel to where the agent is (listen-in).
+        // CLICKABLE engagement chip: travel to where the agent is (go say hi).
         <span
           role="button"
           tabIndex={0}
@@ -195,7 +236,7 @@ function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick, 
           }}
         >
           <StatusDot color={color} size={5} />
-          in conversation · {location} ›
+          with a visitor · {location} ›
         </span>
       ) : (
         <p

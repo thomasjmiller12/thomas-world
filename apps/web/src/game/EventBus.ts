@@ -1,6 +1,6 @@
 import { Events } from 'phaser';
 import type { AgentId, DayPhase, LocationId } from '@town/contract';
-import type { ThomasId, ChatMessage, DialogData } from '@/lib/types';
+import type { ThomasId, ChatMessage } from '@/lib/types';
 
 // The typed event taxonomy that flows over the EventBus — the seam between the
 // world (WorldClient / dream mode) and the surfaces (Phaser canvas + React
@@ -8,10 +8,8 @@ import type { ThomasId, ChatMessage, DialogData } from '@/lib/types';
 //   agent.moved      → npc-move-to
 //   agent.thought    → npc-thought
 //   agent.spoke      → npc-speech            (ambient/overheard)
-//   conversation.turn→ npc-speech (scene)    (alternating bubble dialogue)
 //   agent.activity   → npc-activity
 //   world.effect     → fixture-effect
-//   chat.joined etc. → chat-*
 // Snapshot hydration emits npc-status / world-state for initial UI state.
 //
 // Adding an event here gives `emit`/`on`/`off` full type-safety on payloads.
@@ -32,11 +30,9 @@ export interface WorldEvents {
   'npc-move-to': { npcId: ThomasId; from?: LocationId; to: LocationId; target?: { x: number; y: number } };
   // A public-safe thought wisp (contract agent.thought).
   'npc-thought': { npcId: ThomasId; thought: string };
-  // Overheard ambient speech / a scene turn (contract agent.spoke + conversation.turn).
-  // `conversationId` present marks it as part of a live agent↔agent scene.
-  // `location` is present for ambient speech (used for bubble scoping); scene
-  // turns carry no location on the wire — scope them via the scene's location.
-  'npc-speech': { npcId: ThomasId; message: string; audience: string; conversationId?: string; location?: LocationId };
+  // Overheard ambient speech (contract agent.spoke). `location` scopes the
+  // bubble to the room the speech happened in.
+  'npc-speech': { npcId: ThomasId; message: string; audience: string; location?: LocationId };
   // What an agent is currently doing (contract agent.activity).
   'npc-activity': { npcId: ThomasId; activity: string };
   // A set/fixture effect — phone rings, lamp flickers (contract world.effect).
@@ -51,7 +47,7 @@ export interface WorldEvents {
     status: string;
     activity: string | null;
     busy: boolean;
-    engagement?: { kind: 'chat' | 'scene'; with: (AgentId | 'visitor')[] };
+    engagement?: { kind: 'chat'; with: (AgentId | 'visitor')[] };
   };
 
   // --- world-level state (snapshot + world.time) ---------------------------
@@ -61,21 +57,12 @@ export interface WorldEvents {
   // budget-exhausted and the town is running on the free scripted dream layer.
   'world-sleeping': { sleeping: boolean; reason: 'budget' | 'server-down' | null };
 
-  // --- live agent↔agent scenes (Tier 0 listen-in surface) ------------------
-  'scene-started': { conversationId: string; location: LocationId; participants: ThomasId[] };
-  'scene-ended': { conversationId: string };
-  // A paced scene converted to a group chat (visitor interjected).
-  'scene-converted': { conversationId: string };
-
   // --- visitor-facing chat lifecycle (WorldClient ↔ React panel) -----------
-  // The overlay asks WorldClient to open a chat with an agent (Tier-1 escalate).
-  'chat-open-request': { npcId: ThomasId };
-  // The overlay sends a visitor line; WorldClient streams the reply.
-  'chat-message-sent': { npcId: ThomasId; message: string };
-  // The overlay closed the panel; WorldClient tears the session down.
-  'chat-closed': { npcId: ThomasId };
-  // Canvas-only hooks (pause player input / NPC roaming while chatting).
+  // WorldClient opened a session (POST /chats resolved). Canvas-only hook: the
+  // agent's sprite faces the player while it lasts.
   'chat-opened': { npcId: ThomasId };
+  // The overlay closed the panel (visitor-initiated); WorldClient tears down.
+  'chat-closed': { npcId: ThomasId };
 
   // --- streamed chat output (WorldClient → React panel) --------------------
   // A new speaker turn began (multi-party attribution).
@@ -91,13 +78,19 @@ export interface WorldEvents {
   'chat-memory-recalled': { npcId: ThomasId; sessionId: string; label: string };
   // Post-turn reply chips (off the latency path).
   'chat-suggested-replies': { sessionId: string; replies: string[] };
-  // A second agent joined the session (invite_to_chat / scene conversion).
-  'chat-joined': { sessionId?: string; npcId: ThomasId };
+  // The agent acted mid-chat (a tool the agent ran while talking — "walks to
+  // the workbench"). Rendered as a centered diegetic line in the transcript.
+  'chat-action': { npcId: ThomasId; sessionId: string; tool: string; detail: string };
+  // The agent ended the chat itself (server already closed the session). The
+  // panel shows a goodbye line + [wave goodbye] close button.
+  'chat-ended': { npcId: ThomasId; sessionId: string };
   // WorldClient surfaces an error / 409 the panel should render in-fiction.
   'chat-error': { npcId?: ThomasId; reason: string };
+  // The chat input gained/lost focus. The player freezes movement ONLY while
+  // the input is focused (a chat is open but unfocused → the visitor can walk).
+  'typing-focus': { focused: boolean };
 
-  // --- dialog reader (artifact/show-dialog) --------------------------------
-  'show-dialog': DialogData;
+  // --- dialog reader (full-screen overlays: Chronicle hub) -----------------
   'dialog-closed': undefined;
   'dialog-opened': undefined;
 

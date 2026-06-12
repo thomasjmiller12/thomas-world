@@ -5,13 +5,13 @@ import { EventBus } from '../EventBus';
 
 // One of:
 //  - wander:   idle local flourish (waypoint roaming) — the default for an
-//              agent standing in a scene with nothing happening.
+//              agent standing around with nothing happening.
 //  - walking:  a directed walk to a target (arrival from / departure to a door),
 //              driven by the NPCManager; calls back on arrival.
-//  - in-scene: parked in a live agent↔agent conversation, facing the partner;
-//              the *next speaker* shows the animated "…" thinking bubble.
-//  - engaged:  facing the player (visitor opened a chat).
-export type NPCState = 'wander' | 'walking' | 'in-scene' | 'engaged';
+//  - engaged:  facing the player (visitor is chatting with this agent). The
+//              agent can still leave mid-chat — an arrival/departure flips it
+//              back to walking, then wander.
+export type NPCState = 'wander' | 'walking' | 'engaged';
 
 export class NPC extends Phaser.Physics.Arcade.Sprite {
   readonly npcId: ThomasId;
@@ -60,8 +60,8 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     this.colorDot = scene.add.circle(this.x, this.y - 14, 3, colorInt);
     this.colorDot.setDepth(20);
 
-    // Animated "…" thinking bubble — shown for the next speaker between scene
-    // turns (the dead-air-is-thinking cue, design doc §3.1) and on proximity.
+    // Animated "…" bubble — a proximity hint ("talk to me") shown when the
+    // visitor is in range of an idle agent.
     this.thinkingBubble = scene.add.graphics();
     this.thinkingBubble.setDepth(21);
     this.thinkingBubble.setVisible(false);
@@ -175,20 +175,6 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     this.pathQueue = points.slice(1).map((p) => ({ x: p.x, y: p.y }));
   }
 
-  // Parked in a live scene, facing a partner sprite. Idle (no roaming).
-  enterScene(faceTarget?: { x: number; y: number }): void {
-    this.npcState = 'in-scene';
-    this.walkTarget = null;
-    this.pathQueue = [];
-    this.onArrive = null;
-    this.setVelocity(0, 0);
-    if (this.pauseTimer) this.pauseTimer.destroy();
-    if (faceTarget) {
-      this.faceVelocity(faceTarget.x - this.x, faceTarget.y - this.y);
-    }
-    this.play(`${this.npcConfig.sprite}-idle-${this.direction}`, true);
-  }
-
   // Faces the player and stops (visitor opened a chat).
   enterEngaged(playerX: number, playerY: number): void {
     this.npcState = 'engaged';
@@ -202,11 +188,6 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
 
   getState(): NPCState {
     return this.npcState;
-  }
-
-  // Show/hide the animated "…" bubble (the next speaker shows it between turns).
-  setThinking(on: boolean): void {
-    this.thinkingBubble.setVisible(on);
   }
 
   // --- facing helpers -------------------------------------------------------

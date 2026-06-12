@@ -1,16 +1,16 @@
 interface HUDProps {
   locationName: string;
   visitorName: string;
-  onToggleFeed: () => void;
-  feedOpen: boolean;
+  onToggleChronicle: () => void;
+  chronicleOpen: boolean;
   // Narrow viewport → terser hint copy ("tap to move").
   touch: boolean;
 }
 
-// HUD — location chip + hints restyled to the design system, plus the feed
-// toggle (design doc §6.3). The day/dusk/night canvas tint is the SleepOverlay's
+// HUD — location chip + hints restyled to the design system, plus the Town
+// Chronicle toggle (M2.1). The day/dusk/night canvas tint is the SleepOverlay's
 // job; this is the chrome.
-export function HUD({ locationName, onToggleFeed, feedOpen, touch }: HUDProps) {
+export function HUD({ locationName, onToggleChronicle, chronicleOpen, touch }: HUDProps) {
   return (
     <>
       {/* location chip (top-left) */}
@@ -28,26 +28,26 @@ export function HUD({ locationName, onToggleFeed, feedOpen, touch }: HUDProps) {
         </div>
       </div>
 
-      {/* feed toggle (top-right) */}
+      {/* Chronicle toggle (top-right) */}
       <div className="absolute top-3 right-3 pointer-events-auto">
         <button
-          onClick={onToggleFeed}
-          aria-pressed={feedOpen}
+          onClick={onToggleChronicle}
+          aria-pressed={chronicleOpen}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: 7,
             padding: '7px 13px',
             borderRadius: 10,
-            background: feedOpen ? 'var(--ink)' : 'rgba(252,247,238,0.92)',
-            color: feedOpen ? '#fff' : 'var(--ink-2)',
+            background: chronicleOpen ? 'var(--ink)' : 'rgba(252,247,238,0.92)',
+            color: chronicleOpen ? '#fff' : 'var(--ink-2)',
             border: '1px solid var(--line)',
             boxShadow: 'var(--shadow)',
             font: '600 12px var(--display)',
             cursor: 'pointer',
           }}
         >
-          📜 Today
+          Chronicle
         </button>
       </div>
 

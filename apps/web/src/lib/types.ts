@@ -29,8 +29,3 @@ export interface ThoughtBubbleData {
   screenX: number;
   screenY: number;
 }
-
-export interface DialogData {
-  text: string;
-  title?: string;
-}

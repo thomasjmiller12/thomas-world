@@ -38,8 +38,6 @@ export function eventToRailRow(ev: WorldEvent): RailRow | null {
       return { id: ev.id, icon: '🛠️', label: 'WORK', line: ev.payload.activity, time };
     case 'agent.spoke':
       return { id: ev.id, icon: '💬', label: 'SAID', line: ev.payload.text, time };
-    case 'conversation.turn':
-      return { id: ev.id, icon: '💬', label: 'SAID', line: ev.payload.text, time };
     case 'agent.moved':
       return {
         id: ev.id,

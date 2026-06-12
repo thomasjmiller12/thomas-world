@@ -6,16 +6,14 @@ interface SpeechBubbleProps {
   text: string;
   screenX: number;
   screenY: number;
-  // A scene turn (agent↔agent) reads slightly differently from ambient speech.
-  scene?: boolean;
 }
 
 // Tier-0 ambient speech bubble (design doc §1): a React overlay component
 // positioned via the `npc-screen-position` stream — NOT a Phaser graphic, so it
 // can carry design-system typography and truncate gracefully. Max-width ~240px,
 // clamped to ~3 lines with an ellipsis; the full text always lands in the feed
-// + transcript strip (agent.spoke can be 600 chars; a pixel bubble can't).
-export function SpeechBubble({ npcId, text, screenX, screenY, scene }: SpeechBubbleProps) {
+// (agent.spoke can be 600 chars; a pixel bubble can't).
+export function SpeechBubble({ npcId, text, screenX, screenY }: SpeechBubbleProps) {
   const color = THOMAS_COLORS[npcId] || '#4A90D9';
 
   if (screenX === 0 && screenY === 0) return null;
@@ -35,7 +33,7 @@ export function SpeechBubble({ npcId, text, screenX, screenY, scene }: SpeechBub
       <div
         className="relative rounded-lg px-3 py-1.5"
         style={{
-          background: scene ? 'rgba(255,255,255,0.96)' : 'rgba(255,255,255,0.92)',
+          background: 'rgba(255,255,255,0.92)',
           border: `1px solid ${color}80`,
           boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
         }}
