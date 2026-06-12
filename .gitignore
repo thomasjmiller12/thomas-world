@@ -53,3 +53,6 @@ next-env.d.ts
 # feature logs / scratch
 feature-logs/
 scratch/
+
+# vercel CLI link
+.vercel/
