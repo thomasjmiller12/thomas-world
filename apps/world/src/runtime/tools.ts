@@ -37,6 +37,7 @@ import {
 } from "../engine/memory.js";
 import * as hindsight from "./hindsight.js";
 import * as vault from "./vault.js";
+import * as github from "./github.js";
 import { checkFixtureAction, tryRecordEffect, type FixtureDef } from "./fixtures.js";
 
 // Mutable per-tick context. `location` is read live from the row by the engine,
@@ -396,6 +397,48 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     run: async ({ path, content }) => (await vault.writeAgentNote(ctx.agentId, path, content)).text,
   });
 
+  // --- Code repositories (Thomas's actual GitHub, read-only) ----------------
+  // Reference reads, not world actions — available anywhere, like the vault and
+  // memory, not gated to a place. github.ts holds a read-only credential.
+  const list_repos = betaZodTool({
+    name: "list_repos",
+    description:
+      "List Thomas's actual code repositories (his real GitHub projects), most recently worked on first. Use this to see what he's built, then browse_repo / read_repo_file to look inside one.",
+    inputSchema: z.object({}),
+    run: async () => (await github.listRepos()).text,
+  });
+
+  const browse_repo = betaZodTool({
+    name: "browse_repo",
+    description:
+      "List the files and folders in one of Thomas's repositories at a given path. Pass the repo name (e.g. 'thomas-world2') and a path within it ('.' or '' for the root, 'src/runtime' for a folder).",
+    inputSchema: z.object({
+      repo: z.string().min(1).max(140),
+      path: z.string().max(300).default("."),
+    }),
+    run: async ({ repo, path }) => (await github.browseRepo(repo, path)).text,
+  });
+
+  const read_repo_file = betaZodTool({
+    name: "read_repo_file",
+    description:
+      "Read a single file from one of Thomas's repositories. Pass the repo name, the file path within it, and optionally a branch/tag/commit ref (defaults to the repo's default branch).",
+    inputSchema: z.object({
+      repo: z.string().min(1).max(140),
+      path: z.string().min(1).max(300),
+      ref: z.string().max(120).optional(),
+    }),
+    run: async ({ repo, path, ref }) => (await github.readRepoFile(repo, path, ref)).text,
+  });
+
+  const search_code = betaZodTool({
+    name: "search_code",
+    description:
+      "Search across the code in Thomas's repositories for a phrase or symbol. Returns matching repo/file paths (default branches only). Use read_repo_file to open a result.",
+    inputSchema: z.object({ query: z.string().min(1).max(200) }),
+    run: async ({ query }) => (await github.searchCode(query)).text,
+  });
+
   // --- Outside world (gated to the office outbox) ---------------------------
   const email_thomas = betaZodTool({
     name: "email_thomas",
@@ -451,6 +494,10 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     read_note as RunnableTool,
     search_notes as RunnableTool,
     write_agent_note as RunnableTool,
+    list_repos as RunnableTool,
+    browse_repo as RunnableTool,
+    read_repo_file as RunnableTool,
+    search_code as RunnableTool,
     email_thomas as RunnableTool,
     request_capability as RunnableTool,
   ];
@@ -604,6 +651,10 @@ export function buildChatTools(ctx: AgentContext): RunnableTool[] {
     "read_note",
     "search_notes",
     "write_agent_note",
+    "list_repos",
+    "browse_repo",
+    "read_repo_file",
+    "search_code",
   ]);
   const tools = buildTools(ctx).filter((t) => allowed.has(toolName(t)));
   // invite_to_chat + leave_chat are only meaningful within a visitor chat session.
