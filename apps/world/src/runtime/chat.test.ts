@@ -8,7 +8,9 @@ import {
   isInterjectPass,
   seedRowForSceneLine,
   interactionOperatorNote,
+  pickRoutedSession,
   type ChatRowLike,
+  type RoutableSession,
 } from "./chat.js";
 import type { WorldEvent } from "@town/contract";
 
@@ -363,5 +365,38 @@ describe("interactionOperatorNote (design doc §4 — visitor.interacted routing
 
   it("uses 'The visitor' when no name is given", () => {
     expect(interactionOperatorNote("", "phone")).toMatch(/The visitor just answered the phone/i);
+  });
+});
+
+describe("pickRoutedSession (design doc §4 — routing decision)", () => {
+  const session = (id: string, ...locs: (string | null | undefined)[]): RoutableSession => ({
+    id,
+    participantLocations: locs as RoutableSession["participantLocations"],
+  });
+
+  it("routes to a session with a participant AT the interaction location", () => {
+    expect(pickRoutedSession([session("s1", "office")], "office")).toBe("s1");
+  });
+
+  it("matches when ANY participant (group chat) is at the location", () => {
+    // A 2-agent group chat: one agent elsewhere, one at the location → still routes.
+    expect(pickRoutedSession([session("s1", "library", "office")], "office")).toBe("s1");
+  });
+
+  it("returns null when no participant is at the interaction location", () => {
+    expect(pickRoutedSession([session("s1", "library")], "office")).toBeNull();
+  });
+
+  it("returns null with no live sessions", () => {
+    expect(pickRoutedSession([], "office")).toBeNull();
+  });
+
+  it("picks the FIRST matching session when several qualify", () => {
+    const sessions = [session("s1", "cafe"), session("s2", "office"), session("s3", "office")];
+    expect(pickRoutedSession(sessions, "office")).toBe("s2");
+  });
+
+  it("ignores null/undefined participant locations (agent row gone)", () => {
+    expect(pickRoutedSession([session("s1", null, undefined)], "office")).toBeNull();
   });
 });

@@ -1040,6 +1040,27 @@ export function interactionOperatorNote(visitorName: string, fixture: string): s
   return `[operator note] ${who} just interacted with the ${fixture}.`;
 }
 
+// The pure routing decision (design doc §4): given the visitor's live sessions —
+// each reduced to its id + the current locations of its participant agents — and
+// the interaction location, pick the FIRST session that has a participant AT that
+// location (the agent who'd plausibly hear the phone they just rang). Returns the
+// routed sessionId, or null when none match (→ next-tick perception via the log).
+// DB-free so the decision is unit-testable; routeVisitorInteraction supplies the
+// live rows.
+export interface RoutableSession {
+  id: string;
+  participantLocations: (LocationId | null | undefined)[];
+}
+export function pickRoutedSession(
+  sessions: RoutableSession[],
+  locationId: LocationId,
+): string | null {
+  for (const s of sessions) {
+    if (s.participantLocations.some((loc) => loc === locationId)) return s.id;
+  }
+  return null;
+}
+
 // Stash a one-shot operator note on a live session, consumed on the next
 // runChatTurn. Best-effort — returns false if the session vanished mid-call.
 export async function setPendingOperatorNote(sessionId: string, note: string): Promise<boolean> {
@@ -1072,18 +1093,26 @@ export async function routeVisitorInteraction(args: {
 
   // A session routes only if one of its participant agents is AT the interaction
   // location (the agent who'd plausibly hear the phone they just rang). We read
-  // agent rows to compare locations.
-  for (const s of sessions) {
-    const roster = (s.participantAgentIds as AgentId[] | null) ?? [];
-    const participants: AgentId[] = roster.length ? roster : [s.agentId as AgentId];
-    const located = await Promise.all(
-      participants.map(async (a) => (await getAgent(a))?.locationId),
-    );
-    if (located.some((loc) => loc === locationId)) {
-      const note = interactionOperatorNote(visitorName, fixture);
-      const ok = await setPendingOperatorNote(s.id, note);
-      if (ok) return s.id;
-    }
+  // agent rows to compare locations, then delegate the pure decision.
+  const routable: RoutableSession[] = await Promise.all(
+    sessions.map(async (s) => {
+      const roster = (s.participantAgentIds as AgentId[] | null) ?? [];
+      const participants: AgentId[] = roster.length ? roster : [s.agentId as AgentId];
+      const participantLocations = await Promise.all(
+        participants.map(async (a) => (await getAgent(a))?.locationId as LocationId | undefined),
+      );
+      return { id: s.id, participantLocations };
+    }),
+  );
+
+  // Try the matching sessions in order; skip any that vanished between the read
+  // and the write (setPendingOperatorNote returns false), routing to the next.
+  let remaining = routable;
+  for (;;) {
+    const sessionId = pickRoutedSession(remaining, locationId);
+    if (!sessionId) return null;
+    const note = interactionOperatorNote(visitorName, fixture);
+    if (await setPendingOperatorNote(sessionId, note)) return sessionId;
+    remaining = remaining.filter((s) => s.id !== sessionId);
   }
-  return null;
 }
