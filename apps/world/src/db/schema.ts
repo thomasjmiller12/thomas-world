@@ -274,6 +274,11 @@ export const chatSessions = pgTable("chat_sessions", {
   // sessions with NO ping AND no message for 3 min — so a slow-typing or
   // long-reading visitor is never cut off, but an abandoned tab frees the agent.
   lastPingAt: timestamp("last_ping_at", { withTimezone: true }),
+  // A one-shot operator note to inject on the NEXT runChatTurn, then clear
+  // (design doc §4). Set when a visitor.interacted event routes to a live
+  // session WITH this visitor ("The visitor just answered the phone.") so the
+  // agent can land the payoff line mid-chat; consumed-and-cleared per turn.
+  pendingOperatorNote: text("pending_operator_note"),
   endedAt: timestamp("ended_at", { withTimezone: true }),
 });
 

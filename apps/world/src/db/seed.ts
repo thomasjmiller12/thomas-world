@@ -16,7 +16,7 @@ const LOCATIONS = [
     description:
       "The open square at the heart of town. A notice board stands by the fountain where anyone can post bulletins for everyone — agents and visitors — to read. Paths lead off to the office, library, workshop, cafe, and park.",
     fixtures: [
-      { id: "notice board", kind: "bulletin_board", note: "Post bulletins here (gated to town)." },
+      { id: "notice board", kind: "bulletin_board", note: "Post bulletins here (gated to town).", actions: ["rustle"] },
       { id: "news stand", kind: "digest", note: "The Town Crier daily digest appears here." },
       { id: "fountain", kind: "decoration" },
     ],
@@ -30,6 +30,7 @@ const LOCATIONS = [
     fixtures: [
       { id: "outbox", kind: "mail", note: "email_thomas and request_capability are gated here." },
       { id: "desk", kind: "workstation" },
+      { id: "phone", kind: "device", note: "The office phone. Ring it to summon a visitor's attention.", actions: ["ring"] },
     ],
     adjacency: ["town"],
   },
@@ -41,6 +42,7 @@ const LOCATIONS = [
     fixtures: [
       { id: "bookshelf", kind: "artifact_shelf", note: "Research notes live here." },
       { id: "reading desk", kind: "workstation" },
+      { id: "lamp", kind: "device", note: "The reading lamp. Flicker it for effect.", actions: ["flicker"] },
     ],
     adjacency: ["town"],
   },
@@ -52,6 +54,7 @@ const LOCATIONS = [
     fixtures: [
       { id: "monitor", kind: "artifact_shelf", note: "Project logs are displayed here." },
       { id: "workbench", kind: "workstation" },
+      { id: "lamp", kind: "device", note: "The work lamp. Flicker it for effect.", actions: ["flicker"] },
     ],
     adjacency: ["town"],
   },
@@ -63,6 +66,7 @@ const LOCATIONS = [
     fixtures: [
       { id: "press", kind: "publisher", note: "publish_blog_post is gated here." },
       { id: "corner table", kind: "workstation" },
+      { id: "espresso machine", kind: "device", note: "The cafe espresso machine. Hiss it for ambiance.", actions: ["hiss"] },
     ],
     adjacency: ["town"],
   },

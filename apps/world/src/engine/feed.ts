@@ -57,6 +57,18 @@ export async function renderLine(e: WorldEvent): Promise<string> {
       return `${p.name} arrived in town.`;
     case "visitor.left":
       return `${p.name} left town.`;
+    case "visitor.moved":
+      return p.from
+        ? `${p.name} wandered from ${p.from} to ${p.to}.`
+        : `${p.name} wandered into ${p.to}.`;
+    case "visitor.interacted":
+      return p.fixture === "phone"
+        ? `${p.name} answered the phone in ${p.location}.`
+        : `${p.name} fiddled with the ${p.fixture} in ${p.location}.`;
+    case "world.effect":
+      return p.fixture === "phone" && p.effect === "ring"
+        ? `The office phone rang. Nobody knows why.`
+        : `The ${p.fixture} ${p.effect}ed in ${p.location}.`;
     case "chat.started":
       return `${await who(p.agent)} started chatting with a visitor.`;
     case "chat.ended":

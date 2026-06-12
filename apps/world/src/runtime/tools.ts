@@ -37,6 +37,7 @@ import {
 } from "../engine/memory.js";
 import * as hindsight from "./hindsight.js";
 import * as vault from "./vault.js";
+import { checkFixtureAction, tryRecordEffect, type FixtureDef } from "./fixtures.js";
 
 // Mutable per-tick context. `location` is read live from the row by the engine,
 // but we cache the start-of-tick location and let move_to update it so a tick
@@ -106,6 +107,35 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       const fixtures = ((loc?.fixtures as Array<{ id: string }>) ?? []).map((f) => f.id).join(", ");
       const others = here.length ? here.map((a) => a.displayName).join(", ") : "no one else";
       return `You're at the ${loc?.name ?? ctx.location}. ${loc?.description ?? ""}\nFixtures: ${fixtures || "(none)"}.\nAlso here: ${others}.`;
+    },
+  });
+
+  const use_fixture = betaZodTool({
+    name: "use_fixture",
+    description:
+      "Do something physical with a fixture where you are — make the set react. e.g. ring the office phone, hiss the cafe espresso machine, flicker a lamp, rustle the town notice board. You can only act on a fixture that's HERE with you and only in ways it allows. Others and any visitors here will notice. Use sparingly — it's a flourish, not a fidget.",
+    inputSchema: z.object({
+      fixture: z.string().min(1).max(60),
+      action: z.string().min(1).max(40),
+      note: z.string().max(200).optional(),
+    }),
+    run: async ({ fixture, action }) => {
+      const loc = await getLocation(ctx.location);
+      const fixtures = ((loc?.fixtures as FixtureDef[]) ?? []);
+      const check = checkFixtureAction(fixtures, fixture, action, loc?.name ?? ctx.location);
+      if (!check.ok) return check.reason;
+      // Rate limit AFTER validation so a wrong-place attempt doesn't burn a slot.
+      if (!tryRecordEffect(ctx.agentId)) {
+        return `You've been fussing with the ${fixture} a lot — better not overdo it. Give it a rest for a bit.`;
+      }
+      await appendEvent({
+        type: "world.effect",
+        agentId: ctx.agentId,
+        locationId: ctx.location,
+        visibility: "public",
+        payload: { location: ctx.location, fixture, effect: action, agent: ctx.agentId },
+      });
+      return `You ${action} the ${fixture}. It's noticeable to anyone here.`;
     },
   });
 
@@ -396,6 +426,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     move_to as RunnableTool,
     set_activity as RunnableTool,
     look_around as RunnableTool,
+    use_fixture as RunnableTool,
     say as RunnableTool,
     start_conversation as RunnableTool,
     reply as RunnableTool,
@@ -524,6 +555,7 @@ function buildInviteToChat(ctx: AgentContext): RunnableTool {
 export function buildChatTools(ctx: AgentContext): RunnableTool[] {
   const allowed = new Set([
     "look_around",
+    "use_fixture",
     "recall",
     "memory",
     "send_dm",

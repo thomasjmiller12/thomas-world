@@ -7,6 +7,7 @@ import {
   lastAgentToSpeak,
   isInterjectPass,
   seedRowForSceneLine,
+  interactionOperatorNote,
   type ChatRowLike,
 } from "./chat.js";
 import type { WorldEvent } from "@town/contract";
@@ -344,5 +345,23 @@ describe("seedRowForSceneLine (design doc §3.3a — interject seeding)", () => 
       sender: "operator",
       body: "Builder: let's prototype it",
     });
+  });
+});
+
+describe("interactionOperatorNote (design doc §4 — visitor.interacted routing)", () => {
+  it("special-cases the phone with the warranty-bit payoff line", () => {
+    const note = interactionOperatorNote("Ada", "phone");
+    expect(note).toMatch(/Ada/);
+    expect(note).toMatch(/answered the phone/i);
+    expect(note).toMatch(/\[operator note\]/);
+  });
+
+  it("falls back to a generic interacted line for other fixtures", () => {
+    const note = interactionOperatorNote("Ada", "espresso machine");
+    expect(note).toMatch(/interacted with the espresso machine/i);
+  });
+
+  it("uses 'The visitor' when no name is given", () => {
+    expect(interactionOperatorNote("", "phone")).toMatch(/The visitor just answered the phone/i);
   });
 });

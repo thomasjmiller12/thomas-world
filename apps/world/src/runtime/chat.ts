@@ -615,6 +615,19 @@ export async function runChatTurn(
   const roster = (session.participantAgentIds as AgentId[] | null) ?? [];
   const participants: AgentId[] = roster.length ? roster : [primary];
 
+  // Consume-and-clear a pending operator note (design doc §4): a visitor.interacted
+  // event routed to THIS session stashed a one-shot note ("The visitor just
+  // answered the phone."). Merge it with any explicit operatorNote so the agent
+  // lands the payoff this turn, then clear it so it never replays.
+  if (session.pendingOperatorNote) {
+    const stashed = session.pendingOperatorNote;
+    operatorNote = operatorNote ? `${operatorNote}\n${stashed}` : stashed;
+    await db
+      .update(chatSessions)
+      .set({ pendingOperatorNote: null })
+      .where(eq(chatSessions.id, sessionId));
+  }
+
   if (!hasLlm()) {
     const text = "The town's a little quiet right now — the agents can't chat yet.";
     await handlers.onFrame({ type: "turn_started", agent: primary });
@@ -1001,4 +1014,64 @@ export async function suggestedReplies(sessionId: string): Promise<string[]> {
     console.warn(`[chat ${sessionId}] suggested_replies failed:`, (err as Error).message);
     return [];
   }
+}
+
+// --- visitor.interacted routing (design doc §4) -----------------------------
+
+// The in-fiction operator note a fixture interaction produces for the agents in
+// a live session ("The visitor just answered the phone."). Pure + byte-stable so
+// the routing decision is unit-testable without a DB. We special-case the phone
+// (the Hobby warranty bit) and fall back to a generic "interacted with" line.
+export function interactionOperatorNote(visitorName: string, fixture: string): string {
+  const who = visitorName || "The visitor";
+  if (fixture === "phone") return `[operator note] ${who} just answered the phone.`;
+  return `[operator note] ${who} just interacted with the ${fixture}.`;
+}
+
+// Stash a one-shot operator note on a live session, consumed on the next
+// runChatTurn. Best-effort — returns false if the session vanished mid-call.
+export async function setPendingOperatorNote(sessionId: string, note: string): Promise<boolean> {
+  const res = await db
+    .update(chatSessions)
+    .set({ pendingOperatorNote: note })
+    .where(and(eq(chatSessions.id, sessionId), isNull(chatSessions.endedAt)))
+    .returning({ id: chatSessions.id });
+  return res.length > 0;
+}
+
+// Route a visitor.interacted event (design doc §4): if the visitor has a LIVE
+// chat session whose roster includes an agent AT the interaction location, stash
+// a pending operator note on that session so the agent lands the line mid-chat.
+// Otherwise return null — the interaction is perceived next tick via the event
+// log automatically (no special-casing). Returns the routed sessionId or null.
+export async function routeVisitorInteraction(args: {
+  visitorId: string;
+  visitorName: string;
+  locationId: LocationId;
+  fixture: string;
+}): Promise<string | null> {
+  const { visitorId, visitorName, locationId, fixture } = args;
+  // Live sessions for this visitor (not yet ended).
+  const sessions = await db
+    .select()
+    .from(chatSessions)
+    .where(and(eq(chatSessions.visitorId, visitorId), isNull(chatSessions.endedAt)));
+  if (sessions.length === 0) return null;
+
+  // A session routes only if one of its participant agents is AT the interaction
+  // location (the agent who'd plausibly hear the phone they just rang). We read
+  // agent rows to compare locations.
+  for (const s of sessions) {
+    const roster = (s.participantAgentIds as AgentId[] | null) ?? [];
+    const participants: AgentId[] = roster.length ? roster : [s.agentId as AgentId];
+    const located = await Promise.all(
+      participants.map(async (a) => (await getAgent(a))?.locationId),
+    );
+    if (located.some((loc) => loc === locationId)) {
+      const note = interactionOperatorNote(visitorName, fixture);
+      const ok = await setPendingOperatorNote(s.id, note);
+      if (ok) return s.id;
+    }
+  }
+  return null;
 }

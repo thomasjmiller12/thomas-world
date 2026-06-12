@@ -22,7 +22,9 @@ import {
   CreateChatResponse,
   GetChatResponse,
   JoinConversationResponse,
+  InteractRequest,
 } from "@town/contract";
+import type { LocationId } from "@town/contract";
 import type { ArtifactSummary } from "@town/contract";
 import type { z } from "zod";
 import { config } from "../config.js";
@@ -49,7 +51,8 @@ import {
   moveVisitor,
   renameVisitor,
 } from "../engine/visitors.js";
-import { agentsAtLocation } from "../engine/locations.js";
+import { agentsAtLocation, getLocation } from "../engine/locations.js";
+import { appendEvent } from "../engine/events.js";
 import { boostAgent } from "../runtime/scheduler.js";
 import { subscribe } from "../engine/bus.js";
 import { spendTodayUsd, isBudgetExhausted } from "../engine/usage.js";
@@ -68,7 +71,9 @@ import {
   getChatTranscript,
   chatHasAnyMessage,
   joinConversation,
+  routeVisitorInteraction,
 } from "../runtime/chat.js";
+import type { FixtureDef } from "../runtime/fixtures.js";
 
 const agentSet = new Set<string>(agentIds);
 const locationSet = new Set<string>(locationIds);
@@ -403,15 +408,48 @@ export function createApp() {
   });
 
   // --- POST /visitors/:id/interact {locationId, fixture} ------------------
-  // Visitor-token authorized. Fixture interaction + visitor.interacted event
-  // land in step D; A2 ships the auth gate + a 501 stub.
+  // Visitor-token authorized (design doc §4). Validates the fixture exists at the
+  // location, emits a public `visitor.interacted`, then ROUTES: if an agent in a
+  // live chat session with THIS visitor is at the location, a pending operator
+  // note lands on that session (consumed next runChatTurn); otherwise the
+  // interaction is perceived next tick via the event log automatically.
   app.post("/visitors/:id/interact", async (c) => {
     const id = c.req.param("id");
     const v = await getVisitor(id);
     if (!v) return c.json({ error: "unknown visitor" }, 404);
     const token = c.req.header("x-visitor-token");
     if (!(await visitorTokenValid(id, token))) return c.json({ error: "unauthorized" }, 401);
-    return c.json({ error: "not implemented" }, 501);
+
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = InteractRequest.safeParse(body);
+    if (!parsed.success) return c.json({ error: "bad request" }, 400);
+    const { locationId, fixture } = parsed.data;
+
+    // The fixture must actually exist at the location (no whitelist on the
+    // action here — a visitor "answering the phone" isn't a gated agent action).
+    const loc = await getLocation(locationId as LocationId);
+    if (!loc) return c.json({ error: "unknown location" }, 404);
+    const fixtures = (loc.fixtures as FixtureDef[]) ?? [];
+    if (!fixtures.some((f) => f.id === fixture)) {
+      return c.json({ error: "no such fixture here" }, 404);
+    }
+
+    await appendEvent({
+      type: "visitor.interacted",
+      visitorId: id,
+      locationId: locationId as LocationId,
+      visibility: "public",
+      payload: { visitorId: id, name: v.name, location: locationId, fixture },
+    });
+
+    const routedSessionId = await routeVisitorInteraction({
+      visitorId: id,
+      visitorName: v.name,
+      locationId: locationId as LocationId,
+      fixture,
+    });
+
+    return c.json({ ok: true, routed: Boolean(routedSessionId) });
   });
 
   // --- POST /chats {agentId, visitorId} -----------------------------------
