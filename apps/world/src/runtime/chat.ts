@@ -22,6 +22,7 @@ import { getProfile } from "./roles.js";
 import { buildChatTools, type AgentContext } from "./tools.js";
 import { getAgent, setEngagement, clearEngagement } from "../engine/agents.js";
 import { getVisitor } from "../engine/visitors.js";
+import { getLocation } from "../engine/locations.js";
 import { appendEvent } from "../engine/events.js";
 import { recordUsage } from "../engine/usage.js";
 import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
@@ -78,10 +79,22 @@ export type OpenChatResult =
 // the transcript under the message cache breakpoint) and rendered by
 // rowsToHistory as the leading user turn, so the no-leading-assistant invariant
 // holds. Hidden from the visible transcript like every operator row.
-export function buildChatFraming(visitorName: string | null): string {
+export function buildChatFraming(
+  visitorName: string | null,
+  grounding?: { locationName?: string | null; activity?: string | null },
+): string {
   const who = visitorName ? `A visitor (${visitorName})` : "A visitor";
+  // Ground the chat in the agent's LIVE position/activity. Without this the
+  // model free-associates its home location from the soul file ("here in the
+  // office" while standing in the cafe — the deferred chat-grounding bug).
+  const where = grounding?.locationName
+    ? `You're at the ${grounding.locationName} right now${
+        grounding.activity ? `, where you were ${grounding.activity}` : ""
+      }. `
+    : "";
   return (
     `[operator note] ${who} just walked up and started a conversation with you. ` +
+    where +
     `You are now in a live chat. Everything you write as plain text from here on is ` +
     `spoken directly to them, streamed word-for-word — it IS your side of the ` +
     `conversation. Never narrate your reasoning, your situation, or the scene in plain ` +
@@ -91,7 +104,10 @@ export function buildChatFraming(visitorName: string | null): string {
     `mix up: \`say\` speaks aloud to the ROOM (the other facets near you), never to ` +
     `this visitor — answer the visitor by just writing your reply. And when the ` +
     `conversation has genuinely run its course, say your goodbye and call ` +
-    `\`leave_chat\` in the same message. Their first message follows.`
+    `\`leave_chat\` in the same message. Don't open with a rehearsed ` +
+    `self-introduction — they chose to walk up to YOU, so meet their actual ` +
+    `first message from the middle of whatever you were just doing. ` +
+    `Their first message follows.`
   );
 }
 
@@ -120,12 +136,19 @@ export async function openChat(agentId: AgentId, visitorId: string): Promise<Ope
       .insert(chatSessions)
       .values({ id: sessionId, agentId, participantAgentIds: [agentId], visitorId, sessionToken });
     // Channel framing (see buildChatFraming): the model-only leading user turn
-    // that tells the agent its plain text is now spoken to the visitor.
-    const visitor = await getVisitor(visitorId);
+    // that tells the agent its plain text is now spoken to the visitor —
+    // grounded in where the agent actually is (live row, not the soul file).
+    const [visitor, loc] = await Promise.all([
+      getVisitor(visitorId),
+      getLocation(agent.locationId as LocationId),
+    ]);
     await db.insert(chatMessages).values({
       sessionId,
       sender: "operator",
-      body: buildChatFraming(visitor?.name ?? null),
+      body: buildChatFraming(visitor?.name ?? null, {
+        locationName: loc?.name ?? agent.locationId,
+        activity: agent.activity,
+      }),
     });
     await setEngagement("chat", sessionId, [agentId]);
     // chat.started is PUBLIC presence only — NO sessionId (design doc §3.3:

@@ -62,6 +62,93 @@ export async function touchVisitor(id: string) {
   await db.update(visitors).set({ lastSeenAt: new Date() }).where(eq(visitors.id, id));
 }
 
+// --- presence debounce -------------------------------------------------------
+// Proxies recycle long-lived SSE connections (observed: every ~15 min on
+// Railway's edge); EventSource reopens seconds later. Tying arrived/left
+// 1:1 to the connection lifetime turned every recycle into a feed-visible
+// departure+arrival pair. Connections are refcounted per visitor and a
+// departure waits out a grace window — a reconnect inside it cancels the
+// departure and emits nothing. In-memory by design (single process, same as
+// the rate limiters); across a restart the DB presence window covers the gap.
+const LEAVE_GRACE_MS = 60_000;
+
+export interface PresenceTracker {
+  // Call on SSE connect, with lastSeenAt read BEFORE the connect's touchVisitor.
+  connected(id: string, name: string, lastSeenAt: Date | null): Promise<void>;
+  // Call on SSE disconnect. The departure emits only after the grace window
+  // passes with no reconnect (and no other live connection for this visitor).
+  disconnected(id: string): void;
+  reset(): void;
+}
+
+export function createPresenceTracker(opts: {
+  onArrive: (id: string, name: string) => Promise<void>;
+  onLeave: (id: string) => Promise<void>;
+  graceMs?: number;
+  presenceWindowMs?: number;
+}): PresenceTracker {
+  const graceMs = opts.graceMs ?? LEAVE_GRACE_MS;
+  const windowMs = opts.presenceWindowMs ?? PRESENCE_WINDOW_MS;
+  const connCounts = new Map<string, number>();
+  const pendingLeft = new Map<string, NodeJS.Timeout>();
+  return {
+    async connected(id, name, lastSeenAt) {
+      connCounts.set(id, (connCounts.get(id) ?? 0) + 1);
+      const pending = pendingLeft.get(id);
+      if (pending) {
+        // Reconnected within the grace window — they never left.
+        clearTimeout(pending);
+        pendingLeft.delete(id);
+        return;
+      }
+      if ((connCounts.get(id) ?? 0) > 1) return; // another tab already announced them
+      // Across a server restart there's no pending timer to cancel — the DB
+      // presence window catches that case so a restart doesn't read as an arrival.
+      const recentlyPresent = lastSeenAt != null && Date.now() - lastSeenAt.getTime() < windowMs;
+      if (!recentlyPresent) await opts.onArrive(id, name);
+    },
+    disconnected(id) {
+      const n = (connCounts.get(id) ?? 1) - 1;
+      if (n <= 0) connCounts.delete(id);
+      else {
+        connCounts.set(id, n);
+        return; // another connection is still live
+      }
+      if (pendingLeft.has(id)) return;
+      const timer = setTimeout(() => {
+        pendingLeft.delete(id);
+        if ((connCounts.get(id) ?? 0) > 0) return; // reconnected meanwhile
+        void opts.onLeave(id).catch((err) =>
+          console.warn("[presence] departure emit failed:", (err as Error).message),
+        );
+      }, graceMs);
+      // A pending departure notice must never hold the process open.
+      timer.unref?.();
+      pendingLeft.set(id, timer);
+    },
+    reset() {
+      for (const t of pendingLeft.values()) clearTimeout(t);
+      pendingLeft.clear();
+      connCounts.clear();
+    },
+  };
+}
+
+// The live tracker the SSE route uses.
+const presence = createPresenceTracker({ onArrive: visitorArrived, onLeave: visitorLeft });
+
+export async function visitorConnected(
+  id: string,
+  name: string,
+  lastSeenAt: Date | null,
+): Promise<void> {
+  return presence.connected(id, name, lastSeenAt);
+}
+
+export function visitorDisconnected(id: string): void {
+  presence.disconnected(id);
+}
+
 export async function getVisitor(id: string): Promise<VisitorRow | undefined> {
   const [row] = await db.select().from(visitors).where(eq(visitors.id, id));
   return row;

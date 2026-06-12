@@ -71,6 +71,20 @@ describe("buildChatFraming — the channel-semantics opener (M2.1)", () => {
     expect(framing).toMatch(/Never narrate/);
     // `say` goes to the room, not the visitor.
     expect(framing).toMatch(/`say` speaks aloud to the ROOM/);
+    // No canned self-intro (three near-identical openers observed in 20 min).
+    expect(framing).toMatch(/rehearsed\s+self-introduction/);
+  });
+
+  it("grounds the chat in the agent's live location + activity when provided", () => {
+    const framing = buildChatFraming("Ada", {
+      locationName: "Corner Cafe",
+      activity: "drafting a post on eval design",
+    });
+    expect(framing).toContain("You're at the Corner Cafe right now");
+    expect(framing).toContain("drafting a post on eval design");
+    // Location without activity still grounds.
+    const bare = buildChatFraming(null, { locationName: "Park" });
+    expect(bare).toContain("You're at the Park right now. ");
   });
 
   it("works nameless and renders as the leading user turn ahead of the visitor", () => {

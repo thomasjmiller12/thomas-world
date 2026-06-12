@@ -377,9 +377,12 @@ export function startScheduler(): void {
     }
   });
 
-  // World clock: check the phase every minute, emit on change.
+  // World clock: check the phase every minute, emit on change. Initialized
+  // silently — emitting on boot re-announced the current phase after every
+  // restart/deploy (duplicate world.time in the feed); the frontend reads the
+  // live phase from the snapshot anyway.
+  lastPhase = currentPhase();
   phaseTimer = setInterval(() => void emitPhaseIfChanged(), 60_000);
-  void emitPhaseIfChanged();
 
   // Liveness-aware sweep (design doc §3.4): every minute, close sessions with no
   // ping AND no message for 3 min so a tab-closed-without-close never strands an

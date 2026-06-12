@@ -211,6 +211,10 @@ async function runTickLocked(agentId: AgentId): Promise<TickResult> {
   await writeCursor(agentId, obs.highWaterEventId, obs.highWaterMessageId);
   await markRead(obs.deliveredMessageIds);
   await markTicked(agentId);
+  // Status carries coarse liveness only (activity is the expressive line); a
+  // lived tick clears the seed's "settling in" — which otherwise persisted
+  // forever, since nothing but budget transitions ever wrote status.
+  if (agent.status !== "awake") await setStatus(agentId, "awake");
 
   trace.end({ rounds, totalCost, totalCacheRead, refused });
 

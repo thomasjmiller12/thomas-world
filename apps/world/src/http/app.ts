@@ -45,8 +45,8 @@ import {
 } from "../engine/artifacts.js";
 import {
   registerVisitor,
-  visitorArrived,
-  visitorLeft,
+  visitorConnected,
+  visitorDisconnected,
   touchVisitor,
   getVisitor,
   visitorTokenValid,
@@ -194,8 +194,10 @@ export function createApp() {
           const v = await getVisitor(visitorId);
           if (v) {
             presentVisitor = { id: v.id, name: v.name };
+            // lastSeenAt is read before the touch so the presence debounce can
+            // tell a transport reconnect from a real arrival.
+            await visitorConnected(v.id, v.name, v.lastSeenAt);
             await touchVisitor(v.id);
-            await visitorArrived(v.id, v.name); // perceivable world event
           }
         } catch (err) {
           console.warn("[sse] visitor arrival failed:", (err as Error).message);
@@ -281,13 +283,9 @@ export function createApp() {
       } finally {
         unsub();
         slot.release(); // free the SSE concurrency slot (idempotent w/ onAbort)
-        if (presentVisitor) {
-          try {
-            await visitorLeft(presentVisitor.id); // departure perceivable
-          } catch (err) {
-            console.warn("[sse] visitor departure failed:", (err as Error).message);
-          }
-        }
+        // Departure goes through the presence debounce: it only becomes a
+        // world event if the visitor stays gone past the grace window.
+        if (presentVisitor) visitorDisconnected(presentVisitor.id);
       }
     });
   });
