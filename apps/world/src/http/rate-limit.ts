@@ -7,7 +7,7 @@
 //
 // Limits (design §7):
 //   - chat messages: 8/min AND 150/day per visitor
-//   - visitor creation: 5/hour per IP (validated-existing visitors are exempt —
+//   - visitor creation: 20/hour per IP (validated-existing visitors are exempt —
 //     enforced at the call site, not here)
 //   - SSE: 2 concurrent per IP + 200 global
 //   - 40-turn session cap (agent gets a wrap-up operator note at ~36)
@@ -147,7 +147,9 @@ export class ConcurrencyLimiter {
 export interface RateLimiters {
   chatPerMinute: SlidingWindow; // 8 / 60s per visitor
   chatPerDay: SlidingWindow; // 150 / 24h per visitor
-  visitorCreate: SlidingWindow; // 5 / 1h per IP
+  visitorCreate: SlidingWindow; // 20 / 1h per IP (abuse guard, not a queue —
+  // 5 was tight enough that ordinary testing tripped it; returning visitors
+  // with a valid stored identity bypass this entirely)
   sse: ConcurrencyLimiter; // 2 per IP + 200 global
 }
 
@@ -155,7 +157,7 @@ export function createRateLimiters(): RateLimiters {
   return {
     chatPerMinute: new SlidingWindow(8, 60_000),
     chatPerDay: new SlidingWindow(150, 24 * 60 * 60_000),
-    visitorCreate: new SlidingWindow(5, 60 * 60_000),
+    visitorCreate: new SlidingWindow(20, 60 * 60_000),
     sse: new ConcurrencyLimiter(2, 200),
   };
 }

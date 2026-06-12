@@ -587,10 +587,18 @@ async function streamAgentTurn(args: {
       betas,
     });
 
+    // Narration guard: the model often narrates BEFORE a tool call ("Let me
+    // check my memory first…") — internal stage direction the visitor must not
+    // see. Buffer text per tool round and only emit rounds that did NOT end in
+    // tool_use (the UI's typewriter re-paces the text, so streaming feel
+    // survives). If every round ended in tool_use (max_iterations), fall back
+    // to the last buffer rather than replying with nothing.
+    let flushedAny = false;
+    let lastBuffer = "";
     for await (const stream of runner) {
+      let buf = "";
       stream.on("text", (delta) => {
-        full += delta;
-        void handlers.onFrame({ type: "text", text: delta, agent: agentId });
+        buf += delta;
       });
       const message = await stream.finalMessage();
       // Record usage per tool round so the chat turn counts against the budget.
@@ -608,12 +616,23 @@ async function streamAgentTurn(args: {
           }
         }
       }
+      if (message.stop_reason === "tool_use") {
+        lastBuffer = buf;
+      } else if (buf.trim()) {
+        full += buf;
+        flushedAny = true;
+        await handlers.onFrame({ type: "text", text: buf, agent: agentId });
+      }
       if (message.stop_reason === "refusal") {
         const note = "\n(— the agent declined to continue down that path.)";
         await handlers.onFrame({ type: "text", text: note, agent: agentId });
         full += note;
         break;
       }
+    }
+    if (!flushedAny && lastBuffer.trim()) {
+      full += lastBuffer;
+      await handlers.onFrame({ type: "text", text: lastBuffer, agent: agentId });
     }
   } catch (err) {
     console.warn(`[chat ${sessionId}] turn error (${agentId}):`, (err as Error).message);
@@ -936,15 +955,30 @@ export async function openGreeting(
       stream: true,
       betas: [...TICK_BETAS],
     });
+    // Same narration guard as streamAgentTurn: never stream pre-tool-call
+    // stage direction ("Let me check my memory first…") to the visitor.
+    let flushedAny = false;
+    let lastBuffer = "";
     for await (const stream of runner) {
+      let buf = "";
       stream.on("text", (delta) => {
-        full += delta;
-        void handlers.onFrame({ type: "text", text: delta, agent: agentId });
+        buf += delta;
       });
       const message = await stream.finalMessage();
       // Record usage per tool round so the greeting counts against the budget.
       await recordChatUsage(agentId, profile.role.chatModel, sessionId, message.usage);
+      if (message.stop_reason === "tool_use") {
+        lastBuffer = buf;
+      } else if (buf.trim()) {
+        full += buf;
+        flushedAny = true;
+        await handlers.onFrame({ type: "text", text: buf, agent: agentId });
+      }
       if (message.stop_reason === "refusal") break;
+    }
+    if (!flushedAny && lastBuffer.trim()) {
+      full += lastBuffer;
+      await handlers.onFrame({ type: "text", text: lastBuffer, agent: agentId });
     }
   } catch (err) {
     console.warn(`[chat ${sessionId}] greeting error:`, (err as Error).message);
