@@ -21,6 +21,7 @@ import { anthropic, systemBlocks, hasLlm, TICK_BETAS, MID_CONV_SYSTEM_BETA } fro
 import { getProfile } from "./roles.js";
 import { buildChatTools, type AgentContext } from "./tools.js";
 import { getAgent, setEngagement, clearEngagement } from "../engine/agents.js";
+import { getVisitor } from "../engine/visitors.js";
 import { appendEvent } from "../engine/events.js";
 import { recordUsage } from "../engine/usage.js";
 import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
@@ -68,9 +69,36 @@ export type OpenChatResult =
   | { status: "engaged"; engagement: { kind: "chat" | "scene"; with: (AgentId | "visitor")[] } }
   | { status: "mid-thought" };
 
+// The channel-framing operator row inserted at session creation (M2.1). NOT a
+// greeting — the agent doesn't speak first — but the model needs to know it has
+// left tick-land: in a tick, plain text is private scratch; in a chat, the
+// streamed text IS the spoken reply. Without this row agents narrate their inner
+// monologue to the visitor and reach for `say` to actually answer (observed in
+// the wild on day one). Byte-stable for the session (cache-friendly: it heads
+// the transcript under the message cache breakpoint) and rendered by
+// rowsToHistory as the leading user turn, so the no-leading-assistant invariant
+// holds. Hidden from the visible transcript like every operator row.
+export function buildChatFraming(visitorName: string | null): string {
+  const who = visitorName ? `A visitor (${visitorName})` : "A visitor";
+  return (
+    `[operator note] ${who} just walked up and started a conversation with you. ` +
+    `You are now in a live chat. Everything you write as plain text from here on is ` +
+    `spoken directly to them, streamed word-for-word — it IS your side of the ` +
+    `conversation. Never narrate your reasoning, your situation, or the scene in plain ` +
+    `text: if you wouldn't say it out loud to their face, don't write it. Your tools ` +
+    `still act on the world while you talk — you can walk somewhere (they may follow), ` +
+    `make or revise an artifact, check your memory, use a fixture. Two things people ` +
+    `mix up: \`say\` speaks aloud to the ROOM (the other facets near you), never to ` +
+    `this visitor — answer the visitor by just writing your reply. And when the ` +
+    `conversation has genuinely run its course, say your goodbye and call ` +
+    `\`leave_chat\` in the same message. Their first message follows.`
+  );
+}
+
 // Open a chat session: take the agent-lock for the instant, set engagement,
-// persist the session row + token, emit chat.started, release the lock. The
-// lock guards the instant (no in-flight tick); engagement guards the session.
+// persist the session row + token + the channel-framing operator row, emit
+// chat.started, release the lock. The lock guards the instant (no in-flight
+// tick); engagement guards the session.
 export async function openChat(agentId: AgentId, visitorId: string): Promise<OpenChatResult> {
   const agent = await getAgent(agentId);
   if (!agent) return { status: "unknown" };
@@ -91,6 +119,14 @@ export async function openChat(agentId: AgentId, visitorId: string): Promise<Ope
     await db
       .insert(chatSessions)
       .values({ id: sessionId, agentId, participantAgentIds: [agentId], visitorId, sessionToken });
+    // Channel framing (see buildChatFraming): the model-only leading user turn
+    // that tells the agent its plain text is now spoken to the visitor.
+    const visitor = await getVisitor(visitorId);
+    await db.insert(chatMessages).values({
+      sessionId,
+      sender: "operator",
+      body: buildChatFraming(visitor?.name ?? null),
+    });
     await setEngagement("chat", sessionId, [agentId]);
     // chat.started is PUBLIC presence only — NO sessionId (design doc §3.3:
     // visitor↔agent chat content is private; the public event carries presence).
@@ -236,12 +272,11 @@ function isAgentSender(sender: string): boolean {
 //   - the visitor + operator rows       → `user` (operator notes are model-only)
 //   - the OTHER agent's lines (group)    → `user`, prefixed "Builder: ..." so the
 //                                          perspective agent can tell who spoke
-// The leading turn is always a `user` turn (the visitor speaks first now — there
-// is no agent greeting, so the first persisted row is the visitor's message that
-// runChatTurn inserts BEFORE building history), so the API history NEVER starts
-// with `assistant` (the 400-trap). An older session may still carry a leading
-// `operator` row (historical / mid-chat note); that's a user turn too, so the
-// invariant holds either way. When `perspective` is omitted, ANY agent line
+// The leading turn is always a `user` turn: the first persisted row is the
+// channel-framing `operator` row openChat inserts (a user turn), followed by the
+// visitor's first message (the visitor speaks first — there is no greeting). So
+// the API history NEVER starts with `assistant` (the 400-trap), and consecutive
+// leading user turns are fine — the Messages API doesn't require alternation. When `perspective` is omitted, ANY agent line
 // renders as `assistant` (the 1-agent path — only one agent, so it's
 // unambiguous). Pure + synchronous so the perspective/labeling invariants are
 // unit-testable.

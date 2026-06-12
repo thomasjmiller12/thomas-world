@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   rowsToHistory,
+  buildChatFraming,
   isChatStale,
   pickAddressedAgent,
   lastAgentToSpeak,
@@ -58,6 +59,29 @@ describe("rowsToHistory — operator rows + assistant-never-first (design doc §
       { sender: "agent", body: "who's there", ts: t(2) },
     ];
     expect(rowsToHistory(rows)[0].role).toBe("user");
+  });
+});
+
+describe("buildChatFraming — the channel-semantics opener (M2.1)", () => {
+  it("teaches the two failure modes observed in the wild: text=speech, say=room", () => {
+    const framing = buildChatFraming("Ada");
+    expect(framing).toContain("[operator note]");
+    expect(framing).toContain("A visitor (Ada)");
+    // Plain text is the spoken reply — not narration.
+    expect(framing).toMatch(/spoken directly to them/);
+    expect(framing).toMatch(/Never narrate/);
+    // `say` goes to the room, not the visitor.
+    expect(framing).toMatch(/`say` speaks aloud to the ROOM/);
+  });
+
+  it("works nameless and renders as the leading user turn ahead of the visitor", () => {
+    const rows: ChatRowLike[] = [
+      { sender: "operator", body: buildChatFraming(null), ts: t(1) },
+      { sender: "visitor", body: "sup bro", ts: t(2) },
+    ];
+    const history = rowsToHistory(rows);
+    expect(history.map((h) => h.role)).toEqual(["user", "user"]);
+    expect(history[0].content).toContain("A visitor just walked up");
   });
 });
 
