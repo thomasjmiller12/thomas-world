@@ -122,7 +122,8 @@ export async function endChat(sessionId: string): Promise<void> {
     type: "chat.ended",
     agentId: session.agentId as AgentId,
     visibility: "public",
-    payload: { agent: session.agentId, visitorId: session.visitorId, sessionId },
+    // Presence only — no sessionId on the public stream (mirrors chat.started).
+    payload: { agent: session.agentId, visitorId: session.visitorId },
   });
 }
 

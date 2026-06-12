@@ -94,16 +94,19 @@ export const VisitorLeftPayload = z.object({
   name: z.string(),
 });
 
+// Public presence only (design §3.3: chat content is private to the visitor) —
+// the server intentionally omits sessionId on the public stream.
 export const ChatStartedPayload = z.object({
   agent: AgentId,
   visitorId: z.string(),
-  sessionId: z.string(),
+  sessionId: z.string().optional(),
 });
 
+// Same presence-only rule as ChatStartedPayload.
 export const ChatEndedPayload = z.object({
   agent: AgentId,
   visitorId: z.string(),
-  sessionId: z.string(),
+  sessionId: z.string().optional(),
 });
 
 // --- M2 event payloads (design doc §5) -------------------------------------
