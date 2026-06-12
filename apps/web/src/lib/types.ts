@@ -1,5 +1,9 @@
 export type ThomasId = 'career' | 'researcher' | 'builder' | 'writer' | 'hobby';
 
+// Display + canvas data the renderer needs. Live behavior (status, activity,
+// engagement, chat replies) now comes from the world server via WorldClient —
+// the old stale `greeting` / `status` / `stubbedResponses` fields are gone. The
+// `aboutText` bio stays (it's static, not state).
 export interface NPCConfig {
   id: ThomasId;
   displayName: string;
@@ -7,23 +11,8 @@ export interface NPCConfig {
   homeBuilding: string;
   homePosition: { x: number; y: number };
   color: string;
-  greeting: string;
   waypoints: { x: number; y: number }[];
-  stubbedResponses: string[];
-  status: string;
   aboutText: string;
-}
-
-export interface SimulatedAction {
-  type: 'move' | 'enter_building' | 'exit_building' | 'say' | 'think' | 'work' | 'interact_agent' | 'idle';
-  target?: { x: number; y: number };
-  building?: string;
-  message?: string;
-  thought?: string;
-  description?: string;
-  targetAgent?: ThomasId;
-  audience?: 'public' | string;
-  duration?: number;
 }
 
 export interface ChatMessage {

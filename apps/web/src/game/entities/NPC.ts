@@ -17,6 +17,19 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   private speechBubble: Phaser.GameObjects.Graphics;
   private isInConversation: boolean = false;
   private wasInRange: boolean = false;
+  // Scoped handler refs so destroy() removes ONLY this NPC's listeners
+  // (previously anonymous + never removed → a leak across scene transitions).
+  private readonly onChatOpened = (data: { npcId: ThomasId }) => {
+    if (data.npcId === this.npcId) {
+      this.isInConversation = true;
+      this.setVelocity(0, 0);
+    }
+  };
+  private readonly onChatClosed = (data: { npcId: ThomasId }) => {
+    if (data.npcId === this.npcId) {
+      this.isInConversation = false;
+    }
+  };
 
   constructor(scene: Phaser.Scene, config: NPCConfig) {
     super(scene, config.homePosition.x, config.homePosition.y, config.sprite, 0);
@@ -48,18 +61,8 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
 
     this.startWaypoints();
 
-    EventBus.on('chat-opened', (data: { npcId: string }) => {
-      if (data.npcId === this.npcId) {
-        this.isInConversation = true;
-        this.setVelocity(0, 0);
-      }
-    });
-
-    EventBus.on('chat-closed', (data: { npcId: string }) => {
-      if (data.npcId === this.npcId) {
-        this.isInConversation = false;
-      }
-    });
+    EventBus.on('chat-opened', this.onChatOpened);
+    EventBus.on('chat-closed', this.onChatClosed);
   }
 
   private drawSpeechBubble() {
@@ -178,6 +181,8 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   }
 
   destroy(fromScene?: boolean) {
+    EventBus.off('chat-opened', this.onChatOpened);
+    EventBus.off('chat-closed', this.onChatClosed);
     this.colorDot?.destroy();
     this.speechBubble?.destroy();
     this.pauseTimer?.destroy();

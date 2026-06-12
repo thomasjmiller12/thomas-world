@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NPC_CONFIGS } from '@/game/data/npc-configs';
 import type { ThomasId, NPCConfig } from '@/lib/types';
+import { useAgentStatuses, statusLine, type AgentStatusMap } from '@/lib/useAgentStatuses';
 
 const BUILDING_LABELS: Record<string, string> = {
   office: 'Office',
@@ -8,6 +9,7 @@ const BUILDING_LABELS: Record<string, string> = {
   workshop: 'Workshop',
   cafe: 'Cafe',
   park: 'Town',
+  town: 'Town',
 };
 
 // Sprite sheets are 64x96 with 16x24 frames (4 cols x 4 rows)
@@ -39,6 +41,7 @@ interface AgentRosterProps {
 
 export function AgentRoster({ proximityNpcId, chatNpcId, selectedNpcId, onNpcClick }: AgentRosterProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const statuses = useAgentStatuses();
   const npcs = Object.values(NPC_CONFIGS);
 
   if (collapsed) {
@@ -91,6 +94,7 @@ export function AgentRoster({ proximityNpcId, chatNpcId, selectedNpcId, onNpcCli
           <RosterEntry
             key={config.id}
             config={config}
+            status={statuses}
             isNear={proximityNpcId === config.id}
             isChatting={chatNpcId === config.id}
             isSelected={selectedNpcId === config.id}
@@ -102,14 +106,18 @@ export function AgentRoster({ proximityNpcId, chatNpcId, selectedNpcId, onNpcCli
   );
 }
 
-function RosterEntry({ config, isNear, isChatting, isSelected, onClick }: {
+function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick }: {
   config: NPCConfig;
+  status: AgentStatusMap;
   isNear: boolean;
   isChatting: boolean;
   isSelected: boolean;
   onClick: () => void;
 }) {
-  const location = BUILDING_LABELS[config.homeBuilding] || config.homeBuilding;
+  const live = status[config.id];
+  // Live location when known, else the home building as a placeholder.
+  const locationKey = live?.locationId ?? config.homeBuilding;
+  const location = BUILDING_LABELS[locationKey] || locationKey;
 
   return (
     <button
@@ -143,7 +151,7 @@ function RosterEntry({ config, isNear, isChatting, isSelected, onClick }: {
         </div>
       </div>
       <p className="text-[10px] text-[#c4b5a0]/45 mt-1 leading-snug line-clamp-1 pl-1">
-        {config.status}
+        {statusLine(live)}
       </p>
     </button>
   );

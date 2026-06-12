@@ -3,6 +3,7 @@ import { ChatWindow } from './ChatWindow';
 import { NPC_CONFIGS } from '@/game/data/npc-configs';
 import { THOMAS_COLORS } from '@/lib/constants';
 import type { ThomasId, ChatMessage } from '@/lib/types';
+import { useAgentStatuses, statusLine } from '@/lib/useAgentStatuses';
 
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 400;
@@ -126,6 +127,7 @@ export function RightPanel({
 function NpcInfoView({ npcId }: { npcId: ThomasId }) {
   const config = NPC_CONFIGS[npcId];
   const color = THOMAS_COLORS[npcId] || '#4A90D9';
+  const statuses = useAgentStatuses();
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -141,7 +143,7 @@ function NpcInfoView({ npcId }: { npcId: ThomasId }) {
       <div className="flex-1 overflow-y-auto p-3">
         <div className="mb-3">
           <p className="text-[9px] text-[#c4b5a0]/40 uppercase tracking-wider mb-1">Status</p>
-          <p className="text-xs text-[#c4b5a0]/75">{config?.status}</p>
+          <p className="text-xs text-[#c4b5a0]/75">{statusLine(statuses[npcId])}</p>
         </div>
         <div>
           <p className="text-[9px] text-[#c4b5a0]/40 uppercase tracking-wider mb-1">About</p>

@@ -5,6 +5,7 @@ import { NPC } from '../entities/NPC';
 import { NPC_CONFIGS } from '../data/npc-configs';
 import { EventBus } from '../EventBus';
 import { getDoorByScene, type DoorConfig } from '../data/door-configs';
+import type { ThomasId } from '@/lib/types';
 
 const EXIT_INTERACTION_RANGE = 20;
 
@@ -16,6 +17,9 @@ export interface InteriorState {
   isExiting: boolean;
   exitPrompt: Phaser.GameObjects.Graphics | null;
   door: DoorConfig;
+  // Scoped player-interact handler ref — removed (only it) on exit so we never
+  // wipe other scenes' listeners with a bare removeAllListeners.
+  onPlayerInteract?: () => void;
 }
 
 export function initInterior(
@@ -92,18 +96,18 @@ export function setupInterior(
   g.fillCircle(0, 5, 1);
   state.exitPrompt = g;
 
-  // Interaction handler
-  EventBus.on('player-interact', () => {
+  // Interaction handler — kept as a ref so we can scope-remove it on exit.
+  state.onPlayerInteract = () => {
     if (state.isExiting) return;
 
     // NPC interaction takes priority
     if (state.npc.isPlayerInRange(state.player.x, state.player.y)) {
       state.npc.facePlayer(state.player.x, state.player.y);
       EventBus.emit('npc-interaction', {
-        npcId: npcId,
+        npcId: npcId as ThomasId,
         npcName: npcConfig.displayName,
       });
-      EventBus.emit('chat-opened', { npcId: npcId });
+      EventBus.emit('chat-opened', { npcId: npcId as ThomasId });
       return;
     }
 
@@ -115,7 +119,8 @@ export function setupInterior(
     if (dist <= EXIT_INTERACTION_RANGE) {
       handleExit(scene, state);
     }
-  });
+  };
+  EventBus.on('player-interact', state.onPlayerInteract);
 
   EventBus.emit('scene-changed', { scene: scene.scene.key, locationName });
   EventBus.emit('current-scene-ready', scene);
@@ -149,7 +154,10 @@ function handleExit(scene: Phaser.Scene, state: InteriorState) {
   cam.fadeOut(300, 0, 0, 0);
   cam.once('camerafadeoutcomplete', () => {
     if (!scene.scene?.isActive(scene.scene.key)) return;
-    EventBus.removeAllListeners('player-interact');
+    if (state.onPlayerInteract) {
+      EventBus.off('player-interact', state.onPlayerInteract);
+      state.onPlayerInteract = undefined;
+    }
     scene.scene.start(SCENE_KEYS.TOWN, {
       spawnX: state.returnX,
       spawnY: state.returnY + 16,

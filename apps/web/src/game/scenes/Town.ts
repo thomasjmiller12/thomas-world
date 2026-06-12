@@ -270,6 +270,9 @@ export default class Town extends Phaser.Scene {
 	private nearestDoor: DoorConfig | null = null;
 	private isTransitioning: boolean = false;
 	private doorPrompts: Map<string, Phaser.GameObjects.Graphics> = new Map();
+	// Scoped handler ref so we remove ONLY this scene's player-interact listener
+	// on transition (never a bare removeAllListeners that wipes other scenes').
+	private onPlayerInteract?: () => void;
 	private static readonly DOOR_INTERACTION_RANGE = 20;
 	private static readonly PLAYER_SPAWN = { x: 152, y: 456 };
 
@@ -346,8 +349,8 @@ export default class Town extends Phaser.Scene {
 			this.doorPrompts.set(door.id, g);
 		}
 
-		// Interaction handler
-		EventBus.on('player-interact', () => {
+		// Interaction handler — kept as a ref so we can scope-remove it later.
+		this.onPlayerInteract = () => {
 			if (this.isTransitioning) return;
 
 			if (this.nearestNPC) {
@@ -363,7 +366,8 @@ export default class Town extends Phaser.Scene {
 			if (this.nearestDoor) {
 				this.enterBuilding(this.nearestDoor);
 			}
-		});
+		};
+		EventBus.on('player-interact', this.onPlayerInteract);
 
 		EventBus.emit('scene-changed', { scene: SCENE_KEYS.TOWN, locationName: "Thomas's Town" });
 		EventBus.emit('current-scene-ready', this);
@@ -373,7 +377,10 @@ export default class Town extends Phaser.Scene {
 		this.isTransitioning = true;
 		this.cameras.main.fadeOut(300, 0, 0, 0);
 		this.cameras.main.once('camerafadeoutcomplete', () => {
-			EventBus.removeAllListeners('player-interact');
+			if (this.onPlayerInteract) {
+				EventBus.off('player-interact', this.onPlayerInteract);
+				this.onPlayerInteract = undefined;
+			}
 			this.scene.start(door.sceneKey, {
 				returnX: this.player.x,
 				returnY: this.player.y,

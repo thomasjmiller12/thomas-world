@@ -9,6 +9,23 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private direction: string = 'down';
   private isInteracting: boolean = false;
   visitorName: string = 'Visitor';
+  // Scoped handler refs so destroy() removes ONLY this player's listeners.
+  private readonly onChatOpened = () => {
+    this.isInteracting = true;
+    this.scene.input.keyboard?.disableGlobalCapture();
+  };
+  private readonly onChatClosed = () => {
+    this.isInteracting = false;
+    this.scene.input.keyboard?.enableGlobalCapture();
+  };
+  private readonly onDialogOpened = () => {
+    this.isInteracting = true;
+    this.scene.input.keyboard?.disableGlobalCapture();
+  };
+  private readonly onDialogClosed = () => {
+    this.isInteracting = false;
+    this.scene.input.keyboard?.enableGlobalCapture();
+  };
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, 'player', 0);
@@ -38,22 +55,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       });
     }
 
-    EventBus.on('chat-opened', () => {
-      this.isInteracting = true;
-      this.scene.input.keyboard?.disableGlobalCapture();
-    });
-    EventBus.on('chat-closed', () => {
-      this.isInteracting = false;
-      this.scene.input.keyboard?.enableGlobalCapture();
-    });
-    EventBus.on('dialog-opened', () => {
-      this.isInteracting = true;
-      this.scene.input.keyboard?.disableGlobalCapture();
-    });
-    EventBus.on('dialog-closed', () => {
-      this.isInteracting = false;
-      this.scene.input.keyboard?.enableGlobalCapture();
-    });
+    EventBus.on('chat-opened', this.onChatOpened);
+    EventBus.on('chat-closed', this.onChatClosed);
+    EventBus.on('dialog-opened', this.onDialogOpened);
+    EventBus.on('dialog-closed', this.onDialogClosed);
   }
 
   update() {
@@ -118,10 +123,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   destroy(fromScene?: boolean) {
-    EventBus.off('chat-opened');
-    EventBus.off('chat-closed');
-    EventBus.off('dialog-opened');
-    EventBus.off('dialog-closed');
+    EventBus.off('chat-opened', this.onChatOpened);
+    EventBus.off('chat-closed', this.onChatClosed);
+    EventBus.off('dialog-opened', this.onDialogOpened);
+    EventBus.off('dialog-closed', this.onDialogClosed);
     super.destroy(fromScene);
   }
 }

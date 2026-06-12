@@ -12,8 +12,6 @@ export const PLAYER_SPEED = 60;
 export const NPC_SPEED = 20;
 export const INTERACTION_RANGE = 24;
 
-export const SIMULATION_TICK_MS = 10000;
-
 export const SCENE_KEYS = {
   BOOT: 'Boot',
   PRELOADER: 'Preloader',

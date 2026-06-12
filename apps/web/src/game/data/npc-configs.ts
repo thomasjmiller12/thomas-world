@@ -1,5 +1,9 @@
 import { NPCConfig } from '@/lib/types';
 
+// Static display + canvas data for each agent facet. Behavior is LIVE now —
+// status, activity, engagement, thoughts, speech, and chat replies all arrive
+// from the world server via WorldClient. The old scripted fields (greeting,
+// status, stubbedResponses) were removed with the simulator trio.
 export const NPC_CONFIGS: Record<string, NPCConfig> = {
   career: {
     id: 'career',
@@ -8,21 +12,12 @@ export const NPC_CONFIGS: Record<string, NPCConfig> = {
     homeBuilding: 'office',
     homePosition: { x: 432, y: 220 },
     color: '#4A90D9',
-    greeting: "Hey there! I'm Career Thomas. Want to hear about my journey from BYU to building AI billing systems?",
     waypoints: [
       { x: 432, y: 220 },
       { x: 370, y: 260 },
       { x: 320, y: 300 },
       { x: 432, y: 220 },
     ],
-    stubbedResponses: [
-      "I worked at SambaNova Systems building out their AI infrastructure. It was an incredible ride.",
-      "Currently I'm building Billables AI — automating legal billing with large language models.",
-      "BYU was where it all started. Statistics degree, but I was always building side projects.",
-      "The transition from data science to AI engineering felt natural. I love building things that ship.",
-      "I think the best career advice is to find the intersection of what you're good at and what's emerging.",
-    ],
-    status: 'Reviewing AI billing metrics',
     aboutText: "Career Thomas tracks Thomas's professional journey — from studying statistics at BYU to building AI infrastructure at SambaNova Systems to founding Billables AI. Ask him about career transitions, the AI industry, or what it's like building a startup.",
   },
   researcher: {
@@ -32,21 +27,12 @@ export const NPC_CONFIGS: Record<string, NPCConfig> = {
     homeBuilding: 'library',
     homePosition: { x: 160, y: 190 },
     color: '#9B59B6',
-    greeting: "Ah, a visitor! I'm Researcher Thomas. I've been pondering some fascinating statistical methods. Care to discuss?",
     waypoints: [
       { x: 160, y: 190 },
       { x: 200, y: 260 },
       { x: 120, y: 300 },
       { x: 160, y: 190 },
     ],
-    stubbedResponses: [
-      "I've been working on Monte Carlo methods for skill estimation. The variance reduction is tricky but beautiful.",
-      "Have you ever thought about how we evaluate language model capabilities? It's a deeply statistical question.",
-      "The key insight is that most benchmarks measure the wrong thing. We need methods that capture genuine reasoning.",
-      "I read three papers yesterday on Bayesian approaches to prompt optimization. Fascinating stuff.",
-      "Statistical rigor isn't just academic — it's what separates real AI advances from noise.",
-    ],
-    status: 'Reading papers on Bayesian methods',
     aboutText: "Researcher Thomas represents the analytical side — deep into statistics, ML evaluation, and scientific rigor. He's always reading papers, questioning benchmarks, and thinking about how to properly measure AI capabilities.",
   },
   builder: {
@@ -56,21 +42,12 @@ export const NPC_CONFIGS: Record<string, NPCConfig> = {
     homeBuilding: 'workshop',
     homePosition: { x: 520, y: 220 },
     color: '#E67E22',
-    greeting: "Oh hey! Builder Thomas here. I've got like 5 projects running right now. Want to see what I'm shipping?",
     waypoints: [
       { x: 520, y: 220 },
       { x: 480, y: 280 },
       { x: 420, y: 320 },
       { x: 520, y: 220 },
     ],
-    stubbedResponses: [
-      "I just finished a Codenames eval pipeline — testing how well different LLMs give clues. It's wild.",
-      "This town you're standing in? Yeah, that's one of my projects. Meta, right?",
-      "I prototype fast and iterate. Ship first, polish later. That's the builder mindset.",
-      "My workshop has monitors everywhere. Each one running a different experiment or build.",
-      "The best projects come from scratching your own itch. Every tool I build, I use myself first.",
-    ],
-    status: 'Shipping a new eval pipeline',
     aboutText: "Builder Thomas is the maker — always prototyping, shipping, and iterating. From Codenames eval tools to this very town, he's got multiple projects running at once. Ask him about what he's building or his approach to rapid development.",
   },
   writer: {
@@ -80,21 +57,12 @@ export const NPC_CONFIGS: Record<string, NPCConfig> = {
     homeBuilding: 'cafe',
     homePosition: { x: 240, y: 380 },
     color: '#27AE60',
-    greeting: "Welcome! I'm Writer Thomas. Pull up a chair. I was just drafting something about the future of AI in law.",
     waypoints: [
       { x: 240, y: 380 },
       { x: 300, y: 400 },
       { x: 200, y: 420 },
       { x: 240, y: 380 },
     ],
-    stubbedResponses: [
-      "I've been writing about how AI is transforming legal billing. It's a space few people think about but it affects everyone.",
-      "Good writing is good thinking made visible. I try to synthesize complex ideas into clear narratives.",
-      "My latest draft explores the ethics of AI-assisted professional services. Where do we draw the line?",
-      "I keep a notebook for every idea. Most won't become articles, but the practice of capturing them matters.",
-      "The cafe is my favorite spot to write. Something about the ambient noise helps me think.",
-    ],
-    status: 'Drafting an article on AI in law',
     aboutText: "Writer Thomas turns complex ideas into clear narratives. He writes about AI, law, technology ethics, and the future of professional services. Find him at the cafe with a notebook and strong opinions about good prose.",
   },
   hobby: {
@@ -104,21 +72,12 @@ export const NPC_CONFIGS: Record<string, NPCConfig> = {
     homeBuilding: 'park',
     homePosition: { x: 320, y: 350 },
     color: '#E74C3C',
-    greeting: "Hey! I'm the fun Thomas. Do you play any games? I've been on a huge board game kick lately.",
     waypoints: [
       { x: 320, y: 350 },
       { x: 250, y: 380 },
       { x: 380, y: 400 },
       { x: 320, y: 350 },
     ],
-    stubbedResponses: [
-      "Have you played Codenames? It's one of my favorites. Actually, that's why Builder Thomas made that eval tool.",
-      "I think people underestimate how much gaming teaches you about strategy and systems thinking.",
-      "On weekends I'm usually hiking, playing board games, or trying to convince everyone to play volleyball.",
-      "Life's too short to only think about work. The hobby side of me keeps the other Thomases human.",
-      "I've been getting into cooking lately. There's something meditative about making pasta from scratch.",
-    ],
-    status: 'Planning a board game night',
     aboutText: "Hobby Thomas is the fun side — board games, hiking, volleyball, cooking. He keeps the other Thomases grounded and reminds everyone that life is more than code and deadlines.",
   },
 };

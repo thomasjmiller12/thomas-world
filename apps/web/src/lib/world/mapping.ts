@@ -1,0 +1,149 @@
+import type { AgentId, WorldEvent, AgentStatus } from '@town/contract';
+import type { WorldEventName, WorldEvents } from '@/game/EventBus';
+
+// Pure mapping from contract WorldEvents → the typed EventBus events the UI
+// consumes (design doc §6.1). Kept pure (returns the events to emit instead of
+// emitting) so the mapping is unit-testable without an EventBus or network.
+//
+// `agentId` on the contract envelope is the AgentId enum (a subset of ThomasId),
+// so it's safe to forward directly as a ThomasId.
+
+export interface EmitSpec<K extends WorldEventName = WorldEventName> {
+  name: K;
+  payload: WorldEvents[K];
+}
+
+// Helper to build a strongly-typed spec entry.
+function spec<K extends WorldEventName>(name: K, payload: WorldEvents[K]): EmitSpec<K> {
+  return { name, payload };
+}
+
+// Translate one contract event into zero or more EventBus emits. Events with no
+// UI surface (e.g. message.sent headline, bulletin.posted) map to nothing here
+// — they live in the feed, not the canvas.
+export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
+  switch (ev.type) {
+    case 'agent.moved':
+      return [
+        spec('npc-move-to', {
+          npcId: ev.payload.agent,
+          from: ev.payload.from,
+          to: ev.payload.to,
+        }),
+      ];
+
+    case 'agent.thought':
+      return [spec('npc-thought', { npcId: ev.payload.agent, thought: ev.payload.text })];
+
+    case 'agent.spoke':
+      return [
+        spec('npc-speech', {
+          npcId: ev.payload.agent,
+          message: ev.payload.text,
+          audience: 'public',
+        }),
+      ];
+
+    case 'conversation.turn':
+      return [
+        spec('npc-speech', {
+          npcId: ev.payload.agent,
+          message: ev.payload.text,
+          audience: 'scene',
+          conversationId: ev.payload.conversationId,
+        }),
+      ];
+
+    case 'agent.activity':
+      return [spec('npc-activity', { npcId: ev.payload.agent, activity: ev.payload.activity })];
+
+    case 'world.effect':
+      return [
+        spec('fixture-effect', {
+          location: ev.payload.location,
+          fixture: ev.payload.fixture,
+          effect: ev.payload.effect,
+          npcId: ev.payload.agent,
+        }),
+      ];
+
+    case 'conversation.started':
+      return [
+        spec('scene-started', {
+          conversationId: ev.payload.conversationId,
+          location: ev.payload.location,
+          participants: ev.payload.participants as AgentId[],
+        }),
+      ];
+
+    case 'conversation.ended':
+      return [spec('scene-ended', { conversationId: ev.payload.conversationId })];
+
+    case 'conversation.converted':
+      return [spec('scene-converted', { conversationId: ev.payload.conversationId })];
+
+    case 'chat.joined':
+      return [spec('chat-joined', { sessionId: ev.payload.sessionId, npcId: ev.payload.agent })];
+
+    case 'world.time':
+      // Phase change updates only the tint; visitor count / awake come from the
+      // snapshot's world block (and stay until the next snapshot). We surface
+      // phase via world-state with conservative defaults the caller overrides.
+      return [
+        spec('world-state', {
+          phase: ev.payload.phase,
+          visitorsPresent: 0,
+          awake: true,
+        }),
+      ];
+
+    // Surfaced via feed / roster only — no canvas emit:
+    case 'message.sent':
+    case 'artifact.created':
+    case 'artifact.updated':
+    case 'bulletin.posted':
+    case 'capability.requested':
+    case 'visitor.arrived':
+    case 'visitor.left':
+    case 'visitor.moved':
+    case 'visitor.interacted':
+    case 'chat.started':
+    case 'chat.ended':
+      return [];
+
+    default: {
+      // Exhaustiveness guard: a new contract event type forces a compile error.
+      const _never: never = ev;
+      void _never;
+      return [];
+    }
+  }
+}
+
+// Snapshot hydration → per-agent status emits (positions/status/engagement,
+// design doc §6.1). One npc-status per agent.
+export function mapAgentStatus(agent: AgentStatus): EmitSpec<'npc-status'> {
+  return spec('npc-status', {
+    npcId: agent.id,
+    locationId: agent.locationId,
+    status: agent.status,
+    activity: agent.activity,
+    busy: agent.busy,
+    engagement: agent.engagement,
+  });
+}
+
+// Resolve the world-server base URL from the build-time env var, falling back
+// to the dev port the world server actually listens on (8787, per apps/world
+// README). Trailing slash trimmed so callers can append paths cleanly.
+export function resolveWorldBaseUrl(envUrl: string | undefined): string {
+  const url = (envUrl && envUrl.trim()) || 'http://localhost:8787';
+  return url.replace(/\/+$/, '');
+}
+
+// Exponential backoff with jitter for SSE reconnects. Caps at 30s.
+export function reconnectDelayMs(attempt: number): number {
+  const base = Math.min(30000, 1000 * 2 ** Math.min(attempt, 5));
+  const jitter = Math.random() * 0.3 * base;
+  return Math.round(base + jitter);
+}

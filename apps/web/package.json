@@ -10,6 +10,7 @@
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
+        "@town/contract": "workspace:*",
         "next": "^15.3.9",
         "phaser": "^3.90.0",
         "react": "19.0.0",

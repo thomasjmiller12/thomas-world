@@ -1,14 +1,14 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { PhaserGame } from './PhaserGame';
 import { EventBus } from './game/EventBus';
-import { InteractionSystem } from './game/systems/InteractionSystem';
-import { AgentSimulator } from './game/systems/AgentSimulator';
+import { WorldClient } from './game/systems/WorldClient';
+import { DreamMode } from './game/systems/DreamMode';
 import { AgentRoster } from './components/AgentRoster';
 import { RightPanel } from './components/RightPanel';
 import { DialogBox } from './components/DialogBox';
 import { ThoughtBubble } from './components/ThoughtBubble';
 import { HUD } from './components/HUD';
-import { NPC_CONFIGS } from './game/data/npc-configs';
+import { locationForScene } from './game/data/location-anchors';
 import type { ThomasId, ChatMessage, ThoughtBubbleData, DialogData } from './lib/types';
 
 interface AppProps {
@@ -16,8 +16,8 @@ interface AppProps {
 }
 
 function App({ visitorName }: AppProps) {
-  const simulatorRef = useRef<AgentSimulator | null>(null);
-  const interactionRef = useRef<InteractionSystem | null>(null);
+  const worldRef = useRef<WorldClient | null>(null);
+  const dreamRef = useRef<DreamMode | null>(null);
 
   const [chatOpen, setChatOpen] = useState(false);
   const [chatNpcId, setChatNpcId] = useState<ThomasId | null>(null);
@@ -41,6 +41,7 @@ function App({ visitorName }: AppProps) {
       timestamp: Date.now(),
     };
     setChatMessages(prev => [...prev, visitorMsg]);
+    // Visitor line → WorldClient streams the reply (npc-chat-response per turn).
     EventBus.emit('chat-message-sent', { npcId: chatNpcId, message });
   }, [chatNpcId, visitorName]);
 
@@ -69,44 +70,56 @@ function App({ visitorName }: AppProps) {
   }, []);
 
   useEffect(() => {
-    simulatorRef.current = new AgentSimulator();
-    interactionRef.current = new InteractionSystem();
+    const world = new WorldClient(visitorName);
+    const dream = new DreamMode();
+    worldRef.current = world;
+    dreamRef.current = dream;
 
-    EventBus.once('current-scene-ready', () => {
-      simulatorRef.current?.start();
-    });
-
-    EventBus.on('npc-interaction', (data: { npcId: ThomasId; npcName: string }) => {
-      const config = NPC_CONFIGS[data.npcId];
+    // Keep handler refs so unmount removes ONLY our own listeners (no bare
+    // removeAllListeners — that would nuke the Phaser scenes' listeners too,
+    // which breaks under React StrictMode / HMR remounts).
+    const onSceneReady = () => {
+      void world.start();
+    };
+    const onNpcInteraction = (data: { npcId: ThomasId; npcName: string }) => {
       setChatNpcId(data.npcId);
       setChatNpcName(data.npcName);
-      setChatMessages([{
-        sender: data.npcId,
-        senderName: data.npcName,
-        text: config?.greeting || 'Hello!',
-        timestamp: Date.now(),
-      }]);
+      setChatMessages([]);
       setChatOpen(true);
       setSelectedNpcId(data.npcId);
       setRightPanelVisible(true);
-    });
-
-    EventBus.on('npc-chat-response', (msg: ChatMessage) => {
+      // Escalate: ask WorldClient to open the session + stream the greeting.
+      EventBus.emit('chat-open-request', { npcId: data.npcId });
+    };
+    const onChatResponse = (msg: ChatMessage) => {
       setChatMessages(prev => [...prev, msg]);
-    });
-
-    EventBus.on('show-dialog', (data: DialogData) => {
+    };
+    const onChatError = (data: { npcId?: ThomasId; reason: string }) => {
+      // Surface the failure in-panel as a system line (full Tier-1 alternatives
+      // land in F2; this keeps the panel honest meanwhile).
+      const line =
+        data.reason === 'engaged'
+          ? "He's deep in something right now — try again in a moment."
+          : 'The town is quiet right now. Try again shortly.';
+      setChatMessages(prev => [...prev, {
+        sender: data.npcId ?? 'hobby',
+        senderName: chatNpcName || 'Thomas',
+        text: line,
+        timestamp: Date.now(),
+      }]);
+    };
+    const onShowDialog = (data: DialogData) => {
       setDialogData(data);
       setDialogOpen(true);
-    });
-
-    EventBus.on('scene-changed', (data: { locationName: string }) => {
+    };
+    const onSceneChanged = (data: { scene: string; locationName: string }) => {
       setLocationName(data.locationName);
-    });
-
-    EventBus.on('npc-thought', (data: { npcId: ThomasId; thought: string }) => {
+      const loc = locationForScene(data.scene);
+      if (loc) world.reportLocation(loc);
+    };
+    const onNpcThought = (data: { npcId: ThomasId; thought: string }) => {
       const bubble: ThoughtBubbleData = {
-        id: `${data.npcId}-${Date.now()}`,
+        id: `${data.npcId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         npcId: data.npcId,
         text: data.thought,
         screenX: 0,
@@ -116,27 +129,52 @@ function App({ visitorName }: AppProps) {
       setTimeout(() => {
         setThoughtBubbles(prev => prev.filter(b => b.id !== bubble.id));
       }, 5000);
-    });
-
-    EventBus.on('npc-screen-position', (data: { npcId: string; screenX: number; screenY: number }) => {
+    };
+    const onNpcScreenPosition = (data: { npcId: string; screenX: number; screenY: number }) => {
       setNpcPositions(prev => ({
         ...prev,
         [data.npcId]: { screenX: data.screenX, screenY: data.screenY },
       }));
-    });
-
-    EventBus.on('npc-proximity-enter', (data: { npcId: ThomasId }) => {
+    };
+    const onProximityEnter = (data: { npcId: ThomasId }) => {
       setProximityNpcId(data.npcId);
-    });
-
-    EventBus.on('npc-proximity-exit', (data: { npcId: ThomasId }) => {
+    };
+    const onProximityExit = (data: { npcId: ThomasId }) => {
       setProximityNpcId(prev => prev === data.npcId ? null : prev);
-    });
+    };
+    // Degraded mode: if WorldClient can't reach the server / budget is gone,
+    // run the free scripted dream layer so the town reads asleep, not broken.
+    const onWorldSleeping = (data: { sleeping: boolean }) => {
+      if (data.sleeping) dream.start();
+      else dream.stop();
+    };
+
+    EventBus.on('current-scene-ready', onSceneReady);
+    EventBus.on('npc-interaction', onNpcInteraction);
+    EventBus.on('npc-chat-response', onChatResponse);
+    EventBus.on('chat-error', onChatError);
+    EventBus.on('show-dialog', onShowDialog);
+    EventBus.on('scene-changed', onSceneChanged);
+    EventBus.on('npc-thought', onNpcThought);
+    EventBus.on('npc-screen-position', onNpcScreenPosition);
+    EventBus.on('npc-proximity-enter', onProximityEnter);
+    EventBus.on('npc-proximity-exit', onProximityExit);
+    EventBus.on('world-sleeping', onWorldSleeping);
 
     return () => {
-      simulatorRef.current?.stop();
-      interactionRef.current?.destroy();
-      EventBus.removeAllListeners();
+      dream.stop();
+      world.stop();
+      EventBus.off('current-scene-ready', onSceneReady);
+      EventBus.off('npc-interaction', onNpcInteraction);
+      EventBus.off('npc-chat-response', onChatResponse);
+      EventBus.off('chat-error', onChatError);
+      EventBus.off('show-dialog', onShowDialog);
+      EventBus.off('scene-changed', onSceneChanged);
+      EventBus.off('npc-thought', onNpcThought);
+      EventBus.off('npc-screen-position', onNpcScreenPosition);
+      EventBus.off('npc-proximity-enter', onProximityEnter);
+      EventBus.off('npc-proximity-exit', onProximityExit);
+      EventBus.off('world-sleeping', onWorldSleeping);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
