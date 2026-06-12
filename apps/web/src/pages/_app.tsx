@@ -1,4 +1,5 @@
 import "@/styles/globals.css";
+import { useEffect } from "react";
 import type { AppProps } from "next/app";
 import { Fredoka, Nunito_Sans, Silkscreen } from "next/font/google";
 
@@ -29,6 +30,16 @@ const silkscreen = Silkscreen({
 });
 
 export default function App({ Component, pageProps }: AppProps) {
+  // The --font-* variables MUST live on <html>, not a wrapper div: tokens.css
+  // composes them into --sans/--display/--mono at :root, and a custom property
+  // substitutes var() references at the element where it is DECLARED. With the
+  // fonts scoped to a child div, --sans computed to guaranteed-invalid at :root
+  // and every `font:` shorthand in the app silently fell back to 16px system-ui.
+  useEffect(() => {
+    const cls = [fredoka.variable, nunito.variable, silkscreen.variable];
+    document.documentElement.classList.add(...cls);
+    return () => document.documentElement.classList.remove(...cls);
+  }, []);
   return (
     <div className={`${fredoka.variable} ${nunito.variable} ${silkscreen.variable}`}>
       <Component {...pageProps} />

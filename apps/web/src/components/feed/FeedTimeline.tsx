@@ -3,10 +3,11 @@ import type { FeedItem, AgentId, LocationId } from '@town/contract';
 import { NPC_CONFIGS } from '@/game/data/npc-configs';
 import { THOMAS_COLORS } from '@/lib/constants';
 import type { ThomasId } from '@/lib/types';
-import { agentShortName } from '@/components/chat/primitives';
+import { agentShortName, SpritePortrait } from '@/components/chat/primitives';
 import { fetchFeed } from './feedClient';
 import {
-  glyphFor,
+  labelFor,
+  isHiddenFromFeed,
   isSpeech,
   isThought,
   locationLabel,
@@ -156,14 +157,16 @@ export function FeedTimeline({ onClose, onShowInTown, fullScreen }: Props) {
             Nothing has happened yet today.
           </div>
         )}
-        {items.map((e, i) => (
-          <TimelineRow
-            key={e.id}
-            item={e}
-            last={i === items.length - 1}
-            onShowInTown={onShowInTown}
-          />
-        ))}
+        {items
+          .filter((e) => !isHiddenFromFeed(e.type))
+          .map((e, i, shown) => (
+            <TimelineRow
+              key={e.id}
+              item={e}
+              last={i === shown.length - 1}
+              onShowInTown={onShowInTown}
+            />
+          ))}
         {loading && (
           <div style={{ padding: '12px 4px', font: '400 10.5px var(--mono)', color: 'var(--ink-3)', letterSpacing: '.04em' }}>
             LOADING…
@@ -204,7 +207,6 @@ function TimelineRow({ item, last, onShowInTown }: {
   item: FeedItem; last: boolean; onShowInTown: (l: LocationId) => void;
 }) {
   const [hover, setHover] = useState(false);
-  const glyph = glyphFor(item.type);
   const agent = item.agent as ThomasId | null;
   const color = agent ? THOMAS_COLORS[agent] : 'var(--ink-3)';
   const recipient = item.to as ThomasId | null;
@@ -234,12 +236,18 @@ function TimelineRow({ item, last, onShowInTown }: {
             border: `1px solid ${agent ? `${THOMAS_COLORS[agent]}40` : 'var(--line)'}`,
             display: 'grid',
             placeItems: 'center',
-            fontSize: 14,
+            overflow: 'hidden',
             zIndex: 1,
             marginTop: 3,
           }}
         >
-          {glyph.icon}
+          {agent ? (
+            // The agent's pixel portrait — bespoke and emoji-free; the type
+            // badge next to the name carries the event kind.
+            <SpritePortrait npcId={agent} scale={1.4} />
+          ) : (
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ink-3)' }} />
+          )}
         </div>
       </div>
       {/* content card */}
@@ -247,7 +255,7 @@ function TimelineRow({ item, last, onShowInTown }: {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
           {agent && <span style={{ font: '700 13px var(--sans)', color }}>{agentShortName(agent)} Thomas</span>}
           <span style={{ font: '700 9px var(--mono)', letterSpacing: '.1em', color: 'var(--ink-3)', background: 'var(--paper-2)', padding: '2px 6px', borderRadius: 5 }}>
-            {glyph.label}
+            {labelFor(item.type)}
           </span>
           {recipient && (
             <span style={{ font: '600 11px var(--sans)', color: 'var(--ink-3)' }}>

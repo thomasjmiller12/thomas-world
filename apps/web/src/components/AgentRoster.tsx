@@ -169,7 +169,7 @@ function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick, 
         </div>
       </div>
       {engaged ? (
-        // CLICKABLE engagement row: travel to where the agent is (listen-in).
+        // CLICKABLE engagement chip: travel to where the agent is (listen-in).
         <span
           role="button"
           tabIndex={0}
@@ -178,19 +178,39 @@ function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick, 
             if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onTravel(config.id, locationId); }
           }}
           style={{
-            display: 'block',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
             marginTop: 7,
-            paddingLeft: 1,
-            fontSize: 10.5,
+            padding: '3px 8px',
+            borderRadius: 999,
+            background: `${color}12`,
+            border: `1px solid ${color}2e`,
+            font: '700 8px var(--mono)',
+            letterSpacing: '.08em',
+            textTransform: 'uppercase',
             color,
             cursor: 'pointer',
-            lineHeight: 1.3,
+            lineHeight: 1.4,
           }}
         >
-          💬 in conversation — {location} ›
+          <StatusDot color={color} size={5} />
+          in conversation · {location} ›
         </span>
       ) : (
-        <p style={{ marginTop: 6, paddingLeft: 1, fontSize: 10.5, color: 'var(--ink-2)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p
+          style={{
+            marginTop: 6,
+            paddingLeft: 1,
+            fontSize: 10.5,
+            color: 'var(--ink-2)',
+            lineHeight: 1.4,
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+          }}
+        >
           {statusLine(live)}
         </p>
       )}

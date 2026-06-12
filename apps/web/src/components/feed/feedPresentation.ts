@@ -4,43 +4,51 @@ import type { WorldEventType, LocationId } from '@town/contract';
 // handoff feed.jsx). Kept free of React/network so the type→glyph mapping, the
 // location label, and the date header are unit-testable.
 
-export interface TypeGlyph {
-  icon: string;
-  label: string;
-}
-
-// Map a contract event type to the spine glyph + type badge. Mirrors feed.jsx's
-// TYPE table, extended to the full contract event taxonomy. Unknown/aggregate
-// rows (type null) fall back to a neutral spark.
-const TYPE_GLYPHS: Partial<Record<WorldEventType, TypeGlyph>> = {
-  'agent.thought': { icon: '💭', label: 'THOUGHT' },
-  'agent.activity': { icon: '🛠️', label: 'WORK' },
-  'agent.spoke': { icon: '💬', label: 'SAID' },
-  'agent.moved': { icon: '🚶', label: 'MOVED' },
-  'conversation.started': { icon: '💬', label: 'TALKING' },
-  'conversation.turn': { icon: '💬', label: 'SAID' },
-  'conversation.ended': { icon: '💬', label: 'WRAPPED UP' },
-  'conversation.converted': { icon: '💬', label: 'JOINED' },
-  'message.sent': { icon: '✉️', label: 'MESSAGE' },
-  'artifact.created': { icon: '📄', label: 'MADE' },
-  'artifact.updated': { icon: '✏️', label: 'REVISED' },
-  'bulletin.posted': { icon: '📌', label: 'POSTED' },
-  'capability.requested': { icon: '🧰', label: 'ASKED FOR' },
-  'visitor.arrived': { icon: '🚪', label: 'ARRIVED' },
-  'visitor.left': { icon: '🚪', label: 'LEFT' },
-  'visitor.moved': { icon: '🚶', label: 'MOVED' },
-  'visitor.interacted': { icon: '✋', label: 'TOUCHED' },
-  'world.effect': { icon: '✨', label: 'EFFECT' },
-  'chat.started': { icon: '💬', label: 'CHATTED' },
-  'chat.ended': { icon: '💬', label: 'CHAT ENDED' },
-  'chat.joined': { icon: '💬', label: 'JOINED' },
-  'world.time': { icon: '🕰️', label: 'TIME' },
+// Map a contract event type to its Silkscreen type badge. No emoji glyphs —
+// the spine tile carries the agent's pixel portrait (or a neutral dot for
+// world/visitor rows); the badge alone names the event kind (Thomas's call,
+// 2026-06-12: the emoji tiles read as noise).
+const TYPE_LABELS: Partial<Record<WorldEventType, string>> = {
+  'agent.thought': 'THOUGHT',
+  'agent.activity': 'WORK',
+  'agent.spoke': 'SAID',
+  'agent.moved': 'MOVED',
+  'conversation.started': 'TALKING',
+  'conversation.turn': 'SAID',
+  'conversation.ended': 'WRAPPED UP',
+  'conversation.converted': 'JOINED',
+  'message.sent': 'MESSAGE',
+  'artifact.created': 'MADE',
+  'artifact.updated': 'REVISED',
+  'bulletin.posted': 'POSTED',
+  'capability.requested': 'ASKED FOR',
+  'visitor.arrived': 'ARRIVED',
+  'visitor.left': 'LEFT',
+  'visitor.moved': 'MOVED',
+  'visitor.interacted': 'TOUCHED',
+  'world.effect': 'EFFECT',
+  'chat.started': 'CHATTED',
+  'chat.ended': 'CHAT ENDED',
+  'chat.joined': 'JOINED',
+  'world.time': 'TIME',
 };
 
-const FALLBACK_GLYPH: TypeGlyph = { icon: '·', label: 'EVENT' };
+export function labelFor(type: WorldEventType | null): string {
+  return (type && TYPE_LABELS[type]) || 'EVENT';
+}
 
-export function glyphFor(type: WorldEventType | null): TypeGlyph {
-  return (type && TYPE_GLYPHS[type]) || FALLBACK_GLYPH;
+// Visitor presence chatter (arrive/leave/room-to-room moves) drowns out the
+// agents' day — the feed is "what the agents did today", so presence rows are
+// hidden from the timeline. visitor.interacted stays (picking up the ringing
+// phone is story, not noise).
+const HIDDEN_TYPES = new Set<WorldEventType>([
+  'visitor.arrived',
+  'visitor.left',
+  'visitor.moved',
+]);
+
+export function isHiddenFromFeed(type: WorldEventType | null): boolean {
+  return type != null && HIDDEN_TYPES.has(type);
 }
 
 // Event types whose `line` is the agent's own words (rendered as quoted speech
