@@ -10,6 +10,6 @@
 # Writer runs slower — deliberate ticks with more output per cycle. The soul file
 # explicitly notes that Writer uses the time. Fewer ticks, richer actions.
 tick_cadence_minutes: 150
-tick_model: claude-sonnet-4-6
-chat_model: claude-opus-4-8
+tick_model: claude-haiku-4-5
+chat_model: claude-sonnet-4-6
 daily_token_budget: 5.25
