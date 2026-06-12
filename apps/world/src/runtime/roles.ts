@@ -94,3 +94,32 @@ export function getProfile(id: AgentId): AgentProfile {
   if (!p) throw new Error(`no profile for agent ${id}`);
   return p;
 }
+
+// Budget reconciliation (design doc §7): the per-role daily soft caps must sum
+// to ≤ the global daily ceiling, or the global cap silently dominates and the
+// per-role tuning is fiction. We ASSERT this at boot — WARN, never crash (a
+// degraded soak is better than a server that won't start). Pure so the math is
+// unit-testable; the caller logs/warns.
+export interface BudgetReconciliation {
+  ok: boolean;
+  roleSumUsd: number;
+  globalCapUsd: number;
+  perRole: { id: AgentId; capUsd: number }[];
+}
+
+export function reconcileBudgets(globalCapUsd: number): BudgetReconciliation {
+  const profiles = loadProfiles();
+  const perRole = agentIds.map((id) => ({
+    id,
+    capUsd: profiles.get(id)?.role.dailyTokenBudgetUsd ?? 0,
+  }));
+  const roleSumUsd = perRole.reduce((s, r) => s + r.capUsd, 0);
+  // Round to cents to avoid float noise tripping the assert on exact equality.
+  const round = (n: number) => Math.round(n * 100) / 100;
+  return {
+    ok: round(roleSumUsd) <= round(globalCapUsd),
+    roleSumUsd: round(roleSumUsd),
+    globalCapUsd: round(globalCapUsd),
+    perRole,
+  };
+}

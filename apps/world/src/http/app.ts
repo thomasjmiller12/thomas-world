@@ -5,6 +5,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
+import { getConnInfo } from "@hono/node-server/conninfo";
 import type { AgentId, ArtifactKind, MessageScope } from "@town/contract";
 import {
   agentIds,
@@ -74,6 +75,15 @@ import {
   routeVisitorInteraction,
 } from "../runtime/chat.js";
 import type { FixtureDef } from "../runtime/fixtures.js";
+import {
+  createRateLimiters,
+  clientIp,
+  parseCorsOrigins,
+  IN_FICTION_429,
+  sessionTurnDecision,
+  SESSION_WRAP_UP_NOTE,
+} from "./rate-limit.js";
+import { visitorTurnCount } from "../runtime/chat.js";
 
 const agentSet = new Set<string>(agentIds);
 const locationSet = new Set<string>(locationIds);
@@ -98,10 +108,38 @@ function validated<T>(schema: z.ZodType<T>, value: T): T {
   return value;
 }
 
+// Localhost dev origins allowed when CORS_ORIGINS is unset (design doc §7). The
+// Vercel prod/preview origins are added via the env var in production (see
+// README.md). Includes the static-export dev server (3000) and the world server
+// itself (8787) so the /debug page and same-origin tools keep working.
+const DEFAULT_DEV_ORIGINS = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:8787",
+  "http://127.0.0.1:8787",
+];
+
 export function createApp() {
   const app = new Hono();
 
-  app.use("*", cors());
+  // CORS allowlist (design doc §7): replace the wildcard with an env-driven
+  // allowlist. `origin` is a function so we echo the request origin ONLY when it
+  // is on the list (returning the matched origin, not "*", which is required for
+  // credentialed requests and is simply correct hygiene). Unlisted origins get
+  // no CORS headers → the browser blocks the cross-origin read.
+  const allowlist = parseCorsOrigins(config.corsOrigins) ?? DEFAULT_DEV_ORIGINS;
+  const allowSet = new Set(allowlist);
+  app.use(
+    "*",
+    cors({
+      origin: (origin) => (allowSet.has(origin.replace(/\/+$/, "")) ? origin : null),
+      allowHeaders: ["Content-Type", "x-visitor-token", "x-session-token", "x-admin-token", "Last-Event-ID"],
+      allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
+    }),
+  );
+
+  // In-memory rate limiters (design doc §7) — one set for the process lifetime.
+  const limits = createRateLimiters();
 
   // --- health -------------------------------------------------------------
   // {ok, ts, llm, budgetExhausted} (design doc §5): llm = model provider
@@ -133,6 +171,16 @@ export function createApp() {
 
   // --- GET /events/stream (SSE; Last-Event-ID resume; 25s heartbeats) -----
   app.get("/events/stream", (c) => {
+    // SSE concurrency limit (design doc §7): 2 per IP + 200 global. Acquire a
+    // slot BEFORE opening the stream; on a cap, return a clean 429 with in-fiction
+    // copy rather than an empty/aborted stream. The slot is released on abort.
+    const ip = clientIp(c.req.header("x-forwarded-for"), getConnInfo(c).remote.address);
+    const slot = limits.sse.acquire(ip);
+    if (!slot.ok) {
+      const message =
+        slot.reason === "per-key" ? IN_FICTION_429.sseConcurrent : IN_FICTION_429.sseGlobal;
+      return c.json({ error: "too many connections", message }, 429);
+    }
     // Optional visitor presence: ?visitorId=... ties arrival/departure to the
     // connection lifetime (plan §3.1).
     const visitorId = c.req.query("visitorId") ?? null;
@@ -176,6 +224,7 @@ export function createApp() {
       });
       stream.onAbort(() => {
         unsub();
+        slot.release(); // free the SSE concurrency slot (idempotent)
         wake();
       });
 
@@ -232,6 +281,7 @@ export function createApp() {
         }
       } finally {
         unsub();
+        slot.release(); // free the SSE concurrency slot (idempotent w/ onAbort)
         if (presentVisitor) {
           try {
             await visitorLeft(presentVisitor.id); // departure perceivable
@@ -321,6 +371,14 @@ export function createApp() {
 
   // --- POST /visitors {name} ----------------------------------------------
   app.post("/visitors", async (c) => {
+    // Visitor-creation limit (design doc §7): 5/hour per IP. This guards only NEW
+    // registration; a returning visitor re-validates via GET /visitors/:id
+    // (unlimited) and is thus exempt by construction — only a flood of fresh
+    // names from one IP trips this.
+    const ip = clientIp(c.req.header("x-forwarded-for"), getConnInfo(c).remote.address);
+    if (!limits.visitorCreate.hit(ip, Date.now())) {
+      return c.json({ error: "too many new visitors", message: IN_FICTION_429.visitorCreate }, 429);
+    }
     const body = await c.req.json().catch(() => ({}));
     const name = typeof body?.name === "string" && body.name.trim() ? body.name.trim() : null;
     if (!name) return c.json({ error: "name required" }, 400);
@@ -586,13 +644,39 @@ export function createApp() {
     const text = typeof body?.text === "string" ? body.text : "";
     if (!text.trim()) return c.json({ error: "text required" }, 400);
 
+    // Per-visitor chat limits + session turn cap (design doc §7). The session's
+    // visitor is the rate-limit subject (the session token already authenticated
+    // the caller, so the visitorId is trusted). We read the session once.
+    const session = await getChatTranscript(sessionId);
+    if (!session) return c.json({ error: "unknown session" }, 404);
+    const now = Date.now();
+    if (!limits.chatPerMinute.hit(session.visitorId, now)) {
+      return c.json({ error: "too fast", message: IN_FICTION_429.chatPerMinute }, 429);
+    }
+    if (!limits.chatPerDay.hit(session.visitorId, now)) {
+      return c.json({ error: "daily limit", message: IN_FICTION_429.chatPerDay }, 429);
+    }
+    // 40-turn session cap: block once reached; inject an in-character wrap-up
+    // operator note as the turn approaches ~36 so the agent winds down in voice.
+    const priorTurns = await visitorTurnCount(sessionId);
+    const turn = sessionTurnDecision(priorTurns);
+    if (turn.block) {
+      return c.json({ error: "session full", message: IN_FICTION_429.chatPerDay }, 429);
+    }
+    const wrapUpNote = turn.wrapUp ? SESSION_WRAP_UP_NOTE : undefined;
+
     return streamSSE(c, async (stream) => {
-      await runChatTurn(sessionId, text, {
-        onFrame: async (frame) => {
-          // Each frame is one SSE `data` payload; the `type` field discriminates.
-          await stream.writeSSE({ data: JSON.stringify(frame) });
+      await runChatTurn(
+        sessionId,
+        text,
+        {
+          onFrame: async (frame) => {
+            // Each frame is one SSE `data` payload; the `type` field discriminates.
+            await stream.writeSSE({ data: JSON.stringify(frame) });
+          },
         },
-      });
+        wrapUpNote,
+      );
       // suggested_replies rides AFTER done — never on the latency path. A
       // failure here yields no chips; it must not break the stream.
       try {

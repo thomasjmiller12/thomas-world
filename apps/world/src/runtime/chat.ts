@@ -909,6 +909,17 @@ export async function chatHasAnyMessage(sessionId: string): Promise<boolean> {
   return Boolean(row);
 }
 
+// How many visitor turns a session has already seen (design doc §7 session
+// cap). Counts `sender:'visitor'` rows only — operator opener / agent lines /
+// scene-seed rows don't count toward the 40-turn visitor cap.
+export async function visitorTurnCount(sessionId: string): Promise<number> {
+  const rows = await db
+    .select({ id: chatMessages.id })
+    .from(chatMessages)
+    .where(and(eq(chatMessages.sessionId, sessionId), eq(chatMessages.sender, "visitor")));
+  return rows.length;
+}
+
 // --- transcript recovery (design doc §3.4, §5) ------------------------------
 
 // GET /chats/:id payload: the session + the VISIBLE transcript (design doc §5).

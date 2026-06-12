@@ -24,6 +24,10 @@ export const config = {
     env("DATABASE_URL") ?? "postgresql://town:town@localhost:5433/town",
   dailyBudgetUsd: Number(env("DAILY_BUDGET_USD") ?? "15"),
   adminToken: env("ADMIN_TOKEN"),
+  // Comma-separated CORS allowlist (design doc §7). Absent → the HTTP layer
+  // applies its localhost dev default. Set to the Vercel prod + preview origins
+  // (and any localhost) in production. See apps/world/README.md.
+  corsOrigins: env("CORS_ORIGINS"),
 
   anthropicApiKey: anthropicKey,
   openaiApiKey: openaiKey,

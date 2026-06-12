@@ -24,6 +24,7 @@ import { createApp } from "./http/app.js";
 import { appendEvent } from "./engine/events.js";
 import { startScheduler, stopScheduler } from "./runtime/scheduler.js";
 import { initTracing, shutdownTracing } from "./runtime/tracing.js";
+import { reconcileBudgets } from "./runtime/roles.js";
 
 // Confirm the DB is reachable and the schema has been migrated. We probe a core
 // table (`agents`) rather than auto-running migrations — applying migrations is
@@ -121,6 +122,23 @@ function bootConfigWarnings(): void {
   if (config.features.resend && !process.env.RESEND_TO) {
     console.warn(
       "[boot] RESEND is on but RESEND_TO is unset — agent emails go to the resend.dev sink, NOT Thomas. Set RESEND_TO to his real address.",
+    );
+  }
+
+  // Budget reconciliation (design doc §7): the per-role daily caps must sum to
+  // ≤ the global ceiling, or the global cap silently dominates the per-role
+  // tuning. We WARN (never crash) and always log the numbers so the knob is
+  // visible at a glance.
+  const recon = reconcileBudgets(config.dailyBudgetUsd);
+  const roleBreakdown = recon.perRole.map((r) => `${r.id} $${r.capUsd.toFixed(2)}`).join(", ");
+  if (recon.ok) {
+    console.log(
+      `[boot] budget: per-role caps sum $${recon.roleSumUsd.toFixed(2)} ≤ global $${recon.globalCapUsd.toFixed(2)} OK (${roleBreakdown}).`,
+    );
+  } else {
+    console.warn(
+      `[boot] budget MISMATCH: per-role caps sum $${recon.roleSumUsd.toFixed(2)} EXCEEDS global $${recon.globalCapUsd.toFixed(2)} — ` +
+        `the global ceiling will dominate (agents stop early). Raise DAILY_BUDGET_USD to ≥ $${recon.roleSumUsd.toFixed(2)} or lower per-role caps. (${roleBreakdown})`,
     );
   }
 }
