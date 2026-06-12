@@ -9,10 +9,12 @@ import { DialogBox } from './components/DialogBox';
 import { ThoughtBubble } from './components/ThoughtBubble';
 import { SpeechBubble } from './components/SpeechBubble';
 import { SceneTranscriptStrip, type TranscriptLine } from './components/SceneTranscriptStrip';
+import { ChatSession } from './components/chat/ChatSession';
+import type { BusyAlternative } from './components/chat/types';
 import { HUD } from './components/HUD';
 import { locationForScene, sameScene } from './game/data/location-anchors';
 import type { LocationId } from '@town/contract';
-import type { ThomasId, ChatMessage, ThoughtBubbleData, DialogData } from './lib/types';
+import type { ThomasId, ThoughtBubbleData, DialogData } from './lib/types';
 
 // A Tier-0 speech bubble (ambient or scene turn), positioned via the NPC's live
 // screen position. Auto-expires; expiry scales with text length (longer line =
@@ -45,10 +47,10 @@ function App({ visitorName }: AppProps) {
   const worldRef = useRef<WorldClient | null>(null);
   const dreamRef = useRef<DreamMode | null>(null);
 
-  const [chatOpen, setChatOpen] = useState(false);
+  // The agent the visitor is currently engaging via the ChatSession container —
+  // mirrored here only to highlight the roster row. The session's own state
+  // (tier, messages, stream) lives inside ChatSession.
   const [chatNpcId, setChatNpcId] = useState<ThomasId | null>(null);
-  const [chatNpcName, setChatNpcName] = useState('');
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogData, setDialogData] = useState<DialogData | null>(null);
   const [thoughtBubbles, setThoughtBubbles] = useState<ThoughtBubbleData[]>([]);
@@ -68,27 +70,33 @@ function App({ visitorName }: AppProps) {
   const [selectedNpcId, setSelectedNpcId] = useState<ThomasId | null>(null);
   const [rightPanelVisible, setRightPanelVisible] = useState(false);
 
-  const handleChatSend = useCallback((message: string) => {
-    if (!chatNpcId) return;
-    const visitorMsg: ChatMessage = {
-      sender: 'visitor',
-      senderName: visitorName,
-      text: message,
-      timestamp: Date.now(),
-    };
-    setChatMessages(prev => [...prev, visitorMsg]);
-    // Visitor line → WorldClient streams the reply (npc-chat-response per turn).
-    EventBus.emit('chat-message-sent', { npcId: chatNpcId, message });
-  }, [chatNpcId, visitorName]);
+  // ── ChatSession seam (the container drives WorldClient through these) ──────
+  const handleChatOpen = useCallback((npcId: ThomasId) => {
+    setChatNpcId(npcId);
+    setSelectedNpcId(npcId);
+    void worldRef.current?.openChat(npcId);
+  }, []);
 
-  const handleChatClose = useCallback(() => {
-    setChatOpen(false);
-    if (chatNpcId) {
-      EventBus.emit('chat-closed', { npcId: chatNpcId });
-    }
+  const handleChatSend = useCallback((_npcId: ThomasId, text: string) => {
+    void worldRef.current?.sendMessage(text);
+  }, []);
+
+  const handleChatSessionClose = useCallback((npcId: ThomasId | null, opened: boolean) => {
     setChatNpcId(null);
-    setChatMessages([]);
-  }, [chatNpcId]);
+    // Only tell the server to tear down a session that was actually opened (an
+    // un-greeted gate cost nothing — design doc §1).
+    if (opened) worldRef.current?.closeChat();
+    if (npcId) EventBus.emit('dialog-closed'); // release any canvas pause hook
+  }, []);
+
+  // Busy-409 [listen in]: a co-located scene's transcript strip already renders
+  // for the current room (Tier 1.5). Cross-room travel rides on the FeedTimeline
+  // show-in-town resolve (later F-step); here we just join if it's joinable.
+  const handleListenIn = useCallback((alt: BusyAlternative) => {
+    if (alt.kind === 'scene' && alt.conversationId) {
+      void worldRef.current?.joinConversation(alt.conversationId);
+    }
+  }, []);
 
   const handleDialogClose = useCallback(() => {
     setDialogOpen(false);
@@ -122,32 +130,13 @@ function App({ visitorName }: AppProps) {
     const onSceneReady = () => {
       void world.start();
     };
+    // The two-step greeting gate, busy path, and streaming all live inside the
+    // ChatSession container (it subscribes to `npc-interaction` + the chat
+    // stream events directly). App only mirrors the engaged agent for the
+    // roster highlight here — the open/send/close calls go through the
+    // ChatSession seam callbacks (handleChatOpen/Send/Close), not this handler.
     const onNpcInteraction = (data: { npcId: ThomasId; npcName: string }) => {
-      setChatNpcId(data.npcId);
-      setChatNpcName(data.npcName);
-      setChatMessages([]);
-      setChatOpen(true);
       setSelectedNpcId(data.npcId);
-      setRightPanelVisible(true);
-      // Escalate: ask WorldClient to open the session + stream the greeting.
-      EventBus.emit('chat-open-request', { npcId: data.npcId });
-    };
-    const onChatResponse = (msg: ChatMessage) => {
-      setChatMessages(prev => [...prev, msg]);
-    };
-    const onChatError = (data: { npcId?: ThomasId; reason: string }) => {
-      // Surface the failure in-panel as a system line (full Tier-1 alternatives
-      // land in F2; this keeps the panel honest meanwhile).
-      const line =
-        data.reason === 'engaged'
-          ? "He's deep in something right now — try again in a moment."
-          : 'The town is quiet right now. Try again shortly.';
-      setChatMessages(prev => [...prev, {
-        sender: data.npcId ?? 'hobby',
-        senderName: chatNpcName || 'Thomas',
-        text: line,
-        timestamp: Date.now(),
-      }]);
     };
     const onShowDialog = (data: DialogData) => {
       setDialogData(data);
@@ -256,8 +245,6 @@ function App({ visitorName }: AppProps) {
 
     EventBus.on('current-scene-ready', onSceneReady);
     EventBus.on('npc-interaction', onNpcInteraction);
-    EventBus.on('npc-chat-response', onChatResponse);
-    EventBus.on('chat-error', onChatError);
     EventBus.on('show-dialog', onShowDialog);
     EventBus.on('scene-changed', onSceneChanged);
     EventBus.on('npc-thought', onNpcThought);
@@ -275,8 +262,6 @@ function App({ visitorName }: AppProps) {
       world.stop();
       EventBus.off('current-scene-ready', onSceneReady);
       EventBus.off('npc-interaction', onNpcInteraction);
-      EventBus.off('npc-chat-response', onChatResponse);
-      EventBus.off('chat-error', onChatError);
       EventBus.off('show-dialog', onShowDialog);
       EventBus.off('scene-changed', onSceneChanged);
       EventBus.off('npc-thought', onNpcThought);
@@ -299,7 +284,7 @@ function App({ visitorName }: AppProps) {
     ) ?? null;
 
   return (
-    <div className="flex w-screen h-screen overflow-hidden bg-[#15132a]">
+    <div className="flex w-screen h-screen overflow-hidden" style={{ background: 'var(--paper)' }}>
       <AgentRoster
         proximityNpcId={proximityNpcId}
         chatNpcId={chatNpcId}
@@ -307,7 +292,7 @@ function App({ visitorName }: AppProps) {
         onNpcClick={handleRosterClick}
       />
 
-      <div className="flex-1 relative overflow-hidden bg-[#15132a]">
+      <div className="flex-1 relative overflow-hidden" style={{ background: 'var(--paper)' }}>
         <PhaserGame />
 
         <div className="absolute inset-0 pointer-events-none">
@@ -351,20 +336,31 @@ function App({ visitorName }: AppProps) {
               />
             </div>
           )}
+
+          {/* The one persistent chat container — Tier-1 diegetic ↔ Tier-2
+              docked, two-step greeting gate, busy path. Mounted once; it
+              self-manages from the EventBus chat stream + npc-interaction. */}
+          <ChatSession
+            onOpen={handleChatOpen}
+            onSend={handleChatSend}
+            onClose={handleChatSessionClose}
+            onListenIn={handleListenIn}
+            currentLocationId={currentLocationId}
+            liveScenes={liveScenes}
+          />
         </div>
       </div>
 
-      <RightPanel
-        chatOpen={chatOpen}
-        chatNpcId={chatNpcId}
-        chatNpcName={chatNpcName}
-        chatMessages={chatMessages}
-        onChatSend={handleChatSend}
-        onChatClose={handleChatClose}
-        selectedNpcId={selectedNpcId}
-        visible={rightPanelVisible}
-        onToggle={handleToggleRightPanel}
-      />
+      {/* Profile rail (roster click). The docked chat (ChatSession) takes the
+          right rail when engaged; this profile-only panel collapses to make
+          room. Its full restyle lands in F2. */}
+      {!chatNpcId && (
+        <RightPanel
+          selectedNpcId={selectedNpcId}
+          visible={rightPanelVisible}
+          onToggle={handleToggleRightPanel}
+        />
+      )}
     </div>
   );
 }

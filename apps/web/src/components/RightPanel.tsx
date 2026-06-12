@@ -1,37 +1,23 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { ChatWindow } from './ChatWindow';
 import { NPC_CONFIGS } from '@/game/data/npc-configs';
 import { THOMAS_COLORS } from '@/lib/constants';
-import type { ThomasId, ChatMessage } from '@/lib/types';
+import type { ThomasId } from '@/lib/types';
 import { useAgentStatuses, statusLine } from '@/lib/useAgentStatuses';
 
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 400;
 const DEFAULT_WIDTH = 256;
 
+// Profile-only rail (roster click). The chat experience moved to the ChatSession
+// container (diegetic ↔ docked); this panel now just surfaces an agent's bio +
+// live status. Its design-system restyle is F2.
 interface RightPanelProps {
-  chatOpen: boolean;
-  chatNpcId: ThomasId | null;
-  chatNpcName: string;
-  chatMessages: ChatMessage[];
-  onChatSend: (message: string) => void;
-  onChatClose: () => void;
   selectedNpcId: ThomasId | null;
   visible: boolean;
   onToggle: () => void;
 }
 
-export function RightPanel({
-  chatOpen,
-  chatNpcId,
-  chatNpcName,
-  chatMessages,
-  onChatSend,
-  onChatClose,
-  selectedNpcId,
-  visible,
-  onToggle,
-}: RightPanelProps) {
+export function RightPanel({ selectedNpcId, visible, onToggle }: RightPanelProps) {
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const dragging = useRef(false);
   const startX = useRef(0);
@@ -75,8 +61,6 @@ export function RightPanel({
     );
   }
 
-  const hasContent = (chatOpen && chatNpcId) || selectedNpcId;
-
   return (
     <div
       className="h-full flex pointer-events-auto"
@@ -100,17 +84,7 @@ export function RightPanel({
           </button>
         </div>
 
-        {chatOpen && chatNpcId ? (
-          <div className="flex-1 overflow-hidden">
-            <ChatWindow
-              npcId={chatNpcId}
-              npcName={chatNpcName}
-              messages={chatMessages}
-              onSend={onChatSend}
-              onClose={onChatClose}
-            />
-          </div>
-        ) : selectedNpcId ? (
+        {selectedNpcId ? (
           <NpcInfoView npcId={selectedNpcId} />
         ) : (
           <div className="flex-1 flex items-center justify-center">

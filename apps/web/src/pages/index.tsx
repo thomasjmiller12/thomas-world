@@ -23,12 +23,18 @@ export default function Home() {
         <link rel="icon" href="/favicon.png" />
       </Head>
 
-      <main className="min-h-screen bg-[#15132a] flex items-center justify-center p-4">
+      <main
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{ background: 'var(--paper)', color: 'var(--ink)' }}
+      >
         <div className="w-full max-w-sm text-center">
-          <h1 className="text-3xl font-bold text-[#e8ddd0] mb-2 tracking-tight">
+          <h1
+            className="text-4xl mb-2"
+            style={{ fontFamily: 'var(--display)', fontWeight: 600, letterSpacing: '-0.01em' }}
+          >
             Thomas&apos;s Town
           </h1>
-          <p className="text-[#c4b5a0]/50 text-sm mb-8">
+          <p className="text-sm mb-8" style={{ color: 'var(--ink-2)' }}>
             A pixel art world with five AI versions of me
           </p>
 
@@ -53,7 +59,10 @@ export default function Home() {
                     }}
                   />
                 </div>
-                <span className="text-[9px] font-mono" style={{ color: config.color + 'aa' }}>
+                <span
+                  className="text-[9px] uppercase"
+                  style={{ fontFamily: 'var(--mono)', letterSpacing: '0.04em', color: config.color }}
+                >
                   {config.displayName.replace('Thomas', '').trim()}
                 </span>
               </div>
@@ -68,17 +77,33 @@ export default function Home() {
               onKeyDown={(e) => e.key === "Enter" && handleStart()}
               placeholder="Your name"
               autoFocus
-              className="w-full bg-[#c4b5a0]/5 border border-[#3d3654]/40 text-[#e8ddd0] text-sm px-4 py-3 rounded-lg focus:outline-none focus:border-[#3d3654]/80 focus:ring-1 focus:ring-[#3d3654]/40 placeholder-[#c4b5a0]/25 transition-colors"
+              className="w-full text-sm px-4 py-3 rounded-xl focus:outline-none transition-colors"
+              style={{
+                background: 'var(--card)',
+                border: '1px solid var(--line-2)',
+                color: 'var(--ink)',
+                fontFamily: 'var(--sans)',
+              }}
             />
             <button
               onClick={handleStart}
-              className="w-full bg-[#4A90D9]/80 hover:bg-[#4A90D9] text-[#e8ddd0] text-sm font-medium py-3 rounded-lg transition-colors"
+              className="w-full text-sm py-3 rounded-xl transition-opacity hover:opacity-90"
+              style={{
+                background: 'var(--career)',
+                color: '#fff',
+                fontFamily: 'var(--display)',
+                fontWeight: 600,
+                boxShadow: 'var(--shadow)',
+              }}
             >
               Enter Town
             </button>
           </div>
 
-          <div className="mt-8 flex justify-center gap-6 text-[#c4b5a0]/30 text-xs">
+          <div
+            className="mt-8 flex justify-center gap-6 text-xs uppercase"
+            style={{ fontFamily: 'var(--mono)', letterSpacing: '0.06em', color: 'var(--ink-3)' }}
+          >
             <span>WASD to move</span>
             <span>SPACE to interact</span>
           </div>

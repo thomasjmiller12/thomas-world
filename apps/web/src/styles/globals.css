@@ -1,13 +1,18 @@
 @import "tailwindcss";
+@import "./tokens.css";
 
+/* Paper skin, app-wide. The dark-purple dev skin (#15132a) is gone — the world
+   canvas still renders its own pixel art; the React overlay sits on warm paper. */
 body {
   margin: 0;
   padding: 0;
-  background-color: #15132a;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
 }
 
+/* Tier-0 ambient speech bubble entrance (used by SpeechBubble). */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -17,4 +22,81 @@ body {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+}
+
+/* StatusDot — a soft live pulse on the colored presence dot. */
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px var(--pulse-color, rgba(0, 0, 0, 0.2));
+  }
+  50% {
+    box-shadow: 0 0 0 5px var(--pulse-color-faint, rgba(0, 0, 0, 0.08));
+  }
+}
+
+/* StreamDots — three dots bouncing while a turn generates. */
+@keyframes stream {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* Diegetic typewriter caret + "continue" chevron blink. */
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* The docked panel slides in from the right as the world letterboxes; the
+   diegetic dialog rises from the bottom. One container, two transitions — the
+   morph between them animates via CSS transitions on the container itself
+   (see ChatSession), these are just the mount entrances. */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* The diegetic pixel frame: a chunky 4px ink border with a double outline,
+   straight from the handoff mock (chat.jsx .pixel-frame). No border-radius —
+   it reads as an RPG dialog box. */
+.pixel-frame {
+  border: 4px solid var(--frame-ink);
+  box-shadow:
+    0 0 0 2px var(--paper-2),
+    0 0 0 6px var(--frame-ink),
+    8px 10px 0 rgba(36, 26, 16, 0.22);
+}
+
+.pixel-frame-inner {
+  border: 2px solid var(--frame-ink);
 }

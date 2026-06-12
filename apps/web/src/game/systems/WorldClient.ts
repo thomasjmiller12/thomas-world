@@ -66,6 +66,11 @@ export class WorldClient {
   private currentLocation: LocationId | null = null;
   private activeChat: ActiveChat | null = null;
   private stopped = false;
+  // A visitor line typed during the two-step greeting gate (before /chats has
+  // resolved) is parked here and flushed once the session exists + the greeting
+  // turn completes — so the first keystroke opens the greeting and the typed
+  // line still lands, without racing the open POST.
+  private pendingMessage: string | null = null;
 
   constructor(visitorName: string, envUrl?: string) {
     this.visitorName = visitorName || 'Visitor';
@@ -363,12 +368,25 @@ export class WorldClient {
 
     // Stream the greeting turn.
     await this.streamTurn(`${this.baseUrl}/chats/${encodeURIComponent(session.sessionId)}/open`, {});
+
+    // Flush a line the visitor typed during the gate (one body, one turn at a
+    // time — the greeting has streamed, so the reply turn is safe to start).
+    if (this.pendingMessage && this.activeChat) {
+      const text = this.pendingMessage;
+      this.pendingMessage = null;
+      await this.sendMessage(text);
+    }
   }
 
-  // Send a visitor line and stream the reply (POST /chats/:id/messages).
+  // Send a visitor line and stream the reply (POST /chats/:id/messages). If the
+  // session is still opening (gate keystroke beat the open POST), park the line
+  // for openChat to flush once the greeting completes.
   async sendMessage(text: string): Promise<void> {
     const chat = this.activeChat;
-    if (!chat) return;
+    if (!chat) {
+      this.pendingMessage = text;
+      return;
+    }
     await this.streamTurn(
       `${this.baseUrl}/chats/${encodeURIComponent(chat.sessionId)}/messages`,
       { text }
@@ -563,6 +581,7 @@ export class WorldClient {
   }
 
   private closeActiveChat(): void {
+    this.pendingMessage = null;
     const chat = this.activeChat;
     if (!chat) return;
     this.activeChat = null;

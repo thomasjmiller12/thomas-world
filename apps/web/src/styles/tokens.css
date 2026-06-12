@@ -1,0 +1,43 @@
+/*
+ * Design-system tokens — from design/town-concepts-handoff/project/00 Design
+ * Approach.html (M2 design doc §6.3). The warm paper/ink palette + agent hue
+ * system + shadow recipes. Consumed app-wide; replaces the dark-purple dev skin.
+ *
+ * Fonts are injected as CSS variables by next/font/google in _app.tsx:
+ *   --font-display  → Fredoka     (headings, nameplates, buttons)
+ *   --font-body     → Nunito Sans (body copy, chat bubbles)
+ *   --font-pixel    → Silkscreen  (accents only: timestamps/labels, <=12px,
+ *                                  uppercase, letter-spaced)
+ */
+
+:root {
+  /* surface neutrals */
+  --paper: #f7f1e6;
+  --paper-2: #fbf6ec;
+  --card: #ffffff;
+  --ink: #2b2620;
+  --ink-2: #5c544a;
+  --ink-3: #8a8174;
+  --line: #e6dcc9;
+  --line-2: #d8cbb3;
+
+  /* agent hues — career/researcher/builder/writer/hobby */
+  --career: #4a90d9;
+  --researcher: #9b59b6;
+  --builder: #e67e22;
+  --writer: #27ae60;
+  --hobby: #e74c3c;
+
+  /* the diegetic pixel-frame ink (darker than --ink for the chunky RPG border) */
+  --frame-ink: #241a10;
+
+  /* shadow recipes */
+  --shadow: 0 1px 2px rgba(60, 48, 30, 0.05), 0 12px 30px -12px rgba(60, 48, 30, 0.18);
+  --shadow-lg: 0 2px 4px rgba(60, 48, 30, 0.06), 0 30px 60px -24px rgba(60, 48, 30, 0.3);
+
+  /* type families (next/font sets these; the right-hand fallbacks keep SSR
+     and font-load gaps legible) */
+  --display: var(--font-display), "Fredoka", system-ui, sans-serif;
+  --sans: var(--font-body), "Nunito Sans", system-ui, sans-serif;
+  --mono: var(--font-pixel), "Silkscreen", ui-monospace, monospace;
+}
