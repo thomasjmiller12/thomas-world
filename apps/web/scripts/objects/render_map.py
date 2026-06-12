@@ -15,18 +15,28 @@ import json
 import os
 from PIL import Image, ImageDraw, ImageFont
 
-RENDER_LAYERS = ["ground", "paths", "buildings", "buildingTops", "decorations", "decorationTops"]
+# Town layers first, then the interior-map layer names (a map renders whichever
+# of these it has, in this order).
+RENDER_LAYERS = [
+    "ground", "paths", "buildings", "buildingTops", "decorations", "decorationTops",
+    "floor", "walls", "furnitures", "furnitureTops",
+]
 _sheets = {}
 
 
-def sheet_for(name):
-    rel = "collisions_objects.png" if name == "collisions_objects" else f"exterior/{name}.png"
-    return rel
+def sheet_for(tilesets_dir, name):
+    if name == "collisions_objects":
+        return "collisions_objects.png"
+    for sub in ("exterior", "interior"):
+        rel = f"{sub}/{name}.png"
+        if os.path.exists(os.path.join(tilesets_dir, rel)):
+            return rel
+    raise FileNotFoundError(f"tileset sheet not found in exterior/ or interior/: {name}")
 
 
 def get_sheet(tilesets_dir, name):
     if name not in _sheets:
-        _sheets[name] = Image.open(os.path.join(tilesets_dir, sheet_for(name))).convert("RGBA")
+        _sheets[name] = Image.open(os.path.join(tilesets_dir, sheet_for(tilesets_dir, name))).convert("RGBA")
     return _sheets[name]
 
 

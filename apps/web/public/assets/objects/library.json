@@ -4,7 +4,7 @@
     "decor": {
       "atlas": "atlases/decor.png",
       "json": "atlases/decor.json",
-      "count": 47
+      "count": 135
     },
     "fence": {
       "atlas": "atlases/fence.png",
@@ -14,17 +14,17 @@
     "furniture": {
       "atlas": "atlases/furniture.png",
       "json": "atlases/furniture.json",
-      "count": 7
+      "count": 104
     },
     "lighting": {
       "atlas": "atlases/lighting.png",
       "json": "atlases/lighting.json",
-      "count": 20
+      "count": 34
     },
     "misc": {
       "atlas": "atlases/misc.png",
       "json": "atlases/misc.json",
-      "count": 146
+      "count": 205
     },
     "nature": {
       "atlas": "atlases/nature.png",
@@ -1005,6 +1005,1642 @@
         "dispenser"
       ]
     },
+    "whiteboard-scribbled": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "whiteboard-scribbled",
+      "px": {
+        "w": 12,
+        "h": 9
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.56
+      },
+      "collides": false,
+      "tags": [
+        "board",
+        "wall"
+      ]
+    },
+    "whiteboard-arrow-left": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "whiteboard-arrow-left",
+      "px": {
+        "w": 12,
+        "h": 9
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.56
+      },
+      "collides": false,
+      "tags": [
+        "board",
+        "wall",
+        "sign"
+      ]
+    },
+    "whiteboard-arrow-right": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "whiteboard-arrow-right",
+      "px": {
+        "w": 12,
+        "h": 9
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.56
+      },
+      "collides": false,
+      "tags": [
+        "board",
+        "wall",
+        "sign"
+      ]
+    },
+    "rug-small-blue-gold": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "rug-small-blue-gold",
+      "px": {
+        "w": 60,
+        "h": 40
+      },
+      "tiles": {
+        "w": 3.75,
+        "h": 2.5
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "floor"
+      ]
+    },
+    "wall-shelf-wide-bracket": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-shelf-wide-bracket",
+      "px": {
+        "w": 22,
+        "h": 7
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 0.44
+      },
+      "collides": false,
+      "tags": [
+        "shelf",
+        "wall"
+      ]
+    },
+    "window-wide-double-pane": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "window-wide-double-pane",
+      "px": {
+        "w": 25,
+        "h": 15
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 0.94
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ]
+    },
+    "window-white-four-pane": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "window-white-four-pane",
+      "px": {
+        "w": 25,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 1.25
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ]
+    },
+    "framed-picture-red-gold": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "framed-picture-red-gold",
+      "px": {
+        "w": 40,
+        "h": 60
+      },
+      "tiles": {
+        "w": 2.5,
+        "h": 3.75
+      },
+      "collides": false,
+      "tags": [
+        "picture",
+        "wall"
+      ]
+    },
+    "rug-red-gold-rectangle": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "rug-red-gold-rectangle",
+      "px": {
+        "w": 24,
+        "h": 18
+      },
+      "tiles": {
+        "w": 1.5,
+        "h": 1.12
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "floor"
+      ]
+    },
+    "rug-green-gold-rectangle": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "rug-green-gold-rectangle",
+      "px": {
+        "w": 24,
+        "h": 18
+      },
+      "tiles": {
+        "w": 1.5,
+        "h": 1.12
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "floor"
+      ]
+    },
+    "rug-blue-gold-rectangle": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "rug-blue-gold-rectangle",
+      "px": {
+        "w": 24,
+        "h": 18
+      },
+      "tiles": {
+        "w": 1.5,
+        "h": 1.12
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "floor"
+      ]
+    },
+    "framed-painting-dark-green": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "framed-painting-dark-green",
+      "px": {
+        "w": 21,
+        "h": 13
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "wall"
+      ]
+    },
+    "framed-painting-candle-flame": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "framed-painting-candle-flame",
+      "px": {
+        "w": 28,
+        "h": 13
+      },
+      "tiles": {
+        "w": 1.75,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "wall"
+      ]
+    },
+    "framed-painting-ocean": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "framed-painting-ocean",
+      "px": {
+        "w": 28,
+        "h": 13
+      },
+      "tiles": {
+        "w": 1.75,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "wall"
+      ]
+    },
+    "rug-purple-ornate-pattern": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "rug-purple-ornate-pattern",
+      "px": {
+        "w": 56,
+        "h": 58
+      },
+      "tiles": {
+        "w": 3.5,
+        "h": 3.62
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "floor"
+      ]
+    },
+    "potted-palm-tree": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "potted-palm-tree",
+      "px": {
+        "w": 23,
+        "h": 31
+      },
+      "tiles": {
+        "w": 1.44,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "palm"
+      ]
+    },
+    "potted-tree-round-green-r28c13": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "potted-tree-round-green-r28c13",
+      "px": {
+        "w": 18,
+        "h": 31
+      },
+      "tiles": {
+        "w": 1.12,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "tree"
+      ]
+    },
+    "wall-mirror-wide-wood-frame": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-mirror-wide-wood-frame",
+      "px": {
+        "w": 28,
+        "h": 21
+      },
+      "tiles": {
+        "w": 1.75,
+        "h": 1.31
+      },
+      "collides": false,
+      "tags": [
+        "mirror",
+        "wall"
+      ]
+    },
+    "wall-mirror-gold-frame": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-mirror-gold-frame",
+      "px": {
+        "w": 12,
+        "h": 16
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.0
+      },
+      "collides": false,
+      "tags": [
+        "mirror",
+        "wall"
+      ]
+    },
+    "wall-mirror-tall-frameless": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-mirror-tall-frameless",
+      "px": {
+        "w": 12,
+        "h": 16
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.0
+      },
+      "collides": false,
+      "tags": [
+        "mirror",
+        "wall"
+      ]
+    },
+    "rug-square-green-bordered": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "rug-square-green-bordered",
+      "px": {
+        "w": 26,
+        "h": 28
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 1.75
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "floor"
+      ]
+    },
+    "window-red-wide-pane": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "window-red-wide-pane",
+      "px": {
+        "w": 25,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 1.25
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ]
+    },
+    "window-pale-wood-double": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "window-pale-wood-double",
+      "px": {
+        "w": 25,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 1.25
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ]
+    },
+    "window-walnut-double": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "window-walnut-double",
+      "px": {
+        "w": 25,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 1.25
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ]
+    },
+    "window-orange-double": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "window-orange-double",
+      "px": {
+        "w": 25,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 1.25
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ]
+    },
+    "window-orange-four-pane": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "window-orange-four-pane",
+      "px": {
+        "w": 25,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 1.25
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ]
+    },
+    "wall-screen-dark-plain": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-screen-dark-plain",
+      "px": {
+        "w": 22,
+        "h": 15
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 0.94
+      },
+      "collides": false,
+      "tags": [
+        "screen",
+        "wall",
+        "board"
+      ]
+    },
+    "curtains-red-pair": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "curtains-red-pair",
+      "px": {
+        "w": 35,
+        "h": 28
+      },
+      "tiles": {
+        "w": 2.19,
+        "h": 1.75
+      },
+      "collides": false,
+      "tags": [
+        "curtain",
+        "window"
+      ]
+    },
+    "curtains-white-gray-pair": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "curtains-white-gray-pair",
+      "px": {
+        "w": 35,
+        "h": 28
+      },
+      "tiles": {
+        "w": 2.19,
+        "h": 1.75
+      },
+      "collides": false,
+      "tags": [
+        "curtain",
+        "window"
+      ]
+    },
+    "curtains-brown-pair": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "curtains-brown-pair",
+      "px": {
+        "w": 35,
+        "h": 28
+      },
+      "tiles": {
+        "w": 2.19,
+        "h": 1.75
+      },
+      "collides": false,
+      "tags": [
+        "curtain",
+        "window"
+      ]
+    },
+    "window-red-four-pane": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "window-red-four-pane",
+      "px": {
+        "w": 25,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 1.25
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ]
+    },
+    "memo-board-clip": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "memo-board-clip",
+      "px": {
+        "w": 64,
+        "h": 28
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 1.75
+      },
+      "collides": false,
+      "tags": [
+        "board",
+        "wall"
+      ]
+    },
+    "wall-screen-dark-framed": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-screen-dark-framed",
+      "px": {
+        "w": 22,
+        "h": 15
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 0.94
+      },
+      "collides": false,
+      "tags": [
+        "screen",
+        "wall",
+        "board"
+      ]
+    },
+    "window-brown-four-pane": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "window-brown-four-pane",
+      "px": {
+        "w": 25,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 1.25
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ]
+    },
+    "curtain-rod-empty": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "curtain-rod-empty",
+      "px": {
+        "w": 63,
+        "h": 14
+      },
+      "tiles": {
+        "w": 3.94,
+        "h": 0.88
+      },
+      "collides": false,
+      "tags": [
+        "curtain",
+        "rod",
+        "wall"
+      ]
+    },
+    "potted-plant-slim-tall": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "potted-plant-slim-tall",
+      "px": {
+        "w": 14,
+        "h": 29
+      },
+      "tiles": {
+        "w": 0.88,
+        "h": 1.81
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "pot"
+      ]
+    },
+    "potted-plant-large-leafy": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "potted-plant-large-leafy",
+      "px": {
+        "w": 22,
+        "h": 30
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 1.88
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "pot"
+      ]
+    },
+    "potted-bonsai-on-stand": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "potted-bonsai-on-stand",
+      "px": {
+        "w": 27,
+        "h": 22
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "bonsai"
+      ]
+    },
+    "mirror-oval-gold-frame": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "mirror-oval-gold-frame",
+      "px": {
+        "w": 12,
+        "h": 17
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.06
+      },
+      "collides": false,
+      "tags": [
+        "mirror",
+        "wall"
+      ]
+    },
+    "wall-art-portraits-large": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-art-portraits-large",
+      "px": {
+        "w": 24,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.5,
+        "h": 1.25
+      },
+      "collides": false,
+      "tags": [
+        "art",
+        "portraits",
+        "colorful"
+      ]
+    },
+    "wall-art-abstract-large": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-art-abstract-large",
+      "px": {
+        "w": 12,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "art",
+        "abstract",
+        "colorful"
+      ]
+    },
+    "potted-plant-snake": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "potted-plant-snake",
+      "px": {
+        "w": 12,
+        "h": 26
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.62
+      },
+      "collides": false,
+      "tags": [
+        "plant",
+        "pot",
+        "green"
+      ]
+    },
+    "diagonal-banner-portrait-left": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "diagonal-banner-portrait-left",
+      "px": {
+        "w": 10,
+        "h": 15
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 0.94
+      },
+      "collides": false,
+      "tags": [
+        "banner",
+        "diagonal",
+        "portrait"
+      ]
+    },
+    "diagonal-banner-portrait-right": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "diagonal-banner-portrait-right",
+      "px": {
+        "w": 10,
+        "h": 15
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 0.94
+      },
+      "collides": false,
+      "tags": [
+        "banner",
+        "diagonal",
+        "portrait"
+      ]
+    },
+    "wall-art-portrait-orange": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-art-portrait-orange",
+      "px": {
+        "w": 13,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "art",
+        "portrait",
+        "frame"
+      ]
+    },
+    "standing-corkboard-wide": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "standing-corkboard-wide",
+      "px": {
+        "w": 22,
+        "h": 26
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 1.62
+      },
+      "collides": true,
+      "tags": [
+        "corkboard",
+        "standing",
+        "wide"
+      ]
+    },
+    "wall-shelf-wood-long": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-shelf-wood-long",
+      "px": {
+        "w": 27,
+        "h": 10
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "shelf",
+        "wall",
+        "wood"
+      ]
+    },
+    "wall-art-dog-portrait": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-art-dog-portrait",
+      "px": {
+        "w": 9,
+        "h": 12
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 0.75
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "wall",
+        "dog"
+      ]
+    },
+    "wall-shelf-orange": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-shelf-orange",
+      "px": {
+        "w": 27,
+        "h": 10
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "shelf",
+        "wall",
+        "orange"
+      ]
+    },
+    "wall-shelf-white": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-shelf-white",
+      "px": {
+        "w": 27,
+        "h": 10
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "shelf",
+        "wall",
+        "white"
+      ]
+    },
+    "bottle-cluster-blue": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "bottle-cluster-blue",
+      "px": {
+        "w": 11,
+        "h": 18
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 1.12
+      },
+      "collides": false,
+      "tags": [
+        "bottles",
+        "glass",
+        "blue"
+      ]
+    },
+    "bottle-cluster-green": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "bottle-cluster-green",
+      "px": {
+        "w": 9,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "bottles",
+        "glass",
+        "green"
+      ]
+    },
+    "rug-grey-large": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "rug-grey-large",
+      "px": {
+        "w": 12,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "carpet",
+        "grey"
+      ]
+    },
+    "towel-rack-checkered": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "towel-rack-checkered",
+      "px": {
+        "w": 30,
+        "h": 54
+      },
+      "tiles": {
+        "w": 1.88,
+        "h": 3.38
+      },
+      "collides": false,
+      "tags": [
+        "towel",
+        "rack",
+        "checkered"
+      ]
+    },
+    "hanging-cloth-checkered-red": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "hanging-cloth-checkered-red",
+      "px": {
+        "w": 30,
+        "h": 54
+      },
+      "tiles": {
+        "w": 1.88,
+        "h": 3.38
+      },
+      "collides": false,
+      "tags": [
+        "cloth",
+        "hanging",
+        "checkered"
+      ]
+    },
+    "hanging-cloth-white": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "hanging-cloth-white",
+      "px": {
+        "w": 30,
+        "h": 54
+      },
+      "tiles": {
+        "w": 1.88,
+        "h": 3.38
+      },
+      "collides": false,
+      "tags": [
+        "cloth",
+        "hanging",
+        "white"
+      ]
+    },
+    "chef-apron-plain": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "chef-apron-plain",
+      "px": {
+        "w": 9,
+        "h": 15
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 0.94
+      },
+      "collides": false,
+      "tags": [
+        "apron",
+        "chef",
+        "clothing"
+      ]
+    },
+    "curtain-red-short": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "curtain-red-short",
+      "px": {
+        "w": 30,
+        "h": 54
+      },
+      "tiles": {
+        "w": 1.88,
+        "h": 3.38
+      },
+      "collides": false,
+      "tags": [
+        "curtain",
+        "red",
+        "wall"
+      ]
+    },
+    "wall-art-green-painting": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-art-green-painting",
+      "px": {
+        "w": 10,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "wall",
+        "green"
+      ]
+    },
+    "wall-shelf-with-dishes": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "wall-shelf-with-dishes",
+      "px": {
+        "w": 46,
+        "h": 14
+      },
+      "tiles": {
+        "w": 2.88,
+        "h": 0.88
+      },
+      "collides": false,
+      "tags": [
+        "shelf",
+        "dishes",
+        "wall"
+      ]
+    },
+    "chef-apron-white": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "chef-apron-white",
+      "px": {
+        "w": 12,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.31
+      },
+      "collides": false,
+      "tags": [
+        "apron",
+        "chef",
+        "white"
+      ]
+    },
+    "chef-apron-green": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "chef-apron-green",
+      "px": {
+        "w": 12,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.31
+      },
+      "collides": false,
+      "tags": [
+        "apron",
+        "chef",
+        "green"
+      ]
+    },
+    "chef-apron-red-striped": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "chef-apron-red-striped",
+      "px": {
+        "w": 12,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.31
+      },
+      "collides": false,
+      "tags": [
+        "apron",
+        "chef",
+        "red"
+      ]
+    },
+    "chef-apron-blue-striped": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "chef-apron-blue-striped",
+      "px": {
+        "w": 12,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.31
+      },
+      "collides": false,
+      "tags": [
+        "apron",
+        "chef",
+        "blue"
+      ]
+    },
+    "globe-on-stand-yellow": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "globe-on-stand-yellow",
+      "px": {
+        "w": 13,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.31
+      },
+      "collides": false,
+      "tags": [
+        "globe",
+        "geography"
+      ]
+    },
+    "globe-on-stand-gray": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "globe-on-stand-gray",
+      "px": {
+        "w": 13,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.31
+      },
+      "collides": false,
+      "tags": [
+        "globe",
+        "geography"
+      ]
+    },
+    "blackboard-wall-wide": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "blackboard-wall-wide",
+      "px": {
+        "w": 28,
+        "h": 23
+      },
+      "tiles": {
+        "w": 1.75,
+        "h": 1.44
+      },
+      "collides": false,
+      "tags": [
+        "blackboard",
+        "wall",
+        "classroom"
+      ]
+    },
+    "paper-notice-sheet": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "paper-notice-sheet",
+      "px": {
+        "w": 10,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "paper",
+        "notice",
+        "wall"
+      ]
+    },
+    "plant-ficus-planter": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "plant-ficus-planter",
+      "px": {
+        "w": 18,
+        "h": 31
+      },
+      "tiles": {
+        "w": 1.12,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "tree",
+        "planter"
+      ]
+    },
+    "plant-palm-large": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "plant-palm-large",
+      "px": {
+        "w": 23,
+        "h": 31
+      },
+      "tiles": {
+        "w": 1.44,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "palm",
+        "potted"
+      ]
+    },
+    "rug-purple-square": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "rug-purple-square",
+      "px": {
+        "w": 38,
+        "h": 37
+      },
+      "tiles": {
+        "w": 2.38,
+        "h": 2.31
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "purple",
+        "large"
+      ]
+    },
+    "plant-snake-yellow-pot": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "plant-snake-yellow-pot",
+      "px": {
+        "w": 12,
+        "h": 14
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.88
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "snake-plant",
+        "yellow"
+      ]
+    },
+    "cushion-white": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "cushion-white",
+      "px": {
+        "w": 10,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "cushion",
+        "pillow",
+        "white"
+      ]
+    },
+    "plant-potted-small": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "plant-potted-small",
+      "px": {
+        "w": 14,
+        "h": 23
+      },
+      "tiles": {
+        "w": 0.88,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "potted",
+        "small"
+      ]
+    },
+    "plant-potted-medium": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "plant-potted-medium",
+      "px": {
+        "w": 22,
+        "h": 30
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 1.88
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "potted",
+        "medium"
+      ]
+    },
+    "plant-potted-tall": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "plant-potted-tall",
+      "px": {
+        "w": 14,
+        "h": 29
+      },
+      "tiles": {
+        "w": 0.88,
+        "h": 1.81
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "potted",
+        "tall"
+      ]
+    },
+    "painting-monster-purple": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "painting-monster-purple",
+      "px": {
+        "w": 13,
+        "h": 15
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.94
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "monster",
+        "purple"
+      ]
+    },
+    "painting-monster-beige": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "painting-monster-beige",
+      "px": {
+        "w": 13,
+        "h": 15
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.94
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "monster",
+        "beige"
+      ]
+    },
+    "cushion-blue": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "cushion-blue",
+      "px": {
+        "w": 13,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "cushion",
+        "pillow",
+        "blue"
+      ]
+    },
+    "cushion-yellow": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "cushion-yellow",
+      "px": {
+        "w": 13,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "cushion",
+        "pillow",
+        "yellow"
+      ]
+    },
+    "cushion-gray": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "cushion-gray",
+      "px": {
+        "w": 14,
+        "h": 14
+      },
+      "tiles": {
+        "w": 0.88,
+        "h": 0.88
+      },
+      "collides": false,
+      "tags": [
+        "cushion",
+        "pillow",
+        "gray"
+      ]
+    },
+    "cushion-yellow-star": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "cushion-yellow-star",
+      "px": {
+        "w": 13,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "cushion",
+        "star",
+        "yellow"
+      ]
+    },
+    "cushion-blue-star": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "cushion-blue-star",
+      "px": {
+        "w": 13,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "cushion",
+        "star",
+        "blue"
+      ]
+    },
+    "cushion-gray-star": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "cushion-gray-star",
+      "px": {
+        "w": 13,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "cushion",
+        "star",
+        "gray"
+      ]
+    },
+    "painting-abstract": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "painting-abstract",
+      "px": {
+        "w": 13,
+        "h": 15
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.94
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "abstract",
+        "framed"
+      ]
+    },
+    "curtains-white-closed": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "curtains-white-closed",
+      "px": {
+        "w": 46,
+        "h": 74
+      },
+      "tiles": {
+        "w": 2.88,
+        "h": 4.62
+      },
+      "collides": false,
+      "tags": [
+        "curtains",
+        "white",
+        "closed"
+      ]
+    },
+    "curtains-gray": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "curtains-gray",
+      "px": {
+        "w": 46,
+        "h": 74
+      },
+      "tiles": {
+        "w": 2.88,
+        "h": 4.62
+      },
+      "collides": false,
+      "tags": [
+        "curtains",
+        "gray",
+        "window"
+      ]
+    },
+    "curtains-white": {
+      "category": "decor",
+      "atlasKey": "obj-decor",
+      "frame": "curtains-white",
+      "px": {
+        "w": 46,
+        "h": 58
+      },
+      "tiles": {
+        "w": 2.88,
+        "h": 3.62
+      },
+      "collides": false,
+      "tags": [
+        "curtains",
+        "white",
+        "window"
+      ]
+    },
     "metal-double-gate": {
       "category": "fence",
       "atlasKey": "obj-fence",
@@ -1602,6 +3238,1823 @@
         "gameboy"
       ]
     },
+    "wooden-table-square-orange": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "wooden-table-square-orange",
+      "px": {
+        "w": 38,
+        "h": 37
+      },
+      "tiles": {
+        "w": 2.38,
+        "h": 2.31
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "wood"
+      ]
+    },
+    "wooden-table-low-wide": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "wooden-table-low-wide",
+      "px": {
+        "w": 38,
+        "h": 21
+      },
+      "tiles": {
+        "w": 2.38,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "wood"
+      ]
+    },
+    "wooden-table-square-light": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "wooden-table-square-light",
+      "px": {
+        "w": 38,
+        "h": 37
+      },
+      "tiles": {
+        "w": 2.38,
+        "h": 2.31
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "wood"
+      ]
+    },
+    "round-table-golden": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "round-table-golden",
+      "px": {
+        "w": 13,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.81
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "round"
+      ]
+    },
+    "round-table-orange": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "round-table-orange",
+      "px": {
+        "w": 13,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.81
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "round"
+      ]
+    },
+    "round-table-white": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "round-table-white",
+      "px": {
+        "w": 13,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.81
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "round"
+      ]
+    },
+    "round-table-copper": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "round-table-copper",
+      "px": {
+        "w": 13,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.81
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "round"
+      ]
+    },
+    "round-table-tan": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "round-table-tan",
+      "px": {
+        "w": 13,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.81
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "round"
+      ]
+    },
+    "round-table-amber": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "round-table-amber",
+      "px": {
+        "w": 13,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.81
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "round"
+      ]
+    },
+    "wooden-desk-orange": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "wooden-desk-orange",
+      "px": {
+        "w": 21,
+        "h": 23
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "desk",
+        "wood"
+      ]
+    },
+    "wooden-desk-light": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "wooden-desk-light",
+      "px": {
+        "w": 21,
+        "h": 23
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "desk",
+        "wood"
+      ]
+    },
+    "table-tablecloth-beige": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "table-tablecloth-beige",
+      "px": {
+        "w": 21,
+        "h": 23
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "tablecloth"
+      ]
+    },
+    "wooden-nightstand-small": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "wooden-nightstand-small",
+      "px": {
+        "w": 24,
+        "h": 53
+      },
+      "tiles": {
+        "w": 1.5,
+        "h": 3.31
+      },
+      "collides": true,
+      "tags": [
+        "nightstand",
+        "storage"
+      ]
+    },
+    "dresser-brown-wide": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "dresser-brown-wide",
+      "px": {
+        "w": 38,
+        "h": 37
+      },
+      "tiles": {
+        "w": 2.38,
+        "h": 2.31
+      },
+      "collides": true,
+      "tags": [
+        "dresser",
+        "storage"
+      ]
+    },
+    "dresser-beige-wide": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "dresser-beige-wide",
+      "px": {
+        "w": 38,
+        "h": 37
+      },
+      "tiles": {
+        "w": 2.38,
+        "h": 2.31
+      },
+      "collides": true,
+      "tags": [
+        "dresser",
+        "storage"
+      ]
+    },
+    "dresser-orange-red-feet": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "dresser-orange-red-feet",
+      "px": {
+        "w": 22,
+        "h": 21
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "dresser",
+        "storage"
+      ]
+    },
+    "dresser-dark-walnut": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "dresser-dark-walnut",
+      "px": {
+        "w": 22,
+        "h": 21
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "dresser",
+        "storage"
+      ]
+    },
+    "dresser-light-pine": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "dresser-light-pine",
+      "px": {
+        "w": 38,
+        "h": 37
+      },
+      "tiles": {
+        "w": 2.38,
+        "h": 2.31
+      },
+      "collides": true,
+      "tags": [
+        "dresser",
+        "storage"
+      ]
+    },
+    "dresser-orange-tall": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "dresser-orange-tall",
+      "px": {
+        "w": 38,
+        "h": 37
+      },
+      "tiles": {
+        "w": 2.38,
+        "h": 2.31
+      },
+      "collides": true,
+      "tags": [
+        "dresser",
+        "storage"
+      ]
+    },
+    "chair-orange-highback": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "chair-orange-highback",
+      "px": {
+        "w": 13,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "seating"
+      ]
+    },
+    "chair-pale-highback": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "chair-pale-highback",
+      "px": {
+        "w": 13,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "seating"
+      ]
+    },
+    "chair-slatted-tall": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "chair-slatted-tall",
+      "px": {
+        "w": 13,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "seating"
+      ]
+    },
+    "chair-dark-tall": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "chair-dark-tall",
+      "px": {
+        "w": 13,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "seating"
+      ]
+    },
+    "chair-orange-tall": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "chair-orange-tall",
+      "px": {
+        "w": 13,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "seating"
+      ]
+    },
+    "chair-orange-slatted-side": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "chair-orange-slatted-side",
+      "px": {
+        "w": 10,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "seating"
+      ]
+    },
+    "swivel-chair-gray": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "swivel-chair-gray",
+      "px": {
+        "w": 12,
+        "h": 23
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "swivel",
+        "gray"
+      ]
+    },
+    "swivel-chair-orange": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "swivel-chair-orange",
+      "px": {
+        "w": 12,
+        "h": 23
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "swivel",
+        "orange"
+      ]
+    },
+    "mesh-divider-straight": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "mesh-divider-straight",
+      "px": {
+        "w": 47,
+        "h": 24
+      },
+      "tiles": {
+        "w": 2.94,
+        "h": 1.5
+      },
+      "collides": true,
+      "tags": [
+        "divider",
+        "fence",
+        "mesh"
+      ]
+    },
+    "mesh-divider-corner-large": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "mesh-divider-corner-large",
+      "px": {
+        "w": 41,
+        "h": 38
+      },
+      "tiles": {
+        "w": 2.56,
+        "h": 2.38
+      },
+      "collides": true,
+      "tags": [
+        "divider",
+        "corner",
+        "mesh"
+      ]
+    },
+    "mesh-divider-panel": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "mesh-divider-panel",
+      "px": {
+        "w": 31,
+        "h": 24
+      },
+      "tiles": {
+        "w": 1.94,
+        "h": 1.5
+      },
+      "collides": true,
+      "tags": [
+        "divider",
+        "panel",
+        "mesh"
+      ]
+    },
+    "side-table-beige": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "side-table-beige",
+      "px": {
+        "w": 25,
+        "h": 37
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 2.31
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "side",
+        "beige"
+      ]
+    },
+    "mesh-divider-corner-small": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "mesh-divider-corner-small",
+      "px": {
+        "w": 41,
+        "h": 38
+      },
+      "tiles": {
+        "w": 2.56,
+        "h": 2.38
+      },
+      "collides": true,
+      "tags": [
+        "divider",
+        "corner",
+        "mesh"
+      ]
+    },
+    "mesh-cage-tall": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "mesh-cage-tall",
+      "px": {
+        "w": 16,
+        "h": 24
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 1.5
+      },
+      "collides": true,
+      "tags": [
+        "cage",
+        "divider",
+        "tall"
+      ]
+    },
+    "side-table-orange": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "side-table-orange",
+      "px": {
+        "w": 25,
+        "h": 37
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 2.31
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "side",
+        "orange"
+      ]
+    },
+    "conference-table-white": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "conference-table-white",
+      "px": {
+        "w": 41,
+        "h": 23
+      },
+      "tiles": {
+        "w": 2.56,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "conference",
+        "white"
+      ]
+    },
+    "conference-table-beige": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "conference-table-beige",
+      "px": {
+        "w": 41,
+        "h": 23
+      },
+      "tiles": {
+        "w": 2.56,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "conference",
+        "beige"
+      ]
+    },
+    "conference-table-tan": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "conference-table-tan",
+      "px": {
+        "w": 41,
+        "h": 23
+      },
+      "tiles": {
+        "w": 2.56,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "conference",
+        "tan"
+      ]
+    },
+    "office-chair-orange-back": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "office-chair-orange-back",
+      "px": {
+        "w": 12,
+        "h": 23
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "orange",
+        "back"
+      ]
+    },
+    "office-chair-orange-front": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "office-chair-orange-front",
+      "px": {
+        "w": 13,
+        "h": 42
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 2.62
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "orange",
+        "front"
+      ]
+    },
+    "coffee-station-table-beige": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "coffee-station-table-beige",
+      "px": {
+        "w": 26,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "coffee",
+        "station",
+        "table"
+      ]
+    },
+    "coffee-station-table-small": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "coffee-station-table-small",
+      "px": {
+        "w": 26,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "coffee",
+        "station",
+        "table"
+      ]
+    },
+    "coffee-station-table-orange": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "coffee-station-table-orange",
+      "px": {
+        "w": 26,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "coffee",
+        "station",
+        "table"
+      ]
+    },
+    "office-chair-gray-side": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "office-chair-gray-side",
+      "px": {
+        "w": 12,
+        "h": 23
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "gray",
+        "side"
+      ]
+    },
+    "office-chair-orange-side": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "office-chair-orange-side",
+      "px": {
+        "w": 12,
+        "h": 23
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "orange",
+        "side"
+      ]
+    },
+    "office-chair-gray-front": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "office-chair-gray-front",
+      "px": {
+        "w": 13,
+        "h": 42
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 2.62
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "gray",
+        "front"
+      ]
+    },
+    "wooden-chair-side-orange": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "wooden-chair-side-orange",
+      "px": {
+        "w": 13,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "wood",
+        "seat"
+      ]
+    },
+    "wooden-chair-side-brown": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "wooden-chair-side-brown",
+      "px": {
+        "w": 13,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "wood",
+        "seat"
+      ]
+    },
+    "wooden-chair-side-light": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "wooden-chair-side-light",
+      "px": {
+        "w": 13,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "wood",
+        "seat"
+      ]
+    },
+    "wooden-chair-back-light": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "wooden-chair-back-light",
+      "px": {
+        "w": 13,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "wood",
+        "back-view"
+      ]
+    },
+    "wooden-chair-back-dark": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "wooden-chair-back-dark",
+      "px": {
+        "w": 13,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "wood",
+        "back-view"
+      ]
+    },
+    "wooden-table-large": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "wooden-table-large",
+      "px": {
+        "w": 16,
+        "h": 14
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 0.88
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "wood",
+        "dining"
+      ]
+    },
+    "kitchen-cart-light": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "kitchen-cart-light",
+      "px": {
+        "w": 45,
+        "h": 58
+      },
+      "tiles": {
+        "w": 2.81,
+        "h": 3.62
+      },
+      "collides": true,
+      "tags": [
+        "cart",
+        "cabinet",
+        "kitchen"
+      ]
+    },
+    "kitchen-cabinet-orange": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "kitchen-cabinet-orange",
+      "px": {
+        "w": 47,
+        "h": 58
+      },
+      "tiles": {
+        "w": 2.94,
+        "h": 3.62
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "drawers",
+        "orange"
+      ]
+    },
+    "dining-table-light-large": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "dining-table-light-large",
+      "px": {
+        "w": 16,
+        "h": 14
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 0.88
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "dining",
+        "light"
+      ]
+    },
+    "dining-table-red-large": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "dining-table-red-large",
+      "px": {
+        "w": 16,
+        "h": 14
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 0.88
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "dining",
+        "red"
+      ]
+    },
+    "kitchen-cart-small": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "kitchen-cart-small",
+      "px": {
+        "w": 30,
+        "h": 58
+      },
+      "tiles": {
+        "w": 1.88,
+        "h": 3.62
+      },
+      "collides": true,
+      "tags": [
+        "cart",
+        "drawers",
+        "small"
+      ]
+    },
+    "kitchen-counter-light": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "kitchen-counter-light",
+      "px": {
+        "w": 30,
+        "h": 14
+      },
+      "tiles": {
+        "w": 1.88,
+        "h": 0.88
+      },
+      "collides": true,
+      "tags": [
+        "counter",
+        "kitchen",
+        "light"
+      ]
+    },
+    "kitchen-counter-long": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "kitchen-counter-long",
+      "px": {
+        "w": 46,
+        "h": 14
+      },
+      "tiles": {
+        "w": 2.88,
+        "h": 0.88
+      },
+      "collides": true,
+      "tags": [
+        "counter",
+        "kitchen",
+        "long"
+      ]
+    },
+    "display-case-glass-orange": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "display-case-glass-orange",
+      "px": {
+        "w": 30,
+        "h": 42
+      },
+      "tiles": {
+        "w": 1.88,
+        "h": 2.62
+      },
+      "collides": true,
+      "tags": [
+        "display",
+        "case",
+        "glass"
+      ]
+    },
+    "kitchen-counter-beige": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "kitchen-counter-beige",
+      "px": {
+        "w": 30,
+        "h": 14
+      },
+      "tiles": {
+        "w": 1.88,
+        "h": 0.88
+      },
+      "collides": true,
+      "tags": [
+        "counter",
+        "kitchen",
+        "beige"
+      ]
+    },
+    "table-low-light": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "table-low-light",
+      "px": {
+        "w": 46,
+        "h": 14
+      },
+      "tiles": {
+        "w": 2.88,
+        "h": 0.88
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "low",
+        "light"
+      ]
+    },
+    "kitchen-counter-red": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "kitchen-counter-red",
+      "px": {
+        "w": 30,
+        "h": 14
+      },
+      "tiles": {
+        "w": 1.88,
+        "h": 0.88
+      },
+      "collides": true,
+      "tags": [
+        "counter",
+        "kitchen",
+        "red"
+      ]
+    },
+    "kitchen-counter-red-low": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "kitchen-counter-red-low",
+      "px": {
+        "w": 46,
+        "h": 14
+      },
+      "tiles": {
+        "w": 2.88,
+        "h": 0.88
+      },
+      "collides": true,
+      "tags": [
+        "counter",
+        "low",
+        "red"
+      ]
+    },
+    "bar-chair-orange-left": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "bar-chair-orange-left",
+      "px": {
+        "w": 10,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "bar",
+        "orange"
+      ]
+    },
+    "library-ladder-wood": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "library-ladder-wood",
+      "px": {
+        "w": 12,
+        "h": 20
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.25
+      },
+      "collides": true,
+      "tags": [
+        "ladder",
+        "library"
+      ]
+    },
+    "library-bookshelf-low-extra-long": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "library-bookshelf-low-extra-long",
+      "px": {
+        "w": 208,
+        "h": 34
+      },
+      "tiles": {
+        "w": 13.0,
+        "h": 2.12
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "library",
+        "long"
+      ]
+    },
+    "card-catalog-machine-large": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "card-catalog-machine-large",
+      "px": {
+        "w": 16,
+        "h": 25
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 1.56
+      },
+      "collides": true,
+      "tags": [
+        "catalog",
+        "machine",
+        "library"
+      ]
+    },
+    "library-bookshelf-tall-full": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "library-bookshelf-tall-full",
+      "px": {
+        "w": 27,
+        "h": 31
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "library",
+        "tall"
+      ]
+    },
+    "library-bookshelf-tall-full-alt": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "library-bookshelf-tall-full-alt",
+      "px": {
+        "w": 27,
+        "h": 31
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "library",
+        "tall"
+      ]
+    },
+    "book-lectern-pedestal": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "book-lectern-pedestal",
+      "px": {
+        "w": 17,
+        "h": 30
+      },
+      "tiles": {
+        "w": 1.06,
+        "h": 1.88
+      },
+      "collides": true,
+      "tags": [
+        "lectern",
+        "book",
+        "pedestal"
+      ]
+    },
+    "bookshelf-low-long-books": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "bookshelf-low-long-books",
+      "px": {
+        "w": 63,
+        "h": 40
+      },
+      "tiles": {
+        "w": 3.94,
+        "h": 2.5
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "low",
+        "long"
+      ]
+    },
+    "bookshelf-tall-narrow-colorful": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "bookshelf-tall-narrow-colorful",
+      "px": {
+        "w": 27,
+        "h": 40
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 2.5
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "tall",
+        "narrow"
+      ]
+    },
+    "bookshelf-tall-narrow-colorful-alt": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "bookshelf-tall-narrow-colorful-alt",
+      "px": {
+        "w": 27,
+        "h": 40
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 2.5
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "tall",
+        "narrow"
+      ]
+    },
+    "bookshelf-wide-cream-top": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "bookshelf-wide-cream-top",
+      "px": {
+        "w": 27,
+        "h": 31
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "wide",
+        "cream"
+      ]
+    },
+    "bookshelf-wide-cream-top-full": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "bookshelf-wide-cream-top-full",
+      "px": {
+        "w": 27,
+        "h": 31
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "wide",
+        "cream"
+      ]
+    },
+    "bookshelf-wide-brown-full": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "bookshelf-wide-brown-full",
+      "px": {
+        "w": 27,
+        "h": 31
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "wide",
+        "brown"
+      ]
+    },
+    "bookshelf-wide-orange-full": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "bookshelf-wide-orange-full",
+      "px": {
+        "w": 27,
+        "h": 31
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "wide",
+        "orange"
+      ]
+    },
+    "bookshelf-low-wide-brown": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "bookshelf-low-wide-brown",
+      "px": {
+        "w": 71,
+        "h": 49
+      },
+      "tiles": {
+        "w": 4.44,
+        "h": 3.06
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "low",
+        "wide"
+      ]
+    },
+    "bookshelf-long-blue-trim": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "bookshelf-long-blue-trim",
+      "px": {
+        "w": 71,
+        "h": 49
+      },
+      "tiles": {
+        "w": 4.44,
+        "h": 3.06
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "long",
+        "blue"
+      ]
+    },
+    "bookshelf-low-long-light": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "bookshelf-low-long-light",
+      "px": {
+        "w": 71,
+        "h": 49
+      },
+      "tiles": {
+        "w": 4.44,
+        "h": 3.06
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "low",
+        "light"
+      ]
+    },
+    "cabinet-purple-tall": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "cabinet-purple-tall",
+      "px": {
+        "w": 26,
+        "h": 37
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 2.31
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "purple",
+        "wardrobe"
+      ]
+    },
+    "table-purple-wide": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "table-purple-wide",
+      "px": {
+        "w": 22,
+        "h": 18
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 1.12
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "purple",
+        "wide"
+      ]
+    },
+    "cabinet-wood-small": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "cabinet-wood-small",
+      "px": {
+        "w": 27,
+        "h": 39
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 2.44
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "wood",
+        "doors"
+      ]
+    },
+    "cabinet-mirror-doors": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "cabinet-mirror-doors",
+      "px": {
+        "w": 27,
+        "h": 27
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 1.69
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "mirror",
+        "doors"
+      ]
+    },
+    "cabinet-glass-wide": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "cabinet-glass-wide",
+      "px": {
+        "w": 27,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "glass",
+        "wide"
+      ]
+    },
+    "cabinet-wood-tall-double": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "cabinet-wood-tall-double",
+      "px": {
+        "w": 27,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "wood",
+        "double-door"
+      ]
+    },
+    "desk-wood-paneled": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "desk-wood-paneled",
+      "px": {
+        "w": 25,
+        "h": 21
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "desk",
+        "wood",
+        "large"
+      ]
+    },
+    "cabinet-wood-narrow-tall": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "cabinet-wood-narrow-tall",
+      "px": {
+        "w": 27,
+        "h": 39
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 2.44
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "wood",
+        "narrow"
+      ]
+    },
+    "sideboard-cream": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "sideboard-cream",
+      "px": {
+        "w": 27,
+        "h": 23
+      },
+      "tiles": {
+        "w": 1.69,
+        "h": 1.44
+      },
+      "collides": true,
+      "tags": [
+        "sideboard",
+        "cream",
+        "cabinet"
+      ]
+    },
+    "desk-orange-large": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "desk-orange-large",
+      "px": {
+        "w": 25,
+        "h": 21
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 1.31
+      },
+      "collides": true,
+      "tags": [
+        "desk",
+        "orange",
+        "large"
+      ]
+    },
+    "cabinet-wood-with-jars": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "cabinet-wood-with-jars",
+      "px": {
+        "w": 61,
+        "h": 41
+      },
+      "tiles": {
+        "w": 3.81,
+        "h": 2.56
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "jars",
+        "shelf"
+      ]
+    },
+    "chair-wood-highback": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "chair-wood-highback",
+      "px": {
+        "w": 12,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "wood",
+        "highback"
+      ]
+    },
+    "chair-wood-highback-alt": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "chair-wood-highback-alt",
+      "px": {
+        "w": 12,
+        "h": 22
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.38
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "wood",
+        "highback"
+      ]
+    },
+    "cabinet-plate-display": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "cabinet-plate-display",
+      "px": {
+        "w": 23,
+        "h": 31
+      },
+      "tiles": {
+        "w": 1.44,
+        "h": 1.94
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "plates",
+        "display"
+      ]
+    },
+    "mirror-standing-wood": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "mirror-standing-wood",
+      "px": {
+        "w": 20,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.25,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "mirror",
+        "standing",
+        "wood"
+      ]
+    },
+    "mirror-standing-light": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "mirror-standing-light",
+      "px": {
+        "w": 20,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.25,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "mirror",
+        "standing",
+        "light"
+      ]
+    },
+    "mirror-standing-gold": {
+      "category": "furniture",
+      "atlasKey": "obj-furniture",
+      "frame": "mirror-standing-gold",
+      "px": {
+        "w": 20,
+        "h": 32
+      },
+      "tiles": {
+        "w": 1.25,
+        "h": 2.0
+      },
+      "collides": true,
+      "tags": [
+        "mirror",
+        "standing",
+        "gold"
+      ]
+    },
     "hanging-light-blue-blouse": {
       "category": "lighting",
       "atlasKey": "obj-lighting",
@@ -2013,6 +5466,270 @@
         "plain",
         "asphalt",
         "section"
+      ]
+    },
+    "pendant-lamp-green": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "pendant-lamp-green",
+      "px": {
+        "w": 9,
+        "h": 17
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 1.06
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "hanging"
+      ]
+    },
+    "pendant-lamp-red": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "pendant-lamp-red",
+      "px": {
+        "w": 9,
+        "h": 17
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 1.06
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "hanging"
+      ]
+    },
+    "desk-lamp-large-silver": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "desk-lamp-large-silver",
+      "px": {
+        "w": 15,
+        "h": 17
+      },
+      "tiles": {
+        "w": 0.94,
+        "h": 1.06
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "desk",
+        "silver"
+      ]
+    },
+    "floor-lamp-grey": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "floor-lamp-grey",
+      "px": {
+        "w": 13,
+        "h": 35
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 2.19
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "floor",
+        "grey"
+      ]
+    },
+    "floor-lamp-plug": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "floor-lamp-plug",
+      "px": {
+        "w": 20,
+        "h": 35
+      },
+      "tiles": {
+        "w": 1.25,
+        "h": 2.19
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "floor",
+        "plug"
+      ]
+    },
+    "floor-lamp-round": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "floor-lamp-round",
+      "px": {
+        "w": 13,
+        "h": 35
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 2.19
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "floor",
+        "round"
+      ]
+    },
+    "floor-lamp-cord": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "floor-lamp-cord",
+      "px": {
+        "w": 20,
+        "h": 35
+      },
+      "tiles": {
+        "w": 1.25,
+        "h": 2.19
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "floor",
+        "cord"
+      ]
+    },
+    "table-lamp-red": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "table-lamp-red",
+      "px": {
+        "w": 12,
+        "h": 19
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.19
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "red",
+        "table"
+      ]
+    },
+    "table-lamp-beige-lit": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "table-lamp-beige-lit",
+      "px": {
+        "w": 12,
+        "h": 16
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.0
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "beige",
+        "lit"
+      ]
+    },
+    "table-lamp-beige": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "table-lamp-beige",
+      "px": {
+        "w": 12,
+        "h": 18
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.12
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "beige",
+        "table"
+      ]
+    },
+    "table-lamp-blue-lit": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "table-lamp-blue-lit",
+      "px": {
+        "w": 12,
+        "h": 17
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.06
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "blue",
+        "lit"
+      ]
+    },
+    "table-lamp-blue": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "table-lamp-blue",
+      "px": {
+        "w": 12,
+        "h": 19
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.19
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "blue",
+        "table"
+      ]
+    },
+    "table-lamp-cream-banded": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "table-lamp-cream-banded",
+      "px": {
+        "w": 12,
+        "h": 18
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.12
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "cream",
+        "banded"
+      ]
+    },
+    "table-lamp-cream-tall": {
+      "category": "lighting",
+      "atlasKey": "obj-lighting",
+      "frame": "table-lamp-cream-tall",
+      "px": {
+        "w": 12,
+        "h": 20
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 1.25
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "cream",
+        "tall"
       ]
     },
     "blue-liquid-spill-puddle": {
@@ -4999,6 +8716,1113 @@
         "ground",
         "curved",
         "pavement"
+      ]
+    },
+    "white-fridge-narrow": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "white-fridge-narrow",
+      "px": {
+        "w": 42,
+        "h": 54
+      },
+      "tiles": {
+        "w": 2.62,
+        "h": 3.38
+      },
+      "collides": true,
+      "tags": [
+        "appliance",
+        "fridge"
+      ]
+    },
+    "book-stack-flat": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "book-stack-flat",
+      "px": {
+        "w": 64,
+        "h": 21
+      },
+      "tiles": {
+        "w": 4.0,
+        "h": 1.31
+      },
+      "collides": false,
+      "tags": [
+        "books",
+        "clutter"
+      ]
+    },
+    "rotary-phone-gray": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "rotary-phone-gray",
+      "px": {
+        "w": 16,
+        "h": 13
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "phone",
+        "tabletop"
+      ]
+    },
+    "rotary-phone-blue": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "rotary-phone-blue",
+      "px": {
+        "w": 16,
+        "h": 13
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "phone",
+        "tabletop"
+      ]
+    },
+    "rotary-phone-white": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "rotary-phone-white",
+      "px": {
+        "w": 16,
+        "h": 13
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "phone",
+        "tabletop"
+      ]
+    },
+    "rotary-phone-red": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "rotary-phone-red",
+      "px": {
+        "w": 16,
+        "h": 13
+      },
+      "tiles": {
+        "w": 1.0,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "phone",
+        "tabletop"
+      ]
+    },
+    "wooden-ladder": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "wooden-ladder",
+      "px": {
+        "w": 45,
+        "h": 80
+      },
+      "tiles": {
+        "w": 2.81,
+        "h": 5.0
+      },
+      "collides": true,
+      "tags": [
+        "ladder",
+        "wood"
+      ]
+    },
+    "ladder-tall-pale": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "ladder-tall-pale",
+      "px": {
+        "w": 36,
+        "h": 82
+      },
+      "tiles": {
+        "w": 2.25,
+        "h": 5.12
+      },
+      "collides": true,
+      "tags": [
+        "ladder"
+      ]
+    },
+    "wooden-crate-large-r59c13": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "wooden-crate-large-r59c13",
+      "px": {
+        "w": 9,
+        "h": 9
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 0.56
+      },
+      "collides": true,
+      "tags": [
+        "crate",
+        "storage"
+      ]
+    },
+    "stone-birdbath-gray": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "stone-birdbath-gray",
+      "px": {
+        "w": 9,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 0.81
+      },
+      "collides": true,
+      "tags": [
+        "fountain",
+        "pedestal"
+      ]
+    },
+    "stone-birdbath-green-water": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "stone-birdbath-green-water",
+      "px": {
+        "w": 9,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 0.81
+      },
+      "collides": true,
+      "tags": [
+        "fountain",
+        "pedestal"
+      ]
+    },
+    "stone-birdbath-gray-alt": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "stone-birdbath-gray-alt",
+      "px": {
+        "w": 9,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 0.81
+      },
+      "collides": true,
+      "tags": [
+        "fountain",
+        "pedestal"
+      ]
+    },
+    "white-ceramic-pot": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "white-ceramic-pot",
+      "px": {
+        "w": 10,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "pot",
+        "ceramic"
+      ]
+    },
+    "presentation-screen-gray": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "presentation-screen-gray",
+      "px": {
+        "w": 13,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "screen",
+        "tv",
+        "presentation"
+      ]
+    },
+    "keyboard-white-large": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "keyboard-white-large",
+      "px": {
+        "w": 25,
+        "h": 14
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 0.88
+      },
+      "collides": false,
+      "tags": [
+        "keyboard",
+        "computer",
+        "white"
+      ]
+    },
+    "office-machine-large-dark": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "office-machine-large-dark",
+      "px": {
+        "w": 10,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 0.62
+      },
+      "collides": true,
+      "tags": [
+        "copier",
+        "machine",
+        "buttons"
+      ]
+    },
+    "kiosk-machine-white": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "kiosk-machine-white",
+      "px": {
+        "w": 13,
+        "h": 15
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.94
+      },
+      "collides": true,
+      "tags": [
+        "kiosk",
+        "machine",
+        "white"
+      ]
+    },
+    "diagonal-computer-blue-left": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "diagonal-computer-blue-left",
+      "px": {
+        "w": 13,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.31
+      },
+      "collides": false,
+      "tags": [
+        "computer",
+        "keyboard",
+        "diagonal"
+      ]
+    },
+    "diagonal-computer-blue-right": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "diagonal-computer-blue-right",
+      "px": {
+        "w": 13,
+        "h": 21
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.31
+      },
+      "collides": false,
+      "tags": [
+        "computer",
+        "keyboard",
+        "diagonal"
+      ]
+    },
+    "photocopier-color": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "photocopier-color",
+      "px": {
+        "w": 25,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 1.25
+      },
+      "collides": true,
+      "tags": [
+        "printer",
+        "copier",
+        "ink"
+      ]
+    },
+    "photocopier-paper-tray": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "photocopier-paper-tray",
+      "px": {
+        "w": 25,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.56,
+        "h": 1.25
+      },
+      "collides": true,
+      "tags": [
+        "printer",
+        "copier",
+        "paper"
+      ]
+    },
+    "vending-machine-dark": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "vending-machine-dark",
+      "px": {
+        "w": 23,
+        "h": 34
+      },
+      "tiles": {
+        "w": 1.44,
+        "h": 2.12
+      },
+      "collides": true,
+      "tags": [
+        "vending",
+        "machine",
+        "dark"
+      ]
+    },
+    "vending-machine-drinks": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "vending-machine-drinks",
+      "px": {
+        "w": 23,
+        "h": 34
+      },
+      "tiles": {
+        "w": 1.44,
+        "h": 2.12
+      },
+      "collides": true,
+      "tags": [
+        "vending",
+        "drinks",
+        "cans"
+      ]
+    },
+    "office-machine-large-light": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "office-machine-large-light",
+      "px": {
+        "w": 10,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 0.62
+      },
+      "collides": true,
+      "tags": [
+        "copier",
+        "machine",
+        "buttons"
+      ]
+    },
+    "printer-stand-beige": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "printer-stand-beige",
+      "px": {
+        "w": 26,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 1.25
+      },
+      "collides": true,
+      "tags": [
+        "printer",
+        "stand",
+        "beige"
+      ]
+    },
+    "printer-stand-beige-2": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "printer-stand-beige-2",
+      "px": {
+        "w": 26,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 1.25
+      },
+      "collides": true,
+      "tags": [
+        "printer",
+        "stand",
+        "beige"
+      ]
+    },
+    "printer-gray-paper": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "printer-gray-paper",
+      "px": {
+        "w": 26,
+        "h": 20
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 1.25
+      },
+      "collides": true,
+      "tags": [
+        "printer",
+        "gray",
+        "paper"
+      ]
+    },
+    "office-machine-large-white": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "office-machine-large-white",
+      "px": {
+        "w": 10,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.62,
+        "h": 0.62
+      },
+      "collides": true,
+      "tags": [
+        "copier",
+        "machine",
+        "buttons"
+      ]
+    },
+    "vending-machine-sign": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "vending-machine-sign",
+      "px": {
+        "w": 13,
+        "h": 18
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 1.12
+      },
+      "collides": true,
+      "tags": [
+        "vending",
+        "machine",
+        "appliance"
+      ]
+    },
+    "drinking-glasses-set": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "drinking-glasses-set",
+      "px": {
+        "w": 13,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "glasses",
+        "drink",
+        "tabletop"
+      ]
+    },
+    "food-plate-sandwich": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "food-plate-sandwich",
+      "px": {
+        "w": 12,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "food",
+        "plate",
+        "sandwich"
+      ]
+    },
+    "napkin-stack": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "napkin-stack",
+      "px": {
+        "w": 9,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "napkins",
+        "stack",
+        "tabletop"
+      ]
+    },
+    "coffee-machine": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "coffee-machine",
+      "px": {
+        "w": 9,
+        "h": 9
+      },
+      "tiles": {
+        "w": 0.56,
+        "h": 0.56
+      },
+      "collides": false,
+      "tags": [
+        "coffee",
+        "espresso",
+        "appliance"
+      ]
+    },
+    "cooking-pot-paella": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "cooking-pot-paella",
+      "px": {
+        "w": 12,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "pot",
+        "paella",
+        "food"
+      ]
+    },
+    "display-fridge-food": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "display-fridge-food",
+      "px": {
+        "w": 40,
+        "h": 36
+      },
+      "tiles": {
+        "w": 2.5,
+        "h": 2.25
+      },
+      "collides": true,
+      "tags": [
+        "fridge",
+        "display",
+        "food"
+      ]
+    },
+    "metal-appliance-large": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "metal-appliance-large",
+      "px": {
+        "w": 14,
+        "h": 19
+      },
+      "tiles": {
+        "w": 0.88,
+        "h": 1.19
+      },
+      "collides": true,
+      "tags": [
+        "appliance",
+        "metal",
+        "large"
+      ]
+    },
+    "pressure-cooker-grey": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "pressure-cooker-grey",
+      "px": {
+        "w": 22,
+        "h": 19
+      },
+      "tiles": {
+        "w": 1.38,
+        "h": 1.19
+      },
+      "collides": false,
+      "tags": [
+        "cooker",
+        "appliance",
+        "grey"
+      ]
+    },
+    "pressure-cooker-dark": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "pressure-cooker-dark",
+      "px": {
+        "w": 14,
+        "h": 19
+      },
+      "tiles": {
+        "w": 0.88,
+        "h": 1.19
+      },
+      "collides": false,
+      "tags": [
+        "cooker",
+        "appliance",
+        "dark"
+      ]
+    },
+    "kitchen-stove-grey": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "kitchen-stove-grey",
+      "px": {
+        "w": 23,
+        "h": 44
+      },
+      "tiles": {
+        "w": 1.44,
+        "h": 2.75
+      },
+      "collides": true,
+      "tags": [
+        "stove",
+        "oven",
+        "kitchen"
+      ]
+    },
+    "drink-display-cabinet": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "drink-display-cabinet",
+      "px": {
+        "w": 23,
+        "h": 44
+      },
+      "tiles": {
+        "w": 1.44,
+        "h": 2.75
+      },
+      "collides": true,
+      "tags": [
+        "display",
+        "drinks",
+        "cabinet"
+      ]
+    },
+    "rice-cooker-plug": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "rice-cooker-plug",
+      "px": {
+        "w": 21,
+        "h": 18
+      },
+      "tiles": {
+        "w": 1.31,
+        "h": 1.12
+      },
+      "collides": false,
+      "tags": [
+        "cooker",
+        "rice",
+        "appliance"
+      ]
+    },
+    "rice-cooker-small": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "rice-cooker-small",
+      "px": {
+        "w": 37,
+        "h": 18
+      },
+      "tiles": {
+        "w": 2.31,
+        "h": 1.12
+      },
+      "collides": false,
+      "tags": [
+        "cooker",
+        "rice",
+        "small"
+      ]
+    },
+    "rolling-pin": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "rolling-pin",
+      "px": {
+        "w": 60,
+        "h": 12
+      },
+      "tiles": {
+        "w": 3.75,
+        "h": 0.75
+      },
+      "collides": false,
+      "tags": [
+        "rolling-pin",
+        "baking",
+        "utensil"
+      ]
+    },
+    "frying-pan-omelette": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "frying-pan-omelette",
+      "px": {
+        "w": 11,
+        "h": 18
+      },
+      "tiles": {
+        "w": 0.69,
+        "h": 1.12
+      },
+      "collides": false,
+      "tags": [
+        "pan",
+        "omelette",
+        "cooking"
+      ]
+    },
+    "donut-plate": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "donut-plate",
+      "px": {
+        "w": 12,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "donut",
+        "plate",
+        "food"
+      ]
+    },
+    "salad-plate-large": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "salad-plate-large",
+      "px": {
+        "w": 12,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "salad",
+        "plate",
+        "food"
+      ]
+    },
+    "bagel-plate": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "bagel-plate",
+      "px": {
+        "w": 12,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "bagel",
+        "plate",
+        "food"
+      ]
+    },
+    "fridge-white-large": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "fridge-white-large",
+      "px": {
+        "w": 26,
+        "h": 38
+      },
+      "tiles": {
+        "w": 1.62,
+        "h": 2.38
+      },
+      "collides": true,
+      "tags": [
+        "fridge",
+        "white",
+        "large"
+      ]
+    },
+    "bread-loaf-plate": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "bread-loaf-plate",
+      "px": {
+        "w": 14,
+        "h": 29
+      },
+      "tiles": {
+        "w": 0.88,
+        "h": 1.81
+      },
+      "collides": false,
+      "tags": [
+        "bread",
+        "loaf",
+        "plate"
+      ]
+    },
+    "croissant-plate-large": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "croissant-plate-large",
+      "px": {
+        "w": 14,
+        "h": 16
+      },
+      "tiles": {
+        "w": 0.88,
+        "h": 1.0
+      },
+      "collides": false,
+      "tags": [
+        "croissant",
+        "plate",
+        "bakery"
+      ]
+    },
+    "cake-plate-strawberry": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "cake-plate-strawberry",
+      "px": {
+        "w": 12,
+        "h": 12
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.75
+      },
+      "collides": false,
+      "tags": [
+        "cake",
+        "strawberry",
+        "plate"
+      ]
+    },
+    "croissant-plate": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "croissant-plate",
+      "px": {
+        "w": 12,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "croissant",
+        "plate",
+        "food"
+      ]
+    },
+    "lemon-pastry-plate": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "lemon-pastry-plate",
+      "px": {
+        "w": 12,
+        "h": 11
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.69
+      },
+      "collides": false,
+      "tags": [
+        "pastry",
+        "lemon",
+        "plate"
+      ]
+    },
+    "omelette-plate": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "omelette-plate",
+      "px": {
+        "w": 12,
+        "h": 10
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.62
+      },
+      "collides": false,
+      "tags": [
+        "omelette",
+        "plate",
+        "food"
+      ]
+    },
+    "shrimp-single": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shrimp-single",
+      "px": {
+        "w": 13,
+        "h": 6
+      },
+      "tiles": {
+        "w": 0.81,
+        "h": 0.38
+      },
+      "collides": false,
+      "tags": [
+        "shrimp",
+        "food",
+        "small"
+      ]
+    },
+    "hamburger-large": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "hamburger-large",
+      "px": {
+        "w": 12,
+        "h": 13
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.81
+      },
+      "collides": false,
+      "tags": [
+        "hamburger",
+        "burger",
+        "food"
+      ]
+    },
+    "shrimp-plate-tomato": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shrimp-plate-tomato",
+      "px": {
+        "w": 12,
+        "h": 12
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.75
+      },
+      "collides": false,
+      "tags": [
+        "shrimp",
+        "plate",
+        "food"
+      ]
+    },
+    "shrimp-plate-lemon": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "shrimp-plate-lemon",
+      "px": {
+        "w": 12,
+        "h": 12
+      },
+      "tiles": {
+        "w": 0.75,
+        "h": 0.75
+      },
+      "collides": false,
+      "tags": [
+        "shrimp",
+        "plate",
+        "lemon"
+      ]
+    },
+    "blanket-pile": {
+      "category": "misc",
+      "atlasKey": "obj-misc",
+      "frame": "blanket-pile",
+      "px": {
+        "w": 20,
+        "h": 12
+      },
+      "tiles": {
+        "w": 1.25,
+        "h": 0.75
+      },
+      "collides": false,
+      "tags": [
+        "blanket",
+        "laundry",
+        "pile"
       ]
     },
     "mushroom-building-top": {

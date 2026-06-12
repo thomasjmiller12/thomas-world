@@ -5,6 +5,7 @@
 
 /* START-USER-IMPORTS */
 import { InteriorState, initInterior, setupInterior, updateInterior } from './InteriorHelper';
+import { placeTownObject } from '../objects/TownObjects';
 /* END-USER-IMPORTS */
 
 export default class Workshop extends Phaser.Scene {
@@ -232,6 +233,16 @@ export default class Workshop extends Phaser.Scene {
 	create() {
 		this.editorCreate();
 		setupInterior(this, this.workshopMap, 'builder', { x: 128, y: 128 }, 'The Workshop', this.state);
+		// The big wall monitor (world fixture: project logs display) between the
+		// tool benches and the door, and the work lamp (flickerable) standing by
+		// the main work table. Positions via render_map.py.
+		const monitor = placeTownObject(this, 'wall-screen-dark-framed', 137, 75, { depth: 20 });
+		if (monitor) this.state.fixtures?.register('workshop', 'monitor', monitor);
+		const lamp = placeTownObject(this, 'floor-lamp-grey', 52, 148, {
+			depth: 20,
+			collideWith: this.state.player,
+		});
+		if (lamp) this.state.fixtures?.register('workshop', 'lamp', lamp);
 	}
 
 	update() {

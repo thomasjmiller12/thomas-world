@@ -382,7 +382,7 @@
     },
     "antenna-pole-tall": {
       "frame": {
-        "x": 288,
+        "x": 330,
         "y": 0,
         "w": 31,
         "h": 78
@@ -802,10 +802,10 @@
     },
     "red-telephone-box": {
       "frame": {
-        "x": 320,
+        "x": 260,
         "y": 0,
         "w": 41,
-        "h": 76
+        "h": 92
       },
       "rotated": false,
       "trimmed": false,
@@ -813,11 +813,11 @@
         "x": 0,
         "y": 0,
         "w": 41,
-        "h": 76
+        "h": 92
       },
       "sourceSize": {
         "w": 41,
-        "h": 76
+        "h": 92
       }
     },
     "road-sign-pole-angled-green": {
@@ -1002,7 +1002,7 @@
     },
     "industrial-signal-post": {
       "frame": {
-        "x": 260,
+        "x": 302,
         "y": 0,
         "w": 18,
         "h": 88
@@ -1062,7 +1062,7 @@
     },
     "tall-thin-antenna-pole": {
       "frame": {
-        "x": 279,
+        "x": 321,
         "y": 0,
         "w": 8,
         "h": 88

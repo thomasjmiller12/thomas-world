@@ -5,6 +5,7 @@
 
 /* START-USER-IMPORTS */
 import { InteriorState, initInterior, setupInterior, updateInterior } from './InteriorHelper';
+import { placeTownObject } from '../objects/TownObjects';
 /* END-USER-IMPORTS */
 
 export default class Office extends Phaser.Scene {
@@ -218,6 +219,11 @@ export default class Office extends Phaser.Scene {
 	create() {
 		this.editorCreate();
 		setupInterior(this, this.officeMap, 'career', { x: 176, y: 64 }, 'The Office', this.state);
+		// The office phone (world fixture: agents can ring it) lives on the
+		// conference table's free corner. Registered over the default point so the
+		// ring effect wobbles the actual handset. Position via render_map.py.
+		const phone = placeTownObject(this, 'rotary-phone-red', 58, 120, { depth: 20 });
+		if (phone) this.state.fixtures?.register('office', 'phone', phone);
 	}
 
 	update() {

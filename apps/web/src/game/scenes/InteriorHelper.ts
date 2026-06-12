@@ -29,6 +29,9 @@ export interface InteriorState {
   onPlayerInteract?: () => void;
   // Scoped show-in-town handler ref (removed on exit).
   onTravel?: (p: { locationId: LocationId; anchor?: { x: number; y: number } }) => void;
+  // Fixture embodiment for this room (set in setupInterior). Scenes re-register
+  // a placed sprite over the default point to give an effect a real target.
+  fixtures?: FixtureRegistry;
 }
 
 export function initInterior(
@@ -88,11 +91,12 @@ export function setupInterior(
 
   // Fixture embodiment: world.effect frames for this room play at the
   // registered points (so `use_fixture` is visible even before real props).
+  // Scenes overwrite a point with their placed sprite after setup.
   const locationId = locationForScene(scene.scene.key);
   if (locationId) {
-    const registry = new FixtureRegistry(scene);
+    state.fixtures = new FixtureRegistry(scene);
     for (const [fixtureId, point] of Object.entries(INTERIOR_FIXTURE_POINTS[locationId] ?? {})) {
-      registry.register(locationId, fixtureId, point);
+      state.fixtures.register(locationId, fixtureId, point);
     }
   }
 

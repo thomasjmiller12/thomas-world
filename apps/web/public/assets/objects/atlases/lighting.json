@@ -2,7 +2,7 @@
   "frames": {
     "hanging-light-blue-blouse": {
       "frame": {
-        "x": 427,
+        "x": 624,
         "y": 0,
         "w": 13,
         "h": 11
@@ -22,7 +22,7 @@
     },
     "hanging-light-blue-shirt": {
       "frame": {
-        "x": 233,
+        "x": 303,
         "y": 0,
         "w": 7,
         "h": 30
@@ -42,7 +42,7 @@
     },
     "hanging-sign-orange-light": {
       "frame": {
-        "x": 275,
+        "x": 345,
         "y": 0,
         "w": 21,
         "h": 21
@@ -62,7 +62,7 @@
     },
     "hanging-sign-green-light": {
       "frame": {
-        "x": 297,
+        "x": 367,
         "y": 0,
         "w": 21,
         "h": 21
@@ -82,7 +82,7 @@
     },
     "hanging-sign-red-light": {
       "frame": {
-        "x": 328,
+        "x": 463,
         "y": 0,
         "w": 19,
         "h": 17
@@ -102,7 +102,7 @@
     },
     "bollard-lamp-post-short": {
       "frame": {
-        "x": 319,
+        "x": 389,
         "y": 0,
         "w": 8,
         "h": 21
@@ -162,7 +162,7 @@
     },
     "globe-lamp-post-ornate": {
       "frame": {
-        "x": 188,
+        "x": 258,
         "y": 0,
         "w": 11,
         "h": 33
@@ -182,7 +182,7 @@
     },
     "decorative-wall-sconce-small": {
       "frame": {
-        "x": 382,
+        "x": 579,
         "y": 0,
         "w": 44,
         "h": 12
@@ -202,7 +202,7 @@
     },
     "paper-lantern-white": {
       "frame": {
-        "x": 241,
+        "x": 311,
         "y": 0,
         "w": 19,
         "h": 25
@@ -302,7 +302,7 @@
     },
     "blue-lightning-sign": {
       "frame": {
-        "x": 261,
+        "x": 331,
         "y": 0,
         "w": 13,
         "h": 22
@@ -342,7 +342,7 @@
     },
     "road-intersection-light-patch": {
       "frame": {
-        "x": 348,
+        "x": 532,
         "y": 0,
         "w": 16,
         "h": 16
@@ -362,7 +362,7 @@
     },
     "road-light-asphalt-section": {
       "frame": {
-        "x": 365,
+        "x": 549,
         "y": 0,
         "w": 16,
         "h": 16
@@ -382,7 +382,7 @@
     },
     "road-light-section-plain": {
       "frame": {
-        "x": 200,
+        "x": 270,
         "y": 0,
         "w": 32,
         "h": 32
@@ -399,12 +399,292 @@
         "w": 32,
         "h": 32
       }
+    },
+    "pendant-lamp-green": {
+      "frame": {
+        "x": 483,
+        "y": 0,
+        "w": 9,
+        "h": 17
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 9,
+        "h": 17
+      },
+      "sourceSize": {
+        "w": 9,
+        "h": 17
+      }
+    },
+    "pendant-lamp-red": {
+      "frame": {
+        "x": 493,
+        "y": 0,
+        "w": 9,
+        "h": 17
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 9,
+        "h": 17
+      },
+      "sourceSize": {
+        "w": 9,
+        "h": 17
+      }
+    },
+    "desk-lamp-large-silver": {
+      "frame": {
+        "x": 503,
+        "y": 0,
+        "w": 15,
+        "h": 17
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 15,
+        "h": 17
+      },
+      "sourceSize": {
+        "w": 15,
+        "h": 17
+      }
+    },
+    "floor-lamp-grey": {
+      "frame": {
+        "x": 188,
+        "y": 0,
+        "w": 13,
+        "h": 35
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 35
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 35
+      }
+    },
+    "floor-lamp-plug": {
+      "frame": {
+        "x": 202,
+        "y": 0,
+        "w": 20,
+        "h": 35
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 35
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 35
+      }
+    },
+    "floor-lamp-round": {
+      "frame": {
+        "x": 223,
+        "y": 0,
+        "w": 13,
+        "h": 35
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 35
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 35
+      }
+    },
+    "floor-lamp-cord": {
+      "frame": {
+        "x": 237,
+        "y": 0,
+        "w": 20,
+        "h": 35
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 35
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 35
+      }
+    },
+    "table-lamp-red": {
+      "frame": {
+        "x": 411,
+        "y": 0,
+        "w": 12,
+        "h": 19
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 19
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 19
+      }
+    },
+    "table-lamp-beige-lit": {
+      "frame": {
+        "x": 566,
+        "y": 0,
+        "w": 12,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 16
+      }
+    },
+    "table-lamp-beige": {
+      "frame": {
+        "x": 437,
+        "y": 0,
+        "w": 12,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 18
+      }
+    },
+    "table-lamp-blue-lit": {
+      "frame": {
+        "x": 519,
+        "y": 0,
+        "w": 12,
+        "h": 17
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 17
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 17
+      }
+    },
+    "table-lamp-blue": {
+      "frame": {
+        "x": 424,
+        "y": 0,
+        "w": 12,
+        "h": 19
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 19
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 19
+      }
+    },
+    "table-lamp-cream-banded": {
+      "frame": {
+        "x": 450,
+        "y": 0,
+        "w": 12,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 18
+      }
+    },
+    "table-lamp-cream-tall": {
+      "frame": {
+        "x": 398,
+        "y": 0,
+        "w": 12,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 20
+      }
     }
   },
   "meta": {
     "image": "lighting.png",
     "size": {
-      "w": 441,
+      "w": 638,
       "h": 92
     },
     "scale": 1,

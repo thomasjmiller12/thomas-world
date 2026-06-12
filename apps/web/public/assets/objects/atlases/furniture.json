@@ -2,8 +2,8 @@
   "frames": {
     "wooden-park-bench": {
       "frame": {
-        "x": 159,
-        "y": 0,
+        "x": 241,
+        "y": 100,
         "w": 26,
         "h": 22
       },
@@ -22,8 +22,8 @@
     },
     "wooden-park-bench-side": {
       "frame": {
-        "x": 186,
-        "y": 0,
+        "x": 268,
+        "y": 100,
         "w": 42,
         "h": 22
       },
@@ -42,8 +42,8 @@
     },
     "industrial-workbench": {
       "frame": {
-        "x": 65,
-        "y": 0,
+        "x": 327,
+        "y": 62,
         "w": 60,
         "h": 32
       },
@@ -62,8 +62,8 @@
     },
     "concrete-bench-long": {
       "frame": {
-        "x": 229,
-        "y": 0,
+        "x": 672,
+        "y": 100,
         "w": 32,
         "h": 16
       },
@@ -82,8 +82,8 @@
     },
     "concrete-bench-with-back": {
       "frame": {
-        "x": 262,
-        "y": 0,
+        "x": 705,
+        "y": 100,
         "w": 16,
         "h": 16
       },
@@ -122,8 +122,8 @@
     },
     "handheld-game-device": {
       "frame": {
-        "x": 126,
-        "y": 0,
+        "x": 798,
+        "y": 62,
         "w": 32,
         "h": 29
       },
@@ -139,13 +139,1953 @@
         "w": 32,
         "h": 29
       }
+    },
+    "wooden-table-square-orange": {
+      "frame": {
+        "x": 812,
+        "y": 0,
+        "w": 38,
+        "h": 37
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 37
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 37
+      }
+    },
+    "wooden-table-low-wide": {
+      "frame": {
+        "x": 337,
+        "y": 100,
+        "w": 38,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 21
+      }
+    },
+    "wooden-table-square-light": {
+      "frame": {
+        "x": 851,
+        "y": 0,
+        "w": 38,
+        "h": 37
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 37
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 37
+      }
+    },
+    "round-table-golden": {
+      "frame": {
+        "x": 1007,
+        "y": 100,
+        "w": 13,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 13
+      }
+    },
+    "round-table-orange": {
+      "frame": {
+        "x": 0,
+        "y": 124,
+        "w": 13,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 13
+      }
+    },
+    "round-table-white": {
+      "frame": {
+        "x": 14,
+        "y": 124,
+        "w": 13,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 13
+      }
+    },
+    "round-table-copper": {
+      "frame": {
+        "x": 28,
+        "y": 124,
+        "w": 13,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 13
+      }
+    },
+    "round-table-tan": {
+      "frame": {
+        "x": 42,
+        "y": 124,
+        "w": 13,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 13
+      }
+    },
+    "round-table-amber": {
+      "frame": {
+        "x": 56,
+        "y": 124,
+        "w": 13,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 13
+      }
+    },
+    "wooden-desk-orange": {
+      "frame": {
+        "x": 973,
+        "y": 62,
+        "w": 21,
+        "h": 23
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 21,
+        "h": 23
+      },
+      "sourceSize": {
+        "w": 21,
+        "h": 23
+      }
+    },
+    "wooden-desk-light": {
+      "frame": {
+        "x": 995,
+        "y": 62,
+        "w": 21,
+        "h": 23
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 21,
+        "h": 23
+      },
+      "sourceSize": {
+        "w": 21,
+        "h": 23
+      }
+    },
+    "table-tablecloth-beige": {
+      "frame": {
+        "x": 0,
+        "y": 100,
+        "w": 21,
+        "h": 23
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 21,
+        "h": 23
+      },
+      "sourceSize": {
+        "w": 21,
+        "h": 23
+      }
+    },
+    "wooden-nightstand-small": {
+      "frame": {
+        "x": 190,
+        "y": 0,
+        "w": 24,
+        "h": 53
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 53
+      },
+      "sourceSize": {
+        "w": 24,
+        "h": 53
+      }
+    },
+    "dresser-brown-wide": {
+      "frame": {
+        "x": 890,
+        "y": 0,
+        "w": 38,
+        "h": 37
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 37
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 37
+      }
+    },
+    "dresser-beige-wide": {
+      "frame": {
+        "x": 929,
+        "y": 0,
+        "w": 38,
+        "h": 37
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 37
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 37
+      }
+    },
+    "dresser-orange-red-feet": {
+      "frame": {
+        "x": 376,
+        "y": 100,
+        "w": 22,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 21
+      }
+    },
+    "dresser-dark-walnut": {
+      "frame": {
+        "x": 399,
+        "y": 100,
+        "w": 22,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 21
+      }
+    },
+    "dresser-light-pine": {
+      "frame": {
+        "x": 968,
+        "y": 0,
+        "w": 38,
+        "h": 37
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 37
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 37
+      }
+    },
+    "dresser-orange-tall": {
+      "frame": {
+        "x": 0,
+        "y": 62,
+        "w": 38,
+        "h": 37
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 37
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 37
+      }
+    },
+    "chair-orange-highback": {
+      "frame": {
+        "x": 422,
+        "y": 100,
+        "w": 13,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 21
+      }
+    },
+    "chair-pale-highback": {
+      "frame": {
+        "x": 436,
+        "y": 100,
+        "w": 13,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 21
+      }
+    },
+    "chair-slatted-tall": {
+      "frame": {
+        "x": 450,
+        "y": 100,
+        "w": 13,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 21
+      }
+    },
+    "chair-dark-tall": {
+      "frame": {
+        "x": 464,
+        "y": 100,
+        "w": 13,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 21
+      }
+    },
+    "chair-orange-tall": {
+      "frame": {
+        "x": 478,
+        "y": 100,
+        "w": 13,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 21
+      }
+    },
+    "chair-orange-slatted-side": {
+      "frame": {
+        "x": 492,
+        "y": 100,
+        "w": 10,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 10,
+        "h": 21
+      }
+    },
+    "swivel-chair-gray": {
+      "frame": {
+        "x": 22,
+        "y": 100,
+        "w": 12,
+        "h": 23
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 23
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 23
+      }
+    },
+    "swivel-chair-orange": {
+      "frame": {
+        "x": 35,
+        "y": 100,
+        "w": 12,
+        "h": 23
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 23
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 23
+      }
+    },
+    "mesh-divider-straight": {
+      "frame": {
+        "x": 876,
+        "y": 62,
+        "w": 47,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 47,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 47,
+        "h": 24
+      }
+    },
+    "mesh-divider-corner-large": {
+      "frame": {
+        "x": 728,
+        "y": 0,
+        "w": 41,
+        "h": 38
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 41,
+        "h": 38
+      },
+      "sourceSize": {
+        "w": 41,
+        "h": 38
+      }
+    },
+    "mesh-divider-panel": {
+      "frame": {
+        "x": 924,
+        "y": 62,
+        "w": 31,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 31,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 31,
+        "h": 24
+      }
+    },
+    "side-table-beige": {
+      "frame": {
+        "x": 39,
+        "y": 62,
+        "w": 25,
+        "h": 37
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 25,
+        "h": 37
+      },
+      "sourceSize": {
+        "w": 25,
+        "h": 37
+      }
+    },
+    "mesh-divider-corner-small": {
+      "frame": {
+        "x": 770,
+        "y": 0,
+        "w": 41,
+        "h": 38
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 41,
+        "h": 38
+      },
+      "sourceSize": {
+        "w": 41,
+        "h": 38
+      }
+    },
+    "mesh-cage-tall": {
+      "frame": {
+        "x": 956,
+        "y": 62,
+        "w": 16,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 24
+      }
+    },
+    "side-table-orange": {
+      "frame": {
+        "x": 65,
+        "y": 62,
+        "w": 25,
+        "h": 37
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 25,
+        "h": 37
+      },
+      "sourceSize": {
+        "w": 25,
+        "h": 37
+      }
+    },
+    "conference-table-white": {
+      "frame": {
+        "x": 48,
+        "y": 100,
+        "w": 41,
+        "h": 23
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 41,
+        "h": 23
+      },
+      "sourceSize": {
+        "w": 41,
+        "h": 23
+      }
+    },
+    "conference-table-beige": {
+      "frame": {
+        "x": 90,
+        "y": 100,
+        "w": 41,
+        "h": 23
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 41,
+        "h": 23
+      },
+      "sourceSize": {
+        "w": 41,
+        "h": 23
+      }
+    },
+    "conference-table-tan": {
+      "frame": {
+        "x": 132,
+        "y": 100,
+        "w": 41,
+        "h": 23
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 41,
+        "h": 23
+      },
+      "sourceSize": {
+        "w": 41,
+        "h": 23
+      }
+    },
+    "office-chair-orange-back": {
+      "frame": {
+        "x": 174,
+        "y": 100,
+        "w": 12,
+        "h": 23
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 23
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 23
+      }
+    },
+    "office-chair-orange-front": {
+      "frame": {
+        "x": 431,
+        "y": 0,
+        "w": 13,
+        "h": 42
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 42
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 42
+      }
+    },
+    "coffee-station-table-beige": {
+      "frame": {
+        "x": 388,
+        "y": 62,
+        "w": 26,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 32
+      }
+    },
+    "coffee-station-table-small": {
+      "frame": {
+        "x": 415,
+        "y": 62,
+        "w": 26,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 32
+      }
+    },
+    "coffee-station-table-orange": {
+      "frame": {
+        "x": 442,
+        "y": 62,
+        "w": 26,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 32
+      }
+    },
+    "office-chair-gray-side": {
+      "frame": {
+        "x": 187,
+        "y": 100,
+        "w": 12,
+        "h": 23
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 23
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 23
+      }
+    },
+    "office-chair-orange-side": {
+      "frame": {
+        "x": 200,
+        "y": 100,
+        "w": 12,
+        "h": 23
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 23
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 23
+      }
+    },
+    "office-chair-gray-front": {
+      "frame": {
+        "x": 445,
+        "y": 0,
+        "w": 13,
+        "h": 42
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 42
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 42
+      }
+    },
+    "wooden-chair-side-orange": {
+      "frame": {
+        "x": 503,
+        "y": 100,
+        "w": 13,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 21
+      }
+    },
+    "wooden-chair-side-brown": {
+      "frame": {
+        "x": 517,
+        "y": 100,
+        "w": 13,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 21
+      }
+    },
+    "wooden-chair-side-light": {
+      "frame": {
+        "x": 531,
+        "y": 100,
+        "w": 13,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 21
+      }
+    },
+    "wooden-chair-back-light": {
+      "frame": {
+        "x": 545,
+        "y": 100,
+        "w": 13,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 21
+      }
+    },
+    "wooden-chair-back-dark": {
+      "frame": {
+        "x": 559,
+        "y": 100,
+        "w": 13,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 21
+      }
+    },
+    "wooden-table-large": {
+      "frame": {
+        "x": 722,
+        "y": 100,
+        "w": 16,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 14
+      }
+    },
+    "kitchen-cart-light": {
+      "frame": {
+        "x": 65,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      }
+    },
+    "kitchen-cabinet-orange": {
+      "frame": {
+        "x": 111,
+        "y": 0,
+        "w": 47,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 47,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 47,
+        "h": 58
+      }
+    },
+    "dining-table-light-large": {
+      "frame": {
+        "x": 739,
+        "y": 100,
+        "w": 16,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 14
+      }
+    },
+    "dining-table-red-large": {
+      "frame": {
+        "x": 756,
+        "y": 100,
+        "w": 16,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 14
+      }
+    },
+    "kitchen-cart-small": {
+      "frame": {
+        "x": 159,
+        "y": 0,
+        "w": 30,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 58
+      }
+    },
+    "kitchen-counter-light": {
+      "frame": {
+        "x": 773,
+        "y": 100,
+        "w": 30,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 14
+      }
+    },
+    "kitchen-counter-long": {
+      "frame": {
+        "x": 804,
+        "y": 100,
+        "w": 46,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 14
+      }
+    },
+    "display-case-glass-orange": {
+      "frame": {
+        "x": 459,
+        "y": 0,
+        "w": 30,
+        "h": 42
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 42
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 42
+      }
+    },
+    "kitchen-counter-beige": {
+      "frame": {
+        "x": 851,
+        "y": 100,
+        "w": 30,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 14
+      }
+    },
+    "table-low-light": {
+      "frame": {
+        "x": 882,
+        "y": 100,
+        "w": 46,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 14
+      }
+    },
+    "kitchen-counter-red": {
+      "frame": {
+        "x": 929,
+        "y": 100,
+        "w": 30,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 14
+      }
+    },
+    "kitchen-counter-red-low": {
+      "frame": {
+        "x": 960,
+        "y": 100,
+        "w": 46,
+        "h": 14
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 14
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 14
+      }
+    },
+    "bar-chair-orange-left": {
+      "frame": {
+        "x": 573,
+        "y": 100,
+        "w": 10,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 10,
+        "h": 21
+      }
+    },
+    "library-ladder-wood": {
+      "frame": {
+        "x": 636,
+        "y": 100,
+        "w": 12,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 20
+      }
+    },
+    "library-bookshelf-low-extra-long": {
+      "frame": {
+        "x": 118,
+        "y": 62,
+        "w": 208,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 208,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 208,
+        "h": 34
+      }
+    },
+    "card-catalog-machine-large": {
+      "frame": {
+        "x": 859,
+        "y": 62,
+        "w": 16,
+        "h": 25
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 25
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 25
+      }
+    },
+    "library-bookshelf-tall-full": {
+      "frame": {
+        "x": 588,
+        "y": 62,
+        "w": 27,
+        "h": 31
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 31
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 31
+      }
+    },
+    "library-bookshelf-tall-full-alt": {
+      "frame": {
+        "x": 616,
+        "y": 62,
+        "w": 27,
+        "h": 31
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 31
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 31
+      }
+    },
+    "book-lectern-pedestal": {
+      "frame": {
+        "x": 780,
+        "y": 62,
+        "w": 17,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 17,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 17,
+        "h": 30
+      }
+    },
+    "bookshelf-low-long-books": {
+      "frame": {
+        "x": 552,
+        "y": 0,
+        "w": 63,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 63,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 63,
+        "h": 40
+      }
+    },
+    "bookshelf-tall-narrow-colorful": {
+      "frame": {
+        "x": 616,
+        "y": 0,
+        "w": 27,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 40
+      }
+    },
+    "bookshelf-tall-narrow-colorful-alt": {
+      "frame": {
+        "x": 644,
+        "y": 0,
+        "w": 27,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 40
+      }
+    },
+    "bookshelf-wide-cream-top": {
+      "frame": {
+        "x": 644,
+        "y": 62,
+        "w": 27,
+        "h": 31
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 31
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 31
+      }
+    },
+    "bookshelf-wide-cream-top-full": {
+      "frame": {
+        "x": 672,
+        "y": 62,
+        "w": 27,
+        "h": 31
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 31
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 31
+      }
+    },
+    "bookshelf-wide-brown-full": {
+      "frame": {
+        "x": 700,
+        "y": 62,
+        "w": 27,
+        "h": 31
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 31
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 31
+      }
+    },
+    "bookshelf-wide-orange-full": {
+      "frame": {
+        "x": 728,
+        "y": 62,
+        "w": 27,
+        "h": 31
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 31
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 31
+      }
+    },
+    "bookshelf-low-wide-brown": {
+      "frame": {
+        "x": 215,
+        "y": 0,
+        "w": 71,
+        "h": 49
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 71,
+        "h": 49
+      },
+      "sourceSize": {
+        "w": 71,
+        "h": 49
+      }
+    },
+    "bookshelf-long-blue-trim": {
+      "frame": {
+        "x": 287,
+        "y": 0,
+        "w": 71,
+        "h": 49
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 71,
+        "h": 49
+      },
+      "sourceSize": {
+        "w": 71,
+        "h": 49
+      }
+    },
+    "bookshelf-low-long-light": {
+      "frame": {
+        "x": 359,
+        "y": 0,
+        "w": 71,
+        "h": 49
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 71,
+        "h": 49
+      },
+      "sourceSize": {
+        "w": 71,
+        "h": 49
+      }
+    },
+    "cabinet-purple-tall": {
+      "frame": {
+        "x": 91,
+        "y": 62,
+        "w": 26,
+        "h": 37
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 37
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 37
+      }
+    },
+    "table-purple-wide": {
+      "frame": {
+        "x": 649,
+        "y": 100,
+        "w": 22,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 18
+      }
+    },
+    "cabinet-wood-small": {
+      "frame": {
+        "x": 672,
+        "y": 0,
+        "w": 27,
+        "h": 39
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 39
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 39
+      }
+    },
+    "cabinet-mirror-doors": {
+      "frame": {
+        "x": 831,
+        "y": 62,
+        "w": 27,
+        "h": 27
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 27
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 27
+      }
+    },
+    "cabinet-glass-wide": {
+      "frame": {
+        "x": 469,
+        "y": 62,
+        "w": 27,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 32
+      }
+    },
+    "cabinet-wood-tall-double": {
+      "frame": {
+        "x": 497,
+        "y": 62,
+        "w": 27,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 32
+      }
+    },
+    "desk-wood-paneled": {
+      "frame": {
+        "x": 584,
+        "y": 100,
+        "w": 25,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 25,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 25,
+        "h": 21
+      }
+    },
+    "cabinet-wood-narrow-tall": {
+      "frame": {
+        "x": 700,
+        "y": 0,
+        "w": 27,
+        "h": 39
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 39
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 39
+      }
+    },
+    "sideboard-cream": {
+      "frame": {
+        "x": 213,
+        "y": 100,
+        "w": 27,
+        "h": 23
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 27,
+        "h": 23
+      },
+      "sourceSize": {
+        "w": 27,
+        "h": 23
+      }
+    },
+    "desk-orange-large": {
+      "frame": {
+        "x": 610,
+        "y": 100,
+        "w": 25,
+        "h": 21
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 25,
+        "h": 21
+      },
+      "sourceSize": {
+        "w": 25,
+        "h": 21
+      }
+    },
+    "cabinet-wood-with-jars": {
+      "frame": {
+        "x": 490,
+        "y": 0,
+        "w": 61,
+        "h": 41
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 61,
+        "h": 41
+      },
+      "sourceSize": {
+        "w": 61,
+        "h": 41
+      }
+    },
+    "chair-wood-highback": {
+      "frame": {
+        "x": 311,
+        "y": 100,
+        "w": 12,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 22
+      }
+    },
+    "chair-wood-highback-alt": {
+      "frame": {
+        "x": 324,
+        "y": 100,
+        "w": 12,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 12,
+        "h": 22
+      }
+    },
+    "cabinet-plate-display": {
+      "frame": {
+        "x": 756,
+        "y": 62,
+        "w": 23,
+        "h": 31
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 23,
+        "h": 31
+      },
+      "sourceSize": {
+        "w": 23,
+        "h": 31
+      }
+    },
+    "mirror-standing-wood": {
+      "frame": {
+        "x": 525,
+        "y": 62,
+        "w": 20,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 32
+      }
+    },
+    "mirror-standing-light": {
+      "frame": {
+        "x": 546,
+        "y": 62,
+        "w": 20,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 32
+      }
+    },
+    "mirror-standing-gold": {
+      "frame": {
+        "x": 567,
+        "y": 62,
+        "w": 20,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 32
+      }
     }
   },
   "meta": {
     "image": "furniture.png",
     "size": {
-      "w": 279,
-      "h": 62
+      "w": 1021,
+      "h": 138
     },
     "scale": 1,
     "app": "thomas-town/pack_atlas.py"

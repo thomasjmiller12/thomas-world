@@ -88,15 +88,14 @@ function key(locationId: string, fixtureId: string): string {
 }
 
 // Effect-capable world fixtures (seed.ts) → where they live in each interior,
-// in world px. Point-registrations until the rooms get real placed objects —
-// the effect (flicker/hiss/ring caption) plays at the point either way, so
-// `use_fixture` is visible on screen from day one. Coordinates sit near each
-// room's work anchor (location-anchors.ts) — refine as the rooms get dressed.
+// in world px. These match the placed fixture sprites (each scene registers
+// the actual sprite over its point in create), so the point doubles as a
+// fallback if a sprite fails to place. Verified with render_map.py.
 export const INTERIOR_FIXTURE_POINTS: Partial<Record<LocationId, Record<string, { x: number; y: number }>>> = {
-  office: { phone: { x: 192, y: 56 } },
-  library: { lamp: { x: 80, y: 136 } },
-  workshop: { lamp: { x: 144, y: 120 } },
-  cafe: { 'espresso machine': { x: 192, y: 104 } },
+  office: { phone: { x: 58, y: 120 } },
+  library: { lamp: { x: 95, y: 180 } },
+  workshop: { lamp: { x: 52, y: 148 }, monitor: { x: 137, y: 75 } },
+  cafe: { 'espresso machine': { x: 57, y: 117 } },
 };
 
 // --- effect rendering --------------------------------------------------------

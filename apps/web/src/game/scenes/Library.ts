@@ -5,6 +5,7 @@
 
 /* START-USER-IMPORTS */
 import { InteriorState, initInterior, setupInterior, updateInterior } from './InteriorHelper';
+import { placeTownObject } from '../objects/TownObjects';
 /* END-USER-IMPORTS */
 
 export default class Library extends Phaser.Scene {
@@ -232,6 +233,10 @@ export default class Library extends Phaser.Scene {
 	create() {
 		this.editorCreate();
 		setupInterior(this, this.libraryMap, 'researcher', { x: 96, y: 144 }, 'The Library', this.state);
+		// The reading lamp (world fixture: agents flicker it for effect) on the
+		// reading table by the nook. Position via render_map.py.
+		const lamp = placeTownObject(this, 'table-lamp-beige-lit', 95, 180, { depth: 20 });
+		if (lamp) this.state.fixtures?.register('library', 'lamp', lamp);
 	}
 
 	update() {

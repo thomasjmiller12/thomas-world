@@ -1,6 +1,5 @@
 {
   "version": 1,
-  "sheet": "exterior/3_City_Props_16x16.png",
   "objects": [
     {
       "name": "billboard-blue-diagonal",
@@ -8084,6 +8083,4830 @@
       ],
       "trim": true,
       "candidateId": 460
+    },
+    {
+      "name": "whiteboard-scribbled",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 2,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "board",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 6
+    },
+    {
+      "name": "whiteboard-arrow-left",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 2,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "board",
+        "wall",
+        "sign"
+      ],
+      "trim": true,
+      "candidateId": 7
+    },
+    {
+      "name": "whiteboard-arrow-right",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 11,
+        "row": 2,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "board",
+        "wall",
+        "sign"
+      ],
+      "trim": true,
+      "candidateId": 8
+    },
+    {
+      "name": "rug-small-blue-gold",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 7,
+        "w": 4,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "floor"
+      ],
+      "trim": true,
+      "candidateId": 11
+    },
+    {
+      "name": "wall-shelf-wide-bracket",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 5,
+        "row": 8,
+        "w": 2,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "shelf",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 14
+    },
+    {
+      "name": "window-wide-double-pane",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 7,
+        "row": 8,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 15
+    },
+    {
+      "name": "window-white-four-pane",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 5,
+        "row": 9,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 17
+    },
+    {
+      "name": "framed-picture-red-gold",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 9,
+        "w": 3,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "picture",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 16
+    },
+    {
+      "name": "rug-red-gold-rectangle",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 10,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "floor"
+      ],
+      "trim": true,
+      "candidateId": 18
+    },
+    {
+      "name": "rug-green-gold-rectangle",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 11,
+        "row": 10,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "floor"
+      ],
+      "trim": true,
+      "candidateId": 19
+    },
+    {
+      "name": "rug-blue-gold-rectangle",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 11,
+        "row": 12,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "floor"
+      ],
+      "trim": true,
+      "candidateId": 22
+    },
+    {
+      "name": "framed-painting-dark-green",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 13,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 24
+    },
+    {
+      "name": "framed-painting-candle-flame",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 2,
+        "row": 13,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 25
+    },
+    {
+      "name": "framed-painting-ocean",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 4,
+        "row": 13,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 26
+    },
+    {
+      "name": "rug-purple-ornate-pattern",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 21,
+        "w": 4,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "floor"
+      ],
+      "trim": true,
+      "candidateId": 38
+    },
+    {
+      "name": "potted-palm-tree",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 25,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "palm"
+      ],
+      "trim": true,
+      "candidateId": 42
+    },
+    {
+      "name": "potted-tree-round-green-r28c13",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 28,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "tree"
+      ],
+      "trim": true,
+      "candidateId": 44
+    },
+    {
+      "name": "wall-mirror-wide-wood-frame",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 29,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "mirror",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 46
+    },
+    {
+      "name": "wall-mirror-gold-frame",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 11,
+        "row": 29,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "mirror",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 48
+    },
+    {
+      "name": "wall-mirror-tall-frameless",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 29,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "mirror",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 47
+    },
+    {
+      "name": "rug-square-green-bordered",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 31,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "floor"
+      ],
+      "trim": true,
+      "candidateId": 51
+    },
+    {
+      "name": "window-red-wide-pane",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 43,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 71
+    },
+    {
+      "name": "window-pale-wood-double",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 8,
+        "row": 43,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 72
+    },
+    {
+      "name": "window-walnut-double",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 43,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 73
+    },
+    {
+      "name": "window-orange-double",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 43,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 74
+    },
+    {
+      "name": "window-orange-four-pane",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 43,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 75
+    },
+    {
+      "name": "wall-screen-dark-plain",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 3,
+        "row": 44,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "screen",
+        "wall",
+        "board"
+      ],
+      "trim": true,
+      "candidateId": 76
+    },
+    {
+      "name": "curtains-red-pair",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 5,
+        "row": 45,
+        "w": 3,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "curtain",
+        "window"
+      ],
+      "trim": true,
+      "candidateId": 77
+    },
+    {
+      "name": "curtains-white-gray-pair",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 8,
+        "row": 45,
+        "w": 3,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "curtain",
+        "window"
+      ],
+      "trim": true,
+      "candidateId": 78
+    },
+    {
+      "name": "curtains-brown-pair",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 11,
+        "row": 45,
+        "w": 3,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "curtain",
+        "window"
+      ],
+      "trim": true,
+      "candidateId": 79
+    },
+    {
+      "name": "window-red-four-pane",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 45,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 80
+    },
+    {
+      "name": "memo-board-clip",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 46,
+        "w": 4,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "board",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 81
+    },
+    {
+      "name": "wall-screen-dark-framed",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 3,
+        "row": 46,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "screen",
+        "wall",
+        "board"
+      ],
+      "trim": true,
+      "candidateId": 82
+    },
+    {
+      "name": "window-brown-four-pane",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 47,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "window",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 83
+    },
+    {
+      "name": "curtain-rod-empty",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 48,
+        "w": 4,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "curtain",
+        "rod",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 87
+    },
+    {
+      "name": "potted-plant-slim-tall",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 7,
+        "row": 56,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "pot"
+      ],
+      "trim": true,
+      "candidateId": 106
+    },
+    {
+      "name": "potted-plant-large-leafy",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 8,
+        "row": 56,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "pot"
+      ],
+      "trim": true,
+      "candidateId": 105
+    },
+    {
+      "name": "potted-bonsai-on-stand",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 63,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "bonsai"
+      ],
+      "trim": true,
+      "candidateId": 111
+    },
+    {
+      "name": "mirror-oval-gold-frame",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 15,
+        "row": 66,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "mirror",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 119
+    },
+    {
+      "name": "wooden-table-square-orange",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 5,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "wood"
+      ],
+      "trim": true,
+      "candidateId": 9
+    },
+    {
+      "name": "wooden-table-low-wide",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 5,
+        "row": 6,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "wood"
+      ],
+      "trim": true,
+      "candidateId": 10
+    },
+    {
+      "name": "wooden-table-square-light",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 8,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "wood"
+      ],
+      "trim": true,
+      "candidateId": 12
+    },
+    {
+      "name": "round-table-golden",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 17,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "round"
+      ],
+      "trim": true,
+      "candidateId": 29
+    },
+    {
+      "name": "round-table-orange",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 1,
+        "row": 17,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "round"
+      ],
+      "trim": true,
+      "candidateId": 30
+    },
+    {
+      "name": "round-table-white",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 2,
+        "row": 17,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "round"
+      ],
+      "trim": true,
+      "candidateId": 31
+    },
+    {
+      "name": "round-table-copper",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 19,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "round"
+      ],
+      "trim": true,
+      "candidateId": 33
+    },
+    {
+      "name": "round-table-tan",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 1,
+        "row": 19,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "round"
+      ],
+      "trim": true,
+      "candidateId": 34
+    },
+    {
+      "name": "round-table-amber",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 2,
+        "row": 19,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "round"
+      ],
+      "trim": true,
+      "candidateId": 35
+    },
+    {
+      "name": "wooden-desk-orange",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 23,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "desk",
+        "wood"
+      ],
+      "trim": true,
+      "candidateId": 40
+    },
+    {
+      "name": "wooden-desk-light",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 25,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "desk",
+        "wood"
+      ],
+      "trim": true,
+      "candidateId": 41
+    },
+    {
+      "name": "table-tablecloth-beige",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 27,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "tablecloth"
+      ],
+      "trim": true,
+      "candidateId": 43
+    },
+    {
+      "name": "wooden-nightstand-small",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 31,
+        "w": 3,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "nightstand",
+        "storage"
+      ],
+      "trim": true,
+      "candidateId": 50
+    },
+    {
+      "name": "dresser-brown-wide",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 34,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "dresser",
+        "storage"
+      ],
+      "trim": true,
+      "candidateId": 52
+    },
+    {
+      "name": "dresser-beige-wide",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 5,
+        "row": 34,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "dresser",
+        "storage"
+      ],
+      "trim": true,
+      "candidateId": 54
+    },
+    {
+      "name": "dresser-orange-red-feet",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 35,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "dresser",
+        "storage"
+      ],
+      "trim": true,
+      "candidateId": 56
+    },
+    {
+      "name": "dresser-dark-walnut",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 35,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "dresser",
+        "storage"
+      ],
+      "trim": true,
+      "candidateId": 57
+    },
+    {
+      "name": "dresser-light-pine",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 37,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "dresser",
+        "storage"
+      ],
+      "trim": true,
+      "candidateId": 58
+    },
+    {
+      "name": "dresser-orange-tall",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 5,
+        "row": 37,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "dresser",
+        "storage"
+      ],
+      "trim": true,
+      "candidateId": 60
+    },
+    {
+      "name": "chair-orange-highback",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 50,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "seating"
+      ],
+      "trim": true,
+      "candidateId": 88
+    },
+    {
+      "name": "chair-pale-highback",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 11,
+        "row": 50,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "seating"
+      ],
+      "trim": true,
+      "candidateId": 89
+    },
+    {
+      "name": "chair-slatted-tall",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 52,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "seating"
+      ],
+      "trim": true,
+      "candidateId": 93
+    },
+    {
+      "name": "chair-dark-tall",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 11,
+        "row": 52,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "seating"
+      ],
+      "trim": true,
+      "candidateId": 94
+    },
+    {
+      "name": "chair-orange-tall",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 52,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "seating"
+      ],
+      "trim": true,
+      "candidateId": 95
+    },
+    {
+      "name": "chair-orange-slatted-side",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 15,
+        "row": 52,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "seating"
+      ],
+      "trim": true,
+      "candidateId": 98
+    },
+    {
+      "name": "pendant-lamp-green",
+      "category": "lighting",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 70,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "hanging"
+      ],
+      "trim": true,
+      "candidateId": 123
+    },
+    {
+      "name": "pendant-lamp-red",
+      "category": "lighting",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 72,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "hanging"
+      ],
+      "trim": true,
+      "candidateId": 124
+    },
+    {
+      "name": "white-fridge-narrow",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 0,
+        "w": 3,
+        "h": 5
+      },
+      "collides": true,
+      "tags": [
+        "appliance",
+        "fridge"
+      ],
+      "trim": true,
+      "candidateId": 5
+    },
+    {
+      "name": "book-stack-flat",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 37,
+        "w": 6,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "books",
+        "clutter"
+      ],
+      "trim": true,
+      "candidateId": 62
+    },
+    {
+      "name": "rotary-phone-gray",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 39,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "phone",
+        "tabletop"
+      ],
+      "trim": true,
+      "candidateId": 64
+    },
+    {
+      "name": "rotary-phone-blue",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 39,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "phone",
+        "tabletop"
+      ],
+      "trim": true,
+      "candidateId": 65
+    },
+    {
+      "name": "rotary-phone-white",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 41,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "phone",
+        "tabletop"
+      ],
+      "trim": true,
+      "candidateId": 68
+    },
+    {
+      "name": "rotary-phone-red",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 41,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "phone",
+        "tabletop"
+      ],
+      "trim": true,
+      "candidateId": 69
+    },
+    {
+      "name": "wooden-ladder",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 53,
+        "w": 3,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "ladder",
+        "wood"
+      ],
+      "trim": true,
+      "candidateId": 100
+    },
+    {
+      "name": "ladder-tall-pale",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 54,
+        "w": 3,
+        "h": 6
+      },
+      "collides": true,
+      "tags": [
+        "ladder"
+      ],
+      "trim": true,
+      "candidateId": 101
+    },
+    {
+      "name": "wooden-crate-large-r59c13",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 59,
+        "w": 1,
+        "h": 1
+      },
+      "collides": true,
+      "tags": [
+        "crate",
+        "storage"
+      ],
+      "trim": true,
+      "candidateId": 107
+    },
+    {
+      "name": "stone-birdbath-gray",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 61,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "fountain",
+        "pedestal"
+      ],
+      "trim": true,
+      "candidateId": 108
+    },
+    {
+      "name": "stone-birdbath-green-water",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 61,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "fountain",
+        "pedestal"
+      ],
+      "trim": true,
+      "candidateId": 109
+    },
+    {
+      "name": "stone-birdbath-gray-alt",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 15,
+        "row": 61,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "fountain",
+        "pedestal"
+      ],
+      "trim": true,
+      "candidateId": 110
+    },
+    {
+      "name": "white-ceramic-pot",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/1_Generic_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 68,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "pot",
+        "ceramic"
+      ],
+      "trim": true,
+      "candidateId": 120
+    },
+    {
+      "name": "wall-art-portraits-large",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 12,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "art",
+        "portraits",
+        "colorful"
+      ],
+      "trim": true,
+      "candidateId": 16
+    },
+    {
+      "name": "wall-art-abstract-large",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 2,
+        "row": 12,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "art",
+        "abstract",
+        "colorful"
+      ],
+      "trim": true,
+      "candidateId": 18
+    },
+    {
+      "name": "potted-plant-snake",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 12,
+        "w": 1,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "plant",
+        "pot",
+        "green"
+      ],
+      "trim": true,
+      "candidateId": 19
+    },
+    {
+      "name": "diagonal-banner-portrait-left",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 3,
+        "row": 13,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "banner",
+        "diagonal",
+        "portrait"
+      ],
+      "trim": true,
+      "candidateId": 20
+    },
+    {
+      "name": "diagonal-banner-portrait-right",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 4,
+        "row": 13,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "banner",
+        "diagonal",
+        "portrait"
+      ],
+      "trim": true,
+      "candidateId": 21
+    },
+    {
+      "name": "wall-art-portrait-orange",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 5,
+        "row": 13,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "art",
+        "portrait",
+        "frame"
+      ],
+      "trim": true,
+      "candidateId": 22
+    },
+    {
+      "name": "standing-corkboard-wide",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 22,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "corkboard",
+        "standing",
+        "wide"
+      ],
+      "trim": true,
+      "candidateId": 50
+    },
+    {
+      "name": "swivel-chair-gray",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 5,
+        "row": 8,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "swivel",
+        "gray"
+      ],
+      "trim": true,
+      "candidateId": 3
+    },
+    {
+      "name": "swivel-chair-orange",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 5,
+        "row": 10,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "swivel",
+        "orange"
+      ],
+      "trim": true,
+      "candidateId": 10
+    },
+    {
+      "name": "mesh-divider-straight",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 17,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "divider",
+        "fence",
+        "mesh"
+      ],
+      "trim": true,
+      "candidateId": 31
+    },
+    {
+      "name": "mesh-divider-corner-large",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 2,
+        "row": 17,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "divider",
+        "corner",
+        "mesh"
+      ],
+      "trim": true,
+      "candidateId": 32
+    },
+    {
+      "name": "mesh-divider-panel",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 19,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "divider",
+        "panel",
+        "mesh"
+      ],
+      "trim": true,
+      "candidateId": 39
+    },
+    {
+      "name": "side-table-beige",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 19,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "side",
+        "beige"
+      ],
+      "trim": true,
+      "candidateId": 41
+    },
+    {
+      "name": "mesh-divider-corner-small",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 2,
+        "row": 20,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "divider",
+        "corner",
+        "mesh"
+      ],
+      "trim": true,
+      "candidateId": 42
+    },
+    {
+      "name": "mesh-cage-tall",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 21,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "cage",
+        "divider",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 45
+    },
+    {
+      "name": "side-table-orange",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 21,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "side",
+        "orange"
+      ],
+      "trim": true,
+      "candidateId": 47
+    },
+    {
+      "name": "conference-table-white",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 1,
+        "row": 30,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "conference",
+        "white"
+      ],
+      "trim": true,
+      "candidateId": 63
+    },
+    {
+      "name": "conference-table-beige",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 4,
+        "row": 30,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "conference",
+        "beige"
+      ],
+      "trim": true,
+      "candidateId": 64
+    },
+    {
+      "name": "conference-table-tan",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 7,
+        "row": 30,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "conference",
+        "tan"
+      ],
+      "trim": true,
+      "candidateId": 65
+    },
+    {
+      "name": "office-chair-orange-back",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 34,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "orange",
+        "back"
+      ],
+      "trim": true,
+      "candidateId": 70
+    },
+    {
+      "name": "office-chair-orange-front",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 35,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "orange",
+        "front"
+      ],
+      "trim": true,
+      "candidateId": 73
+    },
+    {
+      "name": "coffee-station-table-beige",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 8,
+        "row": 38,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "coffee",
+        "station",
+        "table"
+      ],
+      "trim": true,
+      "candidateId": 75
+    },
+    {
+      "name": "coffee-station-table-small",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 38,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "coffee",
+        "station",
+        "table"
+      ],
+      "trim": true,
+      "candidateId": 76
+    },
+    {
+      "name": "coffee-station-table-orange",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 38,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "coffee",
+        "station",
+        "table"
+      ],
+      "trim": true,
+      "candidateId": 77
+    },
+    {
+      "name": "office-chair-gray-side",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 43,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "gray",
+        "side"
+      ],
+      "trim": true,
+      "candidateId": 84
+    },
+    {
+      "name": "office-chair-orange-side",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 43,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "orange",
+        "side"
+      ],
+      "trim": true,
+      "candidateId": 85
+    },
+    {
+      "name": "office-chair-gray-front",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 44,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "gray",
+        "front"
+      ],
+      "trim": true,
+      "candidateId": 86
+    },
+    {
+      "name": "desk-lamp-large-silver",
+      "category": "lighting",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 19,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "desk",
+        "silver"
+      ],
+      "trim": true,
+      "candidateId": 38
+    },
+    {
+      "name": "presentation-screen-gray",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 11,
+        "row": 7,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "screen",
+        "tv",
+        "presentation"
+      ],
+      "trim": true,
+      "candidateId": 1
+    },
+    {
+      "name": "keyboard-white-large",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 8,
+        "row": 8,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "keyboard",
+        "computer",
+        "white"
+      ],
+      "trim": true,
+      "candidateId": 4
+    },
+    {
+      "name": "office-machine-large-dark",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 11,
+        "row": 9,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "copier",
+        "machine",
+        "buttons"
+      ],
+      "trim": true,
+      "candidateId": 6
+    },
+    {
+      "name": "kiosk-machine-white",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 11,
+        "row": 13,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "kiosk",
+        "machine",
+        "white"
+      ],
+      "trim": true,
+      "candidateId": 23
+    },
+    {
+      "name": "diagonal-computer-blue-left",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 15,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "computer",
+        "keyboard",
+        "diagonal"
+      ],
+      "trim": true,
+      "candidateId": 25
+    },
+    {
+      "name": "diagonal-computer-blue-right",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 17,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "computer",
+        "keyboard",
+        "diagonal"
+      ],
+      "trim": true,
+      "candidateId": 29
+    },
+    {
+      "name": "photocopier-color",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 8,
+        "row": 18,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "printer",
+        "copier",
+        "ink"
+      ],
+      "trim": true,
+      "candidateId": 35
+    },
+    {
+      "name": "photocopier-paper-tray",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 8,
+        "row": 20,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "printer",
+        "copier",
+        "paper"
+      ],
+      "trim": true,
+      "candidateId": 43
+    },
+    {
+      "name": "vending-machine-dark",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 23,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "vending",
+        "machine",
+        "dark"
+      ],
+      "trim": true,
+      "candidateId": 52
+    },
+    {
+      "name": "vending-machine-drinks",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 2,
+        "row": 23,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "vending",
+        "drinks",
+        "cans"
+      ],
+      "trim": true,
+      "candidateId": 53
+    },
+    {
+      "name": "office-machine-large-light",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 8,
+        "row": 36,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "copier",
+        "machine",
+        "buttons"
+      ],
+      "trim": true,
+      "candidateId": 74
+    },
+    {
+      "name": "printer-stand-beige",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 8,
+        "row": 41,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "printer",
+        "stand",
+        "beige"
+      ],
+      "trim": true,
+      "candidateId": 80
+    },
+    {
+      "name": "printer-stand-beige-2",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 41,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "printer",
+        "stand",
+        "beige"
+      ],
+      "trim": true,
+      "candidateId": 81
+    },
+    {
+      "name": "printer-gray-paper",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 42,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "printer",
+        "gray",
+        "paper"
+      ],
+      "trim": true,
+      "candidateId": 83
+    },
+    {
+      "name": "office-machine-large-white",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/Modern_Office_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 45,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "copier",
+        "machine",
+        "buttons"
+      ],
+      "trim": true,
+      "candidateId": 87
+    },
+    {
+      "name": "wall-shelf-wood-long",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 9,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "shelf",
+        "wall",
+        "wood"
+      ],
+      "trim": true,
+      "candidateId": 3
+    },
+    {
+      "name": "wall-art-dog-portrait",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 11,
+        "row": 11,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "wall",
+        "dog"
+      ],
+      "trim": true,
+      "candidateId": 9
+    },
+    {
+      "name": "wall-shelf-orange",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 11,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "shelf",
+        "wall",
+        "orange"
+      ],
+      "trim": true,
+      "candidateId": 10
+    },
+    {
+      "name": "wall-shelf-white",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 11,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "shelf",
+        "wall",
+        "white"
+      ],
+      "trim": true,
+      "candidateId": 11
+    },
+    {
+      "name": "bottle-cluster-blue",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 13,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "bottles",
+        "glass",
+        "blue"
+      ],
+      "trim": true,
+      "candidateId": 18
+    },
+    {
+      "name": "bottle-cluster-green",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 15,
+        "row": 13,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "bottles",
+        "glass",
+        "green"
+      ],
+      "trim": true,
+      "candidateId": 16
+    },
+    {
+      "name": "rug-grey-large",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 2,
+        "row": 19,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "carpet",
+        "grey"
+      ],
+      "trim": true,
+      "candidateId": 32
+    },
+    {
+      "name": "towel-rack-checkered",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 3,
+        "row": 20,
+        "w": 3,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "towel",
+        "rack",
+        "checkered"
+      ],
+      "trim": true,
+      "candidateId": 37
+    },
+    {
+      "name": "hanging-cloth-checkered-red",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 3,
+        "row": 23,
+        "w": 3,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "cloth",
+        "hanging",
+        "checkered"
+      ],
+      "trim": true,
+      "candidateId": 50
+    },
+    {
+      "name": "hanging-cloth-white",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 23,
+        "w": 3,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "cloth",
+        "hanging",
+        "white"
+      ],
+      "trim": true,
+      "candidateId": 51
+    },
+    {
+      "name": "chef-apron-plain",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 23,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "apron",
+        "chef",
+        "clothing"
+      ],
+      "trim": true,
+      "candidateId": 47
+    },
+    {
+      "name": "curtain-red-short",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 26,
+        "w": 3,
+        "h": 4
+      },
+      "collides": false,
+      "tags": [
+        "curtain",
+        "red",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 59
+    },
+    {
+      "name": "wall-art-green-painting",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 29,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "wall",
+        "green"
+      ],
+      "trim": true,
+      "candidateId": 63
+    },
+    {
+      "name": "wall-shelf-with-dishes",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 33,
+        "w": 3,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "shelf",
+        "dishes",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 72
+    },
+    {
+      "name": "chef-apron-white",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 38,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "apron",
+        "chef",
+        "white"
+      ],
+      "trim": true,
+      "candidateId": 96
+    },
+    {
+      "name": "chef-apron-green",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 1,
+        "row": 38,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "apron",
+        "chef",
+        "green"
+      ],
+      "trim": true,
+      "candidateId": 97
+    },
+    {
+      "name": "chef-apron-red-striped",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 40,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "apron",
+        "chef",
+        "red"
+      ],
+      "trim": true,
+      "candidateId": 104
+    },
+    {
+      "name": "chef-apron-blue-striped",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 1,
+        "row": 40,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "apron",
+        "chef",
+        "blue"
+      ],
+      "trim": true,
+      "candidateId": 105
+    },
+    {
+      "name": "wooden-chair-side-orange",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 4,
+        "row": 11,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "wood",
+        "seat"
+      ],
+      "trim": true,
+      "candidateId": 5
+    },
+    {
+      "name": "wooden-chair-side-brown",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 5,
+        "row": 11,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "wood",
+        "seat"
+      ],
+      "trim": true,
+      "candidateId": 6
+    },
+    {
+      "name": "wooden-chair-side-light",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 11,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "wood",
+        "seat"
+      ],
+      "trim": true,
+      "candidateId": 7
+    },
+    {
+      "name": "wooden-chair-back-light",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 5,
+        "row": 13,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "wood",
+        "back-view"
+      ],
+      "trim": true,
+      "candidateId": 13
+    },
+    {
+      "name": "wooden-chair-back-dark",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 13,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "wood",
+        "back-view"
+      ],
+      "trim": true,
+      "candidateId": 14
+    },
+    {
+      "name": "wooden-table-large",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 13,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "wood",
+        "dining"
+      ],
+      "trim": true,
+      "candidateId": 17
+    },
+    {
+      "name": "kitchen-cart-light",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 3,
+        "row": 14,
+        "w": 3,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "cart",
+        "cabinet",
+        "kitchen"
+      ],
+      "trim": true,
+      "candidateId": 22
+    },
+    {
+      "name": "kitchen-cabinet-orange",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 14,
+        "w": 3,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "drawers",
+        "orange"
+      ],
+      "trim": true,
+      "candidateId": 23
+    },
+    {
+      "name": "dining-table-light-large",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 15,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "dining",
+        "light"
+      ],
+      "trim": true,
+      "candidateId": 24
+    },
+    {
+      "name": "dining-table-red-large",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 11,
+        "row": 15,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "dining",
+        "red"
+      ],
+      "trim": true,
+      "candidateId": 25
+    },
+    {
+      "name": "kitchen-cart-small",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 3,
+        "row": 17,
+        "w": 3,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "cart",
+        "drawers",
+        "small"
+      ],
+      "trim": true,
+      "candidateId": 30
+    },
+    {
+      "name": "kitchen-counter-light",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 17,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "counter",
+        "kitchen",
+        "light"
+      ],
+      "trim": true,
+      "candidateId": 27
+    },
+    {
+      "name": "kitchen-counter-long",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 17,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "counter",
+        "kitchen",
+        "long"
+      ],
+      "trim": true,
+      "candidateId": 28
+    },
+    {
+      "name": "display-case-glass-orange",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 19,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "display",
+        "case",
+        "glass"
+      ],
+      "trim": true,
+      "candidateId": 35
+    },
+    {
+      "name": "kitchen-counter-beige",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 19,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "counter",
+        "kitchen",
+        "beige"
+      ],
+      "trim": true,
+      "candidateId": 33
+    },
+    {
+      "name": "table-low-light",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 19,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "low",
+        "light"
+      ],
+      "trim": true,
+      "candidateId": 34
+    },
+    {
+      "name": "kitchen-counter-red",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 21,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "counter",
+        "kitchen",
+        "red"
+      ],
+      "trim": true,
+      "candidateId": 38
+    },
+    {
+      "name": "kitchen-counter-red-low",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 21,
+        "w": 3,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "counter",
+        "low",
+        "red"
+      ],
+      "trim": true,
+      "candidateId": 39
+    },
+    {
+      "name": "bar-chair-orange-left",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 38,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "bar",
+        "orange"
+      ],
+      "trim": true,
+      "candidateId": 91
+    },
+    {
+      "name": "floor-lamp-grey",
+      "category": "lighting",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 33,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "floor",
+        "grey"
+      ],
+      "trim": true,
+      "candidateId": 73
+    },
+    {
+      "name": "floor-lamp-plug",
+      "category": "lighting",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 1,
+        "row": 33,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "floor",
+        "plug"
+      ],
+      "trim": true,
+      "candidateId": 74
+    },
+    {
+      "name": "floor-lamp-round",
+      "category": "lighting",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 3,
+        "row": 33,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "floor",
+        "round"
+      ],
+      "trim": true,
+      "candidateId": 70
+    },
+    {
+      "name": "floor-lamp-cord",
+      "category": "lighting",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 4,
+        "row": 33,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "lamp",
+        "floor",
+        "cord"
+      ],
+      "trim": true,
+      "candidateId": 71
+    },
+    {
+      "name": "vending-machine-sign",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 5,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "vending",
+        "machine",
+        "appliance"
+      ],
+      "trim": true,
+      "candidateId": 1
+    },
+    {
+      "name": "drinking-glasses-set",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 21,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "glasses",
+        "drink",
+        "tabletop"
+      ],
+      "trim": true,
+      "candidateId": 40
+    },
+    {
+      "name": "food-plate-sandwich",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 22,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "food",
+        "plate",
+        "sandwich"
+      ],
+      "trim": true,
+      "candidateId": 42
+    },
+    {
+      "name": "napkin-stack",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 2,
+        "row": 22,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "napkins",
+        "stack",
+        "tabletop"
+      ],
+      "trim": true,
+      "candidateId": 43
+    },
+    {
+      "name": "coffee-machine",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 2,
+        "row": 23,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "coffee",
+        "espresso",
+        "appliance"
+      ],
+      "trim": true,
+      "candidateId": 45
+    },
+    {
+      "name": "cooking-pot-paella",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 24,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "pot",
+        "paella",
+        "food"
+      ],
+      "trim": true,
+      "candidateId": 52
+    },
+    {
+      "name": "display-fridge-food",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 26,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "fridge",
+        "display",
+        "food"
+      ],
+      "trim": true,
+      "candidateId": 58
+    },
+    {
+      "name": "metal-appliance-large",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 15,
+        "row": 29,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "appliance",
+        "metal",
+        "large"
+      ],
+      "trim": true,
+      "candidateId": 65
+    },
+    {
+      "name": "pressure-cooker-grey",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 31,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "cooker",
+        "appliance",
+        "grey"
+      ],
+      "trim": true,
+      "candidateId": 68
+    },
+    {
+      "name": "pressure-cooker-dark",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 15,
+        "row": 31,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "cooker",
+        "appliance",
+        "dark"
+      ],
+      "trim": true,
+      "candidateId": 69
+    },
+    {
+      "name": "kitchen-stove-grey",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 33,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "stove",
+        "oven",
+        "kitchen"
+      ],
+      "trim": true,
+      "candidateId": 75
+    },
+    {
+      "name": "drink-display-cabinet",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 35,
+        "w": 3,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "display",
+        "drinks",
+        "cabinet"
+      ],
+      "trim": true,
+      "candidateId": 80
+    },
+    {
+      "name": "rice-cooker-plug",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 36,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "cooker",
+        "rice",
+        "appliance"
+      ],
+      "trim": true,
+      "candidateId": 84
+    },
+    {
+      "name": "rice-cooker-small",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 1,
+        "row": 36,
+        "w": 3,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "cooker",
+        "rice",
+        "small"
+      ],
+      "trim": true,
+      "candidateId": 85
+    },
+    {
+      "name": "rolling-pin",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 36,
+        "w": 4,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "rolling-pin",
+        "baking",
+        "utensil"
+      ],
+      "trim": true,
+      "candidateId": 82
+    },
+    {
+      "name": "frying-pan-omelette",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 15,
+        "row": 36,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "pan",
+        "omelette",
+        "cooking"
+      ],
+      "trim": true,
+      "candidateId": 83
+    },
+    {
+      "name": "donut-plate",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 2,
+        "row": 38,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "donut",
+        "plate",
+        "food"
+      ],
+      "trim": true,
+      "candidateId": 94
+    },
+    {
+      "name": "salad-plate-large",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 3,
+        "row": 38,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "salad",
+        "plate",
+        "food"
+      ],
+      "trim": true,
+      "candidateId": 95
+    },
+    {
+      "name": "bagel-plate",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 2,
+        "row": 39,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "bagel",
+        "plate",
+        "food"
+      ],
+      "trim": true,
+      "candidateId": 99
+    },
+    {
+      "name": "fridge-white-large",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 40,
+        "w": 2,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "fridge",
+        "white",
+        "large"
+      ],
+      "trim": true,
+      "candidateId": 109
+    },
+    {
+      "name": "bread-loaf-plate",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 46,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "bread",
+        "loaf",
+        "plate"
+      ],
+      "trim": true,
+      "candidateId": 118
+    },
+    {
+      "name": "croissant-plate-large",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 1,
+        "row": 47,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "croissant",
+        "plate",
+        "bakery"
+      ],
+      "trim": true,
+      "candidateId": 122
+    },
+    {
+      "name": "cake-plate-strawberry",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 47,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "cake",
+        "strawberry",
+        "plate"
+      ],
+      "trim": true,
+      "candidateId": 121
+    },
+    {
+      "name": "croissant-plate",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 48,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "croissant",
+        "plate",
+        "food"
+      ],
+      "trim": true,
+      "candidateId": 124
+    },
+    {
+      "name": "lemon-pastry-plate",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 2,
+        "row": 48,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "pastry",
+        "lemon",
+        "plate"
+      ],
+      "trim": true,
+      "candidateId": 125
+    },
+    {
+      "name": "omelette-plate",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 5,
+        "row": 48,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "omelette",
+        "plate",
+        "food"
+      ],
+      "trim": true,
+      "candidateId": 129
+    },
+    {
+      "name": "shrimp-single",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 48,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "shrimp",
+        "food",
+        "small"
+      ],
+      "trim": true,
+      "candidateId": 130
+    },
+    {
+      "name": "hamburger-large",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 48,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "hamburger",
+        "burger",
+        "food"
+      ],
+      "trim": true,
+      "candidateId": 126
+    },
+    {
+      "name": "shrimp-plate-tomato",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 48,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "shrimp",
+        "plate",
+        "food"
+      ],
+      "trim": true,
+      "candidateId": 127
+    },
+    {
+      "name": "shrimp-plate-lemon",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/12_Kitchen_Black_Shadow_16x16.png",
+        "col": 15,
+        "row": 48,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "shrimp",
+        "plate",
+        "lemon"
+      ],
+      "trim": true,
+      "candidateId": 128
+    },
+    {
+      "name": "globe-on-stand-yellow",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 1,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "globe",
+        "geography"
+      ],
+      "trim": true,
+      "candidateId": 3
+    },
+    {
+      "name": "globe-on-stand-gray",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 1,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "globe",
+        "geography"
+      ],
+      "trim": true,
+      "candidateId": 4
+    },
+    {
+      "name": "blackboard-wall-wide",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 5,
+        "w": 2,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "blackboard",
+        "wall",
+        "classroom"
+      ],
+      "trim": true,
+      "candidateId": 17
+    },
+    {
+      "name": "paper-notice-sheet",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 10,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "paper",
+        "notice",
+        "wall"
+      ],
+      "trim": true,
+      "candidateId": 29
+    },
+    {
+      "name": "library-ladder-wood",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 7,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "ladder",
+        "library"
+      ],
+      "trim": true,
+      "candidateId": 19
+    },
+    {
+      "name": "library-bookshelf-low-extra-long",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 3,
+        "row": 7,
+        "w": 13,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "library",
+        "long"
+      ],
+      "trim": true,
+      "candidateId": 21
+    },
+    {
+      "name": "card-catalog-machine-large",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 1,
+        "row": 10,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "catalog",
+        "machine",
+        "library"
+      ],
+      "trim": true,
+      "candidateId": 27
+    },
+    {
+      "name": "library-bookshelf-tall-full",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 8,
+        "row": 13,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "library",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 32
+    },
+    {
+      "name": "library-bookshelf-tall-full-alt",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 13,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "library",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 33
+    },
+    {
+      "name": "book-lectern-pedestal",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 14,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "lectern",
+        "book",
+        "pedestal"
+      ],
+      "trim": true,
+      "candidateId": 34
+    },
+    {
+      "name": "bookshelf-low-long-books",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 16,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "low",
+        "long"
+      ],
+      "trim": true,
+      "candidateId": 38
+    },
+    {
+      "name": "bookshelf-tall-narrow-colorful",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 4,
+        "row": 16,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "tall",
+        "narrow"
+      ],
+      "trim": true,
+      "candidateId": 36
+    },
+    {
+      "name": "bookshelf-tall-narrow-colorful-alt",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 16,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "tall",
+        "narrow"
+      ],
+      "trim": true,
+      "candidateId": 37
+    },
+    {
+      "name": "bookshelf-wide-cream-top",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 8,
+        "row": 16,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "wide",
+        "cream"
+      ],
+      "trim": true,
+      "candidateId": 39
+    },
+    {
+      "name": "bookshelf-wide-cream-top-full",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 16,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "wide",
+        "cream"
+      ],
+      "trim": true,
+      "candidateId": 40
+    },
+    {
+      "name": "bookshelf-wide-brown-full",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 8,
+        "row": 19,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "wide",
+        "brown"
+      ],
+      "trim": true,
+      "candidateId": 46
+    },
+    {
+      "name": "bookshelf-wide-orange-full",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 19,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "wide",
+        "orange"
+      ],
+      "trim": true,
+      "candidateId": 47
+    },
+    {
+      "name": "bookshelf-low-wide-brown",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 7,
+        "row": 22,
+        "w": 5,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "low",
+        "wide"
+      ],
+      "trim": true,
+      "candidateId": 52
+    },
+    {
+      "name": "bookshelf-long-blue-trim",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 7,
+        "row": 26,
+        "w": 5,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "long",
+        "blue"
+      ],
+      "trim": true,
+      "candidateId": 57
+    },
+    {
+      "name": "bookshelf-low-long-light",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/5_Classroom_and_library_Black_Shadow_16x16.png",
+        "col": 7,
+        "row": 30,
+        "w": 5,
+        "h": 4
+      },
+      "collides": true,
+      "tags": [
+        "bookshelf",
+        "low",
+        "light"
+      ],
+      "trim": true,
+      "candidateId": 62
+    },
+    {
+      "name": "plant-ficus-planter",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 0,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "tree",
+        "planter"
+      ],
+      "trim": true,
+      "candidateId": 3
+    },
+    {
+      "name": "plant-palm-large",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 0,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "palm",
+        "potted"
+      ],
+      "trim": true,
+      "candidateId": 1
+    },
+    {
+      "name": "rug-purple-square",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 7,
+        "row": 1,
+        "w": 3,
+        "h": 3
+      },
+      "collides": false,
+      "tags": [
+        "rug",
+        "purple",
+        "large"
+      ],
+      "trim": true,
+      "candidateId": 5
+    },
+    {
+      "name": "plant-snake-yellow-pot",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 5,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "snake-plant",
+        "yellow"
+      ],
+      "trim": true,
+      "candidateId": 14
+    },
+    {
+      "name": "cushion-white",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 8,
+        "w": 1,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "cushion",
+        "pillow",
+        "white"
+      ],
+      "trim": true,
+      "candidateId": 19
+    },
+    {
+      "name": "plant-potted-small",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 20,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "potted",
+        "small"
+      ],
+      "trim": true,
+      "candidateId": 53
+    },
+    {
+      "name": "plant-potted-medium",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 21,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "potted",
+        "medium"
+      ],
+      "trim": true,
+      "candidateId": 54
+    },
+    {
+      "name": "plant-potted-tall",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 15,
+        "row": 21,
+        "w": 1,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "plant",
+        "potted",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 55
+    },
+    {
+      "name": "painting-monster-purple",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 26,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "monster",
+        "purple"
+      ],
+      "trim": true,
+      "candidateId": 63
+    },
+    {
+      "name": "painting-monster-beige",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 1,
+        "row": 26,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "monster",
+        "beige"
+      ],
+      "trim": true,
+      "candidateId": 64
+    },
+    {
+      "name": "cushion-blue",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 30,
+        "w": 2,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "cushion",
+        "pillow",
+        "blue"
+      ],
+      "trim": true,
+      "candidateId": 65
+    },
+    {
+      "name": "cushion-yellow",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 30,
+        "w": 2,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "cushion",
+        "pillow",
+        "yellow"
+      ],
+      "trim": true,
+      "candidateId": 66
+    },
+    {
+      "name": "cushion-gray",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 11,
+        "row": 31,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "cushion",
+        "pillow",
+        "gray"
+      ],
+      "trim": true,
+      "candidateId": 67
+    },
+    {
+      "name": "cushion-yellow-star",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 31,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "cushion",
+        "star",
+        "yellow"
+      ],
+      "trim": true,
+      "candidateId": 70
+    },
+    {
+      "name": "cushion-blue-star",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 31,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "cushion",
+        "star",
+        "blue"
+      ],
+      "trim": true,
+      "candidateId": 68
+    },
+    {
+      "name": "cushion-gray-star",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 31,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "cushion",
+        "star",
+        "gray"
+      ],
+      "trim": true,
+      "candidateId": 69
+    },
+    {
+      "name": "painting-abstract",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 32,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "painting",
+        "abstract",
+        "framed"
+      ],
+      "trim": true,
+      "candidateId": 73
+    },
+    {
+      "name": "curtains-white-closed",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 3,
+        "row": 32,
+        "w": 4,
+        "h": 5
+      },
+      "collides": false,
+      "tags": [
+        "curtains",
+        "white",
+        "closed"
+      ],
+      "trim": true,
+      "candidateId": 71
+    },
+    {
+      "name": "curtains-gray",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 7,
+        "row": 32,
+        "w": 4,
+        "h": 5
+      },
+      "collides": false,
+      "tags": [
+        "curtains",
+        "gray",
+        "window"
+      ],
+      "trim": true,
+      "candidateId": 72
+    },
+    {
+      "name": "curtains-white",
+      "category": "decor",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 3,
+        "row": 36,
+        "w": 4,
+        "h": 5
+      },
+      "collides": false,
+      "tags": [
+        "curtains",
+        "white",
+        "window"
+      ],
+      "trim": true,
+      "candidateId": 77
+    },
+    {
+      "name": "cabinet-purple-tall",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 0,
+        "row": 1,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "purple",
+        "wardrobe"
+      ],
+      "trim": true,
+      "candidateId": 4
+    },
+    {
+      "name": "table-purple-wide",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 2,
+        "row": 2,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "table",
+        "purple",
+        "wide"
+      ],
+      "trim": true,
+      "candidateId": 6
+    },
+    {
+      "name": "cabinet-wood-small",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 7,
+        "row": 4,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "wood",
+        "doors"
+      ],
+      "trim": true,
+      "candidateId": 8
+    },
+    {
+      "name": "cabinet-mirror-doors",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 9,
+        "row": 4,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "mirror",
+        "doors"
+      ],
+      "trim": true,
+      "candidateId": 13
+    },
+    {
+      "name": "cabinet-glass-wide",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 11,
+        "row": 4,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "glass",
+        "wide"
+      ],
+      "trim": true,
+      "candidateId": 9
+    },
+    {
+      "name": "cabinet-wood-tall-double",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 4,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "wood",
+        "double-door"
+      ],
+      "trim": true,
+      "candidateId": 10
+    },
+    {
+      "name": "desk-wood-paneled",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 3,
+        "row": 11,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "desk",
+        "wood",
+        "large"
+      ],
+      "trim": true,
+      "candidateId": 27
+    },
+    {
+      "name": "cabinet-wood-narrow-tall",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 10,
+        "row": 13,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "wood",
+        "narrow"
+      ],
+      "trim": true,
+      "candidateId": 33
+    },
+    {
+      "name": "sideboard-cream",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 1,
+        "row": 15,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "sideboard",
+        "cream",
+        "cabinet"
+      ],
+      "trim": true,
+      "candidateId": 42
+    },
+    {
+      "name": "desk-orange-large",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 3,
+        "row": 15,
+        "w": 2,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "desk",
+        "orange",
+        "large"
+      ],
+      "trim": true,
+      "candidateId": 43
+    },
+    {
+      "name": "cabinet-wood-with-jars",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 15,
+        "w": 4,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "jars",
+        "shelf"
+      ],
+      "trim": true,
+      "candidateId": 40
+    },
+    {
+      "name": "chair-wood-highback",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 12,
+        "row": 18,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "wood",
+        "highback"
+      ],
+      "trim": true,
+      "candidateId": 48
+    },
+    {
+      "name": "chair-wood-highback-alt",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 13,
+        "row": 18,
+        "w": 1,
+        "h": 2
+      },
+      "collides": true,
+      "tags": [
+        "chair",
+        "wood",
+        "highback"
+      ],
+      "trim": true,
+      "candidateId": 49
+    },
+    {
+      "name": "cabinet-plate-display",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 18,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "cabinet",
+        "plates",
+        "display"
+      ],
+      "trim": true,
+      "candidateId": 51
+    },
+    {
+      "name": "mirror-standing-wood",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 8,
+        "row": 22,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "mirror",
+        "standing",
+        "wood"
+      ],
+      "trim": true,
+      "candidateId": 57
+    },
+    {
+      "name": "mirror-standing-light",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 6,
+        "row": 23,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "mirror",
+        "standing",
+        "light"
+      ],
+      "trim": true,
+      "candidateId": 59
+    },
+    {
+      "name": "mirror-standing-gold",
+      "category": "furniture",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 8,
+        "row": 25,
+        "w": 2,
+        "h": 3
+      },
+      "collides": true,
+      "tags": [
+        "mirror",
+        "standing",
+        "gold"
+      ],
+      "trim": true,
+      "candidateId": 62
+    },
+    {
+      "name": "table-lamp-red",
+      "category": "lighting",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 15,
+        "row": 7,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "red",
+        "table"
+      ],
+      "trim": true,
+      "candidateId": 18
+    },
+    {
+      "name": "table-lamp-beige-lit",
+      "category": "lighting",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 9,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "beige",
+        "lit"
+      ],
+      "trim": true,
+      "candidateId": 21
+    },
+    {
+      "name": "table-lamp-beige",
+      "category": "lighting",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 15,
+        "row": 9,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "beige",
+        "table"
+      ],
+      "trim": true,
+      "candidateId": 22
+    },
+    {
+      "name": "table-lamp-blue-lit",
+      "category": "lighting",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 11,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "blue",
+        "lit"
+      ],
+      "trim": true,
+      "candidateId": 31
+    },
+    {
+      "name": "table-lamp-blue",
+      "category": "lighting",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 15,
+        "row": 11,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "blue",
+        "table"
+      ],
+      "trim": true,
+      "candidateId": 29
+    },
+    {
+      "name": "table-lamp-cream-banded",
+      "category": "lighting",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 14,
+        "row": 13,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "cream",
+        "banded"
+      ],
+      "trim": true,
+      "candidateId": 35
+    },
+    {
+      "name": "table-lamp-cream-tall",
+      "category": "lighting",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 15,
+        "row": 13,
+        "w": 1,
+        "h": 2
+      },
+      "collides": false,
+      "tags": [
+        "lamp",
+        "cream",
+        "tall"
+      ],
+      "trim": true,
+      "candidateId": 36
+    },
+    {
+      "name": "blanket-pile",
+      "category": "misc",
+      "source": {
+        "sheet": "interior/2_LivingRoom_Black_Shadow_16x16.png",
+        "col": 7,
+        "row": 20,
+        "w": 2,
+        "h": 1
+      },
+      "collides": false,
+      "tags": [
+        "blanket",
+        "laundry",
+        "pile"
+      ],
+      "trim": true,
+      "candidateId": 52
     }
   ]
 }

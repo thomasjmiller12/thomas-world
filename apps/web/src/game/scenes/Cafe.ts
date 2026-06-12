@@ -5,6 +5,7 @@
 
 /* START-USER-IMPORTS */
 import { InteriorState, initInterior, setupInterior, updateInterior } from './InteriorHelper';
+import { placeTownObject } from '../objects/TownObjects';
 /* END-USER-IMPORTS */
 
 export default class Cafe extends Phaser.Scene {
@@ -260,6 +261,10 @@ export default class Cafe extends Phaser.Scene {
 	create() {
 		this.editorCreate();
 		setupInterior(this, this.cafeMap, 'writer', { x: 160, y: 144 }, 'The Cafe', this.state);
+		// The espresso machine (world fixture: agents hiss it for ambiance) on the
+		// empty counter section left of the donut display. Position via render_map.py.
+		const espresso = placeTownObject(this, 'coffee-machine', 57, 117, { depth: 20 });
+		if (espresso) this.state.fixtures?.register('cafe', 'espresso machine', espresso);
 	}
 
 	update() {
