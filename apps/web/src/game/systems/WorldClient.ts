@@ -365,6 +365,7 @@ export class WorldClient {
     // A live tick means the town is awake — clear any sleeping flag.
     EventBus.emit('world-sleeping', { sleeping: false, reason: null });
     this.patchSnapshot(ev);
+    EventBus.emit('world-event', ev);
     for (const { name, payload } of mapWorldEvent(ev)) {
       EventBus.emit(name, payload);
     }

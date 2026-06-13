@@ -7,6 +7,7 @@ import { TodayTab } from './TodayTab';
 import { ConversationsTab } from './ConversationsTab';
 import { MadeTab } from './MadeTab';
 import { BoardTab } from './BoardTab';
+import { MessagesTab } from './MessagesTab';
 import { ArtifactReader } from './ArtifactReader';
 
 // ChroniclePanel — the full-screen "Town Chronicle" hub (M2.1, replaces the
@@ -24,13 +25,14 @@ import { ArtifactReader } from './ArtifactReader';
 // does NOT tear down a live chat; the chat keeps streaming underneath. The chat
 // stage must not assume it owns `dialog-opened`/`dialog-closed` exclusively.
 
-type Tab = 'today' | 'conversations' | 'made' | 'board';
+type Tab = 'today' | 'conversations' | 'made' | 'board' | 'messages';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'today', label: 'Today' },
   { id: 'conversations', label: 'Conversations' },
   { id: 'made', label: 'Made' },
   { id: 'board', label: 'Board' },
+  { id: 'messages', label: 'Messages' },
 ];
 
 export interface ChroniclePanelProps {
@@ -284,6 +286,7 @@ export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = nul
               )}
               {tab === 'made' && <MadeTab onOpenArtifact={setReaderId} />}
               {tab === 'board' && <BoardTab onOpenArtifact={setReaderId} />}
+              {tab === 'messages' && <MessagesTab />}
             </>
           )}
         </div>

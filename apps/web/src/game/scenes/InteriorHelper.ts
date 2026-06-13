@@ -82,6 +82,8 @@ export function setupInterior(
   // Player
   state.player = new Player(scene, door.interior.spawnX, door.interior.spawnY);
   state.player.visitorName = scene.registry.get('visitorName') || 'Visitor';
+  // Observe (ghost) mode: the world is real, you aren't — walk unseen.
+  if (scene.registry.get('observeMode')) state.player.setAlpha(0.5);
   if (collisionLayer) scene.physics.add.collider(state.player, collisionLayer);
 
   // Dynamic NPC presence — manager renders/animates every agent whose live

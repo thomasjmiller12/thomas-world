@@ -1,5 +1,5 @@
 import { Events } from 'phaser';
-import type { AgentId, DayPhase, LocationId } from '@town/contract';
+import type { AgentId, DayPhase, LocationId, WorldEvent } from '@town/contract';
 import type { ThomasId, ChatMessage } from '@/lib/types';
 
 // The typed event taxonomy that flows over the EventBus — the seam between the
@@ -105,6 +105,11 @@ export interface WorldEvents {
   // A tap on the world canvas: walk the player toward a world point in a
   // straight line, stopping on collision (Phaser pointer → player target).
   'tap-move': { worldX: number; worldY: number };
+
+  // --- raw world events (WorldClient → observers) ---------------------------
+  // Every live contract event, unmapped. The observe dashboard's live feed
+  // listens here (the mapped npc-* events only cover canvas-relevant types).
+  'world-event': WorldEvent;
 
   // --- visitor fixture interaction (canvas → WorldClient) ------------------
   // The visitor clicked an interactive fixture (e.g. the park payphone).

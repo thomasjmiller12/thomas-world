@@ -320,6 +320,8 @@ export default class Town extends Phaser.Scene {
 		const spawnY = this.registry.get('spawnY') || Town.PLAYER_SPAWN.y;
 		this.player = new Player(this, spawnX, spawnY);
 		this.player.visitorName = this.registry.get('visitorName') || 'Visitor';
+		// Observe (ghost) mode: the world is real, you aren't — walk unseen.
+		if (this.registry.get('observeMode')) this.player.setAlpha(0.5);
 
 		if (collisionLayer) {
 			this.physics.add.collider(this.player, collisionLayer);

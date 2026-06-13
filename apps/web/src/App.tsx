@@ -32,9 +32,12 @@ function speechDwellMs(text: string): number {
 
 interface AppProps {
   visitorName: string;
+  // Ghost mode: render + stream the world read-only (no visitor identity, no
+  // chat). The Phaser side reads the same flag from the game registry.
+  observe?: boolean;
 }
 
-function App({ visitorName }: AppProps) {
+function App({ visitorName, observe = false }: AppProps) {
   const worldRef = useRef<WorldClient | null>(null);
   const dreamRef = useRef<DreamMode | null>(null);
 
@@ -108,7 +111,7 @@ function App({ visitorName }: AppProps) {
   }, []);
 
   useEffect(() => {
-    const world = new WorldClient(visitorName);
+    const world = new WorldClient(visitorName, { observe });
     const dream = new DreamMode();
     worldRef.current = world;
     dreamRef.current = dream;
@@ -243,7 +246,8 @@ function App({ visitorName }: AppProps) {
       EventBus.off('world-sleeping', onWorldSleeping);
       EventBus.off('visitor-interact', onVisitorInteract);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex w-screen h-screen overflow-hidden" style={{ background: 'var(--paper)' }}>
@@ -261,7 +265,7 @@ function App({ visitorName }: AppProps) {
       )}
 
       <div className="flex-1 relative overflow-hidden" style={{ background: 'var(--paper)' }}>
-        <PhaserGame />
+        <PhaserGame observe={observe} />
 
         {/* Day-phase tint + sleeping/dream fallback over the canvas. */}
         <SleepOverlay phase={worldPhase} sleeping={sleeping} reason={sleepReason} />
@@ -276,7 +280,19 @@ function App({ visitorName }: AppProps) {
           />
 
           {/* One-time premise framing for first-time visitors. */}
-          <WelcomeCard touch={viewport.touch} />
+          {!observe && <WelcomeCard touch={viewport.touch} />}
+
+          {/* Ghost-mode badge: you can walk, nobody can see you. */}
+          {observe && (
+            <div className="absolute top-3 left-1/2 pointer-events-none" style={{ transform: 'translateX(-50%)' }}>
+              <div
+                className="rounded-full px-3 py-1"
+                style={{ background: 'rgba(43,38,32,0.78)', color: '#fff', font: '600 10px var(--mono)', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+              >
+                observing — unseen
+              </div>
+            </div>
+          )}
 
           {thoughtBubbles.map(bubble => (
             <ThoughtBubble
@@ -304,11 +320,13 @@ function App({ visitorName }: AppProps) {
               container drives WorldClient through onSend/onClose. The Chronicle
               hub takes keyboard precedence, so the chat suspends its key ladder
               while the hub is open. */}
-          <ChatSession
-            onSend={handleChatSend}
-            onClose={handleChatSessionClose}
-            suspended={chronicle != null}
-          />
+          {!observe && (
+            <ChatSession
+              onSend={handleChatSend}
+              onClose={handleChatSessionClose}
+              suspended={chronicle != null}
+            />
+          )}
 
           {/* Town Chronicle hub — full-screen popup ABOVE the chat (z 60). It
               coexists with a live chat: opening it never tears the chat down

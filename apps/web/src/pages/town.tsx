@@ -7,6 +7,9 @@ const GameApp = dynamic(() => import("@/App"), { ssr: false });
 export default function TownPage() {
   const router = useRouter();
   const visitorName = (router.query.name as string) || "Visitor";
+  // ?observe=1 → ghost mode: the world renders and streams, but no visitor is
+  // registered and chat is disabled — a translucent walkabout, unseen.
+  const observe = router.query.observe === "1";
 
   return (
     <>
@@ -15,7 +18,7 @@ export default function TownPage() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.png" />
       </Head>
-      <GameApp visitorName={visitorName} />
+      <GameApp visitorName={visitorName} observe={observe} />
     </>
   );
 }

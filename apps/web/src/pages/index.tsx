@@ -98,6 +98,22 @@ export default function Home() {
             >
               Enter Town
             </button>
+
+            {/* Observer mode: everything visible, nothing interactive — the
+                agents never know you're there. */}
+            <button
+              onClick={() => router.push('/observe')}
+              className="w-full text-sm py-2.5 rounded-xl transition-colors"
+              style={{
+                background: 'transparent',
+                color: 'var(--ink-2)',
+                fontFamily: 'var(--display)',
+                fontWeight: 600,
+                border: '1px solid var(--line-2)',
+              }}
+            >
+              Just observe — watch without being seen
+            </button>
           </div>
 
           <div
