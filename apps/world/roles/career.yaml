@@ -7,7 +7,7 @@
 #   This per-agent budget is checked before each tick. The global DAILY_BUDGET_USD
 #   env var is a hard ceiling across all agents combined.
 
-tick_cadence_minutes: 12
+tick_cadence_minutes: 45
 tick_model: claude-sonnet-4-6
 chat_model: claude-sonnet-4-6
 daily_token_budget: 4.50
