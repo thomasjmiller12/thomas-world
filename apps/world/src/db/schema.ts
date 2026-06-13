@@ -7,6 +7,7 @@
 import {
   pgTable,
   bigserial,
+  bigint,
   text,
   boolean,
   jsonb,
@@ -117,6 +118,27 @@ export const agents = pgTable("agents", {
   // derived `busy` boolean (engagement != null) is what surfaces in the contract.
   engagement: jsonb("engagement").$type<Engagement | null>(),
   lastTickAt: timestamp("last_tick_at", { withTimezone: true }),
+});
+
+// --- agent_threads (M3: continuity) -----------------------------------------
+// Each agent's CONTINUOUS thread — the persisted `BetaMessageParam[]` that is
+// the agent's consciousness across ticks and chats (incl. server-side
+// compaction blocks, which round-trip verbatim — verified Phase 0). One row per
+// agent; `content` is loaded into the tool runner to resume and re-persisted
+// after every successful turn. `inputCursor` is the high-water world-event id
+// already folded into the thread as notice-push (the delta cursor). Like
+// agent.locationId, **seed must NEVER reset this** — it's living state.
+//
+// `content` is intentionally loosely typed (`unknown[]`): importing the SDK's
+// ESM BetaMessageParam type here would break drizzle-kit's CJS schema loader
+// (same reason the enums above are inlined). engine/thread.ts casts.
+export const agentThreads = pgTable("agent_threads", {
+  agentId: text("agent_id", { enum: agentEnum }).primaryKey(),
+  content: jsonb("content").$type<unknown[]>().notNull().default([]),
+  inputCursor: bigint("input_cursor", { mode: "number" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // --- locations --------------------------------------------------------------
