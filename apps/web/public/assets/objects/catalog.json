@@ -5560,9 +5560,9 @@
       "source": {
         "sheet": "exterior/3_City_Props_16x16.png",
         "col": 28,
-        "row": 11,
+        "row": 12,
         "w": 3,
-        "h": 6
+        "h": 5
       },
       "collides": true,
       "tags": [
