@@ -20,7 +20,7 @@ import { config } from "../config.js";
 import { anthropic, systemBlocks, hasLlm, TICK_BETAS } from "./client.js";
 import { getProfile, soulGitHash } from "./roles.js";
 import { buildTools, type AgentContext } from "./tools.js";
-import { buildObservation, writeCursor } from "./observation.js";
+import { buildDelta, writeCursor } from "./observation.js";
 import { getAgent, setStatus, setActivity, markTicked, isBusy } from "../engine/agents.js";
 import { appendEvent } from "../engine/events.js";
 import { markRead } from "../engine/messages.js";
@@ -261,13 +261,10 @@ async function runTickLocked(agentId: AgentId): Promise<TickResult> {
     metadata: { soulVersion: agent.soulVersion, soulGitHash: soulGitHash(agentId) },
   });
 
-  // The world delta (pure SQL): time + co-presence + inbox + events since the
-  // last tick + core memory. In M3 this is APPENDED to the continuous thread as
-  // the tick input, not sent as a from-scratch prompt. (Phase 2 will replace this
-  // full packet with a leaner push/pull delta.)
-  const obs = await buildObservation(agentId, {
-    cadenceMinutes: profile.role.tickCadenceMinutes,
-  });
+  // The world delta (pure SQL, push/pull model): standing state + notice-push
+  // since the last input, self-events and elsewhere-events excluded. APPENDED to
+  // the continuous thread as the tick input — not a from-scratch prompt.
+  const obs = await buildDelta(agentId);
   const ctx: AgentContext = { agentId, location: obs.location };
   const tools = buildTools(ctx);
 

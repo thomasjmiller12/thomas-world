@@ -1,21 +1,19 @@
-// The observation packet (plan §3.4): the agent's ground truth each tick.
-// PURE SQL — no LLM. Everything the agent could plausibly know, rendered as the
-// user-turn text that sits BELOW the cache breakpoint (current time + world
-// state are volatile, so they must never enter the cached prefix; plan §4.3).
+// The world DELTA (M3 push/pull model — see "Memory & Continuity Architecture").
+// PURE SQL — no LLM. Far leaner than the old observation packet: the agent's
+// consciousness is its continuous thread, so each input only needs a small
+// STANDING-STATE header plus NOTICE-PUSH (what reached the agent since its last
+// input). It's the user-turn text appended to the thread, sitting below the
+// cache breakpoint (time + world state are volatile; the soul prefix is cached).
 //
-// Contents (plan §3.4):
-//  - world time + day phase; ticks since you last acted
-//  - where you are (description, fixtures, who else is here)
-//  - visitors present in town
-//  - inbox (DMs + broadcasts since last tick)
-//  - events since last tick (scoped by location/visibility)
-//  - your status + current activity
-//  - core memory files (always loaded) + recall results for the situation
+// Push/pull (delta = push only; everything else is pulled via tools):
+//  - standing state: time, where I am + who's co-located, my anchors (core memory)
+//  - notice-push: my inbox (DMs/broadcasts) + co-located room events
+//  - EXCLUDED: my own events (already in my thread) + events elsewhere (pull)
 
 import { gt, sql } from "drizzle-orm";
 import type { AgentId, LocationId, WorldEvent } from "@town/contract";
 import { db, schema } from "../db/client.js";
-import { getAgent, type AgentRow } from "../engine/agents.js";
+import { getAgent } from "../engine/agents.js";
 import { getLocation, agentsAtLocation } from "../engine/locations.js";
 import { perceivedEventsSince } from "../engine/events.js";
 import { inboxFor, type MessageRow } from "../engine/messages.js";
@@ -29,15 +27,15 @@ import { clockLine } from "./clock.js";
 
 const { visitors } = schema;
 
-export interface ObservationPacket {
-  // The rendered user-turn text the model sees.
+export interface DeltaPacket {
+  // The rendered user-turn text the model sees (appended to the thread).
   text: string;
-  // The event high-water id at packet build time — persisted as the agent's new
-  // perception cursor so the next tick sees only newer events.
+  // The event high-water id at build time — persisted as the agent's new
+  // perception cursor so the next input sees only newer events.
   highWaterEventId: string;
   // The message high-water id at build time — the message half of the cursor.
   highWaterMessageId: number;
-  // Inbox message ids delivered this tick (the tick marks them read after).
+  // Inbox message ids delivered this turn (the loop marks them read after).
   deliveredMessageIds: number[];
   // The agent's current location (the tool layer gates against this).
   location: LocationId;
@@ -218,17 +216,20 @@ export function renderEvents(events: WorldEvent[], location: LocationId, viewer:
     .join("\n");
 }
 
-// Compute "ticks since you last acted" from the agent's lastTickAt and cadence.
-function ticksSince(agent: AgentRow, cadenceMinutes: number): number {
-  if (!agent.lastTickAt) return 0;
-  const mins = (Date.now() - agent.lastTickAt.getTime()) / 60_000;
-  return Math.max(0, Math.floor(mins / Math.max(1, cadenceMinutes)));
-}
-
-export async function buildObservation(
+// Build the per-input WORLD DELTA (M3 push/pull model). Far leaner than the old
+// full observation packet: a small STANDING-STATE header (where I am, who's
+// here, the time, my anchors) plus NOTICE-PUSH — only what reached me since my
+// last input: my inbox (DMs / broadcasts) and co-located room events.
+//
+// Crucially it EXCLUDES my own events (they're already in my thread — this is
+// the perception-layer half of the continuity fix, so the agent never re-reads
+// its own actions as news) and events elsewhere (a visitor wandering another
+// room is nothing to me; cross-room awareness is PULL, via look_around/recall).
+// Appended to the continuous thread as the tick input by the loop.
+export async function buildDelta(
   agentId: AgentId,
-  opts: { cadenceMinutes: number; recallText?: string } = { cadenceMinutes: 12 },
-): Promise<ObservationPacket> {
+  opts: { recallText?: string } = {},
+): Promise<DeltaPacket> {
   const agent = await getAgent(agentId);
   if (!agent) throw new Error(`unknown agent ${agentId}`);
   const location = agent.locationId as LocationId;
@@ -243,11 +244,16 @@ export async function buildObservation(
     visitorsAtLocation(location),
     coreMemorySnapshot(agentId),
   ]);
-  const perceived = perceivedRes.events;
   const inbox = inboxRes.rows;
   const arrivalMs = await arrivalTimesAtLocation(
     location,
     visitorsHere.map((v) => v.id),
+  );
+
+  // NOTICE-PUSH filter: co-located events I did not author. Self-events are
+  // already in the thread; elsewhere-headlines are pull, not push.
+  const noticePush = perceivedRes.events.filter(
+    (e) => e.locationId === location && e.agentId !== agentId,
   );
 
   const fixtures = ((loc?.fixtures as Array<{ id: string }>) ?? []).map((f) => f.id).join(", ");
@@ -256,16 +262,21 @@ export async function buildObservation(
       ? here.map((a) => a.displayName).join(", ")
       : "no one else is here right now";
 
+  // The "since you last looked" block: only the parts that actually carry
+  // something, with a single carry-on fallback when nothing reached the agent.
+  const pushParts: string[] = [];
+  if (inbox.length) pushParts.push(renderInbox(inbox));
+  if (noticePush.length) pushParts.push(renderEvents(noticePush, location, agentId));
+  const since = pushParts.length
+    ? pushParts.join("\n")
+    : "Nothing new has reached you since your last turn — carry on with what you're doing.";
+
   const sections: string[] = [
-    `## Right now`,
-    `It's ${clockLine()}. ${ticksSince(agent, opts.cadenceMinutes)} tick(s) have passed since you last acted.`,
-    ``,
     `## Where you are`,
+    `It's ${clockLine()}.`,
     `You're at the ${loc?.name ?? location}. ${loc?.description ?? ""}`,
     `Fixtures here: ${fixtures || "(none)"}.`,
     `Also here: ${others}.`,
-    ``,
-    `## Visitors`,
     renderVisitorsSection(
       visitorsHere.map((v: VisitorRow) => ({ id: v.id, name: v.name })),
       arrivalMs,
@@ -273,17 +284,11 @@ export async function buildObservation(
       Date.now(),
     ),
     ``,
-    `## Your inbox`,
-    renderInbox(inbox),
-    ``,
-    `## What's happened since your last tick`,
-    renderEvents(perceived, location, agentId),
-    ``,
-    `## Your status (as the world believes it)`,
-    `Status: ${agent.status}. Activity: ${agent.activity ?? "(none set)"}.`,
-    ``,
-    `## Your core memory`,
+    `## Your anchors (core memory — keep these short, current, and true at reflection)`,
     core,
+    ``,
+    `## Since you last looked`,
+    since,
   ];
 
   if (opts.recallText) {
@@ -292,9 +297,9 @@ export async function buildObservation(
 
   return {
     text: sections.join("\n"),
-    // Advance the cursor only to the highest id we actually examined this tick
-    // (not the global max), so events/messages beyond the fetch cap are picked up
-    // on the next tick instead of being silently skipped.
+    // Advance the cursor only to the highest id we actually examined (not the
+    // global max), so events/messages beyond the fetch cap are picked up next
+    // time instead of being silently skipped.
     highWaterEventId: perceivedRes.maxConsideredId,
     highWaterMessageId: inboxRes.maxConsideredId,
     deliveredMessageIds: inbox.map((m) => m.id),
