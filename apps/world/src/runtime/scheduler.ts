@@ -12,7 +12,7 @@ import { agentIds, type AgentId } from "@town/contract";
 import { config } from "../config.js";
 import { hasLlm } from "./client.js";
 import { getProfile } from "./roles.js";
-import { runTick, budgetExceeded } from "./tick.js";
+import { runTick, budgetExceeded } from "./loop.js";
 import { runReflection } from "./reflection.js";
 import { isOvernight, currentPhase } from "./clock.js";
 import { appendEvent } from "../engine/events.js";

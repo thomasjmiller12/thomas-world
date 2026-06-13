@@ -9,6 +9,6 @@
 
 # Builder runs slightly faster than average — active workshop energy, more ticks per day
 tick_cadence_minutes: 11
-tick_model: claude-haiku-4-5
+tick_model: claude-sonnet-4-6
 chat_model: claude-sonnet-4-6
 daily_token_budget: 4.50

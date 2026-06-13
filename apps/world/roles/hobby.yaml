@@ -9,6 +9,6 @@
 
 # Hobby runs at a relaxed pace — not rushing anywhere, which is kind of the point
 tick_cadence_minutes: 13
-tick_model: claude-haiku-4-5
+tick_model: claude-sonnet-4-6
 chat_model: claude-sonnet-4-6
 daily_token_budget: 3.75

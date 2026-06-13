@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { budgetExceeded } from "./tick.js";
+import { budgetExceeded } from "./loop.js";
 
 describe("budget cap (brief §Observability & budget)", () => {
   const base = { globalCapUsd: 15, agentCapUsd: 1.5 };

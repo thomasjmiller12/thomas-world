@@ -1,15 +1,16 @@
-// Nightly reflection ("sleep") tick (plan §4.1). Lighter than a normal tick:
-// the agent reviews its day, promotes stable patterns into core memory (via the
-// memory tool), triggers Hindsight consolidation, and writes a short diary
-// entry (which is itself feed content). Runs once per agent overnight.
+// Nightly reflection ("sleep") — now a TURN ON THE CONTINUOUS THREAD (M3). The
+// agent reviews its day (which is already in its thread — no day-record needs
+// assembling), promotes stable patterns into core memory (via the memory tool),
+// triggers Hindsight consolidation, and writes a short diary entry (itself feed
+// content + the recovery seed). Runs once per agent overnight.
 //
-// Reflection gets ONLY the memory tool + create_artifact-equivalent (we write
-// the diary directly here) — it's introspective, not world-acting.
+// The actual LLM turn goes through runTurn() in loop.ts so reflection happens
+// WITHIN the agent's ongoing consciousness (and naturally lands a compaction at
+// the day boundary). Reflection's turn is given ONLY the memory tool — it's
+// introspective, not world-acting; the diary is its final text.
 
-import type Anthropic from "@anthropic-ai/sdk";
-import { randomUUID } from "node:crypto";
 import type { AgentId } from "@town/contract";
-import { anthropic, systemBlocks, hasLlm, TICK_BETAS } from "./client.js";
+import { hasLlm } from "./client.js";
 import { getProfile, soulGitHash } from "./roles.js";
 import { betaMemoryTool } from "@anthropic-ai/sdk/helpers/beta/memory";
 import {
@@ -21,19 +22,18 @@ import {
   memRename,
   coreMemorySnapshot,
 } from "../engine/memory.js";
-import { recentEventsForAgent } from "../engine/events.js";
 import { getAgent, isBusy } from "../engine/agents.js";
 import { createArtifact, recentArtifactsBy } from "../engine/artifacts.js";
 import { tryAcquire } from "./agent-lock.js";
-import { recordUsage } from "../engine/usage.js";
-import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
 import { reflect as hindsightReflect } from "./hindsight.js";
 import { startTrace } from "./tracing.js";
+import { runTurn } from "./loop.js";
+import { randomUUID } from "node:crypto";
 import type { BetaRunnableTool } from "@anthropic-ai/sdk/lib/tools/BetaRunnableTool.mjs";
 
 const REFLECTION_PROMPT = `It's the end of the day in the town — your quiet hour.
 
-Look back over what you did today (the day's events are below) and reflect:
+Look back over your day (it's all in your memory above) and reflect:
 - What actually happened, in your own read of it?
 - Did anything shift in how you see things, what you're working on, or your
   relationships with the other facets?
@@ -81,25 +81,12 @@ async function runReflectionLocked(agentId: AgentId): Promise<{ ran: boolean }> 
     metadata: { soulGitHash: soulGitHash(agentId) },
   });
 
-  // Build the day-review user turn (recent events for this agent + core memory).
-  const [recent, core] = await Promise.all([
-    recentEventsForAgent(agentId, 40),
-    coreMemorySnapshot(agentId),
-  ]);
-  const dayLines = recent.length
-    ? recent
-        .map((e) => {
-          const p = e.payload as Record<string, unknown>;
-          return `- ${e.type}${p.title ? `: "${p.title}"` : p.text ? `: "${p.text}"` : ""}`;
-        })
-        .join("\n")
-    : "(a quiet day — little on the record)";
-
-  const userTurn = [
+  // The reflection input. The day itself is ALREADY in the thread (M3) — we only
+  // surface current core memory so the agent can curate it, then prompt the
+  // reflection + diary. This is appended to the continuous thread by runTurn.
+  const core = await coreMemorySnapshot(agentId);
+  const inputText = [
     REFLECTION_PROMPT,
-    ``,
-    `## Today's record`,
-    dayLines,
     ``,
     `## Your core memory right now`,
     core,
@@ -116,36 +103,19 @@ async function runReflectionLocked(agentId: AgentId): Promise<{ ran: boolean }> 
 
   let diaryText = "";
   try {
-    const runner = anthropic.beta.messages.toolRunner({
+    // Reflection runs as a turn on the continuous thread: introspective, memory
+    // tool only, the diary is the final text. advanceCursorTo omitted → the
+    // perception cursor is preserved (reflection perceives nothing new).
+    const outcome = await runTurn({
+      agentId,
       model: profile.role.tickModel,
-      max_tokens: 2048,
-      system: systemBlocks(agentId),
-      messages: [{ role: "user", content: userTurn }],
+      maxTokens: 2048,
+      inputText,
       tools: [memory],
-      max_iterations: 5,
-      betas: [...TICK_BETAS],
+      tickId,
+      trace,
     });
-    for await (const message of runner) {
-      const t = tokensFromUsage(message.usage);
-      await recordUsage({
-        agentId,
-        model: profile.role.tickModel,
-        tickId,
-        inputTokens: t.inputTokens,
-        outputTokens: t.outputTokens,
-        cacheReadTokens: t.cacheReadTokens,
-        cacheWriteTokens: t.cacheWriteTokens,
-        estCostUsd: estimateCostUsd(profile.role.tickModel, t),
-      });
-      if (message.stop_reason === "refusal") break;
-      if (message.stop_reason === "end_turn") {
-        diaryText = message.content
-          .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
-          .map((b) => b.text)
-          .join("\n")
-          .trim();
-      }
-    }
+    if (!outcome.refused) diaryText = outcome.finalText;
   } catch (err) {
     console.warn(`[reflection ${agentId}] error:`, (err as Error).message);
     trace.end({ error: (err as Error).message });

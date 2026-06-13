@@ -59,7 +59,7 @@ import { boostAgent } from "../runtime/scheduler.js";
 import { subscribe } from "../engine/bus.js";
 import { spendTodayUsd, isBudgetExhausted } from "../engine/usage.js";
 import { renderDebugPage } from "./debug.js";
-import { runTick } from "../runtime/tick.js";
+import { runTick } from "../runtime/loop.js";
 import { hasLlm } from "../runtime/client.js";
 import { flushTracing } from "../runtime/tracing.js";
 import {
