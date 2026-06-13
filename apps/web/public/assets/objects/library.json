@@ -11688,11 +11688,11 @@
       "frame": "red-telephone-box",
       "px": {
         "w": 41,
-        "h": 92
+        "h": 96
       },
       "tiles": {
         "w": 2.56,
-        "h": 5.75
+        "h": 6.0
       },
       "collides": true,
       "tags": [

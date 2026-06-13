@@ -802,10 +802,10 @@
     },
     "red-telephone-box": {
       "frame": {
-        "x": 260,
+        "x": 185,
         "y": 0,
         "w": 41,
-        "h": 92
+        "h": 96
       },
       "rotated": false,
       "trimmed": false,
@@ -813,11 +813,11 @@
         "x": 0,
         "y": 0,
         "w": 41,
-        "h": 92
+        "h": 96
       },
       "sourceSize": {
         "w": 41,
-        "h": 92
+        "h": 96
       }
     },
     "road-sign-pole-angled-green": {
@@ -1242,7 +1242,7 @@
     },
     "pedestrian-crossing-sign-post": {
       "frame": {
-        "x": 185,
+        "x": 227,
         "y": 0,
         "w": 74,
         "h": 94

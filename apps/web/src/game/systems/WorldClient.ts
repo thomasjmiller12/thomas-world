@@ -6,6 +6,7 @@ import {
   CreateChatResponse,
   GetChatResponse,
   ChatStreamFrame,
+  worldEventTypes,
   type AgentId,
   type LocationId,
 } from '@town/contract';
@@ -308,7 +309,18 @@ export class WorldClient {
       this.reconnectAttempt = 0;
     };
 
-    es.onmessage = (msg) => this.handleStreamMessage(msg);
+    // The server writes every frame as a NAMED event (`event: agent.moved` …),
+    // and EventSource only fires `onmessage` for UN-named frames — a named
+    // event needs its own addEventListener or it is silently dropped. This was
+    // the "agents only move after a refresh" bug: live frames never dispatched;
+    // the snapshot's recentEvents replay on load did all the visible work.
+    const onFrame = (msg: MessageEvent) => this.handleStreamMessage(msg);
+    for (const type of worldEventTypes) {
+      es.addEventListener(type, onFrame);
+    }
+    // Un-named frames (defensive: any future server change back to default
+    // frames keeps working) — heartbeats are named, so this is quiet today.
+    es.onmessage = onFrame;
 
     es.onerror = () => {
       // EventSource auto-reconnects, but a closed connection (server down) needs
