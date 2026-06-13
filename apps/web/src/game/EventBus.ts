@@ -76,8 +76,6 @@ export interface WorldEvents {
   'npc-chat-response': ChatMessage;
   // Restrained "drew on a memory" marker for the current turn.
   'chat-memory-recalled': { npcId: ThomasId; sessionId: string; label: string };
-  // Post-turn reply chips (off the latency path).
-  'chat-suggested-replies': { sessionId: string; replies: string[] };
   // The agent acted mid-chat (a tool the agent ran while talking — "walks to
   // the workbench"). Rendered as a centered diegetic line in the transcript.
   'chat-action': { npcId: ThomasId; sessionId: string; tool: string; detail: string };

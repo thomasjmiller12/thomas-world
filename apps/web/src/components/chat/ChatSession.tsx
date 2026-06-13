@@ -42,7 +42,6 @@ interface State {
   lines: ChatLine[];
   // The speaker whose turn is currently streaming (null between turns).
   streamingSpeaker: ThomasId | null;
-  suggestedReplies: string[];
   // True once a message was sent (a server session exists) — gates whether
   // close needs a network teardown.
   hadSession: boolean;
@@ -53,7 +52,6 @@ const INITIAL: State = {
   target: null,
   lines: [],
   streamingSpeaker: null,
-  suggestedReplies: [],
   hadSession: false,
 };
 
@@ -64,7 +62,6 @@ type Action =
   | { t: 'delta'; speaker: ThomasId; text: string }
   | { t: 'memory'; speaker: ThomasId; label: string }
   | { t: 'turn-done'; speaker: ThomasId }
-  | { t: 'suggested'; replies: string[] }
   | { t: 'action'; speaker: ThomasId; detail: string }
   | { t: 'ended'; speaker: ThomasId }
   | { t: 'error'; reason: string }
@@ -84,8 +81,7 @@ function reducer(state: State, a: Action): State {
         ...state,
         phase: state.phase === 'idle' ? 'live' : state.phase,
         hadSession: true,
-        suggestedReplies: [],
-        lines: [...state.lines, { id: nextId(), kind: 'visitor', speaker: 'visitor', text: a.text }],
+              lines: [...state.lines, { id: nextId(), kind: 'visitor', speaker: 'visitor', text: a.text }],
       };
 
     case 'turn-started':
@@ -135,9 +131,6 @@ function reducer(state: State, a: Action): State {
       return { ...state, streamingSpeaker: null, lines };
     }
 
-    case 'suggested':
-      return { ...state, suggestedReplies: a.replies };
-
     case 'action':
       // The agent acted mid-chat — a centered diegetic line.
       return {
@@ -155,8 +148,7 @@ function reducer(state: State, a: Action): State {
         ...state,
         phase: 'ended',
         streamingSpeaker: null,
-        suggestedReplies: [],
-        lines: [
+              lines: [
           ...state.lines,
           { id: nextId(), kind: 'ended', text: endedLine(a.speaker) },
         ],
@@ -257,9 +249,6 @@ export function ChatSession({ onSend, onClose, suspended }: ChatSessionProps) {
     const onTurnDone = (p: { npcId: ThomasId }) => {
       if (live()) dispatch({ t: 'turn-done', speaker: p.npcId });
     };
-    const onSuggested = (p: { replies: string[] }) => {
-      if (live()) dispatch({ t: 'suggested', replies: p.replies });
-    };
     const onAction = (p: { npcId: ThomasId; detail: string }) => {
       if (live()) dispatch({ t: 'action', speaker: p.npcId, detail: p.detail });
     };
@@ -278,7 +267,6 @@ export function ChatSession({ onSend, onClose, suspended }: ChatSessionProps) {
     EventBus.on('chat-delta', onDelta);
     EventBus.on('chat-memory-recalled', onMemory);
     EventBus.on('chat-turn-done', onTurnDone);
-    EventBus.on('chat-suggested-replies', onSuggested);
     EventBus.on('chat-action', onAction);
     EventBus.on('chat-ended', onEnded);
     EventBus.on('chat-error', onError);
@@ -290,8 +278,7 @@ export function ChatSession({ onSend, onClose, suspended }: ChatSessionProps) {
       EventBus.off('chat-delta', onDelta);
       EventBus.off('chat-memory-recalled', onMemory);
       EventBus.off('chat-turn-done', onTurnDone);
-      EventBus.off('chat-suggested-replies', onSuggested);
-      EventBus.off('chat-action', onAction);
+        EventBus.off('chat-action', onAction);
       EventBus.off('chat-ended', onEnded);
       EventBus.off('chat-error', onError);
       EventBus.off('typing-focus', onTypingFocus);
@@ -358,7 +345,6 @@ export function ChatSession({ onSend, onClose, suspended }: ChatSessionProps) {
       color={color}
       lines={state.lines}
       streamingSpeaker={state.streamingSpeaker}
-      suggestedReplies={state.suggestedReplies}
       phase={state.phase}
       liveActivity={
         // Activity lines can be hours stale ("sitting on the bench at dawn"

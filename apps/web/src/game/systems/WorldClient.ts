@@ -45,6 +45,13 @@ interface ActiveChat {
   // Accumulates streamed text per speaker so we can emit a whole ChatMessage on
   // turn completion (the React panel appends ChatMessage objects).
   turnText: Map<string, string>;
+  // Set when the in-flight stream has delivered its terminal frame (done /
+  // chat_ended). A stream that ENDS without one was killed mid-turn (proxy
+  // idle-timeout during a long tool round) → recoverDroppedTurn().
+  streamSettled: boolean;
+  // The last agent messageId surfaced (done frame or recovery), so recovery can
+  // tell a NEW reply from the previous one in the transcript.
+  lastMessageId: string | null;
 }
 
 // The single client that replaces AgentSimulator + InteractionSystem +
@@ -84,10 +91,16 @@ export class WorldClient {
   // one turn at a time). Newer sends overwrite an older queued one.
   private queuedMessage: string | null = null;
 
-  constructor(visitorName: string, envUrl?: string) {
+  // Observe mode (spectator): never registers a visitor, never reports
+  // location, never interacts or chats — reads only (snapshot + SSE without a
+  // visitorId). Agents cannot perceive an observer.
+  private readonly observe: boolean;
+
+  constructor(visitorName: string, opts: { envUrl?: string; observe?: boolean } = {}) {
     this.visitorName = visitorName || 'Visitor';
+    this.observe = opts.observe ?? false;
     this.baseUrl = resolveWorldBaseUrl(
-      envUrl ?? process.env.NEXT_PUBLIC_WORLD_URL
+      opts.envUrl ?? process.env.NEXT_PUBLIC_WORLD_URL
     );
   }
 
@@ -103,11 +116,13 @@ export class WorldClient {
     this.stopped = false;
     this.wirePageHide();
 
-    try {
-      await this.establishIdentity();
-    } catch {
-      // Identity is needed for chat/location, but the town can still dream.
-      this.goToSleep('server-down');
+    if (!this.observe) {
+      try {
+        await this.establishIdentity();
+      } catch {
+        // Identity is needed for chat/location, but the town can still dream.
+        this.goToSleep('server-down');
+      }
     }
 
     try {
@@ -401,6 +416,7 @@ export class WorldClient {
   // Called by App on `scene-changed`. Reports the visitor's logical location so
   // co-located agents perceive the arrival (design doc §2).
   reportLocation(locationId: LocationId): void {
+    if (this.observe) return;
     if (locationId === this.currentLocation) return;
     this.currentLocation = locationId;
     void this.patchVisitor({ locationId }).catch(() => {
@@ -411,7 +427,7 @@ export class WorldClient {
   // --- fixture interaction (POST /visitors/:id/interact) --------------------
 
   interact(locationId: LocationId, fixture: string): void {
-    if (!this.visitorId) return;
+    if (this.observe || !this.visitorId) return;
     const headers: Record<string, string> = { 'content-type': 'application/json' };
     if (this.visitorToken) headers['x-visitor-token'] = this.visitorToken;
     void fetch(`${this.baseUrl}/visitors/${encodeURIComponent(this.visitorId)}/interact`, {
@@ -429,6 +445,7 @@ export class WorldClient {
   // POST /chats/:id/messages. A send that arrives while a turn is streaming is
   // queued (single slot) and flushed when the current stream finishes.
   async sendMessage(agentId: ThomasId, text: string): Promise<void> {
+    if (this.observe) return;
     if (!text.trim()) return;
 
     // A turn is already streaming for the active session → queue this send and
@@ -504,6 +521,8 @@ export class WorldClient {
       pingTimer: null,
       abort: null,
       turnText: new Map(),
+      streamSettled: true,
+      lastMessageId: null,
     };
     this.startPing();
     EventBus.emit('chat-opened', { npcId: agentId });
@@ -517,6 +536,7 @@ export class WorldClient {
     if (!chat) return;
     const abort = new AbortController();
     chat.abort = abort;
+    chat.streamSettled = false;
 
     let res: Response;
     try {
@@ -559,6 +579,14 @@ export class WorldClient {
       // Clear the abort only if it's still ours (a chat_ended frame may have
       // torn the session down mid-stream).
       if (this.activeChat === chat) chat.abort = null;
+    }
+
+    // The stream ended without its terminal frame and wasn't aborted by us →
+    // the proxy killed it mid-turn (observed with long memory/tool rounds: the
+    // panel got `memory_recalled`, never the text). The turn almost always
+    // completes server-side — poll the transcript and surface the reply.
+    if (!chat.streamSettled && !abort.signal.aborted && this.activeChat === chat) {
+      await this.recoverDroppedTurn(chat);
     }
 
     // Flush a single queued send (a visitor line typed while this turn streamed).
@@ -608,10 +636,8 @@ export class WorldClient {
         break;
 
       case 'suggested_replies':
-        EventBus.emit('chat-suggested-replies', {
-          sessionId: chat.sessionId,
-          replies: frame.replies,
-        });
+        // Reply chips removed (and the server no longer generates them); the
+        // case stays so the frame union remains exhaustively handled.
         break;
 
       case 'done': {
@@ -619,6 +645,8 @@ export class WorldClient {
         const agent: ThomasId = frame.agent ?? chat.primaryAgent;
         const text = chat.turnText.get(agent) ?? '';
         chat.turnText.delete(agent);
+        chat.streamSettled = true;
+        chat.lastMessageId = frame.messageId;
         EventBus.emit('chat-turn-done', {
           npcId: agent,
           sessionId: chat.sessionId,
@@ -651,6 +679,7 @@ export class WorldClient {
         // The agent ended the chat itself — the server already closed the
         // session, so tear down ping/activeChat WITHOUT a POST /close. Emit
         // chat-ended so the panel shows the goodbye + [wave goodbye] button.
+        chat.streamSettled = true;
         EventBus.emit('chat-ended', { npcId: frame.agent, sessionId: chat.sessionId });
         this.teardownActiveChat();
         break;
@@ -660,6 +689,45 @@ export class WorldClient {
         void _never;
       }
     }
+  }
+
+  // Recovery for a mid-turn stream kill: poll the transcript until a NEW agent
+  // message appears (the turn finishing server-side), then surface it through
+  // the same EventBus events a live stream would have produced. The panel's
+  // open streaming bubble (with its memory chip) receives the text and closes.
+  private async recoverDroppedTurn(chat: ActiveChat): Promise<void> {
+    for (let attempt = 0; attempt < 6; attempt++) {
+      await new Promise((r) => setTimeout(r, attempt === 0 ? 2_000 : 5_000));
+      if (this.activeChat !== chat) return; // closed / retargeted meanwhile
+      const transcript = await this.rehydrateChat(chat.sessionId, chat.sessionToken);
+      if (!transcript) continue;
+      const last = transcript.messages[transcript.messages.length - 1];
+      if (!last || last.sender === 'visitor') continue; // turn still running
+      if (last.id === chat.lastMessageId) continue; // no new reply yet
+      chat.lastMessageId = last.id;
+      const agent = last.sender as ThomasId;
+      const already = chat.turnText.get(agent) ?? '';
+      const missing = last.body.startsWith(already) ? last.body.slice(already.length) : last.body;
+      if (missing) {
+        EventBus.emit('chat-delta', { npcId: agent, sessionId: chat.sessionId, text: missing });
+      }
+      chat.turnText.delete(agent);
+      EventBus.emit('chat-turn-done', {
+        npcId: agent,
+        sessionId: chat.sessionId,
+        messageId: last.id,
+      });
+      EventBus.emit('npc-chat-response', {
+        sender: agent,
+        senderName: NPC_CONFIGS[agent]?.displayName ?? agent,
+        text: last.body,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+    // Six polls (~27s) with nothing new — let the visitor know rather than
+    // leaving a silently hung bubble.
+    EventBus.emit('chat-error', { npcId: chat.primaryAgent, reason: 'stream-failed' });
   }
 
   // GET /chats/:id — rehydrate the panel after a dropped stream (token-gated).

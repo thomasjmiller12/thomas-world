@@ -87,6 +87,15 @@ describe("buildChatFraming — the channel-semantics opener (M2.1)", () => {
     expect(bare).toContain("You're at the Park right now. ");
   });
 
+  it("reminds the agent of its own recent doings (the forgotten-bulletin amnesia)", () => {
+    const framed = buildChatFraming("Ada", {
+      locationName: "Town Square",
+      recentDoings: ['Career Thomas posted a bulletin: "OFFICIAL NOTICE".'],
+    });
+    expect(framed).toContain("Things you actually did recently");
+    expect(framed).toContain("OFFICIAL NOTICE");
+  });
+
   it("works nameless and renders as the leading user turn ahead of the visitor", () => {
     const rows: ChatRowLike[] = [
       { sender: "operator", body: buildChatFraming(null), ts: t(1) },

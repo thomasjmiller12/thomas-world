@@ -66,7 +66,6 @@ import {
   openChat,
   endChat,
   runChatTurn,
-  suggestedReplies,
   chatTokenValid,
   pingChat,
   getChatTranscript,
@@ -646,32 +645,31 @@ export function createApp() {
     const wrapUpNote = turn.wrapUp ? SESSION_WRAP_UP_NOTE : undefined;
 
     return streamSSE(c, async (stream) => {
-      const turn = await runChatTurn(
-        sessionId,
-        text,
-        {
-          onFrame: async (frame) => {
-            // Each frame is one SSE `data` payload; the `type` field discriminates.
-            await stream.writeSSE({ data: JSON.stringify(frame) });
-          },
-        },
-        wrapUpNote,
-      );
-      // suggested_replies rides AFTER done — never on the latency path. A
-      // failure here yields no chips; it must not break the stream. Skip them
-      // entirely when the agent ENDED the chat itself (leave_chat): chips
-      // prompting the visitor to reply into a closed session make no sense.
-      if (turn.ended) return;
+      // Keep bytes flowing during long tool rounds (model + Hindsight latency):
+      // with zero traffic the edge proxy kills the idle response mid-turn — the
+      // panel got the early memory_recalled frame but never the text ("drew on
+      // a memory" with an empty bubble). Empty-data frames are the established
+      // heartbeat shape the client parser skips.
+      const heartbeat = setInterval(() => {
+        void stream.writeSSE({ data: "" }).catch(() => undefined);
+      }, 15_000);
       try {
-        const replies = await suggestedReplies(sessionId);
-        if (replies.length) {
-          await stream.writeSSE({
-            data: JSON.stringify({ type: "suggested_replies", replies }),
-          });
-        }
-      } catch {
-        /* best-effort — swallow */
+        await runChatTurn(
+          sessionId,
+          text,
+          {
+            onFrame: async (frame) => {
+              // Each frame is one SSE `data` payload; the `type` field discriminates.
+              await stream.writeSSE({ data: JSON.stringify(frame) });
+            },
+          },
+          wrapUpNote,
+        );
+      } finally {
+        clearInterval(heartbeat);
       }
+      // (suggested_replies chips removed by request — one less Haiku call per
+      // turn; the contract frame type remains for old clients' parsers.)
     });
   });
 

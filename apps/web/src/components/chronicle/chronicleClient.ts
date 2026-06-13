@@ -2,11 +2,14 @@ import {
   ChronicleResponse,
   ArtifactsResponse,
   ArtifactResponse,
+  MessagesResponse,
   type ChronicleItem,
   type ArtifactSummary,
   type Artifact,
   type AgentId,
   type ArtifactKind,
+  type Message,
+  type MessageScope,
 } from '@town/contract';
 import { resolveWorldBaseUrl } from '@/lib/world/mapping';
 
@@ -63,4 +66,20 @@ export async function fetchArtifact(id: string, signal?: AbortSignal): Promise<A
   if (!res.ok) throw new Error(`artifact failed: ${res.status}`);
   const parsed = ArtifactResponse.parse(await res.json());
   return parsed.artifact;
+}
+
+// GET /messages?scope=&cursor= — the agents' DM/broadcast mail, newest first.
+// Bodies are public by design (M2 veto-point default: DMs are visible).
+export async function fetchMessages(opts: {
+  scope?: MessageScope | null;
+  cursor?: string | null;
+  signal?: AbortSignal;
+}): Promise<{ messages: Message[]; nextCursor: string | null }> {
+  const url = new URL(`${baseUrl()}/messages`);
+  if (opts.scope) url.searchParams.set('scope', opts.scope);
+  if (opts.cursor) url.searchParams.set('cursor', opts.cursor);
+  const res = await fetch(url.toString(), { signal: opts.signal });
+  if (!res.ok) throw new Error(`messages failed: ${res.status}`);
+  const parsed = MessagesResponse.parse(await res.json());
+  return { messages: parsed.messages, nextCursor: parsed.nextCursor };
 }

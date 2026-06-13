@@ -15,7 +15,6 @@ import { eq, and, isNull, desc, asc } from "drizzle-orm";
 import { agentIds } from "@town/contract";
 import type { AgentId, LocationId, ChatStreamFrame, GetChatResponse } from "@town/contract";
 import { z } from "zod";
-import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { db, schema } from "../db/client.js";
 import { anthropic, systemBlocks, hasLlm, TICK_BETAS, MID_CONV_SYSTEM_BETA } from "./client.js";
 import { getProfile } from "./roles.js";
@@ -23,6 +22,22 @@ import { buildChatTools, type AgentContext } from "./tools.js";
 import { getAgent, setEngagement, clearEngagement } from "../engine/agents.js";
 import { getVisitor } from "../engine/visitors.js";
 import { getLocation } from "../engine/locations.js";
+import { recentEventsForAgent } from "../engine/events.js";
+import { renderLine } from "../engine/feed.js";
+
+// Which of an agent's recent events are "things it DID" worth reminding it of
+// mid-chat (vs. ambient movement noise).
+const OWN_DOING_TYPES = new Set<string>([
+  "artifact.created",
+  "artifact.updated",
+  "bulletin.posted",
+  "message.sent",
+  "agent.spoke",
+  "capability.requested",
+]);
+function isOwnDoing(e: { type: string }): boolean {
+  return OWN_DOING_TYPES.has(e.type);
+}
 import { appendEvent } from "../engine/events.js";
 import { recordUsage } from "../engine/usage.js";
 import { estimateCostUsd, tokensFromUsage } from "./pricing.js";
@@ -30,7 +45,6 @@ import { tryAcquire } from "./agent-lock.js";
 
 // The model suggestedReplies runs on (cheap post-turn chips, design doc §5).
 // Literal so the usage row records the model actually billed.
-const SUGGESTED_REPLIES_MODEL = "claude-haiku-4-5";
 
 const { chatSessions, chatMessages } = schema;
 
@@ -81,7 +95,15 @@ export type OpenChatResult =
 // holds. Hidden from the visible transcript like every operator row.
 export function buildChatFraming(
   visitorName: string | null,
-  grounding?: { locationName?: string | null; activity?: string | null },
+  grounding?: {
+    locationName?: string | null;
+    activity?: string | null;
+    // Short third-person lines of the agent's own recent actions ("posted a
+    // bulletin: …"). Without these an agent has NO window onto its own recent
+    // ticks mid-chat (observed: Career denied knowing about a bulletin he
+    // posted an hour earlier) — episodic memory only catches up at reflection.
+    recentDoings?: string[];
+  },
 ): string {
   const who = visitorName ? `A visitor (${visitorName})` : "A visitor";
   // Ground the chat in the agent's LIVE position/activity. Without this the
@@ -92,9 +114,13 @@ export function buildChatFraming(
         grounding.activity ? `, where you were ${grounding.activity}` : ""
       }. `
     : "";
+  const doings = grounding?.recentDoings?.length
+    ? `Things you actually did recently (your own log — trust it over vague memory): ${grounding.recentDoings.join(" · ")} `
+    : "";
   return (
     `[operator note] ${who} just walked up and started a conversation with you. ` +
     where +
+    doings +
     `You are now in a live chat. Everything you write as plain text from here on is ` +
     `spoken directly to them, streamed word-for-word — it IS your side of the ` +
     `conversation. Never narrate your reasoning, your situation, or the scene in plain ` +
@@ -138,16 +164,21 @@ export async function openChat(agentId: AgentId, visitorId: string): Promise<Ope
     // Channel framing (see buildChatFraming): the model-only leading user turn
     // that tells the agent its plain text is now spoken to the visitor —
     // grounded in where the agent actually is (live row, not the soul file).
-    const [visitor, loc] = await Promise.all([
+    const [visitor, loc, recent] = await Promise.all([
       getVisitor(visitorId),
       getLocation(agent.locationId as LocationId),
+      recentEventsForAgent(agentId, 5).catch(() => []),
     ]);
+    const recentDoings = (
+      await Promise.all(recent.filter(isOwnDoing).map((e) => renderLine(e)))
+    ).slice(-4);
     await db.insert(chatMessages).values({
       sessionId,
       sender: "operator",
       body: buildChatFraming(visitor?.name ?? null, {
         locationName: loc?.name ?? agent.locationId,
         activity: agent.activity,
+        recentDoings,
       }),
     });
     await setEngagement("chat", sessionId, [agentId]);
@@ -841,85 +872,6 @@ export async function getChatTranscript(sessionId: string): Promise<GetChatRespo
     participants,
     messages,
   };
-}
-
-// Post-turn suggested replies (design doc §5): a cheap Haiku call that NEVER
-// blocks `done` — the HTTP layer fires it after the done frame. Uses the SDK's
-// structured-output parse when available, falling back to JSON extraction from a
-// plain call; any failure yields no chips (the feature is best-effort).
-const SuggestedReplies = z.object({
-  replies: z.array(z.string()).max(3),
-});
-
-export async function suggestedReplies(sessionId: string): Promise<string[]> {
-  if (!hasLlm()) return [];
-  try {
-    const rows = await db
-      .select()
-      .from(chatMessages)
-      .where(eq(chatMessages.sessionId, sessionId));
-    rows.sort((a, b) => a.ts.getTime() - b.ts.getTime());
-    const recent = rows.slice(-6);
-    if (recent.length === 0) return [];
-    // Attribute the Haiku spend to the replying agent — the last agent who spoke
-    // (the reply these chips follow). Fall back to the session's primary agent.
-    const [sessionRow] = await db
-      .select({ agentId: chatSessions.agentId })
-      .from(chatSessions)
-      .where(eq(chatSessions.id, sessionId))
-      .limit(1);
-    const primary = (sessionRow?.agentId as AgentId | undefined) ?? agentIds[0];
-    const replier = lastAgentToSpeak(rows, primary) ?? primary;
-    const transcript = recent
-      .map((r) => `${r.sender === "visitor" ? "Visitor" : "Agent"}: ${r.body}`)
-      .join("\n");
-    const prompt = [
-      "Given this short conversation between a visitor and a town character,",
-      "suggest up to 3 brief, natural replies the VISITOR might tap next.",
-      "Each ≤ 8 words. Return only the replies.",
-      "",
-      transcript,
-    ].join("\n");
-
-    // Preferred: structured output via messages.parse + betaZodOutputFormat.
-    try {
-      const parsed = await anthropic.beta.messages.parse({
-        model: SUGGESTED_REPLIES_MODEL,
-        max_tokens: 256,
-        messages: [{ role: "user", content: prompt }],
-        output_config: { format: betaZodOutputFormat(SuggestedReplies) },
-      });
-      await recordChatUsage(replier, SUGGESTED_REPLIES_MODEL, sessionId, parsed.usage);
-      const out = parsed.parsed_output;
-      if (out?.replies) return out.replies.slice(0, 3);
-    } catch {
-      // Fall through to a plain call + JSON extraction below.
-    }
-
-    const res = await anthropic.beta.messages.create({
-      model: SUGGESTED_REPLIES_MODEL,
-      max_tokens: 256,
-      messages: [
-        {
-          role: "user",
-          content: `${prompt}\n\nReturn a JSON object: {"replies": ["...", "..."]}`,
-        },
-      ],
-    });
-    await recordChatUsage(replier, SUGGESTED_REPLIES_MODEL, sessionId, res.usage);
-    const raw = res.content
-      .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("");
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) return [];
-    const obj = JSON.parse(match[0]);
-    const parsed = SuggestedReplies.safeParse(obj);
-    return parsed.success ? parsed.data.replies.slice(0, 3) : [];
-  } catch (err) {
-    console.warn(`[chat ${sessionId}] suggested_replies failed:`, (err as Error).message);
-    return [];
-  }
 }
 
 // --- visitor.interacted routing (design doc §4) -----------------------------

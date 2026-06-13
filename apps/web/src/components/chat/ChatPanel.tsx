@@ -33,7 +33,6 @@ interface ChatPanelProps {
   color: string;
   lines: ChatLine[];
   streamingSpeaker: ThomasId | null;
-  suggestedReplies: string[];
   phase: 'idle' | 'live' | 'ended';
   // Live activity line (from useAgentStatuses) — updates as the agent moves
   // mid-chat.
@@ -50,7 +49,6 @@ export function ChatPanel({
   color,
   lines,
   streamingSpeaker,
-  suggestedReplies,
   phase,
   liveActivity,
   onSend,
@@ -86,7 +84,7 @@ export function ChatPanel({
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [lines, suggestedReplies]);
+  }, [lines]);
 
   // Autofocus on open and on an imperative refocus (Enter / SPACE).
   useEffect(() => {
@@ -297,29 +295,6 @@ export function ChatPanel({
         {generating && <StreamDots color={streamingSpeaker ? agentColor(streamingSpeaker) : color} />}
       </div>
 
-      {/* suggested replies (hidden once the chat has ended) */}
-      {phase !== 'ended' && suggestedReplies.length > 0 && (
-        <div style={{ display: 'flex', gap: 7, padding: '4px 14px 10px', flexWrap: 'wrap' }}>
-          {suggestedReplies.map((q) => (
-            <button
-              key={q}
-              onClick={() => handleSend(q)}
-              style={{
-                padding: '6px 11px',
-                borderRadius: 999,
-                border: `1px solid ${color}40`,
-                color,
-                fontSize: 12,
-                fontWeight: 600,
-                background: '#fff',
-                cursor: 'pointer',
-              }}
-            >
-              {q}
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* input row, or the [wave goodbye] close button once ended */}
       {phase === 'ended' ? (
