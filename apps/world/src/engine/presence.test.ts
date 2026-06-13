@@ -31,7 +31,7 @@ describe("presence debounce", () => {
   });
 
   it("emits arrived on a fresh connect and left after the grace window", async () => {
-    await tracker.connected("v1", "Ada", null);
+    await expect(tracker.connected("v1", "Ada", null)).resolves.toBe(true);
     expect(arrived).toEqual(["v1"]);
     tracker.disconnected("v1");
     expect(left).toEqual([]); // not yet — grace window pending
@@ -44,7 +44,7 @@ describe("presence debounce", () => {
     arrived.length = 0;
     tracker.disconnected("v1");
     await vi.advanceTimersByTimeAsync(3_000); // observed reconnect gap
-    await tracker.connected("v1", "Ada", new Date(Date.now() - 3_000));
+    await expect(tracker.connected("v1", "Ada", new Date(Date.now() - 3_000))).resolves.toBe(false);
     await vi.advanceTimersByTimeAsync(GRACE * 2);
     expect(arrived).toEqual([]);
     expect(left).toEqual([]);

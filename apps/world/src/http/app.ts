@@ -196,8 +196,20 @@ export function createApp() {
             presentVisitor = { id: v.id, name: v.name };
             // lastSeenAt is read before the touch so the presence debounce can
             // tell a transport reconnect from a real arrival.
-            await visitorConnected(v.id, v.name, v.lastSeenAt);
+            const arrived = await visitorConnected(v.id, v.name, v.lastSeenAt);
             await touchVisitor(v.id);
+            // A REAL arrival (not a proxy-recycle reconnect) wakes the agents
+            // wherever the visitor is standing, same boost band as a room
+            // change — so a visit gets acknowledged in ~30-60s instead of
+            // whenever the slow idle timer happens to fire next.
+            if (arrived && v.locationId) {
+              const here = await agentsAtLocation(v.locationId as LocationId).catch(() => []);
+              for (const a of here) {
+                void boostAgent(a.id as AgentId, `${v.id}|${a.id}`).catch((err) =>
+                  console.warn(`[sse] arrival boost ${a.id} failed:`, (err as Error).message),
+                );
+              }
+            }
           }
         } catch (err) {
           console.warn("[sse] visitor arrival failed:", (err as Error).message);

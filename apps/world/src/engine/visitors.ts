@@ -74,7 +74,10 @@ const LEAVE_GRACE_MS = 60_000;
 
 export interface PresenceTracker {
   // Call on SSE connect, with lastSeenAt read BEFORE the connect's touchVisitor.
-  connected(id: string, name: string, lastSeenAt: Date | null): Promise<void>;
+  // Resolves true when a REAL arrival was emitted (not a transport reconnect) —
+  // callers use this to welcome the visitor (tick boosts) without re-welcoming
+  // every proxy recycle.
+  connected(id: string, name: string, lastSeenAt: Date | null): Promise<boolean>;
   // Call on SSE disconnect. The departure emits only after the grace window
   // passes with no reconnect (and no other live connection for this visitor).
   disconnected(id: string): void;
@@ -99,13 +102,15 @@ export function createPresenceTracker(opts: {
         // Reconnected within the grace window — they never left.
         clearTimeout(pending);
         pendingLeft.delete(id);
-        return;
+        return false;
       }
-      if ((connCounts.get(id) ?? 0) > 1) return; // another tab already announced them
+      if ((connCounts.get(id) ?? 0) > 1) return false; // another tab already announced them
       // Across a server restart there's no pending timer to cancel — the DB
       // presence window catches that case so a restart doesn't read as an arrival.
       const recentlyPresent = lastSeenAt != null && Date.now() - lastSeenAt.getTime() < windowMs;
-      if (!recentlyPresent) await opts.onArrive(id, name);
+      if (recentlyPresent) return false;
+      await opts.onArrive(id, name);
+      return true;
     },
     disconnected(id) {
       const n = (connCounts.get(id) ?? 1) - 1;
@@ -141,7 +146,7 @@ export async function visitorConnected(
   id: string,
   name: string,
   lastSeenAt: Date | null,
-): Promise<void> {
+): Promise<boolean> {
   return presence.connected(id, name, lastSeenAt);
 }
 
