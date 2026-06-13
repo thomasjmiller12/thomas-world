@@ -18,14 +18,17 @@ import { betaMemoryTool } from "@anthropic-ai/sdk/helpers/beta/memory";
 import type { BetaRunnableTool } from "@anthropic-ai/sdk/lib/tools/BetaRunnableTool.mjs";
 import { agentIds, locationIds, artifactKinds, type AgentId, type LocationId } from "@town/contract";
 
-import { moveAgent, setActivity, getAgent, setEngagement } from "../engine/agents.js";
+import { moveAgent, setActivity, getAgent } from "../engine/agents.js";
 import { checkGate, isAdjacent, getLocation, agentsAtLocation } from "../engine/locations.js";
 import { appendEvent } from "../engine/events.js";
-import { eq } from "drizzle-orm";
-import { db, schema } from "../db/client.js";
-import { tryAcquire } from "./agent-lock.js";
 import { sendMessage } from "../engine/messages.js";
-import { createArtifact, updateArtifact, getArtifact, recentArtifactsBy } from "../engine/artifacts.js";
+import {
+  createArtifact,
+  updateArtifact,
+  getArtifact,
+  recentArtifactsBy,
+  listArtifacts,
+} from "../engine/artifacts.js";
 import { recordCapabilityRequest, sendEmailToThomas } from "../engine/outside.js";
 import {
   memView,
@@ -46,14 +49,14 @@ import { checkFixtureAction, tryRecordEffect, type FixtureDef } from "./fixtures
 export interface AgentContext {
   agentId: AgentId;
   location: LocationId;
-  // The visitor chat session this agent is replying in, when applicable (design
-  // doc §3.3). Set on chat-turn contexts so invite_to_chat knows which session
-  // to add the invited agent to. Null on idle ticks.
+  // The visitor chat session this turn is replying in, when applicable (M3). Set
+  // on a visitor turn so leave_chat knows it's in a conversation and gets added
+  // to the tool surface; undefined on idle ticks.
   chatSessionId?: string | null;
   // Set by the leave_chat tool when the agent decides a chat has run its course.
   // The toolRunner is mid-loop when leave_chat fires, so it cannot end the
-  // session synchronously; it stashes the reason here and the chat layer
-  // (streamAgentTurn → runChatTurn) ends the session AFTER the final message.
+  // session synchronously; it stashes the reason here and the loop's visitor turn
+  // ends the session AFTER the final message lands.
   endRequested?: string;
   // Chat-only narration channel: tools call this AT THE POINT OF SUCCESS so the
   // panel's inline `action` frames can never describe a refused action (the old
@@ -160,37 +163,9 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   });
 
   // --- Social ----------------------------------------------------------------
-  const say = betaZodTool({
-    name: "say",
-    description:
-      "Say something out loud where you are. Saying something is HOW conversations happen here: co-located facets hear it and usually wake shortly to respond, and any visitors here see it too. Optionally address a specific facet with `to` — they'll know it was aimed at them. Use this for ambient remarks, opening a conversation, or replying to whoever's around.",
-    inputSchema: z.object({
-      text: z.string().min(1).max(600),
-      // Optional addressing for emergent room talk aimed at a specific facet.
-      to: z.enum(agentIds as unknown as [string, ...string[]]).optional(),
-    }),
-    run: async ({ text, to }) => {
-      const addressed = (to as AgentId | undefined) ?? undefined;
-      if (addressed === ctx.agentId) {
-        return "You can't address yourself — leave `to` off to speak to the room.";
-      }
-      await appendEvent({
-        type: "agent.spoke",
-        agentId: ctx.agentId,
-        locationId: ctx.location,
-        visibility: "location",
-        payload: {
-          agent: ctx.agentId,
-          location: ctx.location,
-          text,
-          ...(addressed ? { to: addressed } : {}),
-        },
-      });
-      await ctx.onAction?.("say", `says to the room: "${text}"`);
-      return addressed ? `You said to ${addressed}: "${text}"` : `You said: "${text}"`;
-    },
-  });
-
+  // NOTE (M3 speech unification): there is no `say` tool. Speaking is just
+  // writing plain text — it's the agent's utterance, heard by whoever's present
+  // (loop.ts emitUtterance turns it into agent.spoke / agent.thought).
   const send_dm = betaZodTool({
     name: "send_dm",
     description:
@@ -274,6 +249,23 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       await updateArtifact(id, { title, body });
       await ctx.onAction?.("update_artifact", `revises "${title ?? existing.title}"`);
       return `Updated "${title ?? existing.title}".`;
+    },
+  });
+
+  const list_my_artifacts = betaZodTool({
+    name: "list_my_artifacts",
+    description:
+      "List the things YOU'VE made — your own artifacts — most recent first, with each one's id, kind, title, and whether it's published. Use this whenever you need an artifact's id (to update_artifact or publish_blog_post it) or to take stock of your own work.",
+    inputSchema: z.object({}),
+    run: async () => {
+      const rows = await listArtifacts({ agent: ctx.agentId }, 20);
+      if (rows.length === 0) return "You haven't made anything yet.";
+      return rows
+        .map(
+          (a) =>
+            `- ${a.kind} "${a.title}" (id ${a.id})${a.published ? " [published]" : ""}`,
+        )
+        .join("\n");
     },
   });
 
@@ -479,11 +471,11 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     set_activity as RunnableTool,
     look_around as RunnableTool,
     use_fixture as RunnableTool,
-    say as RunnableTool,
     send_dm as RunnableTool,
     broadcast as RunnableTool,
     create_artifact as RunnableTool,
     update_artifact as RunnableTool,
+    list_my_artifacts as RunnableTool,
     post_bulletin as RunnableTool,
     publish_blog_post as RunnableTool,
     memory,
@@ -502,6 +494,11 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     request_capability as RunnableTool,
   ];
 
+  // leave_chat is only meaningful within a visitor turn (ctx.chatSessionId set).
+  // Adding it only then keeps the idle-tick tool surface byte-stable (cache
+  // hygiene) — idle ticks never carry a session, visitor turns always do.
+  if (ctx.chatSessionId) tools.push(buildLeaveChat(ctx));
+
   // DETERMINISTIC ORDER: sort by tool name so the serialized tool block is
   // byte-stable across ticks (cache hygiene, plan §4.3). betaMemoryTool's name
   // is "memory" so it sorts naturally with the rest.
@@ -513,101 +510,11 @@ function toolName(t: RunnableTool): string {
   return (t as unknown as { name?: string }).name ?? "";
 }
 
-// invite_to_chat (design doc §3.3b): an agent in a visitor chat invites a SECOND
-// agent into the session. Gate (TOCTOU-safe): the target is co-located OR one
-// move away (they walk — emit agent.moved) AND tryAcquire(target) succeeds AND
-// the target is unengaged — all atomic. Success → add to participant_agent_ids,
-// set the target's engagement to this chat, emit chat.joined, in-fiction
-// confirmation. Failure → in-fiction reason. Hard cap 2 agents + 1 visitor.
-function buildInviteToChat(ctx: AgentContext): RunnableTool {
-  const { agents, chatSessions } = schema;
-  return betaZodTool({
-    name: "invite_to_chat",
-    description:
-      "Invite another facet to join the conversation you're having with the visitor right now. They must be here with you or one step away (they'll walk over). Use this to bring in someone whose perspective the visitor would value.",
-    inputSchema: z.object({
-      agent: z.enum(agentIds as unknown as [string, ...string[]]),
-    }),
-    run: async ({ agent }) => {
-      const target = agent as AgentId;
-      const sessionId = ctx.chatSessionId;
-      if (!sessionId) return "You can only invite someone while you're in a conversation with a visitor.";
-      if (target === ctx.agentId) return "You're already here.";
-
-      const [session, here] = await Promise.all([
-        db.select().from(chatSessions).where(eq(chatSessions.id, sessionId)).then((r) => r[0]),
-        agentsAtLocation(ctx.location),
-      ]);
-      if (!session || session.endedAt) return "That conversation has already wrapped up.";
-      const roster = ((session.participantAgentIds as AgentId[] | null) ?? []).filter(Boolean);
-      const current = roster.length ? roster : [session.agentId as AgentId];
-      if (current.includes(target)) return `${target} is already part of this conversation.`;
-      // Hard cap: 2 agents + 1 visitor.
-      if (current.length >= 2) {
-        return "There's already two of you here with the visitor — any more would be a crowd.";
-      }
-
-      const targetRow = await getAgent(target);
-      if (!targetRow) return `You don't know anyone called ${target}.`;
-
-      // Co-location or one-move-away gate. If co-located, no walk. If adjacent,
-      // they walk over (emit agent.moved via moveAgent). Otherwise refuse.
-      const coLocated = here.some((a) => a.id === target);
-      const targetLoc = targetRow.locationId as LocationId;
-      let walked = false;
-      if (!coLocated) {
-        const adjacent = await isAdjacent(targetLoc, ctx.location);
-        if (!adjacent) {
-          return `${target} is too far away to join right now — they'd have a long way to walk.`;
-        }
-        walked = true;
-      }
-
-      // Atomic acquire: take the target's lock + check unengaged together, so a
-      // racing tick/chat can't slip the target into another engagement between
-      // the check and the set (the TOCTOU the boolean never closed).
-      const release = tryAcquire(target);
-      if (!release) return `${target} is mid-thought right now — try again in a moment.`;
-      try {
-        const fresh = await getAgent(target);
-        if (!fresh || fresh.engagement) {
-          return `${target} is already caught up in something else.`;
-        }
-        // Walk them over first (emits agent.moved) so the town renders the move.
-        if (walked) await moveAgent(target, ctx.location);
-        // Add to the roster + engage the target in THIS chat session. The two
-        // existing participants keep their engagement; setEngagement on the full
-        // roster re-stamps everyone to the same {kind:'chat', id} cleanly.
-        const nextRoster = [...current, target];
-        await db
-          .update(chatSessions)
-          .set({ participantAgentIds: nextRoster })
-          .where(eq(chatSessions.id, sessionId));
-        await setEngagement("chat", sessionId, nextRoster);
-        await appendEvent({
-          type: "chat.joined",
-          agentId: target,
-          // Presence only — NO sessionId (design doc §5: chat content is private;
-          // the event carries presence). Visibility stays 'location' so co-located
-          // perception + feed still materialize the walk-over without leaking the
-          // session id to all surfaces.
-          visibility: "location",
-          payload: { agent: target },
-        });
-        return `${target} ${walked ? "walks over and joins" : "joins"} the conversation.`;
-      } finally {
-        release();
-      }
-    },
-  }) as RunnableTool;
-}
-
-// leave_chat (M2.1 full-agency chat): an agent in a visitor chat decides the
-// conversation has run its course and leaves it, warmly, in its own voice. A
-// chat is a channel, not a cage. The toolRunner is mid-loop here, so we CANNOT
-// end the session synchronously — we stash the reason on ctx.endRequested and
-// let the chat layer end the whole session AFTER the agent's final message
-// lands. v1 semantics: leaving ends the WHOLE session (solo or group).
+// leave_chat (M3): the agent in a visitor turn decides the conversation has run
+// its course and leaves it, warmly, in its own voice — a chat is a channel, not
+// a cage. The toolRunner is mid-loop here, so we CANNOT end the session
+// synchronously — we stash the reason on ctx.endRequested and let the loop's
+// visitor turn end the session AFTER the agent's final message lands.
 function buildLeaveChat(ctx: AgentContext): RunnableTool {
   return betaZodTool({
     name: "leave_chat",
@@ -624,46 +531,6 @@ function buildLeaveChat(ctx: AgentContext): RunnableTool {
       return "Alright — wrap up warmly in this message; the conversation will close once you've said it.";
     },
   }) as RunnableTool;
-}
-
-// The chat subset (plan §4.1; widened in M2.1 to full agency). A chat is a
-// channel, not a cage: the agent keeps its whole life mid-chat — it can walk
-// somewhere, make or revise an artifact, speak to the room, check its memory.
-// The only EXCLUSIONS are the external / megaphone side effects (email_thomas,
-// request_capability, broadcast, post_bulletin, publish_blog_post) — those stay
-// tick-only. Group chat (design doc §3.3) adds invite_to_chat, and M2.1 adds
-// leave_chat, both whenever a chat session is set.
-export function buildChatTools(ctx: AgentContext): RunnableTool[] {
-  const allowed = new Set([
-    "move_to",
-    "set_activity",
-    "look_around",
-    "use_fixture",
-    "say",
-    "create_artifact",
-    "update_artifact",
-    "memory",
-    "remember",
-    "recall",
-    "forget",
-    "send_dm",
-    "list_notes",
-    "read_note",
-    "search_notes",
-    "write_agent_note",
-    "list_repos",
-    "browse_repo",
-    "read_repo_file",
-    "search_code",
-  ]);
-  const tools = buildTools(ctx).filter((t) => allowed.has(toolName(t)));
-  // invite_to_chat + leave_chat are only meaningful within a visitor chat session.
-  if (ctx.chatSessionId) {
-    tools.push(buildInviteToChat(ctx));
-    tools.push(buildLeaveChat(ctx));
-  }
-  // Keep the byte-stable sorted order (cache hygiene) now that we appended.
-  return tools.sort((a, b) => toolName(a).localeCompare(toolName(b)));
 }
 
 export { getAgent };

@@ -1,10 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { buildTools, buildChatTools, type AgentContext } from "./tools.js";
+import { buildTools, type AgentContext } from "./tools.js";
 import { sanitizeVisitorText } from "./chat.js";
 
 // These tests exercise the LOCATION GATE behavior at the tool layer (plan §3.3).
 // Gated tools short-circuit on checkGate() and return an in-fiction error
 // string BEFORE touching the DB — so we can run them without a database.
+//
+// M3: there is ONE tool surface (buildTools). The old buildChatTools whitelist is
+// gone; a visitor turn just sets ctx.chatSessionId, which adds leave_chat. Speech
+// is plain text now, so there is no `say` tool.
 
 function toolByName(ctx: AgentContext, name: string) {
   const tools = buildTools(ctx);
@@ -15,6 +19,9 @@ function toolByName(ctx: AgentContext, name: string) {
     run: (args: unknown) => Promise<string | unknown[]>;
   };
 }
+
+const names = (ctx: AgentContext): string[] =>
+  buildTools(ctx).map((t) => (t as unknown as { name?: string }).name ?? "");
 
 describe("tool location gates (plan §3.3, enforced server-side)", () => {
   it("post_bulletin from the park returns an in-fiction redirect to town", async () => {
@@ -48,20 +55,19 @@ describe("tool location gates (plan §3.3, enforced server-side)", () => {
 
   it("exposes the tool surface deterministically sorted by name", () => {
     const ctx: AgentContext = { agentId: "career", location: "office" };
-    const tools = buildTools(ctx);
-    const names = tools.map((t) => (t as unknown as { name?: string }).name ?? "");
+    const got = names(ctx);
     // Deterministic ordering is a cache-hygiene requirement (plan §4.3).
-    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+    expect(got).toEqual([...got].sort((a, b) => a.localeCompare(b)));
     // Spot-check the surface is complete across all groups.
     for (const expected of [
       "move_to",
       "set_activity",
       "look_around",
-      "say",
       "send_dm",
       "broadcast",
       "create_artifact",
       "update_artifact",
+      "list_my_artifacts",
       "post_bulletin",
       "publish_blog_post",
       "memory",
@@ -74,102 +80,52 @@ describe("tool location gates (plan §3.3, enforced server-side)", () => {
       "write_agent_note",
       "email_thomas",
       "request_capability",
-    ]) {
-      expect(names).toContain(expected);
-    }
-    // The paced-scene tools are gone (M2.1 — room talk is emergent `say`).
-    for (const removed of ["start_conversation", "reply", "end_conversation"]) {
-      expect(names).not.toContain(removed);
-    }
-  });
-});
-
-describe("buildChatTools — full-agency chat whitelist (M2.1)", () => {
-  const names = (ctx: AgentContext): string[] =>
-    buildChatTools(ctx).map((t) => (t as unknown as { name?: string }).name ?? "");
-
-  it("includes the full-agency tools (move/make/say/memory/notes) in a chat", () => {
-    const ctx: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
-    const got = names(ctx);
-    for (const expected of [
-      "move_to",
-      "set_activity",
-      "look_around",
-      "use_fixture",
-      "say",
-      "create_artifact",
-      "update_artifact",
-      "memory",
-      "remember",
-      "recall",
-      "forget",
-      "send_dm",
-      "list_notes",
-      "read_note",
-      "search_notes",
-      "write_agent_note",
     ]) {
       expect(got).toContain(expected);
     }
-  });
-
-  it("EXCLUDES the external / megaphone side-effect tools (tick-only)", () => {
-    const ctx: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
-    const got = names(ctx);
-    for (const excluded of [
-      "email_thomas",
-      "request_capability",
-      "broadcast",
-      "post_bulletin",
-      "publish_blog_post",
+    // M3 speech unification: `say` is gone (plain text is speech). The paced-scene
+    // tools and group-chat invite are gone too.
+    for (const removed of [
+      "say",
+      "start_conversation",
+      "reply",
+      "end_conversation",
+      "invite_to_chat",
     ]) {
-      expect(got).not.toContain(excluded);
+      expect(got).not.toContain(removed);
     }
+    // leave_chat is only offered inside a visitor turn (no chatSessionId here).
+    expect(got).not.toContain("leave_chat");
   });
+});
 
-  it("adds invite_to_chat + leave_chat only when a chat session is set", () => {
+describe("leave_chat — offered only within a visitor turn (M3)", () => {
+  it("appears when a chat session is set, absent otherwise", () => {
     const inChat: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
-    expect(names(inChat)).toContain("invite_to_chat");
     expect(names(inChat)).toContain("leave_chat");
-    // No session id (e.g. an interject ctx without one) → neither is offered.
-    const noSession: AgentContext = { agentId: "builder", location: "workshop" };
-    expect(names(noSession)).not.toContain("invite_to_chat");
-    expect(names(noSession)).not.toContain("leave_chat");
+    const idle: AgentContext = { agentId: "builder", location: "workshop" };
+    expect(names(idle)).not.toContain("leave_chat");
   });
 
-  it("stays deterministically name-sorted (prompt-cache hygiene)", () => {
+  it("stays deterministically name-sorted with leave_chat appended (cache hygiene)", () => {
     const ctx: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
     const got = names(ctx);
     expect(got).toEqual([...got].sort((a, b) => a.localeCompare(b)));
   });
-});
-
-describe("leave_chat tool (M2.1 — agent ends a chat itself)", () => {
-  function chatToolByName(ctx: AgentContext, name: string) {
-    const t = buildChatTools(ctx).find((x) => (x as unknown as { name?: string }).name === name);
-    if (!t) throw new Error(`tool ${name} not found`);
-    return t as unknown as { name: string; run: (args: unknown) => Promise<string> };
-  }
 
   it("stashes endRequested on the ctx (does NOT end the session synchronously)", async () => {
     const ctx: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
-    const tool = chatToolByName(ctx, "leave_chat");
+    const tool = toolByName(ctx, "leave_chat");
     const out = await tool.run({ reason: "we said our goodbyes" });
     expect(ctx.endRequested).toBe("we said our goodbyes");
-    expect(out).toMatch(/wrap up|close/i);
+    expect(out as string).toMatch(/wrap up|close/i);
   });
 
   it("defaults the reason to 'wound down' when none is given", async () => {
     const ctx: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
-    await chatToolByName(ctx, "leave_chat").run({});
+    await toolByName(ctx, "leave_chat").run({});
     expect(ctx.endRequested).toBe("wound down");
   });
-
-  // leave_chat is only present when chatSessionId is set, so the "no session"
-  // refusal path is exercised by constructing the tool directly through the
-  // builder with a session and then clearing it would be artificial — instead we
-  // assert it isn't even offered without a session (covered by the whitelist
-  // test above). The in-fiction refusal guard in run() protects a stale ctx.
 });
 
 describe("visitor-chat content sanitation (plan §4.1)", () => {

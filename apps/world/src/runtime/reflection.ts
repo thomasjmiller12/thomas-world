@@ -4,10 +4,13 @@
 // triggers Hindsight consolidation, and writes a short diary entry (itself feed
 // content + the recovery seed). Runs once per agent overnight.
 //
-// The actual LLM turn goes through runTurn() in loop.ts so reflection happens
+// The actual LLM turn goes through runTurn() (turn.js) so reflection happens
 // WITHIN the agent's ongoing consciousness (and naturally lands a compaction at
 // the day boundary). Reflection's turn is given ONLY the memory tool — it's
 // introspective, not world-acting; the diary is its final text.
+//
+// Called by the loop's executor for a {kind:'reflection'} input, so the per-agent
+// queue already serializes it — no separate lock/engagement guard needed.
 
 import type { AgentId } from "@town/contract";
 import { hasLlm } from "./client.js";
@@ -22,12 +25,10 @@ import {
   memRename,
   coreMemorySnapshot,
 } from "../engine/memory.js";
-import { getAgent, isBusy } from "../engine/agents.js";
 import { createArtifact, recentArtifactsBy } from "../engine/artifacts.js";
-import { tryAcquire } from "./agent-lock.js";
 import { reflect as hindsightReflect } from "./hindsight.js";
 import { startTrace } from "./tracing.js";
-import { runTurn } from "./loop.js";
+import { runTurn } from "./turn.js";
 import { randomUUID } from "node:crypto";
 import type { BetaRunnableTool } from "@anthropic-ai/sdk/lib/tools/BetaRunnableTool.mjs";
 
@@ -48,31 +49,18 @@ write it as text). It'll be part of the day's record.`;
 
 export async function runReflection(agentId: AgentId): Promise<{ ran: boolean }> {
   if (!hasLlm()) return { ran: false };
-  // Reflection must respect the same engagement + lock discipline as a tick
-  // (design doc §3.2): a nightly reflection running concurrently with a live
-  // chat would race memory-tool writes. Take the lock; bail if a tick/chat
-  // holds it or the agent is engaged. The scheduler marks reflectedThisNight
-  // only when this returns ran:true, so a skipped reflection retries.
-  const release = tryAcquire(agentId);
-  if (!release) return { ran: false };
-  try {
-    const agent = await getAgent(agentId);
-    if (!agent || isBusy(agent.engagement)) return { ran: false };
-    // DB-grounded idempotency: one diary per night, regardless of process
-    // restarts or partial-failure retries. The in-memory reflectedThisNight set
-    // resets on every deploy, and a post-diary failure used to retry the WHOLE
-    // reflection — Career once wrote four diaries in fourteen minutes. A diary
-    // in the last 8 hours (the window spans the midnight date flip) means this
-    // night's reflection already happened: report ran so the scheduler marks it.
-    const recentDiaries = await recentArtifactsBy(agentId, 8, "diary_entry");
-    if (recentDiaries.length > 0) return { ran: true };
-    return await runReflectionLocked(agentId);
-  } finally {
-    release();
-  }
+  // DB-grounded idempotency: one diary per night, regardless of process restarts
+  // or partial-failure retries. The in-memory reflectedThisNight set resets on
+  // every deploy, and a post-diary failure used to retry the WHOLE reflection —
+  // Career once wrote four diaries in fourteen minutes. A diary in the last 8
+  // hours (the window spans the midnight date flip) means this night's reflection
+  // already happened: report ran so the scheduler marks it.
+  const recentDiaries = await recentArtifactsBy(agentId, 8, "diary_entry");
+  if (recentDiaries.length > 0) return { ran: true };
+  return await runReflectionTurn(agentId);
 }
 
-async function runReflectionLocked(agentId: AgentId): Promise<{ ran: boolean }> {
+async function runReflectionTurn(agentId: AgentId): Promise<{ ran: boolean }> {
   const profile = getProfile(agentId);
   const tickId = `reflect-${agentId}-${randomUUID().slice(0, 8)}`;
   const trace = startTrace("reflection", {

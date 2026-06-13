@@ -63,15 +63,15 @@ import { runTick } from "../runtime/loop.js";
 import { hasLlm } from "../runtime/client.js";
 import { flushTracing } from "../runtime/tracing.js";
 import {
-  openChat,
-  endChat,
-  runChatTurn,
+  createSession,
+  endSession,
+  getSession,
   chatTokenValid,
   pingChat,
   getChatTranscript,
-  routeVisitorInteraction,
-  routeVisitorMovement,
+  visitorTurnCount,
 } from "../runtime/chat.js";
+import { enqueue } from "../runtime/queue.js";
 import type { FixtureDef } from "../runtime/fixtures.js";
 import {
   createRateLimiters,
@@ -79,9 +79,7 @@ import {
   parseCorsOrigins,
   IN_FICTION_429,
   sessionTurnDecision,
-  SESSION_WRAP_UP_NOTE,
 } from "./rate-limit.js";
-import { visitorTurnCount } from "../runtime/chat.js";
 
 const agentSet = new Set<string>(agentIds);
 const locationSet = new Set<string>(locationIds);
@@ -468,32 +466,18 @@ export function createApp() {
     if (locationId !== undefined) {
       const moved = await moveVisitor(id, locationId);
       // Co-located tick boost (design doc §2): when the visitor actually changed
-      // rooms, pull unengaged agents AT THE DESTINATION forward so they can
-      // acknowledge the arrival. boostAgent throttles per (visitor, agent) and
-      // skips engaged agents itself, so we just fan out — best-effort, never
-      // blocking the PATCH response on the scheduler.
+      // rooms, pull agents AT THE DESTINATION forward (the boost re-arms their
+      // timer, which enqueues a tick) so they can acknowledge the arrival — and
+      // perceive the visitor in their next delta. Best-effort, never blocking the
+      // PATCH response. (M3: the move itself is a world event the agent reads via
+      // its delta — no operator-note routing needed anymore.)
       if (moved?.changed) {
         const here = await agentsAtLocation(locationId).catch(() => []);
         for (const a of here) {
-          // Ordered-pair throttle key (visitor → agent), default 5-min window.
           void boostAgent(a.id as AgentId, `${id}|${a.id}`).catch((err) =>
             console.warn(`[visitors] boost ${a.id} failed:`, (err as Error).message),
           );
         }
-        // Route the move into any LIVE chat session of this visitor (M2.1): a
-        // chat is a channel, not proximity-gated, so the visitor walking off (or
-        // toward the agent) lands as a pending operator note rather than ending
-        // the session. Best-effort, alongside the boost fan-out — never blocks
-        // the PATCH response.
-        void routeVisitorMovement({
-          visitorId: id,
-          // `name` may have just been renamed in this same request; prefer it.
-          visitorName: name?.trim() || v.name,
-          from: (moved.from ?? locationId) as LocationId,
-          to: locationId as LocationId,
-        }).catch((err) =>
-          console.warn(`[visitors] movement route failed:`, (err as Error).message),
-        );
       }
     }
 
@@ -510,10 +494,9 @@ export function createApp() {
 
   // --- POST /visitors/:id/interact {locationId, fixture} ------------------
   // Visitor-token authorized (design doc §4). Validates the fixture exists at the
-  // location, emits a public `visitor.interacted`, then ROUTES: if an agent in a
-  // live chat session with THIS visitor is at the location, a pending operator
-  // note lands on that session (consumed next runChatTurn); otherwise the
-  // interaction is perceived next tick via the event log automatically.
+  // location and emits a public `visitor.interacted`. (M3: agents perceive the
+  // interaction through their world delta — co-located notice-push — on their next
+  // turn; no operator-note routing into a live session anymore.)
   app.post("/visitors/:id/interact", async (c) => {
     const id = c.req.param("id");
     const v = await getVisitor(id);
@@ -543,14 +526,7 @@ export function createApp() {
       payload: { visitorId: id, name: v.name, location: locationId, fixture },
     });
 
-    const routedSessionId = await routeVisitorInteraction({
-      visitorId: id,
-      visitorName: v.name,
-      locationId: locationId as LocationId,
-      fixture,
-    });
-
-    return c.json({ ok: true, routed: Boolean(routedSessionId) });
+    return c.json({ ok: true });
   });
 
   // --- POST /chats {agentId, visitorId} -----------------------------------
@@ -565,25 +541,20 @@ export function createApp() {
     if (typeof visitorId !== "string" || !visitorId) {
       return c.json({ error: "visitorId required" }, 400);
     }
-    const res = await openChat(agentId, visitorId);
-    switch (res.status) {
-      case "unknown":
-        return c.json({ error: "unknown agent" }, 404);
-      case "engaged":
-        return c.json({ error: "engaged", reason: "engaged", engagement: res.engagement }, 409);
-      case "mid-thought":
-        return c.json({ error: "mid-thought", reason: "mid-thought" }, 409);
-      case "ok":
-        return c.json(
-          validated(CreateChatResponse, {
-            sessionId: res.sessionId,
-            agentId: res.agentId,
-            visitorId: res.visitorId,
-            participants: res.participants,
-            sessionToken: res.sessionToken,
-          }),
-        );
-    }
+    // M3: a session is just a routing record — there's no "engaged"/"mid-thought"
+    // gate. The visitor's first message becomes an interrupt input the agent
+    // handles on its next turn (queue-serialized).
+    const res = await createSession(agentId, visitorId);
+    if (!res) return c.json({ error: "unknown agent" }, 404);
+    return c.json(
+      validated(CreateChatResponse, {
+        sessionId: res.sessionId,
+        agentId: res.agentId,
+        visitorId: res.visitorId,
+        participants: res.participants,
+        sessionToken: res.sessionToken,
+      }),
+    );
   });
 
   // --- POST /chats/:id/ping -----------------------------------------------
@@ -611,10 +582,11 @@ export function createApp() {
   });
 
   // --- POST /chats/:id/messages {text} → SSE ChatStreamFrame stream -------
-  // Token-gated. Emits the contract ChatStreamFrame union as SSE `data` (the
-  // `type` field is the discriminator — no SSE event names). `done` carries the
-  // real persisted messageId; `suggested_replies` follows AFTER `done` and never
-  // blocks it. operatorNote is server-internal — NOT read from the request body.
+  // Token-gated. The visitor's message is enqueued as an INTERRUPT input to the
+  // agent's continuous thread (queue.ts → loop.ts runVisitorInput); the resulting
+  // turn streams the contract ChatStreamFrame union as SSE `data` (the `type`
+  // field is the discriminator — no SSE event names). `done` carries the real
+  // persisted messageId.
   app.post("/chats/:id/messages", async (c) => {
     const sessionId = c.req.param("id");
     const token = c.req.header("x-session-token") ?? undefined;
@@ -623,11 +595,11 @@ export function createApp() {
     const text = typeof body?.text === "string" ? body.text : "";
     if (!text.trim()) return c.json({ error: "text required" }, 400);
 
-    // Per-visitor chat limits + session turn cap (design doc §7). The session's
-    // visitor is the rate-limit subject (the session token already authenticated
-    // the caller, so the visitorId is trusted). We read the session once.
-    const session = await getChatTranscript(sessionId);
+    const session = await getSession(sessionId);
     if (!session) return c.json({ error: "unknown session" }, 404);
+
+    // Per-visitor chat limits + 40-turn session cap (design doc §7). The session
+    // token already authenticated the caller, so the visitorId is trusted.
     const now = Date.now();
     if (!limits.chatPerMinute.hit(session.visitorId, now)) {
       return c.json({ error: "too fast", message: IN_FICTION_429.chatPerMinute }, 429);
@@ -635,41 +607,38 @@ export function createApp() {
     if (!limits.chatPerDay.hit(session.visitorId, now)) {
       return c.json({ error: "daily limit", message: IN_FICTION_429.chatPerDay }, 429);
     }
-    // 40-turn session cap: block once reached; inject an in-character wrap-up
-    // operator note as the turn approaches ~36 so the agent winds down in voice.
     const priorTurns = await visitorTurnCount(sessionId);
-    const turn = sessionTurnDecision(priorTurns);
-    if (turn.block) {
+    if (sessionTurnDecision(priorTurns).block) {
       return c.json({ error: "session full", message: IN_FICTION_429.chatPerDay }, 429);
     }
-    const wrapUpNote = turn.wrapUp ? SESSION_WRAP_UP_NOTE : undefined;
+
+    const visitor = await getVisitor(session.visitorId);
 
     return streamSSE(c, async (stream) => {
       // Keep bytes flowing during long tool rounds (model + Hindsight latency):
-      // with zero traffic the edge proxy kills the idle response mid-turn — the
-      // panel got the early memory_recalled frame but never the text ("drew on
-      // a memory" with an empty bubble). Empty-data frames are the established
-      // heartbeat shape the client parser skips.
+      // with zero traffic the edge proxy kills the idle response mid-turn. Empty-
+      // data frames are the established heartbeat shape the client parser skips.
       const heartbeat = setInterval(() => {
         void stream.writeSSE({ data: "" }).catch(() => undefined);
       }, 15_000);
       try {
-        await runChatTurn(
+        // enqueue resolves when THIS turn has run (the worker serializes it behind
+        // anything in flight); awaiting it holds the SSE stream open for the turn.
+        await enqueue(session.agentId, {
+          kind: "visitor",
           sessionId,
+          visitorId: session.visitorId,
+          visitorName: visitor?.name ?? "",
           text,
-          {
+          handlers: {
             onFrame: async (frame) => {
-              // Each frame is one SSE `data` payload; the `type` field discriminates.
               await stream.writeSSE({ data: JSON.stringify(frame) });
             },
           },
-          wrapUpNote,
-        );
+        });
       } finally {
         clearInterval(heartbeat);
       }
-      // (suggested_replies chips removed by request — one less Haiku call per
-      // turn; the contract frame type remains for old clients' parsers.)
     });
   });
 
@@ -679,7 +648,7 @@ export function createApp() {
     const sessionId = c.req.param("id");
     const token = c.req.header("x-session-token") ?? undefined;
     if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
-    await endChat(sessionId);
+    await endSession(sessionId);
     return c.json({ ok: true });
   });
 

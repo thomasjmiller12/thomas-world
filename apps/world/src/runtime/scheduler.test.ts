@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { decideBoost, sayBoostBudgetExceeded } from "./scheduler.js";
+import { decideBoost } from "./scheduler.js";
 
-// Say-boost bands/keys (design doc §2) mirrored from scheduler.ts for the tests.
+// M3 note: the say-boost timer is gone — room-talk reaction is now an interrupt
+// tick the loop enqueues when a co-located facet is addressed by name. decideBoost
+// still backs the VISITOR-presence boost; the cases below exercise its pure
+// throttle/clamp logic (including the optional bands the old say-boost used).
 const SAY_THROTTLE_MS = 90_000;
 const SAY_FLOOR = 20_000;
 const SAY_MAX = 45_000;
@@ -171,14 +174,5 @@ describe("decideBoost — say-boost (room-talk wake)", () => {
     });
     expect(d.boost).toBe(true);
     expect(d.delayMs).toBe(8_000);
-  });
-});
-
-describe("sayBoostBudgetExceeded — per-location hourly storm cap", () => {
-  it("is false below the budget and true at/above it", () => {
-    expect(sayBoostBudgetExceeded(0, 12)).toBe(false);
-    expect(sayBoostBudgetExceeded(11, 12)).toBe(false);
-    expect(sayBoostBudgetExceeded(12, 12)).toBe(true);
-    expect(sayBoostBudgetExceeded(13, 12)).toBe(true);
   });
 });

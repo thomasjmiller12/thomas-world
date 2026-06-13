@@ -12,19 +12,15 @@ import { agentIds, type AgentId } from "@town/contract";
 import { config } from "../config.js";
 import { hasLlm } from "./client.js";
 import { getProfile } from "./roles.js";
-import { runTick, budgetExceeded } from "./loop.js";
-import { runReflection } from "./reflection.js";
+import { budgetExceeded } from "./loop.js";
+import { enqueue } from "./queue.js";
 import { isOvernight, currentPhase } from "./clock.js";
 import { appendEvent } from "../engine/events.js";
-import { getAgent } from "../engine/agents.js";
 import { spendTodayUsd, spendTodayForAgent } from "../engine/usage.js";
 import { db, schema } from "../db/client.js";
 import { gt, sql } from "drizzle-orm";
 import { syncVault, pushAgentNotes } from "./vault.js";
 import { sweepStaleChats } from "./chat.js";
-import { subscribe } from "../engine/bus.js";
-import { agentsAtLocation } from "../engine/locations.js";
-import type { LocationId } from "@town/contract";
 
 // Fallback cadence used only when computing the next delay itself fails (e.g. a
 // transient DB error in the visitor-presence query). Keeps the agent rescheduling
@@ -54,37 +50,10 @@ const nextFireAt = new Map<AgentId, number>();
 const BOOST_THROTTLE_MS = 5 * 60_000;
 const lastBoostAt = new Map<string, number>();
 
-// Say-boost (design doc §2 — emergent room talk): when a facet speaks, the other
-// facets in the room get their next tick pulled into a 20–45s band so the room
-// "wakes" and replies. Two boost-storm caps keep this from looping forever:
-//   1. an ordered-pair throttle (say:<speaker>|<target>) at SAY_THROTTLE_MS;
-//   2. a per-location hourly say-boost budget — beyond ~12/hour the room falls
-//      back to natural cadence (a back-and-forth that's already self-sustaining
-//      doesn't need more pulling-forward).
-const SAY_THROTTLE_MS = 90_000;
-const SAY_BOOST_FLOOR_MS = 20_000;
-const SAY_BOOST_MAX_MS = 45_000;
-const SAY_LOCATION_BUDGET_PER_HOUR = 12;
-// Per-location rolling-hour say-boost counter: locationId → boost timestamps in
-// the last hour. Pruned on read; in-memory like the throttle map.
-const sayBoostsThisHour = new Map<LocationId, number[]>();
-
-// Count say-boosts issued at a location within the last hour (pruning expired
-// entries). Pure-ish over the module map; exposed so the budget cap is testable
-// via sayBoostBudgetExceeded below.
-function recentSayBoostCount(location: LocationId, now: number): number {
-  const cutoff = now - 60 * 60_000;
-  const arr = (sayBoostsThisHour.get(location) ?? []).filter((t) => t >= cutoff);
-  if (arr.length) sayBoostsThisHour.set(location, arr);
-  else sayBoostsThisHour.delete(location);
-  return arr.length;
-}
-
-// Pure budget predicate (testable): is the location at/over its hourly say-boost
-// budget? `count` is the recent boosts already issued this hour.
-export function sayBoostBudgetExceeded(count: number, budget = SAY_LOCATION_BUDGET_PER_HOUR): boolean {
-  return count >= budget;
-}
+// M3: emergent room talk no longer needs a say-boost timer. Speaking is plain
+// text (loop.ts emitUtterance), and ADDRESSING a co-located facet by name pushes
+// it an immediate (interrupt) tick from the loop. Ambient speech is picked up on
+// the listener's next scheduled tick via its world delta (co-located notice-push).
 // Per-agent guard so the once-nightly reflection fires once per NIGHT SESSION,
 // not once per calendar day. The "night" phase straddles UTC midnight (hours
 // >=22 OR <5), so a calendar-day key would let reflection fire again at 00:01.
@@ -143,19 +112,22 @@ async function overBudget(agentId: AgentId): Promise<boolean> {
   }
 }
 
-// The per-agent loop body: maybe reflect (once per night session), else tick.
+// The per-agent loop body: ENQUEUE a reflection (once per night session) or a
+// tick. The queue (queue.ts) serializes it behind any in-flight or interrupt
+// input; enqueue resolves when this input has actually been processed, so the
+// reschedule (scheduleNext, via the timer's finally) still fires after the turn
+// settles.
 async function tickAgent(agentId: AgentId): Promise<void> {
   try {
     if (isOvernight() && !reflectedThisNight.has(agentId)) {
       if (await overBudget(agentId)) return; // honor the daily cap for reflection too
-      // Mark reflected only on SUCCESS (design doc §3.2): a reflection skipped
-      // because the agent was locked/engaged should retry on the next loop,
-      // not be lost for the whole night session.
-      const { ran } = await runReflection(agentId);
+      // Mark reflected only on SUCCESS: a reflection skipped (e.g. already done
+      // this night) should retry on the next loop, not be lost for the session.
+      const { ran } = await enqueue(agentId, { kind: "reflection" });
       if (ran) reflectedThisNight.add(agentId);
       return;
     }
-    await runTick(agentId);
+    await enqueue(agentId, { kind: "tick" });
   } catch (err) {
     console.warn(`[scheduler] tick ${agentId} threw:`, (err as Error).message);
   }
@@ -240,12 +212,11 @@ export function decideBoost(args: {
   return { boost: true, delayMs };
 }
 
-// Generic tick boost (design doc §2). Pull an UNENGAGED agent's next tick
-// forward into a [floor, maxDelayMs] band so it can react promptly — to a
-// visitor who just walked in, or to a facet who just spoke in the room — without
-// farming ticks. Throttled per explicit `throttleKey` (an ordered pair) within
-// `throttleMs`. The `locationBudgetExceeded` flag lets a caller cap a whole
-// room's say-boosts per hour (the storm cap). Returns the decision (the visitor
+// Generic tick boost (design doc §2). Pull an agent's next scheduled tick forward
+// into a [floor, maxDelayMs] band so it reacts promptly to a visitor who just
+// walked in — without farming ticks. Throttled per explicit `throttleKey` (an
+// ordered pair) within `throttleMs`. The timer firing ENQUEUES a tick (queue.ts),
+// which serializes behind anything in flight. Returns the decision (the visitor
 // fan-out logs misses at debug; tests assert on the BoostDecision).
 export async function boostAgent(
   agentId: AgentId,
@@ -258,10 +229,6 @@ export async function boostAgent(
   } = {},
 ): Promise<BoostDecision> {
   if (!running) return { boost: false, reason: "not-running" };
-  // Skip engaged agents — they're already in a chat; a boost would be dropped by
-  // the runTick gate anyway and would waste the throttle slot.
-  const agent = await getAgent(agentId).catch(() => undefined);
-  if (agent?.engagement) return { boost: false, reason: "engaged" };
 
   const maxDelayMs = opts.maxDelayMs ?? 60_000;
   const floor = opts.floorMs ?? 30_000;
@@ -289,44 +256,9 @@ export async function boostAgent(
   return decision;
 }
 
-// Wake the room when a facet speaks (design doc §2 — emergent room talk). For
-// each OTHER unengaged facet at `location`, pull its next tick into the
-// [20s, 45s] say-boost band so it can hear and reply. The ordered-pair throttle
-// (say:<speaker>|<target> @ SAY_THROTTLE_MS) and the per-location hourly budget
-// keep this from looping forever. Best-effort: never throws (a DB blip while
-// looking up who's at the location just means no wake this time). Each issued
-// boost ticks the location's hourly counter so the storm cap is enforced.
-export async function boostForSpeech(speaker: AgentId, location: LocationId): Promise<void> {
-  if (!running) return;
-  try {
-    const here = await agentsAtLocation(location, speaker);
-    for (const target of here) {
-      const now = Date.now();
-      const budgetExceeded = sayBoostBudgetExceeded(recentSayBoostCount(location, now));
-      const decision = await boostAgent(target.id as AgentId, `say:${speaker}|${target.id}`, {
-        floorMs: SAY_BOOST_FLOOR_MS,
-        maxDelayMs: SAY_BOOST_MAX_MS,
-        throttleMs: SAY_THROTTLE_MS,
-        locationBudgetExceeded: budgetExceeded,
-      });
-      // Charge the location budget only for boosts we actually issued (a throttled
-      // or engaged target must not eat into the room's hourly allowance).
-      if (decision.boost) {
-        const arr = sayBoostsThisHour.get(location) ?? [];
-        arr.push(now);
-        sayBoostsThisHour.set(location, arr);
-      }
-    }
-  } catch (err) {
-    console.warn(`[scheduler] boostForSpeech (${speaker}@${location}) failed:`, (err as Error).message);
-  }
-}
-
-// Test seam: reset the in-memory boost throttle + say-boost budget (no effect on
-// armed timers).
+// Test seam: reset the in-memory boost throttle (no effect on armed timers).
 export function _resetBoostThrottleForTest(): void {
   lastBoostAt.clear();
-  sayBoostsThisHour.clear();
 }
 
 // Emit a world.time event when the day phase changes (frontend day/night tint).
@@ -343,11 +275,6 @@ async function emitPhaseIfChanged(): Promise<void> {
 let phaseTimer: NodeJS.Timeout | null = null;
 let vaultTimer: NodeJS.Timeout | null = null;
 let chatSweepTimer: NodeJS.Timeout | null = null;
-// Unsubscribe from the event bus (say-boost wiring). Subscribing to the bus —
-// rather than calling boostForSpeech from the say tool — avoids the import cycle
-// tools→scheduler→tick→tools. A side benefit: a `say` from inside a chat turn
-// also wakes the room (desired emergence).
-let busUnsub: (() => void) | null = null;
 
 export function startScheduler(): void {
   if (running) return;
@@ -366,15 +293,6 @@ export function startScheduler(): void {
     const base = getProfile(id).role.tickCadenceMinutes * 60_000;
     const stagger = Math.round((base / agentIds.length) * i) + 5_000;
     armTimer(id, stagger);
-  });
-
-  // Say-boost wiring (design doc §2): subscribe to the event bus and, on every
-  // agent.spoke with a location, wake the rest of the room. Done via the bus (not
-  // the say tool) to avoid the tools→scheduler→tick→tools import cycle.
-  busUnsub = subscribe((event) => {
-    if (event.type === "agent.spoke" && event.agentId && event.locationId) {
-      void boostForSpeech(event.agentId, event.locationId);
-    }
   });
 
   // World clock: check the phase every minute, emit on change. Initialized
@@ -414,8 +332,4 @@ export function stopScheduler(): void {
   if (phaseTimer) clearInterval(phaseTimer);
   if (vaultTimer) clearInterval(vaultTimer);
   if (chatSweepTimer) clearInterval(chatSweepTimer);
-  if (busUnsub) {
-    busUnsub();
-    busUnsub = null;
-  }
 }
