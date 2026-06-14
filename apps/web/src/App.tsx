@@ -30,6 +30,17 @@ function speechDwellMs(text: string): number {
   return Math.min(10000, 4000 + text.length * 18);
 }
 
+// Whether a world event is LIVE (just happened) vs a REPLAYED backlog event. On
+// reconnect/late-join the server replays a window of recent events to catch the
+// scene up; those carry old timestamps and must update state silently rather than
+// pop a transient bubble for each. Missing ts → treat as live (don't suppress).
+const LIVE_EVENT_WINDOW_MS = 20_000;
+function isLiveEvent(ts?: string): boolean {
+  if (!ts) return true;
+  const t = Date.parse(ts);
+  return Number.isNaN(t) || Date.now() - t < LIVE_EVENT_WINDOW_MS;
+}
+
 interface AppProps {
   visitorName: string;
   // Ghost mode: render + stream the world read-only (no visitor identity, no
@@ -147,7 +158,11 @@ function App({ visitorName, observe = false }: AppProps) {
       setSpeechBubbles([]);
       if (loc) world.reportLocation(loc);
     };
-    const onNpcThought = (data: { npcId: ThomasId; thought: string }) => {
+    const onNpcThought = (data: { npcId: ThomasId; thought: string; ts?: string }) => {
+      // Pop a bubble only for LIVE events. Reconnect/late-join replays a window of
+      // recent events to catch the scene up — those carry old timestamps and must
+      // NOT flood the screen with stale thought wisps.
+      if (!isLiveEvent(data.ts)) return;
       const bubble: ThoughtBubbleData = {
         id: `${data.npcId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         npcId: data.npcId,
@@ -161,10 +176,12 @@ function App({ visitorName, observe = false }: AppProps) {
       }, 5000);
     };
     // Tier-0 ambient speech: render an in-world bubble ONLY when the speech
-    // happened in the room the visitor is standing in (presentation scoping).
-    const onNpcSpeech = (data: { npcId: ThomasId; message: string; location?: LocationId }) => {
+    // happened in the room the visitor is standing in (presentation scoping) AND
+    // it's a live event (not a replayed backlog event — see onNpcThought).
+    const onNpcSpeech = (data: { npcId: ThomasId; message: string; location?: LocationId; ts?: string }) => {
       const here = currentLocationRef.current;
       if (!data.location || data.location !== here) return;
+      if (!isLiveEvent(data.ts)) return;
       const bubble: SpeechBubbleData = {
         id: `${data.npcId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         npcId: data.npcId,

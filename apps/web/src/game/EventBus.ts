@@ -28,11 +28,14 @@ export interface WorldEvents {
   // --- ambient world stream (WorldClient / dream mode → canvas+overlay) -----
   // An agent moved between locations (contract agent.moved).
   'npc-move-to': { npcId: ThomasId; from?: LocationId; to: LocationId; target?: { x: number; y: number } };
-  // A public-safe thought wisp (contract agent.thought).
-  'npc-thought': { npcId: ThomasId; thought: string };
+  // A public-safe thought wisp (contract agent.thought). `ts` is the event's ISO
+  // timestamp so the overlay can pop a bubble only for LIVE events, not replayed
+  // backlog (a reconnect/late-join replays recent events to catch the scene up —
+  // those must update state without flooding the screen with stale bubbles).
+  'npc-thought': { npcId: ThomasId; thought: string; ts?: string };
   // Overheard ambient speech (contract agent.spoke). `location` scopes the
-  // bubble to the room the speech happened in.
-  'npc-speech': { npcId: ThomasId; message: string; audience: string; location?: LocationId };
+  // bubble to the room; `ts` gates live-vs-replayed (see npc-thought).
+  'npc-speech': { npcId: ThomasId; message: string; audience: string; location?: LocationId; ts?: string };
   // What an agent is currently doing (contract agent.activity).
   'npc-activity': { npcId: ThomasId; activity: string };
   // A set/fixture effect — phone rings, lamp flickers (contract world.effect).

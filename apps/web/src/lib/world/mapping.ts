@@ -33,7 +33,7 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
       ];
 
     case 'agent.thought':
-      return [spec('npc-thought', { npcId: ev.payload.agent, thought: ev.payload.text })];
+      return [spec('npc-thought', { npcId: ev.payload.agent, thought: ev.payload.text, ts: ev.ts })];
 
     case 'agent.spoke':
       return [
@@ -42,6 +42,7 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
           message: ev.payload.text,
           audience: 'public',
           location: ev.payload.location,
+          ts: ev.ts,
         }),
       ];
 
