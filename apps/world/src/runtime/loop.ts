@@ -219,7 +219,7 @@ async function runVisitorInput(
   // where it actually is, with whoever's present — appended as an interrupt input
   // to its continuous thread (the conversation lives IN its consciousness).
   const obs = await buildDelta(agentId);
-  const inputText = `${obs.text}\n\n## A visitor speaks to you\n${visitorName || "A visitor"} (here with you) says: "${text}"\n\nThey're talking to you right now — answer THEM first, in your own voice. Reply by simply writing what you say back: it's spoken to them, streamed word-for-word. Don't narrate what you're about to do ("let me check my memory…") — if you need to look something up or do something, just do it quietly with a tool, then say your reply. Your own agenda (your projects, DMs to the other facets) can wait until after they've left; don't wander off mid-conversation. When it's genuinely run its course, say your goodbye and call leave_chat in the same message.`;
+  const inputText = `${obs.text}\n\n## A visitor speaks to you\n${visitorName || "A visitor"} (here with you) says: "${text}"\n\nWhatever you write as plain text is spoken back to them, streamed word-for-word — so just talk, don't narrate what you're about to do (do it quietly with a tool instead). How you respond is entirely yours: engage warmly, be brief, or stay in your own world if that's truer to the moment — they share the town with you, they aren't an audience you owe a performance. You keep all your tools (walk somewhere, make something, check your memory). When a conversation has run its course, say your goodbye and call leave_chat in the same message.`;
 
   const ctx: AgentContext = {
     agentId,
