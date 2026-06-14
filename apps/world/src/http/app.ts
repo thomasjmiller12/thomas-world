@@ -32,9 +32,16 @@ import { config } from "../config.js";
 import { buildSnapshot, engagementToContract } from "../engine/snapshot.js";
 import {
   eventsAfter,
+  recentEvents,
   recentEventsForAgent,
   publicView,
 } from "../engine/events.js";
+
+// SSE backlog replay cap: the most recent N events a reconnecting/late client is
+// replayed for scene continuity. Bounded so a STALE lastEventId can't dump the
+// whole history (which flooded the town). The snapshot carries current state, so
+// only recent motion needs replaying.
+const BACKLOG_REPLAY_CAP = 50;
 import { getFeed } from "../engine/feed.js";
 import { getChronicle, todayUtc } from "../engine/chronicle.js";
 import { getAgent, allAgents } from "../engine/agents.js";
@@ -238,25 +245,23 @@ export function createApp() {
         wake();
       });
 
-      // Catch-up replay from the durable log so no event is missed across a
-      // reconnect — paged until exhausted (eventsAfter is capped per call) so a
-      // client resuming after >cap missed events still gets all of them.
-      let cursor = lastEventId;
+      // Catch-up replay, BOUNDED to a recent window. The snapshot already
+      // conveys current state; the backlog only needs recent motion for
+      // continuity. We replay at most BACKLOG_REPLAY_CAP of the newest events the
+      // client hasn't seen — so a client resuming from a STALE lastEventId is NOT
+      // dumped the whole history (which flooded the town with hundreds of
+      // replayed moves animating + speech/thought bubbles popping at once). One of
+      // the three publicView sites (design §5). backlogHigh = the newest id we
+      // considered, so the live-queue dedup below never double-sends.
+      const lastSeen = Number(lastEventId ?? "0") || 0;
       let backlogHigh = 0;
       try {
-        for (;;) {
-          const batch = await eventsAfter(cursor);
-          if (batch.length === 0) break;
-          // Backlog replay is one of the three publicView sites (design §5). We
-          // advance the cursor/high-water by the RAW batch ids (so private
-          // events don't cause a re-fetch loop) but only write public ones.
-          for (const e of publicView(batch)) {
-            await stream.writeSSE({ id: e.id, event: e.type, data: JSON.stringify(e) });
-          }
-          backlogHigh = Math.max(backlogHigh, Number(batch[batch.length - 1].id));
-          cursor = batch[batch.length - 1].id;
-          if (batch.length < 200) break; // last (partial) page
+        const recent = await recentEvents(BACKLOG_REPLAY_CAP); // oldest→newest tail
+        for (const e of publicView(recent)) {
+          if (Number(e.id) <= lastSeen) continue;
+          await stream.writeSSE({ id: e.id, event: e.type, data: JSON.stringify(e) });
         }
+        if (recent.length) backlogHigh = Number(recent[recent.length - 1].id);
       } catch (err) {
         console.warn("[sse] backlog replay failed:", (err as Error).message);
       }
