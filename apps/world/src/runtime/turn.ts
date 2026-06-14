@@ -159,25 +159,43 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
   let accumulated: ThreadMessage[];
 
   if (stream) {
-    // Streaming path (visitor turns): forward plain-text deltas live as `text`
-    // frames; the SDK separates thinking deltas, so only spoken text streams.
+    // Streaming path (visitor turns) with a NARRATION GUARD: the model often
+    // emits text BEFORE a tool call ("let me check my memory first… now let me DM
+    // Researcher") — that's internal stage-direction, NOT speech to the visitor.
+    // We buffer each round and only emit the text of the round that ENDS THE TURN
+    // (stop_reason !== tool_use); pre-tool narration is suppressed. Fallback: if
+    // the turn hit max rounds without a clean finish, emit the last buffer so the
+    // visitor never gets silence. (Without this guard the agent narrates its whole
+    // tool process at the visitor — the M3 cutover regression this restores.)
     const runner = anthropic.beta.messages.toolRunner({ ...params, stream: true });
+    let lastToolBuffer = "";
+    let emittedAny = false;
     for await (const roundStream of runner) {
       let buf = "";
       roundStream.on("text", (delta) => {
         buf += delta;
       });
       const message = await roundStream.finalMessage();
-      if (buf.trim()) {
+      if (message.stop_reason === "tool_use") {
+        if (buf.trim()) lastToolBuffer = buf; // internal narration — held back
+      } else if (buf.trim()) {
         await stream.onFrame({ type: "text", text: buf, agent: agentId });
+        emittedAny = true;
       }
       await onRound(message);
       if (refused) {
         const note = "\n(— the agent declined to continue down that path.)";
         await stream.onFrame({ type: "text", text: note, agent: agentId });
         finalText += note;
+        emittedAny = true;
         break;
       }
+    }
+    // Every round ended in a tool call (max_iterations, no clean reply) → surface
+    // the last thing it said rather than leaving the visitor hanging.
+    if (!emittedAny && lastToolBuffer.trim()) {
+      await stream.onFrame({ type: "text", text: lastToolBuffer, agent: agentId });
+      if (!finalText) finalText = lastToolBuffer;
     }
     accumulated = runner.params.messages;
   } else {
