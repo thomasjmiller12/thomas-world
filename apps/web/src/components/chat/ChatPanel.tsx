@@ -216,9 +216,21 @@ export function ChatPanel({
         </button>
       </div>
 
-      {/* LATELY context strip (idle only) */}
+      {/* LATELY context strip (idle only). Bounded height + internal scroll so a
+          long recent line (agents speak in paragraphs now) can't push the input
+          box / scroll / close button off the panel. flexShrink:0 keeps it from
+          eating the transcript; maxHeight caps it. */}
       {showLately && (
-        <div style={{ padding: '11px 14px', background: `${color}0b`, borderBottom: '1px solid var(--line)' }}>
+        <div
+          style={{
+            padding: '11px 14px',
+            background: `${color}0b`,
+            borderBottom: '1px solid var(--line)',
+            flexShrink: 0,
+            maxHeight: '34%',
+            overflowY: 'auto',
+          }}
+        >
           <div
             style={{
               font: '700 9px var(--mono)',
@@ -248,7 +260,19 @@ export function ChatPanel({
                 >
                   {e.label}
                 </div>
-                <div style={{ fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.4 }}>{e.line}</div>
+                <div
+                  style={{
+                    fontSize: 12.5,
+                    color: 'var(--ink-2)',
+                    lineHeight: 1.4,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {e.line}
+                </div>
               </div>
               {e.time && (
                 <div style={{ font: '500 10px var(--mono)', color: 'var(--ink-3)', whiteSpace: 'nowrap' }}>
