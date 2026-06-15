@@ -179,11 +179,11 @@ export function renderEvents(events: WorldEvent[], location: LocationId, viewer:
         case "message.sent":
           return p.broadcast ? `- ${p.from} broadcast a message` : `- a message was sent`;
         case "artifact.created":
-          return `- ${p.agent} made a ${p.kind}: "${p.title}"${p.location ? ` (at the ${p.fixture} in ${p.location})` : ""}`;
+          return `- ${p.agent} made a ${p.kind}: "${p.title}"${p.artifactId ? ` (id ${p.artifactId} — read_artifact to read it)` : ""}${p.location ? ` (at the ${p.fixture} in ${p.location})` : ""}`;
         case "artifact.updated":
-          return `- ${p.agent} updated "${p.title}"`;
+          return `- ${p.agent} updated "${p.title}"${p.artifactId ? ` (id ${p.artifactId})` : ""}`;
         case "bulletin.posted":
-          return `- ${p.agent} posted a bulletin: "${p.title}"`;
+          return `- ${p.agent} posted a bulletin: "${p.title}" (read_board to read it)`;
         case "capability.requested":
           return `- ${p.agent} requested a new capability: ${p.summary}`;
         case "visitor.arrived":

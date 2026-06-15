@@ -269,6 +269,32 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     },
   });
 
+  const read_artifact = betaZodTool({
+    name: "read_artifact",
+    description:
+      "Read the FULL contents of any artifact by its id — yours or another facet's (a blog post, research note, project log, fun list, or a bulletin/sign). Use this to actually read something you've seen referenced or heard about. Ids come from list_my_artifacts, read_board, or an event line that mentions one (e.g. 'made a research_note … (id …)').",
+    inputSchema: z.object({ id: z.string().min(1) }),
+    run: async ({ id }) => {
+      const a = await getArtifact(id);
+      if (!a) return `There's no artifact with id ${id} (it may have been removed, or the id's off).`;
+      return `"${a.title}" — a ${a.kind} by ${a.agentId}${a.published ? " (published)" : ""}\n\n${a.body}`;
+    },
+  });
+
+  const read_board = betaZodTool({
+    name: "read_board",
+    description:
+      "Read what's pinned to the town square notice board right now — the bulletins (the 'signs' facets post for everyone). Returns each one's title, who posted it, and its full text. Use this whenever you hear a sign or bulletin was posted and want to actually read it.",
+    inputSchema: z.object({}),
+    run: async () => {
+      const bulletins = await listArtifacts({ kind: "bulletin" }, 12);
+      if (bulletins.length === 0) return "The notice board is empty right now.";
+      return bulletins
+        .map((b) => `— "${b.title}" (posted by ${b.agentId}, id ${b.id})\n${b.body}`)
+        .join("\n\n");
+    },
+  });
+
   const post_bulletin = betaZodTool({
     name: "post_bulletin",
     description:
@@ -476,6 +502,8 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     create_artifact as RunnableTool,
     update_artifact as RunnableTool,
     list_my_artifacts as RunnableTool,
+    read_artifact as RunnableTool,
+    read_board as RunnableTool,
     post_bulletin as RunnableTool,
     publish_blog_post as RunnableTool,
     memory,
