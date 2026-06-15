@@ -84,6 +84,8 @@ async function executeInput(agentId: AgentId, input: AgentInput): Promise<ExecRe
       return runReflection(agentId).then((r) => ({ ran: r.ran, reason: "ok" }));
     case "visitor":
       return runVisitorInput(agentId, input);
+    case "delivery":
+      return runDeliveryInput(agentId, input);
   }
 }
 
@@ -276,6 +278,60 @@ async function runVisitorInput(
   }
 
   trace.end({ rounds: outcome.rounds, refused: outcome.refused });
+  return { ran: true, reason: outcome.refused ? "refusal" : "ok", traceId: trace.traceId };
+}
+
+// --- dataset delivery (one-time handoff into the code-exec sandbox) ---------
+
+// Hand an agent a dataset (Files-API file_id) attached to a turn as a
+// container_upload, with a prompt to analyze it. The agent uses the
+// code-execution tool (always available now) to read + crunch the file in the
+// sandbox — the data never enters its context, only its analysis does. Runs on
+// the chat model (stronger), more tokens. The container_upload + code-exec blocks
+// are stripped before persist; the agent's written takeaways stay in its thread.
+async function runDeliveryInput(
+  agentId: AgentId,
+  input: Extract<AgentInput, { kind: "delivery" }>,
+): Promise<ExecResult> {
+  if (!hasLlm()) return { ran: false, reason: "no-llm" };
+  const agent = await getAgent(agentId);
+  if (!agent) return { ran: false, reason: "error" };
+  const location = agent.locationId as LocationId;
+
+  const tickId = `delivery-${agentId}-${randomUUID().slice(0, 8)}`;
+  const trace = startTrace("delivery", {
+    userId: agentId,
+    sessionId: utcDay(),
+    metadata: { soulGitHash: soulGitHash(agentId) },
+  });
+
+  const ctx: AgentContext = { agentId, location };
+  const tools = buildTools(ctx);
+
+  let outcome: TurnOutcome;
+  try {
+    outcome = await runTurn({
+      agentId,
+      model: profile(agentId).chatModel,
+      maxTokens: 8192,
+      inputText: input.prompt,
+      tools,
+      attachments: [{ type: "container_upload", file_id: input.fileId }],
+      tickId,
+      trace,
+    });
+  } catch (err) {
+    console.warn(`[delivery ${agentId}] error:`, (err as Error).message);
+    trace.end({ error: (err as Error).message });
+    return { ran: false, reason: "error", traceId: trace.traceId };
+  }
+
+  await markTicked(agentId);
+  if (outcome.finalText && !outcome.refused) {
+    await emitUtterance(agentId, location, outcome.finalText);
+  }
+  trace.end({ rounds: outcome.rounds, refused: outcome.refused });
+  console.log(`[delivery ${agentId}] rounds=${outcome.rounds} cost=$${outcome.totalCost.toFixed(4)}`);
   return { ran: true, reason: outcome.refused ? "refusal" : "ok", traceId: trace.traceId };
 }
 

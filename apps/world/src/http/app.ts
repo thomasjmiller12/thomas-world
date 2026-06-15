@@ -675,6 +675,27 @@ export function createApp() {
     return c.json(result);
   });
 
+  // --- POST /admin/deliver {agent, fileId, prompt} ------------------------
+  // Hand an agent a dataset (a Files-API file_id) attached to a turn, with a
+  // prompt to analyze it via the code-execution sandbox. One-time handoff.
+  app.post("/admin/deliver", async (c) => {
+    if (config.adminToken) {
+      if (c.req.header("x-admin-token") !== config.adminToken) {
+        return c.json({ error: "forbidden" }, 403);
+      }
+    } else if (config.nodeEnv === "production") {
+      return c.json({ error: "forbidden" }, 403);
+    }
+    const body = await c.req.json().catch(() => ({}));
+    const { agent, fileId, prompt } = body ?? {};
+    if (!isAgentId(agent)) return c.json({ error: "unknown agent" }, 404);
+    if (typeof fileId !== "string" || !fileId) return c.json({ error: "fileId required" }, 400);
+    if (typeof prompt !== "string" || !prompt) return c.json({ error: "prompt required" }, 400);
+    const result = await enqueue(agent, { kind: "delivery", fileId, prompt });
+    await flushTracing();
+    return c.json(result);
+  });
+
   // --- GET /debug — dead-simple server-rendered status page ---------------
   app.get("/debug", async (c) => {
     const [snapshot, agents, spend] = await Promise.all([

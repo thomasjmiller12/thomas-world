@@ -31,7 +31,19 @@ export const MAX_TURN_ROUNDS = 6;
 // but larger compaction passes. Phase 4 tunes it.
 const COMPACT_TRIGGER_TOKENS = 50_000;
 const COMPACTION_BETA = "compact-2026-01-12";
-export const LOOP_BETAS = [...TICK_BETAS, COMPACTION_BETA] as const;
+// Files API beta — needed so a turn can carry a `container_upload` block (a
+// dataset handed to the code-execution sandbox). Harmless on turns without one.
+const FILES_BETA = "files-api-2025-04-14";
+export const LOOP_BETAS = [...TICK_BETAS, COMPACTION_BETA, FILES_BETA] as const;
+
+// Anthropic's server-side code-execution tool (GA). Added to every turn so agents
+// can write + run Python in a hosted sandbox (compute, data analysis). The runner
+// passes it through — the API executes it server-side and returns the result
+// inline; there's no run() to dispatch. Results are STRIPPED before persist (see
+// stripForPersist) so the ephemeral sandbox blocks never bloat or poison the
+// continuous thread on replay — the agent's text takeaways are what persist.
+const CODE_EXEC_TOOL = { type: "code_execution_20260120", name: "code_execution" } as const;
+
 const COMPACTION = {
   edits: [
     {
@@ -74,6 +86,10 @@ export interface RunTurnOptions {
   // frames as they arrive (for the visitor's panel typewriter). The caller still
   // owns turn_started/done framing and the agent.spoke emission.
   stream?: TurnHandlers;
+  // Extra content blocks appended to the input user turn — e.g. a
+  // `container_upload` handing a dataset to the code-execution sandbox. Stripped
+  // before persist (one-time delivery, not part of the durable thread).
+  attachments?: unknown[];
 }
 
 // Run one turn on the agent's persistent thread (load → append input → run →
@@ -85,7 +101,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
   // Strip any cache breakpoints carried over from a prior call's persisted input
   // so we never accumulate past the API's 4-breakpoint limit (we add exactly one
   // fresh breakpoint below).
-  const messages: ThreadMessage[] = stripCacheControl(thread.messages);
+  const messages: ThreadMessage[] = stripForPersist(thread.messages);
 
   // Fresh thread → orient it (core memory + last diary) so a (re)started agent
   // picks up its life rather than booting cold. One-time, folded into this input.
@@ -103,6 +119,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
     role: "user",
     content: [
       { type: "text", text: firstInput, cache_control: { type: "ephemeral", ttl: "1h" } },
+      ...((opts.attachments ?? []) as Anthropic.Beta.BetaContentBlockParam[]),
     ],
   });
 
@@ -119,7 +136,9 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
     max_tokens: maxTokens,
     system: systemBlocks(agentId),
     messages,
-    tools,
+    // The user tools (runner dispatches their run()) plus the server-side
+    // code-execution tool (API runs it inline; no run() needed).
+    tools: [...tools, CODE_EXEC_TOOL] as typeof tools,
     max_iterations: MAX_TURN_ROUNDS,
     betas: [...LOOP_BETAS],
     context_management: COMPACTION,
@@ -208,10 +227,10 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
   }
 
   // Persist the accumulated thread — only reached when the loop ran to
-  // completion. Strip the runtime cache breakpoint first.
+  // completion. Strip the cache breakpoint + ephemeral code-exec/upload blocks.
   const cursor =
     opts.advanceCursorTo === undefined ? thread.inputCursor : opts.advanceCursorTo;
-  await persistThread(agentId, stripCacheControl(accumulated), cursor);
+  await persistThread(agentId, stripForPersist(accumulated), cursor);
 
   return { rounds, totalCost, totalCacheRead, refused, finalText };
 }
@@ -224,16 +243,40 @@ export function extractText(message: Anthropic.Beta.BetaMessage): string {
     .trim();
 }
 
-// Remove cache_control from every content block so a persisted thread carries no
-// breakpoints (we add exactly one fresh breakpoint per call; persisting them
-// would accumulate past the API's 4-breakpoint limit). Setting it to undefined
-// is dropped by JSON.stringify on persist, so the stored thread stays clean.
-function stripCacheControl(messages: ThreadMessage[]): ThreadMessage[] {
-  return messages.map((m) => {
-    if (typeof m.content === "string") return m;
-    const content = m.content.map((b) =>
-      "cache_control" in b && b.cache_control != null ? { ...b, cache_control: undefined } : b,
-    );
-    return { ...m, content };
-  });
+// Ephemeral block types we DROP before persisting a thread: the server-side
+// code-execution machinery + any dataset upload. They reference a sandbox
+// container that no longer exists on a later turn, and replaying them risks a
+// 400 that would poison (permanently break) the continuous thread — and they're
+// bulky. The agent's plain TEXT takeaways from the analysis are kept, so its
+// memory of "what I found" persists; only the raw tool plumbing is dropped.
+const EPHEMERAL_BLOCK_TYPES = new Set([
+  "server_tool_use",
+  "code_execution_tool_use",
+  "code_execution_tool_result",
+  "bash_code_execution_tool_result",
+  "text_editor_code_execution_tool_result",
+  "container_upload",
+  "mcp_tool_use",
+  "mcp_tool_result",
+]);
+
+// Prepare a thread for persistence: (1) drop cache_control from every block (we
+// add a fresh breakpoint per call; persisting them would exceed the API's
+// 4-breakpoint limit) and (2) drop ephemeral code-exec/upload blocks (see above).
+// A message left with empty content after filtering is dropped entirely.
+function stripForPersist(messages: ThreadMessage[]): ThreadMessage[] {
+  const out: ThreadMessage[] = [];
+  for (const m of messages) {
+    if (typeof m.content === "string") {
+      out.push(m);
+      continue;
+    }
+    const content = m.content
+      .filter((b) => !EPHEMERAL_BLOCK_TYPES.has((b as { type: string }).type))
+      .map((b) =>
+        "cache_control" in b && b.cache_control != null ? { ...b, cache_control: undefined } : b,
+      );
+    if (content.length > 0) out.push({ ...m, content });
+  }
+  return out;
 }

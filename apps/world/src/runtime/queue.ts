@@ -27,7 +27,11 @@ export type AgentInput =
       visitorName: string;
       text: string;
       handlers: TurnHandlers;
-    };
+    }
+  // A one-time dataset handoff: a prompt + a Files-API file_id attached to the
+  // turn as a container_upload, so the agent can analyze it in the code-exec
+  // sandbox. Interrupt-tier (runs promptly).
+  | { kind: "delivery"; fileId: string; prompt: string };
 
 // The structured result an executor returns (superset of the loop's TickResult).
 export interface ExecResult {
@@ -61,7 +65,7 @@ const queues = new Map<AgentId, QueueItem[]>();
 const running = new Set<AgentId>();
 
 function isInterrupt(input: AgentInput): boolean {
-  if (input.kind === "visitor") return true;
+  if (input.kind === "visitor" || input.kind === "delivery") return true;
   if (input.kind === "tick") return Boolean(input.interrupt);
   return false;
 }
