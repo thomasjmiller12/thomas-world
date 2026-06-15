@@ -11,8 +11,8 @@ interface SpeechBubbleProps {
 // Tier-0 ambient speech bubble (design doc §1): a React overlay component
 // positioned via the `npc-screen-position` stream — NOT a Phaser graphic, so it
 // can carry design-system typography and truncate gracefully. Max-width ~240px,
-// clamped to ~3 lines with an ellipsis; the full text always lands in the feed
-// (agent.spoke can be 600 chars; a pixel bubble can't).
+// clamped to ~3 lines with an ellipsis; the full (untruncated) text always lands
+// in the feed and chronicle — a pixel bubble can't hold a multi-paragraph utterance.
 export function SpeechBubble({ npcId, text, screenX, screenY }: SpeechBubbleProps) {
   const color = THOMAS_COLORS[npcId] || '#4A90D9';
 

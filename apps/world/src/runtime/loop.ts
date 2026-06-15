@@ -309,7 +309,7 @@ async function emitUtterance(
       agentId,
       locationId: location,
       visibility: "public",
-      payload: { agent: agentId, text: text.slice(0, 600) },
+      payload: { agent: agentId, text },
     });
     return;
   }
@@ -319,7 +319,7 @@ async function emitUtterance(
     agentId,
     locationId: location,
     visibility: "location",
-    payload: { agent: agentId, location, text: text.slice(0, 600) },
+    payload: { agent: agentId, location, text },
   });
 
   // Push any co-located facet addressed by name an immediate turn (throttled per
