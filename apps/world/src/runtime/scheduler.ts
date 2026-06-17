@@ -30,9 +30,17 @@ const FALLBACK_DELAY_MS = 5 * 60_000;
 const { visitors } = schema;
 
 // Rate multipliers applied to each agent's base cadence (plan §4.1):
-//   visitors present  → ~3x faster
+//   visitors present  → boost (faster)   — DISABLED for the soak (see below)
 //   overnight         → ~2x slower
-const VISITOR_BOOST = 1 / 3;
+//
+// VISITOR_BOOST is DISABLED (1 = no speed-up). It used to 3x every agent's tick
+// rate whenever a visitor was "present" — but an open/forgotten browser tab keeps
+// a visitor present indefinitely, so it silently tripled the burn (~$7/day idle →
+// ~$20+/day with a tab left open; confirmed in the spend logs). Chat is
+// interrupt-driven now, so visitors still get an immediate reply regardless of
+// cadence — the boost only added autonomous churn while a tab was open. Restore
+// to e.g. 1/2 (gentler) or 1/3 (original) when not cost-constrained.
+const VISITOR_BOOST = 1;
 const OVERNIGHT_SLOWDOWN = 2;
 
 let running = false;
@@ -82,7 +90,8 @@ async function visitorsPresent(): Promise<boolean> {
 async function nextDelayMs(agentId: AgentId): Promise<number> {
   const base = getProfile(agentId).role.tickCadenceMinutes * 60_000;
   let mult = 1;
-  if (await visitorsPresent()) mult *= VISITOR_BOOST;
+  // Only pay for the visitor-presence query when the boost is actually enabled.
+  if (VISITOR_BOOST !== 1 && (await visitorsPresent())) mult *= VISITOR_BOOST;
   if (isOvernight()) mult *= OVERNIGHT_SLOWDOWN;
   // Jitter ±15% so agents don't lockstep even at equal cadence.
   const jitter = 0.85 + Math.random() * 0.3;
