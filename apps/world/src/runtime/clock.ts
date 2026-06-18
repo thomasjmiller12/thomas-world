@@ -50,6 +50,23 @@ export function isOvernight(now = new Date()): boolean {
   return phase === "night";
 }
 
+// The "waking hours" window (cost lever): agents tick PASSIVELY only during this
+// town-local window; outside it they're dormant — no autonomous ticks — which is
+// the big idle-cost cut. Reflection still runs overnight and visitors can still
+// chat anytime (chat is interrupt-driven, not scheduler-gated). Default 14:00–
+// 22:00 Pacific (8h) — afternoon into evening, overlapping when people visit, and
+// handing off to "night"/reflection at 22:00. Override with TOWN_ACTIVE_START_HOUR
+// / TOWN_ACTIVE_HOURS. TOWN_ACTIVE_HOURS >= 24 disables the window (24/7).
+const ACTIVE_START = Number(process.env.TOWN_ACTIVE_START_HOUR ?? "14");
+const ACTIVE_HOURS = Number(process.env.TOWN_ACTIVE_HOURS ?? "8");
+export function isActiveHours(now = new Date()): boolean {
+  if (!Number.isFinite(ACTIVE_HOURS) || ACTIVE_HOURS >= 24) return true;
+  const { hour } = townTime(now);
+  const end = ACTIVE_START + ACTIVE_HOURS;
+  // Non-wrapping window (end <= 24) vs wrapping past midnight (e.g. 20→04).
+  return end <= 24 ? hour >= ACTIVE_START && hour < end : hour >= ACTIVE_START || hour < end - 24;
+}
+
 // A human-readable time-of-day line for the observation packet (NOT a raw
 // timestamp — that would live below the cache breakpoint anyway, but the phase
 // + clock time read better to the agent than an ISO string).

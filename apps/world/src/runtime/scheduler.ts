@@ -12,11 +12,9 @@ import { agentIds, type AgentId } from "@town/contract";
 import { config } from "../config.js";
 import { hasLlm } from "./client.js";
 import { getProfile } from "./roles.js";
-import { budgetExceeded } from "./loop.js";
 import { enqueue } from "./queue.js";
-import { isOvernight, currentPhase } from "./clock.js";
+import { isOvernight, isActiveHours, currentPhase } from "./clock.js";
 import { appendEvent } from "../engine/events.js";
-import { spendTodayUsd, spendTodayForAgent } from "../engine/usage.js";
 import { db, schema } from "../db/client.js";
 import { gt, sql } from "drizzle-orm";
 import { syncVault, pushAgentNotes } from "./vault.js";
@@ -98,44 +96,28 @@ async function nextDelayMs(agentId: AgentId): Promise<number> {
   return Math.max(30_000, Math.round(base * mult * jitter));
 }
 
-// Whether the agent or the world is over budget right now. Reflection routes
-// AROUND runTick (which carries its own budget gate), so we must re-check here or
-// a budget-exhausted agent would still spend a full reflection tick each night.
-async function overBudget(agentId: AgentId): Promise<boolean> {
-  try {
-    const profile = getProfile(agentId);
-    const [globalSpend, agentSpend] = await Promise.all([
-      spendTodayUsd(),
-      spendTodayForAgent(agentId),
-    ]);
-    return budgetExceeded({
-      globalSpendUsd: globalSpend,
-      globalCapUsd: config.dailyBudgetUsd,
-      agentSpendUsd: agentSpend,
-      agentCapUsd: profile.role.dailyTokenBudgetUsd,
-    });
-  } catch (err) {
-    // On a metering error, fail safe by NOT spending (skip reflection).
-    console.warn(`[scheduler] budget check ${agentId} failed:`, (err as Error).message);
-    return true;
-  }
-}
-
 // The per-agent loop body: ENQUEUE a reflection (once per night session) or a
-// tick. The queue (queue.ts) serializes it behind any in-flight or interrupt
-// input; enqueue resolves when this input has actually been processed, so the
-// reschedule (scheduleNext, via the timer's finally) still fires after the turn
-// settles.
+// passive tick. The queue (queue.ts) serializes it behind any in-flight or
+// interrupt input; enqueue resolves when the input has actually been processed,
+// so the reschedule (scheduleNext, via the timer's finally) still fires after
+// the turn settles.
 async function tickAgent(agentId: AgentId): Promise<void> {
   try {
+    // Nightly reflection ALWAYS runs — exempt from both the budget cap and the
+    // waking-hours window. It's the end-of-day ritual (diary + core-memory
+    // curation), cheap and important; we never want to skip it. Reflection's own
+    // DB-grounded idempotency keeps it to once per night.
     if (isOvernight() && !reflectedThisNight.has(agentId)) {
-      if (await overBudget(agentId)) return; // honor the daily cap for reflection too
-      // Mark reflected only on SUCCESS: a reflection skipped (e.g. already done
-      // this night) should retry on the next loop, not be lost for the session.
       const { ran } = await enqueue(agentId, { kind: "reflection" });
       if (ran) reflectedThisNight.add(agentId);
       return;
     }
+    // Passive living happens only during the waking-hours window (cost lever).
+    // Outside it the town is dormant — no autonomous ticks — but visitors can
+    // still chat (interrupt-driven, enqueued by the HTTP layer, not gated here)
+    // and reflection still fires overnight (above). The timer keeps rescheduling,
+    // so ticks resume automatically when the window reopens.
+    if (!isActiveHours()) return;
     await enqueue(agentId, { kind: "tick" });
   } catch (err) {
     console.warn(`[scheduler] tick ${agentId} threw:`, (err as Error).message);
