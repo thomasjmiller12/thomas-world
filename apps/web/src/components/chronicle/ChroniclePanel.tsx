@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ChronicleItem } from '@town/contract';
+import type { ChronicleItem, ChronicleIssue, ChronicleCitation } from '@town/contract';
 import { EventBus } from '@/game/EventBus';
 import { fetchChronicle } from './chronicleClient';
 import { relativeDayLabel } from './chroniclePresentation';
@@ -41,20 +41,24 @@ export interface ChroniclePanelProps {
   initialTab?: Tab;
   // Initial day key (YYYY-MM-DD) to load; omitted => the latest day the server has.
   initialDay?: string | null;
+  // Open this artifact in the in-hub reader on mount (deep-link from a share
+  // card / Town Crier citation).
+  initialArtifactId?: string | null;
 }
 
-export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = null }: ChroniclePanelProps) {
+export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = null, initialArtifactId = null }: ChroniclePanelProps) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const [day, setDay] = useState<string | null>(initialDay);
   // Chronicle (day-scoped) state — Today + Conversations read from this.
   const [items, setItems] = useState<ChronicleItem[]>([]);
+  const [issue, setIssue] = useState<ChronicleIssue | null>(null);
   const [days, setDays] = useState<string[]>([]);
   const [resolvedDay, setResolvedDay] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   // The artifact open in the in-hub reader (null => list view). Reader overlays
   // any tab; ESC pops it before closing the hub.
-  const [readerId, setReaderId] = useState<string | null>(null);
+  const [readerId, setReaderId] = useState<string | null>(initialArtifactId);
   const [pickerOpen, setPickerOpen] = useState(false);
   const reqSeq = useRef(0);
 
@@ -77,6 +81,7 @@ export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = nul
       .then((page) => {
         if (seq !== reqSeq.current) return;
         setItems(page.items);
+        setIssue(page.issue);
         setDays(page.days);
         setResolvedDay(page.day);
       })
@@ -89,6 +94,18 @@ export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = nul
       });
     return () => ctrl.abort();
   }, [day]);
+
+  // Resolve a Town Crier citation to its source. Artifact citations open the
+  // in-hub reader; thread citations switch to Conversations; reference/proof
+  // citations hand off to App (open-card-target → the About hub).
+  const handleOpenCitation = useCallback((citation: ChronicleCitation) => {
+    const href = citation.href ?? '';
+    if (href.startsWith('artifact:')) setReaderId(href.slice('artifact:'.length));
+    else if (href.startsWith('thread:')) setTab('conversations');
+    else if (href.startsWith('reference:') || href.startsWith('proof:')) {
+      EventBus.emit('open-card-target', { href });
+    }
+  }, []);
 
   // ESC: pop the reader first, then close the hub.
   const handleEsc = useCallback(
@@ -279,7 +296,15 @@ export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = nul
           ) : (
             <>
               {tab === 'today' && (
-                <TodayTab items={items} loading={loading} error={error} onOpenArtifact={setReaderId} />
+                <TodayTab
+                  items={items}
+                  issue={issue}
+                  loading={loading}
+                  error={error}
+                  onOpenArtifact={setReaderId}
+                  onOpenCitation={handleOpenCitation}
+                  onGoToDay={setDay}
+                />
               )}
               {tab === 'conversations' && (
                 <ConversationsTab items={items} loading={loading} error={error} />

@@ -50,6 +50,13 @@
       "when": 1781800000000,
       "tag": "0006_agent_threads",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781900000000,
+      "tag": "0007_chronicle_portfolio",
+      "breakpoints": true
     }
   ]
 }

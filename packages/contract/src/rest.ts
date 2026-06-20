@@ -2,6 +2,7 @@ import { z } from "zod";
 import { AgentId, LocationId, DayPhase } from "./ids.js";
 import { ArtifactKind } from "./artifacts.js";
 import { WorldEvent, WorldEventType } from "./events.js";
+import { ShareCard } from "./share-cards.js";
 
 // REST request/response shapes for every endpoint in plan §5. Inferred TS
 // types are exported alongside each schema. Both apps import these; the typed
@@ -258,6 +259,9 @@ export const ChatTranscriptMessage = z.object({
   sender: z.union([z.literal("visitor"), AgentId]),
   body: z.string(),
   ts: z.string(),
+  // Share cards the agent dropped on this turn (M2.2 — Part 4), so a rehydrated
+  // panel re-renders them. Absent/[] for ordinary lines.
+  attachments: z.array(ShareCard).default([]),
 });
 export type ChatTranscriptMessage = z.infer<typeof ChatTranscriptMessage>;
 
@@ -360,6 +364,16 @@ export const ChatEndedFrame = z.object({
 });
 export type ChatEndedFrame = z.infer<typeof ChatEndedFrame>;
 
+// The agent shared a concrete card mid-chat (M2.2 — Part 4): an artifact, a
+// curated external reference/project, or a portfolio proof. Emitted the instant
+// the share tool resolves, so the visitor sees the card while the reply streams.
+export const ChatShareCardFrame = z.object({
+  type: z.literal("share_card"),
+  agent: AgentId,
+  card: ShareCard,
+});
+export type ChatShareCardFrame = z.infer<typeof ChatShareCardFrame>;
+
 // Discriminated union of everything that can arrive on the chat SSE stream.
 export const ChatStreamFrame = z.discriminatedUnion("type", [
   ChatTurnStarted,
@@ -369,6 +383,7 @@ export const ChatStreamFrame = z.discriminatedUnion("type", [
   ChatDone,
   ChatActionFrame,
   ChatEndedFrame,
+  ChatShareCardFrame,
 ]);
 export type ChatStreamFrame = z.infer<typeof ChatStreamFrame>;
 
@@ -436,9 +451,70 @@ export const ChronicleItem = z.discriminatedUnion("kind", [
 ]);
 export type ChronicleItem = z.infer<typeof ChronicleItem>;
 
+// --- the LLM Town Crier issue (M2.2 — Part 1) -------------------------------
+// A day's newspaper issue: editorial prose written by the LLM from a bounded,
+// server-built source packet, with EVERY concrete claim tied to a validated
+// citation. The model writes citation markers ([S1]) in the prose; the server
+// validates each id against the packet and resolves it to a citation card the UI
+// renders. The model never freehands URLs (design "prose by LLM, sources by
+// server").
+
+export const ChronicleCitationKind = z.enum([
+  "event",
+  "thread",
+  "artifact",
+  "message",
+  "agent",
+  "location",
+  "portfolio_proof",
+  "external_reference",
+]);
+export type ChronicleCitationKind = z.infer<typeof ChronicleCitationKind>;
+
+export const ChronicleCitation = z.object({
+  id: z.string(), // local citation id, e.g. "S1"
+  kind: ChronicleCitationKind,
+  targetId: z.string(),
+  label: z.string(),
+  excerpt: z.string().optional(),
+  // Internal route token (e.g. "artifact:<id>") or public URL, set by the
+  // server after validation — the UI renders from this, never from raw prose.
+  href: z.string().optional(),
+});
+export type ChronicleCitation = z.infer<typeof ChronicleCitation>;
+
+export const ChronicleIssueSection = z.object({
+  id: z.string(),
+  title: z.string(),
+  bodyMd: z.string(),
+  citationIds: z.array(z.string()),
+});
+export type ChronicleIssueSection = z.infer<typeof ChronicleIssueSection>;
+
+export const ChronicleIssue = z.object({
+  day: z.string(),
+  // ready: a generated issue; fallback: deterministic (no LLM); empty: a quiet
+  // day; failed: generation failed and no cache existed.
+  status: z.enum(["ready", "fallback", "empty", "failed"]),
+  title: z.string(),
+  subtitle: z.string().nullable(),
+  byline: z.string(),
+  bodyMd: z.string(), // the lead story body
+  sections: z.array(ChronicleIssueSection),
+  citations: z.array(ChronicleCitation),
+  generatedAt: z.string().nullable(),
+  // When the requested day is quiet, the latest day with a meaningful issue, so
+  // the UI can offer "read the latest issue".
+  latestMeaningfulDay: z.string().nullable().optional(),
+});
+export type ChronicleIssue = z.infer<typeof ChronicleIssue>;
+
 export const ChronicleResponse = z.object({
   day: z.string(), // the day rendered (YYYY-MM-DD)
   days: z.array(z.string()), // available days, desc — powers the day picker
+  // The newspaper issue for the day (null while generating / unavailable). The
+  // timeline `items` remain for the "read the timeline" drill-down toggle.
+  issue: ChronicleIssue.nullable(),
   items: z.array(ChronicleItem),
 });
 export type ChronicleResponse = z.infer<typeof ChronicleResponse>;

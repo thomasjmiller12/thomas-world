@@ -26,6 +26,7 @@ import { renderLine } from "./feed.js";
 import { anthropic, hasLlm } from "../runtime/client.js";
 import { recordUsage } from "./usage.js";
 import { estimateCostUsd, tokensFromUsage } from "../runtime/pricing.js";
+import { attachIssue, regenerateIssue } from "./chronicle-issue.js";
 
 const { worldEvents, artifacts, threadSummaries } = schema;
 
@@ -387,7 +388,9 @@ async function buildChronicle(dayUtc: string): Promise<CacheEntry> {
 
   const days = await availableDays();
 
-  const payload: ChronicleResponse = { day: dayUtc, days, items };
+  // `issue` is filled by getChronicle (cheap cached attach / lazy generation);
+  // buildChronicle (and its cache) carry the timeline only.
+  const payload: ChronicleResponse = { day: dayUtc, days, items, issue: null };
   const entry: CacheEntry = { builtAt: Date.now(), payload, threads };
   cache.set(dayUtc, entry);
   return entry;
@@ -436,7 +439,26 @@ export async function getChronicle(dayUtc: string): Promise<ChronicleResponse> {
       item.summary = summaryById.get(item.id) ?? null;
     }
   }
-  return payload;
+
+  // The Town Crier issue (M2.2). attachIssue serves a cached row when fresh and
+  // only spends on the LLM when missing/stale (its own in-flight + TTL guards),
+  // so this stays cheap on the common path. Never let a generation hiccup break
+  // the timeline read — fall through to a null issue on any error.
+  let issue: ChronicleResponse["issue"] = null;
+  try {
+    issue = await attachIssue(dayUtc, payload.items, todayUtc());
+  } catch (err) {
+    console.warn(`[chronicle] issue attach failed for ${dayUtc}:`, (err as Error).message);
+  }
+  return { ...payload, issue };
+}
+
+// Admin: force-regenerate the Town Crier issue for a day (POST /admin/chronicle/
+// :day/regenerate). Builds the day's items fresh and forces a new LLM pass.
+export async function regenerateDayIssue(dayUtc: string): Promise<ChronicleResponse["issue"]> {
+  const { payload } = await buildChronicle(dayUtc);
+  invalidateChronicleCache(dayUtc);
+  return regenerateIssue(dayUtc, payload.items, todayUtc());
 }
 
 // Summarize ONE closed thread with a single Haiku call, persist it to

@@ -226,8 +226,17 @@ async function runVisitorInput(
   const ctx: AgentContext = {
     agentId,
     location: obs.location,
+    // Pass the session so the chat-only tools (leave_chat + the share_* cards)
+    // join the surface (M2.2 — Part 2 & 4).
+    chatSessionId: sessionId,
+    pendingShareCards: [],
     onAction: async (tool, detail) => {
       await handlers.onFrame({ type: "action", agent: agentId, tool, detail });
+    },
+    // Stream a shared card the instant the tool resolves, so the visitor sees it
+    // while the reply is still forming.
+    onShare: async (card) => {
+      await handlers.onFrame({ type: "share_card", agent: agentId, card });
     },
   };
   const tools = buildTools(ctx);
@@ -262,7 +271,9 @@ async function runVisitorInput(
   await markTicked(agentId);
 
   const reply = outcome.finalText.trim();
-  const messageId = await appendAgentLine(sessionId, agentId, reply);
+  // Persist any cards the agent shared this turn onto the reply, so a dropped
+  // panel rehydrates them (they already streamed live via onShare).
+  const messageId = await appendAgentLine(sessionId, agentId, reply, ctx.pendingShareCards ?? []);
   await handlers.onFrame({ type: "done", messageId, agent: agentId });
 
   // The reply is SPEECH (a visitor is present) — surface it to the world too

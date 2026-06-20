@@ -1,4 +1,5 @@
 import type { ThomasId } from '@/lib/types';
+import type { ShareCard } from '@town/contract';
 
 // A rendered line in the live transcript. Agent turns may still be streaming
 // (`streaming: true`) — the bubble grows as deltas land; on `done` it freezes.
@@ -14,12 +15,14 @@ import type { ThomasId } from '@/lib/types';
 //             goodbye system line that replaces the input row with a close button.
 export interface ChatLine {
   id: string;
-  kind: 'agent' | 'visitor' | 'system' | 'action' | 'ended';
-  // For agent/visitor/action/ended lines. Pure system lines leave this undefined.
+  kind: 'agent' | 'visitor' | 'system' | 'action' | 'ended' | 'share-card';
+  // For agent/visitor/action/ended/share-card lines. Pure system lines leave this undefined.
   speaker?: ThomasId | 'visitor';
   text: string;
   streaming?: boolean;
   memory?: string | null;
+  // A share-card line carries the card (M2.2 — Part 4).
+  card?: ShareCard;
 }
 
 // The agent the visitor is chatting with. Carries the live activity line

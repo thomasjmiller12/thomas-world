@@ -16,7 +16,7 @@ import * as z from "zod/v4";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { betaMemoryTool } from "@anthropic-ai/sdk/helpers/beta/memory";
 import type { BetaRunnableTool } from "@anthropic-ai/sdk/lib/tools/BetaRunnableTool.mjs";
-import { agentIds, locationIds, artifactKinds, type AgentId, type LocationId } from "@town/contract";
+import { agentIds, locationIds, artifactKinds, type AgentId, type LocationId, type ShareCard } from "@town/contract";
 
 import { moveAgent, setActivity, getAgent } from "../engine/agents.js";
 import { checkGate, isAdjacent, getLocation, agentsAtLocation } from "../engine/locations.js";
@@ -42,6 +42,14 @@ import * as hindsight from "./hindsight.js";
 import * as vault from "./vault.js";
 import * as github from "./github.js";
 import { checkFixtureAction, tryRecordEffect, type FixtureDef } from "./fixtures.js";
+import {
+  searchShareables,
+  renderShareableHits,
+  shareCardFromArtifact,
+  shareCardForReferenceId,
+  shareCardForProofId,
+  type ShareableKind,
+} from "../engine/share-cards.js";
 
 // Mutable per-tick context. `location` is read live from the row by the engine,
 // but we cache the start-of-tick location and let move_to update it so a tick
@@ -63,6 +71,12 @@ export interface AgentContext {
   // tool_use-block scan narrated "walks to the office" even when move_to had
   // declined the hop — observed live). Undefined on idle ticks.
   onAction?: (tool: string, detail: string) => void | Promise<void>;
+  // Share cards the agent dropped this turn (M2.2 — Part 4). A share tool pushes
+  // here AND streams via onShare immediately; the loop persists these onto the
+  // agent's chat message after the final text lands, so a dropped panel rehydrates
+  // them. Set (to []) only on visitor turns.
+  pendingShareCards?: ShareCard[];
+  onShare?: (card: ShareCard) => void | Promise<void>;
 }
 
 // Tools the idle tick gets. The chat subset (plan §4.1) is a filtered view.
@@ -492,9 +506,39 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     },
   });
 
+  // --- Sharing (curated, visitor-safe cards) --------------------------------
+  // The catalog is an ALLOWLIST the SERVER owns: search returns ids; the share_*
+  // tools resolve those ids to real cards. Agents never emit raw URLs (design
+  // §"Agent information problem"). search is always available; the share_* tools
+  // only stream a card during a visitor chat (gated below with leave_chat).
+  const shareableKindEnum = z.enum(["artifact", "portfolio_proof", "external_reference"]);
+  const search_shareables = betaZodTool({
+    name: "search_shareables",
+    description:
+      "Search the curated catalog of things you can SHOW a visitor — Thomas's real projects, repos, demos, writing, and résumé (external_reference), portfolio proof cards (portfolio_proof), and your own made things (artifact). Use this BEFORE answering from memory when a visitor asks about Thomas's real work, then share_reference / share_artifact / share_proof by the id it returns. If nothing matches, say you don't have a card to share yet.",
+    inputSchema: z.object({
+      query: z.string().max(200).default(""),
+      kinds: z.array(shareableKindEnum).optional(),
+      agent: z.enum(agentIds as unknown as [string, ...string[]]).optional(),
+      tags: z.array(z.string().max(40)).optional(),
+      limit: z.number().int().min(1).max(20).optional(),
+    }),
+    run: async ({ query, kinds, agent, tags, limit }) => {
+      const hits = await searchShareables({
+        query: query ?? "",
+        kinds: kinds as ShareableKind[] | undefined,
+        agent: agent as AgentId | undefined,
+        tags,
+        limit,
+      });
+      return renderShareableHits(hits);
+    },
+  });
+
   const tools: RunnableTool[] = [
     move_to as RunnableTool,
     set_activity as RunnableTool,
+    search_shareables as RunnableTool,
     look_around as RunnableTool,
     use_fixture as RunnableTool,
     send_dm as RunnableTool,
@@ -522,10 +566,14 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     request_capability as RunnableTool,
   ];
 
-  // leave_chat is only meaningful within a visitor turn (ctx.chatSessionId set).
-  // Adding it only then keeps the idle-tick tool surface byte-stable (cache
-  // hygiene) — idle ticks never carry a session, visitor turns always do.
-  if (ctx.chatSessionId) tools.push(buildLeaveChat(ctx));
+  // leave_chat + the share_* card tools are only meaningful within a visitor turn
+  // (ctx.chatSessionId set). Adding them only then keeps the idle-tick tool
+  // surface byte-stable (cache hygiene) — idle ticks never carry a session,
+  // visitor turns always do.
+  if (ctx.chatSessionId) {
+    tools.push(buildLeaveChat(ctx));
+    for (const t of buildShareTools(ctx)) tools.push(t);
+  }
 
   // DETERMINISTIC ORDER: sort by tool name so the serialized tool block is
   // byte-stable across ticks (cache hygiene, plan §4.3). betaMemoryTool's name
@@ -559,6 +607,56 @@ function buildLeaveChat(ctx: AgentContext): RunnableTool {
       return "Alright — wrap up warmly in this message; the conversation will close once you've said it.";
     },
   }) as RunnableTool;
+}
+
+// The share_* card tools (M2.2 — Part 4). Each resolves a catalog id to a real
+// ShareCard, streams it to the panel immediately (ctx.onShare) so the visitor
+// sees it while the reply is still forming, and stashes it on ctx.pendingShareCards
+// so the loop persists it onto the agent's chat message. Chat-only.
+function buildShareTools(ctx: AgentContext): RunnableTool[] {
+  const emit = async (card: ShareCard, kind: string): Promise<string> => {
+    ctx.pendingShareCards?.push(card);
+    await ctx.onShare?.(card);
+    return `Shared the ${kind} card "${card.title}". Mention it naturally in your reply — the card carries the links, so don't paste a URL unless the visitor asks.`;
+  };
+
+  const share_artifact = betaZodTool({
+    name: "share_artifact",
+    description:
+      "Drop one of the town's artifacts (yours or another facet's) into the chat as a card the visitor can open. Pass its id (from search_shareables or list_my_artifacts).",
+    inputSchema: z.object({ artifact_id: z.string().min(1), note: z.string().max(200).optional() }),
+    run: async ({ artifact_id }) => {
+      const card = await shareCardFromArtifact(artifact_id);
+      if (!card) return `There's no artifact with id ${artifact_id} to share.`;
+      return emit(card, "artifact");
+    },
+  });
+
+  const share_reference = betaZodTool({
+    name: "share_reference",
+    description:
+      "Share a curated external reference — one of Thomas's real projects, repos, demos, writing, or résumé — as a card with its links. Pass the reference id from search_shareables. Only catalog-backed references can be shared (you can't share an arbitrary URL).",
+    inputSchema: z.object({ reference_id: z.string().min(1), note: z.string().max(200).optional() }),
+    run: async ({ reference_id }) => {
+      const card = await shareCardForReferenceId(reference_id);
+      if (!card) return `There's no shareable reference with id ${reference_id} (it may be private or not in the catalog).`;
+      return emit(card, "reference");
+    },
+  });
+
+  const share_proof = betaZodTool({
+    name: "share_proof",
+    description:
+      "Share a portfolio proof card — a claim about Thomas's work with its evidence links. Pass the proof id from search_shareables.",
+    inputSchema: z.object({ proof_id: z.string().min(1), note: z.string().max(200).optional() }),
+    run: async ({ proof_id }) => {
+      const card = await shareCardForProofId(proof_id);
+      if (!card) return `There's no proof with id ${proof_id} to share.`;
+      return emit(card, "proof");
+    },
+  });
+
+  return [share_artifact as RunnableTool, share_reference as RunnableTool, share_proof as RunnableTool];
 }
 
 export { getAgent };

@@ -10,6 +10,9 @@ export default function TownPage() {
   // ?observe=1 → ghost mode: the world renders and streams, but no visitor is
   // registered and chat is disabled — a translucent walkabout, unseen.
   const observe = router.query.observe === "1";
+  // ?about=1 → open the About / Portfolio hub on arrival (the home page's
+  // "About Thomas / How this works" entry).
+  const openAbout = router.query.about === "1";
 
   return (
     <>
@@ -18,7 +21,7 @@ export default function TownPage() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.png" />
       </Head>
-      <GameApp visitorName={visitorName} observe={observe} />
+      <GameApp visitorName={visitorName} observe={observe} openAbout={openAbout} />
     </>
   );
 }

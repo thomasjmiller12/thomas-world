@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
+import type { ShareCard } from '@town/contract';
 import { EventBus } from '@/game/EventBus';
 import type { ThomasId } from '@/lib/types';
 import { useAgentStatuses, statusLine } from '@/lib/useAgentStatuses';
@@ -63,7 +64,8 @@ type Action =
   | { t: 'memory'; speaker: ThomasId; label: string }
   | { t: 'turn-done'; speaker: ThomasId }
   | { t: 'action'; speaker: ThomasId; detail: string }
-  | { t: 'ended'; speaker: ThomasId }
+  | { t: 'share-card'; speaker: ThomasId; card: ShareCard }
+  | { t: 'ended'; speaker: ThomasId; reason?: string | null }
   | { t: 'error'; reason: string }
   | { t: 'close' };
 
@@ -141,6 +143,16 @@ function reducer(state: State, a: Action): State {
         ],
       };
 
+    case 'share-card':
+      // The agent shared a concrete card — a distinct line in the transcript.
+      return {
+        ...state,
+        lines: [
+          ...state.lines,
+          { id: nextId(), kind: 'share-card', speaker: a.speaker, text: a.card.title, card: a.card },
+        ],
+      };
+
     case 'ended':
       // The agent ended the chat itself — a goodbye system line; the input row
       // becomes a [wave goodbye] close button.
@@ -150,7 +162,7 @@ function reducer(state: State, a: Action): State {
         streamingSpeaker: null,
               lines: [
           ...state.lines,
-          { id: nextId(), kind: 'ended', text: endedLine(a.speaker) },
+          { id: nextId(), kind: 'ended', text: endedLine(a.speaker, a.reason) },
         ],
       };
 
@@ -175,8 +187,9 @@ function lastStreamingIdx(lines: ChatLine[], speaker: ThomasId): number {
   return -1;
 }
 
-function endedLine(speaker: ThomasId): string {
-  return `${agentShortName(speaker)} headed back to work.`;
+function endedLine(speaker: ThomasId, reason?: string | null): string {
+  const who = agentShortName(speaker);
+  return reason ? `${who} wrapped up: ${reason}` : `${who} headed back to work.`;
 }
 
 function errorLine(reason: string): string {
@@ -252,8 +265,11 @@ export function ChatSession({ onSend, onClose, suspended }: ChatSessionProps) {
     const onAction = (p: { npcId: ThomasId; detail: string }) => {
       if (live()) dispatch({ t: 'action', speaker: p.npcId, detail: p.detail });
     };
-    const onEnded = (p: { npcId: ThomasId }) => {
-      if (live()) dispatch({ t: 'ended', speaker: p.npcId });
+    const onShareCard = (p: { npcId: ThomasId; card: ShareCard }) => {
+      if (live()) dispatch({ t: 'share-card', speaker: p.npcId, card: p.card });
+    };
+    const onEnded = (p: { npcId: ThomasId; reason?: string | null }) => {
+      if (live()) dispatch({ t: 'ended', speaker: p.npcId, reason: p.reason ?? null });
     };
     const onError = (p: { reason: string }) => {
       if (live()) dispatch({ t: 'error', reason: p.reason });
@@ -268,6 +284,7 @@ export function ChatSession({ onSend, onClose, suspended }: ChatSessionProps) {
     EventBus.on('chat-memory-recalled', onMemory);
     EventBus.on('chat-turn-done', onTurnDone);
     EventBus.on('chat-action', onAction);
+    EventBus.on('chat-share-card', onShareCard);
     EventBus.on('chat-ended', onEnded);
     EventBus.on('chat-error', onError);
     EventBus.on('typing-focus', onTypingFocus);
@@ -279,6 +296,7 @@ export function ChatSession({ onSend, onClose, suspended }: ChatSessionProps) {
       EventBus.off('chat-memory-recalled', onMemory);
       EventBus.off('chat-turn-done', onTurnDone);
         EventBus.off('chat-action', onAction);
+      EventBus.off('chat-share-card', onShareCard);
       EventBus.off('chat-ended', onEnded);
       EventBus.off('chat-error', onError);
       EventBus.off('typing-focus', onTypingFocus);

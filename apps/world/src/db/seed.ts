@@ -4,6 +4,9 @@
 // the primary key so re-running is safe.
 
 import { db, pool, schema } from "./client.js";
+import { upsertReference } from "../engine/references.js";
+import { upsertProof } from "../engine/portfolio.js";
+import { REFERENCE_SEED, PROOF_SEED } from "./portfolio-content.js";
 
 const { locations, agents } = schema;
 
@@ -139,6 +142,13 @@ async function main() {
       });
   }
   console.log(`seeded ${AGENTS.length} agents`);
+
+  // M2.2: curated portfolio catalog (external references + proof cards). Upserts
+  // by id, so the curated content is the source of truth on every deploy; never
+  // deletes rows not in the seed.
+  for (const r of REFERENCE_SEED) await upsertReference(r);
+  for (const p of PROOF_SEED) await upsertProof(p);
+  console.log(`seeded ${REFERENCE_SEED.length} references, ${PROOF_SEED.length} proofs`);
 
   await pool.end();
 }

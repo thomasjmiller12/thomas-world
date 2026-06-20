@@ -16,7 +16,7 @@
 
 import { randomUUID } from "node:crypto";
 import { eq, and, isNull, desc, asc } from "drizzle-orm";
-import type { AgentId, GetChatResponse } from "@town/contract";
+import type { AgentId, GetChatResponse, ShareCard } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { getAgent } from "../engine/agents.js";
 import { appendEvent } from "../engine/events.js";
@@ -169,11 +169,12 @@ export async function appendAgentLine(
   sessionId: string,
   agentId: AgentId,
   text: string,
+  attachments: ShareCard[] = [],
 ): Promise<string> {
   if (!text) return "empty";
   const [row] = await db
     .insert(chatMessages)
-    .values({ sessionId, sender: agentId, body: text })
+    .values({ sessionId, sender: agentId, body: text, attachments })
     .returning({ id: chatMessages.id });
   return String(row.id);
 }
@@ -210,6 +211,7 @@ export async function getChatTranscript(sessionId: string): Promise<GetChatRespo
           : (r.sender as AgentId)) as "visitor" | AgentId,
       body: r.body,
       ts: r.ts.toISOString(),
+      attachments: (r.attachments ?? []) as ShareCard[],
     }));
   return {
     sessionId: session.id,

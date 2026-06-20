@@ -18,6 +18,8 @@ import {
   AgentStatus,
   ChatStreamFrame,
   ChronicleResponse,
+  ExternalReference,
+  PortfolioProof,
 } from "./index.js";
 
 describe("id enums", () => {
@@ -201,6 +203,7 @@ describe("REST shapes round-trip", () => {
     const res = ChronicleResponse.parse({
       day: "2026-06-12",
       days: ["2026-06-12", "2026-06-11"],
+      issue: null,
       items: [
         {
           kind: "thread",
@@ -264,8 +267,110 @@ describe("REST shapes round-trip", () => {
     }
     // unknown item kind is rejected
     expect(() =>
-      ChronicleResponse.parse({ day: "2026-06-12", days: [], items: [{ kind: "rumor", id: "r1", ts: "x" }] }),
+      ChronicleResponse.parse({ day: "2026-06-12", days: [], issue: null, items: [{ kind: "rumor", id: "r1", ts: "x" }] }),
     ).toThrow();
+  });
+});
+
+describe("M2.2 schemas (Town Crier, portfolio, share cards)", () => {
+  it("accepts a ChronicleResponse carrying a generated issue", () => {
+    const res = ChronicleResponse.parse({
+      day: "2026-06-20",
+      days: ["2026-06-20"],
+      issue: {
+        day: "2026-06-20",
+        status: "ready",
+        title: "A Quiet Morning at the Workshop",
+        subtitle: "Builder ships, Writer watches",
+        byline: "The Town Crier",
+        bodyMd: "Builder spent the morning on the machinery [S1].",
+        sections: [
+          { id: "around", title: "Around Town", bodyMd: "Writer left a note [S2].", citationIds: ["S2"] },
+        ],
+        citations: [
+          { id: "S1", kind: "artifact", targetId: "art1", label: "Project log", href: "artifact:art1" },
+          { id: "S2", kind: "thread", targetId: "thr1", label: "Cafe chatter" },
+        ],
+        generatedAt: "2026-06-20T08:05:00.000Z",
+        latestMeaningfulDay: null,
+      },
+      items: [],
+    });
+    expect(res.issue?.status).toBe("ready");
+    expect(res.issue?.citations[0].kind).toBe("artifact");
+  });
+
+  it("rejects an invalid citation kind", () => {
+    expect(() =>
+      ChronicleResponse.parse({
+        day: "2026-06-20",
+        days: [],
+        issue: {
+          day: "2026-06-20",
+          status: "ready",
+          title: "t",
+          subtitle: null,
+          byline: "The Town Crier",
+          bodyMd: "b",
+          sections: [],
+          citations: [{ id: "S1", kind: "not_a_kind", targetId: "x", label: "y" }],
+          generatedAt: null,
+        },
+        items: [],
+      }),
+    ).toThrow();
+  });
+
+  it("round-trips a share_card chat frame", () => {
+    const frame = ChatStreamFrame.parse({
+      type: "share_card",
+      agent: "builder",
+      card: {
+        id: "ref:billables-ai",
+        kind: "external_reference",
+        title: "Billables AI",
+        subtitle: null,
+        summary: "Legal-AI startup Thomas founded.",
+        agentId: "builder",
+        sourceLabel: "Project",
+        actions: [{ label: "Open", href: "https://example.com", kind: "external" }],
+      },
+    });
+    expect(frame.type).toBe("share_card");
+  });
+
+  it("validates an ExternalReference and PortfolioProof", () => {
+    const ref = ExternalReference.parse({
+      id: "thomass-town",
+      kind: "project",
+      title: "Thomas's Town",
+      shortTitle: null,
+      summary: "A living-portfolio agent town.",
+      bodyMd: null,
+      url: "https://town.example.com",
+      githubUrl: null,
+      liveUrl: null,
+      imageUrl: null,
+      agentIds: ["builder", "writer"],
+      tags: ["agents", "portfolio"],
+      updatedAt: "2026-06-20T00:00:00.000Z",
+    });
+    expect(ref.kind).toBe("project");
+    const proof = PortfolioProof.parse({
+      id: "persistent-agents",
+      title: "Persistent Agent Architecture",
+      claim: "Agents live outside the browser.",
+      summary: "A world server runs five agents 24/7.",
+      bodyMd: "## Evidence",
+      agentIds: ["builder"],
+      skills: ["systems", "agents"],
+      artifactIds: [],
+      eventIds: [],
+      referenceIds: ["thomass-town"],
+      featured: true,
+      updatedAt: "2026-06-20T00:00:00.000Z",
+    });
+    expect(proof.featured).toBe(true);
   });
 });
 

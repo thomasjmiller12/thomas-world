@@ -31,9 +31,10 @@ interface Props {
   onClose: () => void;
   onFindThem: (id: ThomasId, locationId: LocationId) => void;
   onSeeTheirDay: (id: ThomasId) => void;
+  onAboutFacet: (id: ThomasId) => void;
 }
 
-export function ProfilePopover({ npcId, anchorTop, onClose, onFindThem, onSeeTheirDay }: Props) {
+export function ProfilePopover({ npcId, anchorTop, onClose, onFindThem, onSeeTheirDay, onAboutFacet }: Props) {
   const config = NPC_CONFIGS[npcId];
   const color = THOMAS_COLORS[npcId] ?? 'var(--career)';
   const statuses = useAgentStatuses();
@@ -148,6 +149,25 @@ export function ProfilePopover({ npcId, anchorTop, onClose, onFindThem, onSeeThe
           }}
         >
           see their day →
+        </button>
+      </div>
+
+      {/* proof & projects — opens the About hub on this facet (M2.2) */}
+      <div style={{ padding: '0 16px 16px' }}>
+        <button
+          onClick={() => onAboutFacet(npcId)}
+          style={{
+            width: '100%',
+            padding: '8px 10px',
+            borderRadius: 10,
+            border: `1px solid ${color}40`,
+            background: `${color}10`,
+            color,
+            font: '700 12px var(--sans)',
+            cursor: 'pointer',
+          }}
+        >
+          proof &amp; projects →
         </button>
       </div>
     </div>

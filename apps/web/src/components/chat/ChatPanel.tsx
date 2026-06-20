@@ -11,6 +11,7 @@ import {
   agentShortName,
 } from './primitives';
 import { fetchRecentRows, type RailRow } from './recentEvents';
+import { ShareCardBubble } from './ShareCardBubble';
 
 // ChatPanel — the ONE chat presentation (M2.1, replaces DiegeticDialog +
 // DockedPanel). A side-docked popup card the world stays visible + navigable
@@ -301,6 +302,9 @@ export function ChatPanel({
           if (line.kind === 'action') {
             const c = line.speaker && line.speaker !== 'visitor' ? agentColor(line.speaker) : color;
             return <ActionLine key={line.id} text={line.text} color={c} />;
+          }
+          if (line.kind === 'share-card' && line.card) {
+            return <ShareCardBubble key={line.id} card={line.card} />;
           }
           const isAgent = line.kind === 'agent';
           const speaker = line.speaker as ThomasId | undefined;

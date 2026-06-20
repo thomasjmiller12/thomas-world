@@ -24,7 +24,13 @@ import {
   CreateChatResponse,
   GetChatResponse,
   InteractRequest,
+  AboutResponse,
+  ProofsResponse,
+  ProofResponse,
+  ReferencesResponse,
+  ReferenceResponse,
 } from "@town/contract";
+import type { ExternalReferenceKind } from "@town/contract";
 import type { LocationId } from "@town/contract";
 import type { ArtifactSummary } from "@town/contract";
 import type { z } from "zod";
@@ -43,7 +49,9 @@ import {
 // only recent motion needs replaying.
 const BACKLOG_REPLAY_CAP = 50;
 import { getFeed } from "../engine/feed.js";
-import { getChronicle, todayUtc } from "../engine/chronicle.js";
+import { getChronicle, todayUtc, regenerateDayIssue } from "../engine/chronicle.js";
+import { buildAbout, listProofs, getProof } from "../engine/portfolio.js";
+import { listReferences, getReferenceRow, rowToReference } from "../engine/references.js";
 import { getAgent, allAgents } from "../engine/agents.js";
 import { listMessages } from "../engine/messages.js";
 import {
@@ -331,6 +339,44 @@ export function createApp() {
       return c.json({ error: "bad day", message: "day must be YYYY-MM-DD" }, 400);
     }
     return c.json(validated(ChronicleResponse, payload));
+  });
+
+  // --- Portfolio / About hub (M2.2 — Part 3) -------------------------------
+  // All public reads, free even when the budget is exhausted (the About surface
+  // stays readable while the town sleeps).
+  app.get("/portfolio/about", async (c) => {
+    return c.json(validated(AboutResponse, await buildAbout()));
+  });
+
+  app.get("/portfolio/proofs", async (c) => {
+    const agent = isAgentId(c.req.query("agent")) ? (c.req.query("agent") as AgentId) : null;
+    const tag = c.req.query("tag") || null;
+    const featuredParam = c.req.query("featured");
+    const featured = featuredParam === "true" ? true : featuredParam === "false" ? false : null;
+    const proofs = await listProofs({ agent, tag, featured });
+    return c.json(validated(ProofsResponse, { proofs }));
+  });
+
+  app.get("/portfolio/proofs/:id", async (c) => {
+    const proof = await getProof(c.req.param("id"));
+    if (!proof) return c.json({ error: "not found" }, 404);
+    return c.json(validated(ProofResponse, { proof }));
+  });
+
+  // --- Curated external references (M2.2 — Part 3 & 4) ---------------------
+  app.get("/references", async (c) => {
+    const q = c.req.query("q") || null;
+    const agent = isAgentId(c.req.query("agent")) ? (c.req.query("agent") as AgentId) : null;
+    const tag = c.req.query("tag") || null;
+    const kind = (c.req.query("kind") as ExternalReferenceKind | undefined) || null;
+    const references = await listReferences({ q, agent, tag, kind });
+    return c.json(validated(ReferencesResponse, { references }));
+  });
+
+  app.get("/references/:id", async (c) => {
+    const row = await getReferenceRow(c.req.param("id"));
+    if (!row || !row.public) return c.json({ error: "not found" }, 404);
+    return c.json(validated(ReferenceResponse, { reference: rowToReference(row) }));
   });
 
   // --- GET /agents/:id -----------------------------------------------------
@@ -694,6 +740,29 @@ export function createApp() {
     const result = await enqueue(agent, { kind: "delivery", fileId, prompt });
     await flushTracing();
     return c.json(result);
+  });
+
+  // --- POST /admin/chronicle/:day/regenerate — force a fresh Town Crier issue
+  // (M2.2 — Part 1). Not exposed publicly. Useful after editing the prompt or to
+  // re-print a day. The regular GET /chronicle generates lazily; this forces it.
+  app.post("/admin/chronicle/:day/regenerate", async (c) => {
+    if (config.adminToken) {
+      if (c.req.header("x-admin-token") !== config.adminToken) {
+        return c.json({ error: "forbidden" }, 403);
+      }
+    } else if (config.nodeEnv === "production") {
+      return c.json({ error: "forbidden" }, 403);
+    }
+    const day = c.req.param("day");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+      return c.json({ error: "bad day", message: "day must be YYYY-MM-DD" }, 400);
+    }
+    try {
+      const issue = await regenerateDayIssue(day);
+      return c.json({ ok: true, issue });
+    } catch (err) {
+      return c.json({ error: "regenerate failed", message: (err as Error).message }, 500);
+    }
   });
 
   // --- GET /debug — dead-simple server-rendered status page ---------------

@@ -11,6 +11,7 @@ import { HUD } from './components/HUD';
 import { WelcomeCard } from './components/WelcomeCard';
 import { SleepOverlay } from './components/SleepOverlay';
 import { ChroniclePanel } from './components/chronicle/ChroniclePanel';
+import { AboutPanel, type AboutTab } from './components/portfolio/AboutPanel';
 import { useViewport } from './lib/useViewport';
 import { locationForScene } from './game/data/location-anchors';
 import type { LocationId, DayPhase } from '@town/contract';
@@ -46,9 +47,11 @@ interface AppProps {
   // Ghost mode: render + stream the world read-only (no visitor identity, no
   // chat). The Phaser side reads the same flag from the game registry.
   observe?: boolean;
+  // Open the About / Portfolio hub on arrival (home page entry).
+  openAbout?: boolean;
 }
 
-function App({ visitorName, observe = false }: AppProps) {
+function App({ visitorName, observe = false, openAbout = false }: AppProps) {
   const worldRef = useRef<WorldClient | null>(null);
   const dreamRef = useRef<DreamMode | null>(null);
 
@@ -68,7 +71,12 @@ function App({ visitorName, observe = false }: AppProps) {
   // The Town Chronicle hub. Coexists with a live chat (renders above it, z 60) —
   // opening it does NOT tear the chat down. `chronicle` null => closed; non-null
   // carries any initial scoping (a tab + day from "see their day →").
-  const [chronicle, setChronicle] = useState<{ tab: 'today' | 'conversations'; day: string | null } | null>(null);
+  const [chronicle, setChronicle] = useState<{ tab: 'today' | 'conversations'; day: string | null; artifactId?: string | null } | null>(null);
+  // The About / Portfolio hub (M2.2 — Part 3). Coexists with chat (z 60). Null =>
+  // closed; non-null carries the initial tab + any deep-link target.
+  const [about, setAbout] = useState<{ tab: AboutTab; referenceId?: string | null; proofId?: string | null } | null>(
+    openAbout ? { tab: 'overview' } : null,
+  );
   // Day-phase canvas tint + sleeping/dream fallback (design §7).
   const [worldPhase, setWorldPhase] = useState<DayPhase>('afternoon');
   const [sleeping, setSleeping] = useState(false);
@@ -115,6 +123,17 @@ function App({ visitorName, observe = false }: AppProps) {
   // tab (the closest agent-scoped view — /chronicle has no agent filter).
   const handleSeeTheirDay = useCallback((_id: ThomasId) => {
     setChronicle({ tab: 'conversations', day: null });
+  }, []);
+
+  // About / Portfolio hub toggle (HUD button + home entry). Coexists with chat.
+  const handleToggleAbout = useCallback(() => {
+    setAbout((prev) => (prev ? null : { tab: 'overview' }));
+  }, []);
+
+  // "proof & projects →" (profile popover): open About on the Projects tab,
+  // pre-filtered to this facet's work (the panel reads the facet from the tab).
+  const handleAboutFacet = useCallback((_id: ThomasId) => {
+    setAbout({ tab: 'facets' });
   }, []);
 
   const handleTravelToAgent = useCallback((_id: ThomasId, locationId: LocationId) => {
@@ -229,9 +248,20 @@ function App({ visitorName, observe = false }: AppProps) {
     const onVisitorInteract = (data: { locationId: LocationId; fixture: string }) => {
       world.interact(data.locationId, data.fixture);
     };
+    // A share-card / chronicle-citation internal action → open the right overlay.
+    // href tokens: "artifact:<id>", "thread:<id>", "reference:<id>", "proof:<id>".
+    const onOpenCardTarget = (data: { href: string }) => {
+      const [kind, id] = data.href.split(/:(.+)/);
+      if (!id) return;
+      if (kind === 'artifact') setChronicle({ tab: 'today', day: null, artifactId: id });
+      else if (kind === 'thread') setChronicle({ tab: 'conversations', day: null });
+      else if (kind === 'reference') setAbout({ tab: 'projects', referenceId: id });
+      else if (kind === 'proof') setAbout({ tab: 'proof', proofId: id });
+    };
 
     EventBus.on('current-scene-ready', onSceneReady);
     EventBus.on('visitor-interact', onVisitorInteract);
+    EventBus.on('open-card-target', onOpenCardTarget);
     EventBus.on('npc-interaction', onNpcInteraction);
     EventBus.on('scene-changed', onSceneChanged);
     EventBus.on('npc-thought', onNpcThought);
@@ -249,6 +279,7 @@ function App({ visitorName, observe = false }: AppProps) {
       dream.stop();
       world.stop();
       EventBus.off('current-scene-ready', onSceneReady);
+      EventBus.off('open-card-target', onOpenCardTarget);
       EventBus.off('npc-interaction', onNpcInteraction);
       EventBus.off('scene-changed', onSceneChanged);
       EventBus.off('npc-thought', onNpcThought);
@@ -278,6 +309,7 @@ function App({ visitorName, observe = false }: AppProps) {
           onNpcClick={handleRosterClick}
           onTravelToAgent={handleTravelToAgent}
           onSeeTheirDay={handleSeeTheirDay}
+          onAboutFacet={handleAboutFacet}
         />
       )}
 
@@ -293,6 +325,8 @@ function App({ visitorName, observe = false }: AppProps) {
             visitorName={visitorName}
             onToggleChronicle={handleToggleChronicle}
             chronicleOpen={chronicle != null}
+            onToggleAbout={handleToggleAbout}
+            aboutOpen={about != null}
             touch={viewport.touch}
           />
 
@@ -341,7 +375,7 @@ function App({ visitorName, observe = false }: AppProps) {
             <ChatSession
               onSend={handleChatSend}
               onClose={handleChatSessionClose}
-              suspended={chronicle != null}
+              suspended={chronicle != null || about != null}
             />
           )}
 
@@ -353,6 +387,18 @@ function App({ visitorName, observe = false }: AppProps) {
               onClose={() => setChronicle(null)}
               initialTab={chronicle.tab}
               initialDay={chronicle.day}
+              initialArtifactId={chronicle.artifactId ?? null}
+            />
+          )}
+
+          {/* About / Portfolio hub — full-screen popup ABOVE the chat (z 60),
+              same coexistence rules as the Chronicle. */}
+          {about && (
+            <AboutPanel
+              onClose={() => setAbout(null)}
+              initialTab={about.tab}
+              initialReferenceId={about.referenceId ?? null}
+              initialProofId={about.proofId ?? null}
             />
           )}
         </div>

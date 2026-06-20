@@ -1,26 +1,47 @@
-import type { ChronicleItem, LocationId } from '@town/contract';
+import { useState } from 'react';
+import type { ChronicleItem, ChronicleIssue, ChronicleCitation, LocationId } from '@town/contract';
 import { THOMAS_COLORS } from '@/lib/constants';
 import type { ThomasId } from '@/lib/types';
 import { SpritePortrait, agentShortName } from '@/components/chat/primitives';
 import { ThreadRow } from './ThreadRow';
 import { clockFor, locationLabel, artifactKindLabel } from './chroniclePresentation';
+import { NewspaperIssue } from './NewspaperIssue';
 
-// TodayTab — the day's grouped digest timeline (M2.1). Renders the full
-// ChronicleItem[] as a river using the FeedTimeline's good bones: a time gutter,
-// an agent-tinted portrait spine, and a content row per item. Row variants by
-// `kind`: ThreadRow (its own progressive-disclosure component), artifact rows
-// with [read →], bulletin rows, and muted flavor rows for effect/presence.
+// TodayTab — the day's front page (M2.2). When the Town Crier has printed an
+// issue, it's the newspaper first (NewspaperIssue); a "read the timeline" toggle
+// drops to the chronological river (the M2.1 ChronicleItem[] view). When there's
+// no issue yet, the timeline is shown directly.
 
 interface Props {
   items: ChronicleItem[];
+  issue: ChronicleIssue | null;
   loading: boolean;
   error: boolean;
   // Open an artifact in the in-hub reader (lazy GET /artifacts/:id).
   onOpenArtifact: (id: string) => void;
+  // Resolve a newspaper citation to its source.
+  onOpenCitation: (citation: ChronicleCitation) => void;
+  // Jump to another day (quiet-day "latest issue" link).
+  onGoToDay: (day: string) => void;
 }
 
-export function TodayTab({ items, loading, error, onOpenArtifact }: Props) {
-  if (loading && items.length === 0) return <Skeleton />;
+export function TodayTab({ items, issue, loading, error, onOpenArtifact, onOpenCitation, onGoToDay }: Props) {
+  const [showTimeline, setShowTimeline] = useState(false);
+
+  if (loading && items.length === 0 && !issue) return <Skeleton />;
+
+  // The Town Crier issue is the front page (unless the visitor toggled to the
+  // timeline). An empty-status issue renders its own quiet-day card.
+  if (issue && !showTimeline) {
+    return (
+      <NewspaperIssue
+        issue={issue}
+        onOpenCitation={onOpenCitation}
+        onReadTimeline={() => setShowTimeline(true)}
+        onGoToDay={onGoToDay}
+      />
+    );
+  }
 
   if (error && items.length === 0) {
     return (
@@ -40,6 +61,14 @@ export function TodayTab({ items, loading, error, onOpenArtifact }: Props) {
 
   return (
     <div>
+      {issue && (
+        <button
+          onClick={() => setShowTimeline(false)}
+          style={{ margin: '0 0 14px', padding: '6px 12px', borderRadius: 999, border: '1px solid var(--line-2)', background: '#fff', color: 'var(--ink-2)', font: '600 12px var(--sans)', cursor: 'pointer' }}
+        >
+          ← Back to the issue
+        </button>
+      )}
       {items.map((item, i) => (
         <ChronicleRow
           key={item.id}

@@ -114,6 +114,25 @@ export default function Home() {
             >
               Just observe — watch without being seen
             </button>
+
+            {/* About / Portfolio hub — opens the town with the About overlay up,
+                for visitors who want the "what is this & who's Thomas" first. */}
+            <button
+              onClick={() => {
+                const visitorName = name.trim() || 'Visitor';
+                router.push(`/town?name=${encodeURIComponent(visitorName)}&about=1`);
+              }}
+              className="w-full text-sm py-2.5 rounded-xl transition-colors"
+              style={{
+                background: 'transparent',
+                color: 'var(--ink-2)',
+                fontFamily: 'var(--display)',
+                fontWeight: 600,
+                border: '1px solid var(--line-2)',
+              }}
+            >
+              About Thomas · how this works
+            </button>
           </div>
 
           <div

@@ -1,5 +1,5 @@
 import { Events } from 'phaser';
-import type { AgentId, DayPhase, LocationId, WorldEvent } from '@town/contract';
+import type { AgentId, DayPhase, LocationId, WorldEvent, ShareCard } from '@town/contract';
 import type { ThomasId, ChatMessage } from '@/lib/types';
 
 // The typed event taxonomy that flows over the EventBus — the seam between the
@@ -82,9 +82,16 @@ export interface WorldEvents {
   // The agent acted mid-chat (a tool the agent ran while talking — "walks to
   // the workbench"). Rendered as a centered diegetic line in the transcript.
   'chat-action': { npcId: ThomasId; sessionId: string; tool: string; detail: string };
+  // The agent shared a concrete card mid-chat (artifact / reference / proof).
+  'chat-share-card': { npcId: ThomasId; sessionId: string; card: ShareCard };
   // The agent ended the chat itself (server already closed the session). The
-  // panel shows a goodbye line + [wave goodbye] close button.
-  'chat-ended': { npcId: ThomasId; sessionId: string };
+  // panel shows a goodbye line + [wave goodbye] close button. `reason` is the
+  // agent's optional rendering of why it wrapped up.
+  'chat-ended': { npcId: ThomasId; sessionId: string; reason?: string | null };
+  // A share card / chronicle citation's internal action — open the matching
+  // overlay (artifact reader, reference reader, proof). `href` is a route token
+  // like "artifact:<id>" / "reference:<id>" / "proof:<id>" / "thread:<id>".
+  'open-card-target': { href: string };
   // WorldClient surfaces an error / 409 the panel should render in-fiction.
   'chat-error': { npcId?: ThomasId; reason: string };
   // The chat input gained/lost focus. The player freezes movement ONLY while

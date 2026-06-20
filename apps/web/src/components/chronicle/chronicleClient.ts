@@ -4,6 +4,7 @@ import {
   ArtifactResponse,
   MessagesResponse,
   type ChronicleItem,
+  type ChronicleIssue,
   type ArtifactSummary,
   type Artifact,
   type AgentId,
@@ -27,6 +28,8 @@ export interface ChroniclePage {
   day: string;
   // Available days, desc — powers the day picker.
   days: string[];
+  // The Town Crier newspaper issue for the day (null while generating / quiet).
+  issue: ChronicleIssue | null;
   items: ChronicleItem[];
 }
 
@@ -41,7 +44,7 @@ export async function fetchChronicle(opts: {
   const res = await fetch(url.toString(), { signal: opts.signal });
   if (!res.ok) throw new Error(`chronicle failed: ${res.status}`);
   const parsed = ChronicleResponse.parse(await res.json());
-  return { day: parsed.day, days: parsed.days, items: parsed.items };
+  return { day: parsed.day, days: parsed.days, issue: parsed.issue, items: parsed.items };
 }
 
 // GET /artifacts?kind=&agent= — the Made/Board browsers' list source.

@@ -34,6 +34,8 @@ interface AgentRosterProps {
   onTravelToAgent: (id: ThomasId, locationId: LocationId) => void;
   // "see their day →" (profile popover): open the Chronicle scoped to this agent.
   onSeeTheirDay: (id: ThomasId) => void;
+  // "proof & projects →" (profile popover): open the About hub for this facet.
+  onAboutFacet: (id: ThomasId) => void;
 }
 
 export function AgentRoster({
@@ -43,6 +45,7 @@ export function AgentRoster({
   onNpcClick,
   onTravelToAgent,
   onSeeTheirDay,
+  onAboutFacet,
 }: AgentRosterProps) {
   const [collapsed, setCollapsed] = useState(false);
   // The agent whose ProfilePopover is open + the row's top offset to anchor it.
@@ -152,6 +155,10 @@ export function AgentRoster({
           }}
           onSeeTheirDay={(id) => {
             onSeeTheirDay(id);
+            setProfile(null);
+          }}
+          onAboutFacet={(id) => {
+            onAboutFacet(id);
             setProfile(null);
           }}
         />

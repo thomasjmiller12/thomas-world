@@ -676,12 +676,26 @@ export class WorldClient {
         });
         break;
 
+      case 'share_card':
+        // The agent dropped a concrete card (artifact / reference / proof) — the
+        // panel renders it inline as a distinct line.
+        EventBus.emit('chat-share-card', {
+          npcId: frame.agent,
+          sessionId: chat.sessionId,
+          card: frame.card,
+        });
+        break;
+
       case 'chat_ended':
         // The agent ended the chat itself — the server already closed the
         // session, so tear down ping/activeChat WITHOUT a POST /close. Emit
         // chat-ended so the panel shows the goodbye + [wave goodbye] button.
         chat.streamSettled = true;
-        EventBus.emit('chat-ended', { npcId: frame.agent, sessionId: chat.sessionId });
+        EventBus.emit('chat-ended', {
+          npcId: frame.agent,
+          sessionId: chat.sessionId,
+          reason: frame.reason ?? null,
+        });
         this.teardownActiveChat();
         break;
 
@@ -713,6 +727,10 @@ export class WorldClient {
         EventBus.emit('chat-delta', { npcId: agent, sessionId: chat.sessionId, text: missing });
       }
       chat.turnText.delete(agent);
+      // Re-surface any cards the agent shared on the dropped turn.
+      for (const card of last.attachments ?? []) {
+        EventBus.emit('chat-share-card', { npcId: agent, sessionId: chat.sessionId, card });
+      }
       EventBus.emit('chat-turn-done', {
         npcId: agent,
         sessionId: chat.sessionId,

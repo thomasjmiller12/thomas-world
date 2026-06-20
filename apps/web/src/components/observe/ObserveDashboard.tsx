@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {
   FeedResponse,
   type ChronicleItem,
+  type ChronicleIssue,
   type DayPhase,
   type FeedItem,
 } from '@town/contract';
@@ -50,6 +51,7 @@ export function ObserveDashboard() {
   // Chronicle day state (Today / Conversations).
   const [day, setDay] = useState<string | null>(null);
   const [items, setItems] = useState<ChronicleItem[]>([]);
+  const [issue, setIssue] = useState<ChronicleIssue | null>(null);
   const [days, setDays] = useState<string[]>([]);
   const [resolvedDay, setResolvedDay] = useState('');
   const [chronicleLoading, setChronicleLoading] = useState(false);
@@ -82,6 +84,7 @@ export function ObserveDashboard() {
       .then((page) => {
         if (seq !== reqSeq.current) return;
         setItems(page.items);
+        setIssue(page.issue);
         setDays(page.days);
         setResolvedDay(page.day);
       })
@@ -249,9 +252,15 @@ export function ObserveDashboard() {
             {tab === 'today' && (
               <TodayTab
                 items={items}
+                issue={issue}
                 loading={chronicleLoading}
                 error={chronicleError}
                 onOpenArtifact={setReaderId}
+                onOpenCitation={(c) => {
+                  const href = c.href ?? '';
+                  if (href.startsWith('artifact:')) setReaderId(href.slice('artifact:'.length));
+                }}
+                onGoToDay={setDay}
               />
             )}
             {tab === 'conversations' && (

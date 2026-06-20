@@ -22,6 +22,9 @@ import type {
   Visibility,
   WorldEventType,
   ArtifactKind,
+  ShareCard,
+  ChronicleIssueSection,
+  ChronicleCitation,
 } from "@town/contract";
 
 // pg text-enum value sets. Inlined (rather than imported from @town/contract's
@@ -322,6 +325,10 @@ export const chatMessages = pgTable(
     // text (no DB enum) so the AgentId widening needs no schema migration here.
     sender: text("sender").notNull(),
     body: text("body").notNull(),
+    // Share cards attached to this message (M2.2 — Part 4). Agents drop concrete
+    // cards mid-chat (artifact / external reference / proof); they're persisted
+    // here so a dropped panel rehydrates them. Empty for ordinary lines.
+    attachments: jsonb("attachments").$type<ShareCard[]>().notNull().default([]),
     ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("chat_messages_session_idx").on(t.sessionId)],
@@ -341,6 +348,82 @@ export const threadSummaries = pgTable("thread_summaries", {
   participants: jsonb("participants").$type<AgentId[]>().notNull().default([]),
   summary: text("summary").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// --- chronicle_issues (the LLM Town Crier newspaper, M2.2 — Part 1) ----------
+// One world-authored newspaper issue per day. Unlike artifacts (agent-authored),
+// a Town Crier issue is editorial synthesis the world prints, so it lives in its
+// own table — keeping the artifact economy agent-authored. `citations` resolve
+// every concrete claim back to a real record; the source*Ids arrays record the
+// packet so an issue is auditable/regenerable. `status` is ready|fallback|empty
+// |failed (the deterministic fallback issue keeps the UI shaped when the LLM is
+// unavailable). Past days are immutable; today caches for a short TTL.
+export const chronicleIssues = pgTable("chronicle_issues", {
+  day: text("day").primaryKey(), // YYYY-MM-DD, UTC (same partition as /chronicle)
+  status: text("status").notNull(),
+  title: text("title").notNull(),
+  subtitle: text("subtitle"),
+  byline: text("byline").notNull().default("The Town Crier"),
+  bodyMd: text("body_md").notNull(),
+  sections: jsonb("sections").$type<ChronicleIssueSection[]>().notNull().default([]),
+  citations: jsonb("citations").$type<ChronicleCitation[]>().notNull().default([]),
+  sourceEventIds: jsonb("source_event_ids").$type<string[]>().notNull().default([]),
+  sourceArtifactIds: jsonb("source_artifact_ids").$type<string[]>().notNull().default([]),
+  sourceThreadIds: jsonb("source_thread_ids").$type<string[]>().notNull().default([]),
+  sourceReferenceIds: jsonb("source_reference_ids").$type<string[]>().notNull().default([]),
+  model: text("model"),
+  promptVersion: text("prompt_version").notNull(),
+  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// --- external_references (curated public catalog, M2.2 — Part 3) -------------
+// Thomas-owned (not agent-authored) public references agents may share as cards:
+// projects, repos, demos, writing, resume/company entries. An ALLOWLIST — only
+// `public` rows are shareable, and the share tools accept ids, never raw URLs.
+// Seeded from curated data at deploy; `sourcePath` records a vault origin if synced.
+export const externalReferences = pgTable(
+  "external_references",
+  {
+    id: text("id").primaryKey(),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    shortTitle: text("short_title"),
+    summary: text("summary").notNull(),
+    bodyMd: text("body_md"),
+    url: text("url"),
+    githubUrl: text("github_url"),
+    liveUrl: text("live_url"),
+    imageUrl: text("image_url"),
+    agentIds: jsonb("agent_ids").$type<AgentId[]>().notNull().default([]),
+    tags: jsonb("tags").$type<string[]>().notNull().default([]),
+    public: boolean("public").notNull().default(true),
+    sourcePath: text("source_path"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    featured: boolean("featured").notNull().default(false),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("external_references_kind_idx").on(t.kind)],
+);
+
+// --- portfolio_proofs (curated proof cards, M2.2 — Part 3) -------------------
+// Claims with evidence — what the About hub's Proof tab renders, and what agents
+// can share as a proof card. Owned by Thomas, not agents. Evidence links point
+// at artifacts, world events, and external references.
+export const portfolioProofs = pgTable("portfolio_proofs", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  claim: text("claim").notNull(),
+  summary: text("summary").notNull(),
+  bodyMd: text("body_md").notNull(),
+  agentIds: jsonb("agent_ids").$type<AgentId[]>().notNull().default([]),
+  skills: jsonb("skills").$type<string[]>().notNull().default([]),
+  artifactIds: jsonb("artifact_ids").$type<string[]>().notNull().default([]),
+  eventIds: jsonb("event_ids").$type<string[]>().notNull().default([]),
+  referenceIds: jsonb("reference_ids").$type<string[]>().notNull().default([]),
+  featured: boolean("featured").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // --- capability_requests (the meta-layer flex surface) ----------------------
