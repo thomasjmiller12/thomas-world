@@ -8,6 +8,8 @@ import { currentPhase, isOvernight } from "../runtime/clock.js";
 import { allAgents } from "./agents.js";
 import { recentEvents } from "./events.js";
 import { isBudgetExhausted } from "./usage.js";
+import { allObjects, rowToWorldObject } from "./objects.js";
+import { allZones } from "./zones.js";
 
 // Project a stored Engagement row onto the contract's AgentStatus.engagement
 // shape (design doc §5): `with` is the OTHER participants plus the literal
@@ -35,11 +37,12 @@ async function visitorsPresent(): Promise<number> {
 }
 
 export async function buildSnapshot(): Promise<SnapshotResponse> {
-  const [agentRows, events, present, budgetExhausted] = await Promise.all([
+  const [agentRows, events, present, budgetExhausted, objectRows] = await Promise.all([
     allAgents(),
     recentEvents(30),
     visitorsPresent(),
     isBudgetExhausted(),
+    allObjects(),
   ]);
 
   const agents: AgentStatus[] = agentRows.map((a) => ({
@@ -63,5 +66,12 @@ export async function buildSnapshot(): Promise<SnapshotResponse> {
     awake: !isOvernight() && !budgetExhausted,
   };
 
-  return { agents, recentEvents: events, world };
+  return {
+    agents,
+    recentEvents: events,
+    world,
+    // MUD embodiment (additive): the canonical object graph + zone registry.
+    objects: objectRows.map(rowToWorldObject),
+    zones: allZones(),
+  };
 }

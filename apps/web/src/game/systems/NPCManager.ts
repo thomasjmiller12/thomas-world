@@ -129,7 +129,12 @@ export class NPCManager {
       this.spawn(id, location, /* walkIn */ true);
       this.placedAt.set(id, location);
     } else if (!here && sprite) {
-      this.despawn(id);
+      // Capture the location the sprite was actually placed at BEFORE clearing
+      // it, so despawn can exit via that location's door (a park agent leaves
+      // by the park door, a town agent by the town door) rather than always the
+      // scene's first location.
+      const exitLoc = this.placedAt.get(id) ?? null;
+      this.despawn(id, exitLoc);
       this.placedAt.delete(id);
     } else if (here && sprite && location && this.placedAt.get(id) !== location) {
       // Already in this scene but its sub-location changed (town↔park): glide
@@ -162,6 +167,9 @@ export class NPCManager {
     });
     if (this.collisionLayer) this.scene.physics.add.collider(npc, this.collisionLayer);
     this.scene.physics.add.collider(this.player, npc);
+    // Wander reuses the SAME A* router as directed walks (the manager owns the
+    // collision layer), so idle roams route around props/walls.
+    npc.setRouter((from, to) => findPath(this.collisionLayer, from, to));
     this.sprites.set(id, npc);
 
     if (walkIn) {
@@ -171,11 +179,9 @@ export class NPCManager {
     }
   }
 
-  private despawn(id: ThomasId): void {
+  private despawn(id: ThomasId, exitLoc: LocationId | null = null): void {
     const sprite = this.sprites.get(id);
     if (!sprite) return;
-    const location = this.agentLocations.get(id);
-    const door = location ? LOCATION_ANCHORS[location]?.door : null;
     // Free its guest slot regardless of which scene it's leaving.
     this.releaseGuestSlot(id);
     this.sprites.delete(id);
@@ -183,8 +189,11 @@ export class NPCManager {
     const finish = () => {
       sprite.destroy();
     };
-    // Walk to the door of whichever scene-location it was just in, then despawn.
-    const exitDoor = this.doorForCurrentScene() ?? door;
+    // Exit via the door of the location the sprite was actually placed at (a
+    // park agent leaves by the park door, a town agent by the town door); fall
+    // back to the scene's first-location door when the prior location is unknown.
+    const exitDoor =
+      (exitLoc ? LOCATION_ANCHORS[exitLoc]?.door : null) ?? this.doorForCurrentScene();
     if (exitDoor) this.walkSprite(sprite, exitDoor, finish);
     else finish();
   }

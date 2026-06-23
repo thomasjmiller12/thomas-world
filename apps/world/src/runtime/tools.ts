@@ -43,6 +43,15 @@ import * as vault from "./vault.js";
 import * as github from "./github.js";
 import { checkFixtureAction, tryRecordEffect, type FixtureDef } from "./fixtures.js";
 import {
+  objectsAtLocation,
+  findObjectAtLocation,
+  appendNote,
+  attachedArtifactsFor,
+  recentObjectEvents,
+} from "../engine/objects.js";
+import { zoneExists } from "../engine/zones.js";
+import { renderPlace } from "./observation.js";
+import {
   searchShareables,
   renderShareableHits,
   shareCardFromArtifact,
@@ -136,13 +145,116 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       "Take a closer look at where you are right now — the place, its fixtures, and who else is here.",
     inputSchema: z.object({}),
     run: async () => {
-      const [loc, here] = await Promise.all([
+      const [loc, here, objectsHere] = await Promise.all([
         getLocation(ctx.location),
         agentsAtLocation(ctx.location, ctx.agentId),
+        objectsAtLocation(ctx.location),
       ]);
-      const fixtures = ((loc?.fixtures as Array<{ id: string }>) ?? []).map((f) => f.id).join(", ");
+      // Match the legacy fixtures order so a clean room reads identically to the
+      // delta packet; renderPlace degrades to a flat list when nothing's salient.
+      const fixtureOrder = ((loc?.fixtures as Array<{ id: string }>) ?? []).map((f) => f.id);
+      const ordered = [...objectsHere].sort((a, b) => {
+        const ia = fixtureOrder.indexOf(a.displayName);
+        const ib = fixtureOrder.indexOf(b.displayName);
+        return (ia === -1 ? Number.MAX_SAFE_INTEGER : ia) - (ib === -1 ? Number.MAX_SAFE_INTEGER : ib);
+      });
+      const placeLines = renderPlace(
+        ordered.map((o) => ({
+          id: o.id,
+          displayName: o.displayName,
+          zone: o.zone,
+          state: o.state as Record<string, unknown> | null,
+          notes: o.notes,
+        })),
+        [],
+      );
       const others = here.length ? here.map((a) => a.displayName).join(", ") : "no one else";
-      return `You're at the ${loc?.name ?? ctx.location}. ${loc?.description ?? ""}\nFixtures: ${fixtures || "(none)"}.\nAlso here: ${others}.`;
+      return `You're at the ${loc?.name ?? ctx.location}. ${loc?.description ?? ""}\n${placeLines.join("\n")}\nAlso here: ${others}.`;
+    },
+  });
+
+  // inspect_object: a close look at ONE object where you are — its state, its
+  // recent history, and any artifacts attached to it. A pure PULL (zero world
+  // mutation, no obligation created) — the read_artifact of physical things.
+  const inspect_object = betaZodTool({
+    name: "inspect_object",
+    description:
+      "Take a close look at ONE thing where you are — its current state, the recent marks/effects on it, and anything pinned or filed to it (with ids you can read_artifact). A quiet look, nothing more; it changes nothing.",
+    inputSchema: z.object({ object: z.string().min(1).max(60) }),
+    run: async ({ object }) => {
+      const obj = await findObjectAtLocation(ctx.location, object);
+      if (!obj) {
+        const here = (await objectsAtLocation(ctx.location)).map((o) => o.displayName).join(", ");
+        return `There's no ${object} here. What's around: ${here || "nothing in particular"}.`;
+      }
+      const state = obj.state as Record<string, unknown>;
+      const stateStr =
+        Object.keys(state).length === 0
+          ? "nothing remarkable about its state"
+          : Object.entries(state)
+              .map(([k, v]) => `${k}: ${String(v)}`)
+              .join(", ");
+      const lines = [`The ${obj.displayName}${obj.description ? ` — ${obj.description}` : ""}.`, `State: ${stateStr}.`];
+      const notes = (obj.notes ?? []) as { agent: string; text: string }[];
+      if (notes.length) {
+        lines.push(
+          `Notes left here:\n${notes.slice(-5).map((n) => `  • ${n.agent}: "${n.text}"`).join("\n")}`,
+        );
+      }
+      const attached = await attachedArtifactsFor(obj.id);
+      if (attached.length) {
+        lines.push(
+          `Attached:\n${attached
+            .slice(0, 8)
+            .map((a) => `  • ${a.kind} "${a.title}" (id ${a.id})`)
+            .join("\n")}`,
+        );
+      }
+      const history = await recentObjectEvents(obj.id, obj.displayName);
+      if (history.length) {
+        lines.push(`Recently:\n${history.map((h) => `  • ${h.line}`).join("\n")}`);
+      }
+      return lines.join("\n");
+    },
+  });
+
+  // leave_note: the lightest "I shaped my space" act — jot a short persistent
+  // note on an object or named zone HERE. Bounded (current location, short text,
+  // the same 3/hour effect limiter as use_fixture) so it can't become a fidget;
+  // the note persists and is re-read next time. One of object|zone required.
+  const leave_note = betaZodTool({
+    name: "leave_note",
+    description:
+      "Jot a short note on something where you are — a line on the workbench, a card by the sign, a thought left in a corner. It stays put and you'll see it again later. Name an object (e.g. 'workbench') OR a zone here. Like jotting on a real desk, not filing paperwork — only when you actually have something to leave.",
+    inputSchema: z.object({
+      object: z.string().max(60).optional(),
+      zone: z.string().max(60).optional(),
+      text: z.string().min(1).max(280),
+    }),
+    run: async ({ object, zone, text }) => {
+      if (!object && !zone) return "Leave the note on something — name an object here or a zone.";
+      let objectId: string | null = null;
+      let resolvedZone: string | undefined = zone;
+      if (object) {
+        const obj = await findObjectAtLocation(ctx.location, object);
+        if (!obj) {
+          const here = (await objectsAtLocation(ctx.location)).map((o) => o.displayName).join(", ");
+          return `There's no ${object} here to leave a note on. What's around: ${here || "nothing in particular"}.`;
+        }
+        objectId = obj.id;
+      } else if (zone && !zoneExists(zone, ctx.location)) {
+        return `There's no spot called "${zone}" here.`;
+      }
+      // Rate limit AFTER validation so a wrong target doesn't burn a slot.
+      if (!tryRecordEffect(ctx.agentId)) {
+        return "You've been leaving a lot of marks around lately — let it rest for a bit.";
+      }
+      const res = await appendNote({ objectId, zone: resolvedZone }, ctx.agentId, ctx.location, text);
+      if (!res.ok) return "You can't leave a note there from here.";
+      await ctx.onAction?.("leave_note", "jots a note");
+      return objectId
+        ? `You leave a note on the ${object}. It'll be there when you come back.`
+        : `You leave a note ${resolvedZone}. It'll be there when you come back.`;
     },
   });
 
@@ -540,6 +652,8 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     set_activity as RunnableTool,
     search_shareables as RunnableTool,
     look_around as RunnableTool,
+    inspect_object as RunnableTool,
+    leave_note as RunnableTool,
     use_fixture as RunnableTool,
     send_dm as RunnableTool,
     broadcast as RunnableTool,

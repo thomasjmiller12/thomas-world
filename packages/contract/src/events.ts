@@ -162,6 +162,61 @@ export const WorldTimePayload = z.object({
   phase: DayPhase, // day/night tint
 });
 
+// --- world-object events (MUD embodiment foundation) ------------------------
+// Five additive types for the canonical object graph. `object.noted` is the
+// only one EMITTED in this slice (by leave_note); the other four are
+// forward-ready render arms (their emission lands with the control-verb /
+// cutover slices). All visibility "location".
+
+// An agent placed a new object instance in a zone.
+export const ObjectCreatedPayload = z.object({
+  objectId: z.string(),
+  agent: AgentId,
+  location: LocationId,
+  zone: z.string(),
+  template: z.string().nullable(),
+  displayName: z.string(),
+});
+
+// An agent moved an existing object between zones.
+export const ObjectMovedPayload = z.object({
+  objectId: z.string(),
+  agent: AgentId,
+  location: LocationId,
+  fromZone: z.string(),
+  toZone: z.string(),
+});
+
+// An object's visible state changed (supersedes world.effect semantically;
+// world.effect keeps emitting in this slice). `agent` null => ambient/system.
+export const ObjectStateChangedPayload = z.object({
+  objectId: z.string(),
+  agent: AgentId.nullable(),
+  location: LocationId,
+  effect: z.string(),
+  state: z.record(z.string(), z.unknown()).optional(),
+});
+
+// An artifact was attached to an object ("a note appears on the shelf").
+export const ObjectAttachedPayload = z.object({
+  objectId: z.string(),
+  artifactId: z.string(),
+  agent: AgentId,
+  location: LocationId,
+  kind: ArtifactKind,
+  title: z.string(),
+});
+
+// An agent jotted a short note on an object or zone (emitted by leave_note).
+// `objectId` null when the note is anchored to a bare zone instead.
+export const ObjectNotedPayload = z.object({
+  objectId: z.string().nullable(),
+  zone: z.string().optional(),
+  agent: AgentId,
+  location: LocationId,
+  text: z.string(),
+});
+
 // --- discriminated union ----------------------------------------------------
 
 // Envelope fields shared by every event. `payload` is attached per-member
@@ -198,6 +253,11 @@ export const WorldEvent = z.discriminatedUnion("type", [
   z.object({ ...envelopeBase, type: z.literal("chat.joined"), payload: ChatJoinedPayload }),
   z.object({ ...envelopeBase, type: z.literal("conversation.converted"), payload: ConversationConvertedPayload }),
   z.object({ ...envelopeBase, type: z.literal("world.time"), payload: WorldTimePayload }),
+  z.object({ ...envelopeBase, type: z.literal("object.created"), payload: ObjectCreatedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("object.moved"), payload: ObjectMovedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("object.state_changed"), payload: ObjectStateChangedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("object.attached"), payload: ObjectAttachedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("object.noted"), payload: ObjectNotedPayload }),
 ]);
 export type WorldEvent = z.infer<typeof WorldEvent>;
 
@@ -225,6 +285,11 @@ export const worldEventTypes = [
   "chat.joined",
   "conversation.converted",
   "world.time",
+  "object.created",
+  "object.moved",
+  "object.state_changed",
+  "object.attached",
+  "object.noted",
 ] as const;
 export const WorldEventType = z.enum(worldEventTypes);
 export type WorldEventType = z.infer<typeof WorldEventType>;

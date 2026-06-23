@@ -10,12 +10,13 @@
 //  - notice-push: my inbox (DMs/broadcasts) + co-located room events
 //  - EXCLUDED: my own events (already in my thread) + events elsewhere (pull)
 
-import { gt, sql } from "drizzle-orm";
-import type { AgentId, LocationId, WorldEvent } from "@town/contract";
+import { eq, gt, sql } from "drizzle-orm";
+import type { AgentId, LocationId, WorldEvent, ObjectNote } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { getAgent } from "../engine/agents.js";
 import { getLocation, agentsAtLocation } from "../engine/locations.js";
 import { perceivedEventsSince } from "../engine/events.js";
+import { objectsAtLocation, type WorldObjectRow } from "../engine/objects.js";
 import { inboxFor, type MessageRow } from "../engine/messages.js";
 import { coreMemorySnapshot } from "../engine/memory.js";
 import {
@@ -137,6 +138,75 @@ export function renderVisitorsSection(
   return `${lines}.${tail}`;
 }
 
+// Render a single world_object's state suffix, ONLY when non-default — silence
+// on default is the key anti-game-y rule (a clean object renders bare, no
+// "(idle)" noise). Recognizes a few common keys; falls back to a compact dump.
+function renderObjectState(state: Record<string, unknown> | null | undefined): string {
+  if (!state) return "";
+  const entries = Object.entries(state).filter(([, v]) => v !== undefined && v !== null);
+  if (entries.length === 0) return "";
+  const parts: string[] = [];
+  for (const [k, v] of entries) {
+    if (k === "on") parts.push(v ? "on" : "off");
+    else if (k === "open") parts.push(v ? "open" : "closed");
+    else if (k === "showing") parts.push(`showing "${String(v)}"`);
+    else if (k === "label") parts.push(String(v));
+    else if (typeof v === "boolean") parts.push(v ? k : `not ${k}`);
+    else parts.push(`${k}: ${String(v)}`);
+  }
+  return parts.length ? ` (${parts.join(", ")})` : "";
+}
+
+// Pure rendering of the inhabited "Where you are" object/zone lines from the
+// canonical world_objects rows. DEGRADES GRACEFULLY: when no object carries any
+// non-default state, no notes, and nothing is pinned here, it returns EXACTLY
+// today's flat `Fixtures here: a, b, c.` line — so the packet is byte-equivalent
+// for a clean room (never a regression) and only grows richer as object state
+// populates. `pinned` is artifacts whose locationId === here (existing column —
+// no new read shape). Hard cap of `cap` salient objects + collapse-the-rest
+// keeps the lean cache-cheap packet (M3) bounded.
+export function renderPlace(
+  objects: { id: string; displayName: string; zone: string; state?: Record<string, unknown> | null; notes?: ObjectNote[] | null }[],
+  pinned: { title: string; kind: string; id: string }[],
+  cap = 5,
+): string[] {
+  const ids = objects.map((o) => o.displayName);
+  // "Salient" = carries non-default state OR a note. A room where nothing is
+  // salient and nothing is pinned degrades to the legacy flat line.
+  const salient = objects.filter(
+    (o) => renderObjectState(o.state) !== "" || (o.notes && o.notes.length > 0),
+  );
+  if (salient.length === 0 && pinned.length === 0) {
+    return [`Fixtures here: ${ids.join(", ") || "(none)"}.`];
+  }
+
+  // Inhabited rendering: a flowing "Around you:" sentence (prose, not a menu),
+  // salient objects first (with their state + most-recent note), then the rest
+  // collapsed. Capped so the packet stays bounded.
+  const shown = salient.slice(0, cap);
+  const restCount = ids.length - shown.length;
+  const phrases = shown.map((o) => {
+    let s = `${o.displayName}${renderObjectState(o.state)}`;
+    const last = o.notes && o.notes.length ? o.notes[o.notes.length - 1] : undefined;
+    if (last) s += ` — a note reads "${last.text}"`;
+    return s;
+  });
+  if (restCount > 0) {
+    const restNames = ids.filter((n) => !shown.some((o) => o.displayName === n));
+    phrases.push(restNames.length <= 3 ? restNames.join(", ") : "the usual fixtures");
+  }
+  const lines = [`Around you: ${phrases.join("; ")}.`];
+
+  if (pinned.length) {
+    const pinnedStr = pinned
+      .slice(0, 4)
+      .map((a) => `"${a.title}" (${a.kind}, id ${a.id})`)
+      .join(", ");
+    lines.push(`Pinned here: ${pinnedStr}.`);
+  }
+  return lines;
+}
+
 function renderInbox(msgs: MessageRow[]): string {
   if (msgs.length === 0) return "Nothing new in your inbox.";
   return msgs
@@ -208,6 +278,21 @@ export function renderEvents(events: WorldEvent[], location: LocationId, viewer:
           return `- ${p.agent} finished a visitor conversation`;
         case "world.time":
           return `- the time shifted to ${p.phase}`;
+        // Forward-ready arms for the world-object events. Only object.noted is
+        // emitted in this slice; the others fire harmlessly once later slices
+        // emit them (their payload zod is the single source of the shape).
+        case "object.noted":
+          return p.objectId
+            ? `- ${p.agent} jotted a note on the ${p.objectId}: "${p.text}"`
+            : `- ${p.agent} left a note ${p.zone ? `(${p.zone})` : "here"}: "${p.text}"`;
+        case "object.created":
+          return `- ${p.agent} placed a ${p.displayName} ${p.zone ? `(${p.zone})` : "here"}`;
+        case "object.moved":
+          return `- ${p.agent} moved something from ${p.fromZone} to ${p.toZone}`;
+        case "object.state_changed":
+          return `- the ${p.objectId} changed: ${p.effect}${p.agent ? ` (${p.agent})` : ""}`;
+        case "object.attached":
+          return `- ${p.agent} put "${p.title}" on the ${p.objectId}`;
         default:
           // All event types are handled above; `e` narrows to never here.
           return `- something happened (${(e as WorldEvent).type})`;
@@ -235,15 +320,21 @@ export async function buildDelta(
   const location = agent.locationId as LocationId;
 
   const cursor = await readCursor(agentId);
-  const [loc, here, perceivedRes, inboxRes, visitorCount, visitorsHere, core] = await Promise.all([
-    getLocation(location),
-    agentsAtLocation(location, agentId),
-    perceivedEventsSince(cursor.eventId, agentId, location),
-    inboxFor(agentId, cursor.messageId),
-    visitorsPresentCount(),
-    visitorsAtLocation(location),
-    coreMemorySnapshot(agentId),
-  ]);
+  const [loc, here, perceivedRes, inboxRes, visitorCount, visitorsHere, core, objectsHere, pinnedHere] =
+    await Promise.all([
+      getLocation(location),
+      agentsAtLocation(location, agentId),
+      perceivedEventsSince(cursor.eventId, agentId, location),
+      inboxFor(agentId, cursor.messageId),
+      visitorsPresentCount(),
+      visitorsAtLocation(location),
+      coreMemorySnapshot(agentId),
+      objectsAtLocation(location),
+      db
+        .select()
+        .from(schema.artifacts)
+        .where(eq(schema.artifacts.locationId, location)),
+    ]);
   const inbox = inboxRes.rows;
   const arrivalMs = await arrivalTimesAtLocation(
     location,
@@ -256,7 +347,26 @@ export async function buildDelta(
     (e) => e.locationId === location && e.agentId !== agentId,
   );
 
-  const fixtures = ((loc?.fixtures as Array<{ id: string }>) ?? []).map((f) => f.id).join(", ");
+  // Order the canonical objects to match the legacy fixtures order so a clean
+  // room renders byte-identically to today's `Fixtures here:` line (the renderer
+  // degrades to that line when nothing is salient). Any object not in the
+  // fixtures list (none today; future agent-placed objects) sorts after.
+  const fixtureOrder = ((loc?.fixtures as Array<{ id: string }>) ?? []).map((f) => f.id);
+  const orderedObjects = [...(objectsHere as WorldObjectRow[])].sort((a, b) => {
+    const ia = fixtureOrder.indexOf(a.displayName);
+    const ib = fixtureOrder.indexOf(b.displayName);
+    return (ia === -1 ? Number.MAX_SAFE_INTEGER : ia) - (ib === -1 ? Number.MAX_SAFE_INTEGER : ib);
+  });
+  const placeLines = renderPlace(
+    orderedObjects.map((o) => ({
+      id: o.id,
+      displayName: o.displayName,
+      zone: o.zone,
+      state: o.state as Record<string, unknown> | null,
+      notes: o.notes as ObjectNote[] | null,
+    })),
+    pinnedHere.map((a) => ({ title: a.title, kind: a.kind, id: a.id })),
+  );
   const others =
     here.length > 0
       ? here.map((a) => a.displayName).join(", ")
@@ -275,7 +385,7 @@ export async function buildDelta(
     `## Where you are`,
     `It's ${clockLine()}.`,
     `You're at the ${loc?.name ?? location}. ${loc?.description ?? ""}`,
-    `Fixtures here: ${fixtures || "(none)"}.`,
+    ...placeLines,
     `Also here: ${others}.`,
     renderVisitorsSection(
       visitorsHere.map((v: VisitorRow) => ({ id: v.id, name: v.name })),

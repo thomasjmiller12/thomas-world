@@ -7,8 +7,10 @@ import { db, pool, schema } from "./client.js";
 import { upsertReference } from "../engine/references.js";
 import { upsertProof } from "../engine/portfolio.js";
 import { REFERENCE_SEED, PROOF_SEED } from "./portfolio-content.js";
+import { ZONES, LOCATION_KIND, defaultZone } from "../engine/zones.js";
+import type { LocationId, ObjectPlacement } from "@town/contract";
 
-const { locations, agents } = schema;
+const { locations, agents, worldObjects } = schema;
 
 // Adjacency is a small graph: the town square connects to every interior;
 // interiors connect back to town (you walk through the square to reach others).
@@ -102,6 +104,127 @@ const AGENTS = [
   { id: "hobby", displayName: "Hobby Thomas", locationId: "park", status: "settling in" },
 ] as const;
 
+// --- world_objects derivation (MUD embodiment foundation) -------------------
+// Materialize the existing LOCATIONS.fixtures into first-class world_objects
+// rows, ADDITIVELY (the fixtures column stays seeded + authoritative for
+// perception/use_fixture in this slice). The three maps below bind each known
+// fixture to a library template, a seeded zone, and the existing hand-authored
+// scene coordinates where known (so the renderer can later read placement from
+// world_objects). Unknown => null. Keys are `<location>.<fixture id>`.
+
+// FIXTURE → library.json template name (the asset-vocabulary bridge). Drawn from
+// the hand-authored scene mappings; null where no sprite is pinned yet.
+const FIXTURE_TEMPLATE: Record<string, string | null> = {
+  "town.notice board": "blue-info-sign-board",
+  "town.news stand": null,
+  "town.fountain": null,
+  "office.outbox": null,
+  "office.desk": null,
+  "office.phone": "rotary-phone-red",
+  "library.bookshelf": null,
+  "library.reading desk": null,
+  "library.lamp": "table-lamp-beige-lit",
+  "workshop.monitor": null,
+  "workshop.workbench": null,
+  "workshop.lamp": "table-lamp-beige-lit",
+  "cafe.press": null,
+  "cafe.corner table": null,
+  "cafe.espresso machine": null,
+  "park.the dumb sign": null,
+  "park.bench": "wooden-park-bench-side",
+  "park.payphone": "phone-booth-red",
+};
+
+// FIXTURE → seeded zone id. Falls back to `<location>.center`.
+const FIXTURE_ZONE: Record<string, string> = {
+  "town.notice board": "town.plaza-board",
+  "town.news stand": "town.news-corner",
+  "town.fountain": "town.fountain-edge",
+  "office.outbox": "office.outbox-nook",
+  "office.desk": "office.desk",
+  "office.phone": "office.desk",
+  "library.bookshelf": "library.stacks",
+  "library.reading desk": "library.desk",
+  "library.lamp": "library.reading-nook",
+  "workshop.monitor": "workshop.monitor-corner",
+  "workshop.workbench": "workshop.bench-area",
+  "workshop.lamp": "workshop.bench-area",
+  "cafe.press": "cafe.press-corner",
+  "cafe.corner table": "cafe.tables",
+  "cafe.espresso machine": "cafe.counter",
+  "park.the dumb sign": "park.the-sign",
+  "park.bench": "park.bench-area",
+  "park.payphone": "park.phone-box",
+};
+
+// FIXTURE → existing hand-authored renderer coordinates (Town scene), where
+// known. Pre-fills placement so a later cutover can drive the renderer from
+// world_objects; null where coordinates aren't pinned yet.
+const FIXTURE_PLACEMENT: Record<string, ObjectPlacement | null> = {
+  "town.notice board": { scene: "Town", x: 396, y: 320 },
+};
+
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+async function seedWorldObjects() {
+  let count = 0;
+  for (const loc of LOCATIONS) {
+    const fixtures = loc.fixtures as ReadonlyArray<{
+      id: string;
+      kind?: string;
+      note?: string;
+      actions?: readonly string[];
+    }>;
+    for (const f of fixtures) {
+      const key = `${loc.id}.${f.id}`;
+      const id = `${loc.id}.${slugify(f.id)}`;
+      const zone = FIXTURE_ZONE[key] ?? defaultZone(loc.id as LocationId);
+      const template = FIXTURE_TEMPLATE[key] ?? null;
+      const placement = FIXTURE_PLACEMENT[key] ?? null;
+      await db
+        .insert(worldObjects)
+        .values({
+          id,
+          template,
+          // displayName is the EXACT fixture id string so perception is unchanged.
+          displayName: f.id,
+          locationId: loc.id,
+          zone,
+          placement,
+          kind: f.kind ?? null,
+          description: f.note ?? null,
+          affordances: [...(f.actions ?? [])],
+          movable: false,
+          ownerAgentId: null,
+        })
+        .onConflictDoUpdate({
+          target: worldObjects.id,
+          // CRITICAL idempotency rule (mirrors agents.locationId): refresh only
+          // the seed-derived descriptive fields. NEVER overwrite state,
+          // attachedArtifactIds, notes, or ownerAgentId — once an agent mutates
+          // an object or owns it, a re-seed must not clobber that living state.
+          set: {
+            displayName: f.id,
+            kind: f.kind ?? null,
+            description: f.note ?? null,
+            affordances: [...(f.actions ?? [])],
+            zone,
+            template,
+            placement,
+            updatedAt: new Date(),
+          },
+        });
+      count++;
+    }
+  }
+  console.log(`seeded ${count} world_objects`);
+}
+
 async function main() {
   for (const loc of LOCATIONS) {
     await db
@@ -112,6 +235,8 @@ async function main() {
         description: loc.description,
         fixtures: loc.fixtures,
         adjacency: loc.adjacency,
+        zones: ZONES[loc.id as LocationId] ?? [],
+        kind: LOCATION_KIND[loc.id as LocationId] ?? null,
       })
       .onConflictDoUpdate({
         target: locations.id,
@@ -120,10 +245,15 @@ async function main() {
           description: loc.description,
           fixtures: loc.fixtures,
           adjacency: loc.adjacency,
+          zones: ZONES[loc.id as LocationId] ?? [],
+          kind: LOCATION_KIND[loc.id as LocationId] ?? null,
         },
       });
   }
   console.log(`seeded ${LOCATIONS.length} locations`);
+
+  // Shadow-build the canonical object graph from the same fixtures (additive).
+  await seedWorldObjects();
 
   for (const a of AGENTS) {
     await db

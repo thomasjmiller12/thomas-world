@@ -57,6 +57,13 @@
       "when": 1781900000000,
       "tag": "0007_chronicle_portfolio",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782000000000,
+      "tag": "0008_world_objects",
+      "breakpoints": true
     }
   ]
 }

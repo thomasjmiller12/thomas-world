@@ -37,6 +37,16 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   // Directed-walk target + arrival callback (walking state).
   private walkTarget: { x: number; y: number } | null = null;
   private onArrive: (() => void) | null = null;
+  // Optional collision-aware router (injected by the manager, which owns the
+  // collision layer). When set, wander legs route through A* via walkPath; when
+  // null, wander falls back to the straight-line + stall-guard walk.
+  private router:
+    | ((from: { x: number; y: number }, to: { x: number; y: number }) => { x: number; y: number }[] | null)
+    | null = null;
+  // True while the current `walking`-state leg is a wander leg (an A*-routed
+  // idle roam) rather than a directed walk. Lets the arrival branch resume the
+  // wander loop (re-pause + re-route) instead of firing a directed onArrive.
+  private isWanderLeg = false;
 
   constructor(scene: Phaser.Scene, config: NPCConfig) {
     super(scene, config.homePosition.x, config.homePosition.y, config.sprite, 0);
@@ -88,6 +98,14 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     g.fillCircle(4, -4, 1.5);
   }
 
+  // Inject a collision-aware router so wander legs reuse the same A* as directed
+  // walks. The manager owns the collision layer and passes it in.
+  setRouter(
+    fn: (from: { x: number; y: number }, to: { x: number; y: number }) => { x: number; y: number }[] | null
+  ): void {
+    this.router = fn;
+  }
+
   // --- waypoint wander (idle flourish, the default state) -------------------
 
   private startWaypoints() {
@@ -106,6 +124,23 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     if (dist < 4) {
       this.arriveAtWaypoint();
       return;
+    }
+
+    // When a router is set, A*-route the wander leg through the existing
+    // walking-state machinery (walkPath → update() walking branch), so an idle
+    // agent navigates around props/walls instead of bumping the straight line.
+    if (this.router) {
+      const path = this.router({ x: this.x, y: this.y }, target);
+      if (path && path.length > 0) {
+        // walkPath → walkTo sets state to 'walking' and clears isWanderLeg
+        // (it's a directed-walk entry point), so mark this leg as a wander leg
+        // AFTER calling it. The arrival callback (onWanderLegArrived) resumes
+        // the wander loop rather than firing a directed onArrive.
+        this.walkPath(path, () => this.onWanderLegArrived());
+        this.isWanderLeg = true;
+        return;
+      }
+      // Router set but no path → fall through to the straight-line walk below.
     }
 
     const vx = (dx / dist) * NPC_SPEED;
@@ -129,6 +164,15 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     });
   }
 
+  // Arrival callback for an A*-routed wander leg: the sprite finished walking to
+  // an authored waypoint via the walking-state machinery. Resume the wander loop
+  // exactly as arriveAtWaypoint would (pause 3-8s, advance index, re-route).
+  private onWanderLegArrived() {
+    this.isWanderLeg = false;
+    this.npcState = 'wander';
+    this.arriveAtWaypoint();
+  }
+
   // --- state transitions (driven by the NPCManager) -------------------------
 
   // Resume local idle wandering from wherever the sprite currently stands. The
@@ -138,6 +182,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     this.npcState = 'wander';
     this.walkTarget = null;
     this.onArrive = null;
+    this.isWanderLeg = false;
     this.isPaused = false;
     if (home) {
       this.waypoints = [
@@ -157,6 +202,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     this.walkTarget = { x: target.x, y: target.y };
     this.pathQueue = [];
     this.onArrive = done ?? null;
+    this.isWanderLeg = false;
     this.isPaused = false;
     this.stallFrames = 0;
     this.stallX = this.x;
@@ -181,6 +227,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     this.walkTarget = null;
     this.pathQueue = [];
     this.onArrive = null;
+    this.isWanderLeg = false;
     this.setVelocity(0, 0);
     if (this.pauseTimer) this.pauseTimer.destroy();
     this.facePlayer(playerX, playerY);
@@ -244,16 +291,18 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
       const dx = this.walkTarget.x - this.x;
       const dy = this.walkTarget.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      // Stall = arrived: the walk is straight-line with no pathfinding, so a
-      // wall on the line (or an anchor on a collision tile) would otherwise trap
-      // the sprite in 'walking' forever — bumping the wall AND excluded from
-      // interaction targeting. Barely moving for ~15 frames → stop where it is
-      // and fire the arrival callback so the agent still applies its state.
+      // Stall = arrived. Now that BOTH directed walks and wander legs are
+      // A*-routed around static geometry (walls/props), the stall guard is only
+      // a dynamic-obstacle recovery — another sprite parked on the target tile —
+      // rather than a static-wall band-aid. So the threshold is raised (15→30,
+      // ~0.5s): fewer false "arrived at the wrong spot" advances. Barely moving
+      // for ~30 frames → stop where it is and fire the arrival callback so the
+      // agent still applies its state.
       const moved = Math.hypot(this.x - this.stallX, this.y - this.stallY);
       this.stallFrames = moved < 0.3 ? this.stallFrames + 1 : 0;
       this.stallX = this.x;
       this.stallY = this.y;
-      if (dist < 4 || this.stallFrames > 15) {
+      if (dist < 4 || this.stallFrames > 30) {
         this.stallFrames = 0;
         // More legs queued (A* route) → advance to the next one. A stalled leg
         // also advances: the next leg usually routes around whatever blocked us.
@@ -278,13 +327,16 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
       const target = this.waypoints[this.currentWaypointIndex];
       if (target) {
         const dist = Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y);
-        // Same stall guard for wander legs: a blocked waypoint advances to the
-        // next one instead of walking into the wall until the heat death of the town.
+        // Same stall guard for the straight-line wander FALLBACK (router unset
+        // or no path): a blocked waypoint advances to the next one instead of
+        // walking into the wall until the heat death of the town. Threshold
+        // raised (15→30) to match the walking branch; A*-routed wander legs run
+        // through the walking branch above, so this only covers the fallback.
         const moved = Math.hypot(this.x - this.stallX, this.y - this.stallY);
         this.stallFrames = moved < 0.3 ? this.stallFrames + 1 : 0;
         this.stallX = this.x;
         this.stallY = this.y;
-        if (dist < 4 || this.stallFrames > 15) {
+        if (dist < 4 || this.stallFrames > 30) {
           this.stallFrames = 0;
           this.arriveAtWaypoint();
         }

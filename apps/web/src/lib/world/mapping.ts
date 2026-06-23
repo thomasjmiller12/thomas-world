@@ -91,6 +91,15 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
     case 'conversation.ended':
     case 'conversation.converted':
     case 'chat.joined':
+    // Canonical object-graph events (World Embodiment / MUD layer, Phase 0).
+    // The model ships first; the `WorldObjectLayer` renderer that turns these
+    // into sprite placements/updates is Phase 2. Until then they parse on SSE
+    // but have no canvas surface — same pattern as the feed-only events above.
+    case 'object.created':
+    case 'object.moved':
+    case 'object.state_changed':
+    case 'object.attached':
+    case 'object.noted':
       return [];
 
     default: {

@@ -25,6 +25,10 @@ import type {
   ShareCard,
   ChronicleIssueSection,
   ChronicleCitation,
+  ObjectPlacement,
+  WorldObjectState,
+  ObjectNote,
+  SemanticZone,
 } from "@town/contract";
 
 // pg text-enum value sets. Inlined (rather than imported from @town/contract's
@@ -67,6 +71,11 @@ const eventTypeEnum = [
   "chat.joined",
   "conversation.converted",
   "world.time",
+  "object.created",
+  "object.moved",
+  "object.state_changed",
+  "object.attached",
+  "object.noted",
 ] as const;
 
 // Compile-time drift guards: every inlined literal must be assignable to (and
@@ -154,6 +163,12 @@ export const locations = pgTable("locations", {
   fixtures: jsonb("fixtures").notNull().default("[]"),
   // Adjacency: array of reachable location ids.
   adjacency: jsonb("adjacency").notNull().default("[]"),
+  // MUD embodiment: the named-zone registry exposed via the read API (seeded
+  // from engine/zones.ts). Additive; fixtures + adjacency untouched.
+  zones: jsonb("zones").$type<SemanticZone[]>().notNull().default([]),
+  // The location's coarse type (e.g. "interior" | "outdoor"), seeded alongside
+  // zones so object templates can later match where they fit. Nullable/additive.
+  kind: text("kind"),
 });
 
 // --- world_events (append-only spine, plan §3.2) ----------------------------
@@ -229,6 +244,10 @@ export const artifacts = pgTable(
     body: text("body").notNull(),
     locationId: text("location_id", { enum: locationEnum }),
     fixture: text("fixture"),
+    // MUD embodiment: a link to the world_object this artifact is attached to
+    // ("a note on the shelf"). Nullable/additive; locationId + fixture kept for
+    // back-compat (Chronicle/feed read them).
+    objectId: text("object_id"),
     published: boolean("published").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -240,6 +259,57 @@ export const artifacts = pgTable(
   (t) => [
     index("artifacts_agent_idx").on(t.agentId),
     index("artifacts_kind_idx").on(t.kind),
+  ],
+);
+
+// --- world_objects (MUD embodiment: the canonical object graph) -------------
+// Promotes today's free-string `locations.fixtures` into first-class, mutable,
+// agent-legible furniture instances addressed by SEMANTIC zone (never pixels).
+// SHADOW-BUILT in this slice: seeded alongside the still-live fixtures column,
+// not yet read by buildDelta/use_fixture (cutover is a later slice). The seed
+// upsert NEVER overwrites state/attachedArtifactIds/notes/ownerAgentId, mirroring
+// the agents.locationId discipline so agent mutations survive re-seed.
+export const worldObjects = pgTable(
+  "world_objects",
+  {
+    // Stable slug `<location>.<slug>`, human-stable for idempotent seeding.
+    id: text("id").primaryKey(),
+    // A library.json object NAME (the asset-vocabulary bridge). Nullable.
+    template: text("template"),
+    displayName: text("display_name").notNull(),
+    locationId: text("location_id", { enum: locationEnum }).notNull(),
+    // The SEMANTIC anchor (a zone id), validated against the zone registry.
+    zone: text("zone").notNull(),
+    // Renderer hint, filled by the frontend/validation layer; null => pick a spot.
+    placement: jsonb("placement").$type<ObjectPlacement | null>(),
+    // Small loose state bag; rendered in perception only when non-default.
+    state: jsonb("state").$type<WorldObjectState>().notNull().default({}),
+    // The verb whitelist (successor to FixtureDef.actions). Empty = decorative.
+    affordances: jsonb("affordances").$type<string[]>().notNull().default([]),
+    // Carries forward FixtureDef.kind.
+    kind: text("kind"),
+    // The "note on the shelf" link, denormalized for fast read.
+    attachedArtifactIds: jsonb("attached_artifact_ids")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    // Short persistent notes jotted here (leave_note appends).
+    notes: jsonb("notes").$type<ObjectNote[]>().notNull().default([]),
+    // Who placed/owns it. Null => town commons (seeded fixtures).
+    ownerAgentId: text("owner_agent_id", { enum: agentEnum }),
+    description: text("description"),
+    movable: boolean("movable").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("world_objects_location_idx").on(t.locationId),
+    index("world_objects_owner_idx").on(t.ownerAgentId),
+    index("world_objects_location_zone_idx").on(t.locationId, t.zone),
   ],
 );
 

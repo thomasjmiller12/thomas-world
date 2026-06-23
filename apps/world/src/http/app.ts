@@ -29,6 +29,7 @@ import {
   ProofResponse,
   ReferencesResponse,
   ReferenceResponse,
+  WorldObjectsResponse,
 } from "@town/contract";
 import type { ExternalReferenceKind } from "@town/contract";
 import type { LocationId } from "@town/contract";
@@ -36,6 +37,8 @@ import type { ArtifactSummary } from "@town/contract";
 import type { z } from "zod";
 import { config } from "../config.js";
 import { buildSnapshot, engagementToContract } from "../engine/snapshot.js";
+import { allObjects, objectsAtLocation, rowToWorldObject } from "../engine/objects.js";
+import { allZones, zonesForLocation } from "../engine/zones.js";
 import {
   eventsAfter,
   recentEvents,
@@ -170,6 +173,23 @@ export function createApp() {
   // --- GET /world/snapshot -------------------------------------------------
   app.get("/world/snapshot", async (c) => {
     return c.json(validated(SnapshotResponse, await buildSnapshot()));
+  });
+
+  // --- GET /world/objects?location= ----------------------------------------
+  // The canonical object graph (optionally filtered to one location) + the zone
+  // registry. Read-only, additive — the renderer subscribes to world state here.
+  app.get("/world/objects", async (c) => {
+    const loc = c.req.query("location");
+    const isLoc = loc != null && (locationIds as readonly string[]).includes(loc);
+    const [rows, zones] = isLoc
+      ? [await objectsAtLocation(loc as LocationId), zonesForLocation(loc as LocationId)]
+      : [await allObjects(), allZones()];
+    return c.json(
+      validated(WorldObjectsResponse, {
+        objects: rows.map(rowToWorldObject),
+        zones,
+      }),
+    );
   });
 
   // --- GET /events?after=<id> (polling/catch-up) --------------------------

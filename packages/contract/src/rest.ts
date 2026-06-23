@@ -2,6 +2,7 @@ import { z } from "zod";
 import { AgentId, LocationId, DayPhase } from "./ids.js";
 import { ArtifactKind } from "./artifacts.js";
 import { WorldEvent, WorldEventType } from "./events.js";
+import { WorldObject, SemanticZone } from "./objects.js";
 import { ShareCard } from "./share-cards.js";
 
 // REST request/response shapes for every endpoint in plan §5. Inferred TS
@@ -80,8 +81,21 @@ export const SnapshotResponse = z.object({
   agents: z.array(AgentStatus),
   recentEvents: z.array(WorldEvent),
   world: WorldState,
+  // MUD embodiment (additive/optional): the canonical object graph + named zones
+  // for the renderer. Optional so older clients/tests parse a snapshot without them.
+  objects: z.array(WorldObject).optional(),
+  zones: z.array(SemanticZone).optional(),
 });
 export type SnapshotResponse = z.infer<typeof SnapshotResponse>;
+
+// --- GET /world/objects?location= -------------------------------------------
+// The canonical object graph (optionally filtered to one location) + the zone
+// registry, for the renderer to subscribe to world state. Read-only, additive.
+export const WorldObjectsResponse = z.object({
+  objects: z.array(WorldObject),
+  zones: z.array(SemanticZone),
+});
+export type WorldObjectsResponse = z.infer<typeof WorldObjectsResponse>;
 
 // --- GET /health ------------------------------------------------------------
 
