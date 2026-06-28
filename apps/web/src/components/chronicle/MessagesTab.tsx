@@ -30,7 +30,7 @@ function timeLabel(ts: string): string {
   return sameDay ? hm : `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${hm}`;
 }
 
-export function MessagesTab() {
+export function MessagesTab({ refreshNonce = 0 }: { refreshNonce?: number }) {
   const [scope, setScope] = useState<MessageScope | 'all'>('all');
   const [messages, setMessages] = useState<Message[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -57,7 +57,7 @@ export function MessagesTab() {
         if (seq === reqSeq.current) setLoading(false);
       });
     return () => ctrl.abort();
-  }, [scope]);
+  }, [scope, refreshNonce]);
 
   const loadOlder = () => {
     if (!cursor || loading) return;

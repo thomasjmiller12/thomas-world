@@ -33,6 +33,15 @@ const STORAGE_KEYS = {
 
 const PING_INTERVAL_MS = 60_000;
 
+// Periodic authoritative re-sync. Railway's edge recycles long-lived SSE
+// connections (~15 min); a silent drop + EventSource auto-reconnect can miss
+// moves beyond the server's bounded backlog replay, leaving sprites frozen
+// until a manual refresh re-reads the snapshot. We instead re-hydrate the
+// snapshot on every reconnect, on tab-focus regain, and on this slow timer —
+// the snapshot is the source of truth for positions, so this self-heals the
+// "agents don't move until I refresh" staleness without waiting on the stream.
+const RESYNC_INTERVAL_MS = 90_000;
+
 // Per-open chat session bookkeeping (one visitor↔agent(s) session at a time).
 interface ActiveChat {
   sessionId: string;
@@ -74,6 +83,13 @@ export class WorldClient {
   private lastEventId: string | null = null;
   private reconnectAttempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  // True once the SSE stream has opened at least once. A subsequent `onopen` is
+  // a reconnect — we re-hydrate the snapshot so authoritative positions are
+  // corrected even if the gap exceeded the server's backlog replay window.
+  private hasConnectedOnce = false;
+  // Slow authoritative re-sync timer + in-flight guard (see RESYNC_INTERVAL_MS).
+  private resyncTimer: ReturnType<typeof setInterval> | null = null;
+  private resyncing = false;
 
   private currentLocation: LocationId | null = null;
   private activeChat: ActiveChat | null = null;
@@ -115,6 +131,8 @@ export class WorldClient {
     this.started = true;
     this.stopped = false;
     this.wirePageHide();
+    this.wireVisibility();
+    this.startResyncTimer();
 
     if (!this.observe) {
       try {
@@ -144,6 +162,8 @@ export class WorldClient {
     this.closeStream();
     this.closeActiveChat();
     this.unwirePageHide();
+    this.unwireVisibility();
+    this.stopResyncTimer();
   }
 
   // Per-scene re-sync (App calls this on `current-scene-ready`, NOT start()). A
@@ -256,13 +276,24 @@ export class WorldClient {
 
   // Emit the EventBus state for a snapshot (live or cached-replay). When
   // `cached`, the world reads as not-awake regardless — a cached snapshot is a
-  // memory, the town is asleep until a live tick proves otherwise.
-  private applySnapshot(snapshot: SnapshotResponse, cached = false): void {
+  // memory, the town is asleep until a live tick proves otherwise. `replayEvents`
+  // is true on the initial hydrate (late joiners see the scene already in
+  // motion) but FALSE on a periodic/reconnect re-sync — there the snapshot only
+  // corrects authoritative agent positions/state; re-dispatching its recent
+  // events would double-fire feed rows and pop stale bubbles (the live stream
+  // already delivers new events).
+  private applySnapshot(
+    snapshot: SnapshotResponse,
+    opts: { cached?: boolean; replayEvents?: boolean } = {},
+  ): void {
+    const { cached = false, replayEvents = true } = opts;
     // Remember it so a later scene transition can resyncScene() the new manager
     // off this state without re-hitting the network.
     this.lastSnapshot = snapshot;
 
-    // Initial per-agent state (positions/status/engagement).
+    // Initial per-agent state (positions/status/engagement). On a re-sync this
+    // is the whole point: npc-status flows to every NPCManager and reconciles
+    // sprites to their authoritative locations (no-op when already correct).
     for (const agent of snapshot.agents) {
       const { name, payload } = mapAgentStatus(agent);
       EventBus.emit(name, payload);
@@ -277,9 +308,71 @@ export class WorldClient {
     }
 
     // Replay recent events so late joiners see the scene already in motion.
-    for (const ev of snapshot.recentEvents) {
-      this.dispatchWorldEvent(ev);
+    if (replayEvents) {
+      for (const ev of snapshot.recentEvents) {
+        this.dispatchWorldEvent(ev);
+      }
     }
+  }
+
+  // Authoritative re-sync: re-read /world/snapshot and re-apply ONLY the
+  // per-agent + world state (no event replay). Heals stale positions after a
+  // silent SSE drop without waiting on the bounded backlog replay. Best-effort
+  // and self-guarded against overlap; a failure just leaves the last state.
+  private async resync(): Promise<void> {
+    if (this.stopped || !this.started || this.resyncing) return;
+    this.resyncing = true;
+    try {
+      const url = new URL(`${this.baseUrl}/world/snapshot`);
+      if (this.visitorId) url.searchParams.set('visitorId', this.visitorId);
+      const res = await fetch(url.toString());
+      if (!res.ok) return;
+      const raw = await res.json();
+      const snapshot = SnapshotResponse.parse(raw);
+      this.cacheSnapshot(raw);
+      this.applySnapshot(snapshot, { replayEvents: false });
+    } catch {
+      /* best-effort — the next resync / reconnect tries again */
+    } finally {
+      this.resyncing = false;
+    }
+  }
+
+  // --- re-sync triggers (visibility + slow timer) ---------------------------
+
+  private startResyncTimer(): void {
+    if (typeof window === 'undefined' || this.resyncTimer) return;
+    this.resyncTimer = setInterval(() => {
+      // Skip while hidden — a backgrounded tab can't render anyway, and the
+      // visibility handler re-syncs the moment it comes back.
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      void this.resync();
+    }, RESYNC_INTERVAL_MS);
+  }
+
+  private stopResyncTimer(): void {
+    if (this.resyncTimer) {
+      clearInterval(this.resyncTimer);
+      this.resyncTimer = null;
+    }
+  }
+
+  private onVisibility = () => {
+    if (typeof document === 'undefined' || document.visibilityState !== 'visible') return;
+    // Tab refocused: EventSource may have been throttled/suspended while hidden.
+    // Re-sync authoritative state, and reopen the stream if it died meanwhile.
+    void this.resync();
+    if (!this.eventSource && !this.reconnectTimer) this.openStream();
+  };
+
+  private wireVisibility(): void {
+    if (typeof document === 'undefined') return;
+    document.addEventListener('visibilitychange', this.onVisibility);
+  }
+
+  private unwireVisibility(): void {
+    if (typeof document === 'undefined') return;
+    document.removeEventListener('visibilitychange', this.onVisibility);
   }
 
   private cacheSnapshot(raw: unknown): void {
@@ -297,7 +390,7 @@ export class WorldClient {
     if (!stored) return;
     try {
       const snapshot = SnapshotResponse.parse(JSON.parse(stored));
-      this.applySnapshot(snapshot, /* cached */ true);
+      this.applySnapshot(snapshot, { cached: true });
     } catch {
       /* stale/incompatible cache — ignore */
     }
@@ -322,6 +415,14 @@ export class WorldClient {
 
     es.onopen = () => {
       this.reconnectAttempt = 0;
+      // A re-open after the first connection is a reconnect (our backoff path OR
+      // EventSource's own silent auto-reconnect after a Railway edge recycle).
+      // The backlog replay only covers a bounded window, so re-hydrate the
+      // snapshot to correct any positions/state that drifted during the gap.
+      if (this.hasConnectedOnce) {
+        void this.resync();
+      }
+      this.hasConnectedOnce = true;
     };
 
     // The server writes every frame as a NAMED event (`event: agent.moved` …),

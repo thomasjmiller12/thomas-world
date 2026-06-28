@@ -282,6 +282,14 @@ async function runVisitorInput(
     await emitUtterance(agentId, ctx.location, reply, { audience: true });
   }
 
+  // A visitor can summon another co-located facet by naming them (e.g. "Writer,
+  // what do you think?") — the same addressing mechanic facets use on each
+  // other. The pushed facet perceives the visitor + the reply just spoken on its
+  // interrupt turn and can choose to walk over / chime in (its agent.spoke then
+  // lands in the visitor's room transcript).
+  const here = await agentsAtLocation(ctx.location, agentId).catch(() => []);
+  pushAddressedFacets(`visitor:${input.visitorId}`, here, text);
+
   // leave_chat fired mid-turn → end the session after the final message landed.
   if (ctx.endRequested) {
     await handlers.onFrame({ type: "chat_ended", agent: agentId, reason: ctx.endRequested });
@@ -389,21 +397,44 @@ async function emitUtterance(
     payload: { agent: agentId, location, text },
   });
 
-  // Push any co-located facet addressed by name an immediate turn (throttled per
-  // ordered pair so a back-and-forth can't loop faster than the window). The
-  // addressed facet's delta will surface this speech (co-located notice-push).
-  const lower = text.toLowerCase();
-  for (const other of here) {
-    const label = (AGENT_LABELS[other.id as AgentId] ?? other.id).toLowerCase();
-    if (!new RegExp(`\\b${escapeRegExp(label)}\\b`).test(lower)) continue;
-    const key = `${agentId}|${other.id}`;
+  // Push any co-located facet addressed by name an immediate turn. The addressed
+  // facet's delta will surface this speech (co-located notice-push).
+  pushAddressedFacets(agentId, here, text);
+}
+
+// Scan `text` for the names of co-located facets and push each named one an
+// immediate (interrupt) turn so the conversation continues — throttled per
+// ordered (speaker→addressee) pair so a back-and-forth can't loop faster than
+// the window. Used for agent speech AND for a visitor's message (a visitor can
+// summon another facet into the chat by naming them, just like a facet can).
+// `here` must already exclude the speaker. Fire-and-forget; never throws.
+function pushAddressedFacets(
+  speakerKey: string,
+  here: { id: string }[],
+  text: string,
+): void {
+  for (const id of addressedFacets(here, text)) {
+    const key = `${speakerKey}|${id}`;
     const now = Date.now();
     if (now - (lastAddressAt.get(key) ?? 0) < ADDRESS_THROTTLE_MS) continue;
     lastAddressAt.set(key, now);
-    void enqueue(other.id as AgentId, { kind: "tick", interrupt: true }).catch((err) =>
-      console.warn(`[loop] address-push ${other.id} failed:`, (err as Error).message),
+    void enqueue(id, { kind: "tick", interrupt: true }).catch((err) =>
+      console.warn(`[loop] address-push ${id} failed:`, (err as Error).message),
     );
   }
+}
+
+// Pure: which co-located facets does `text` address by name? Whole-word, case-
+// insensitive match on the facet's label. `here` must already exclude the
+// speaker. Exported for unit testing the matcher independent of throttle/enqueue.
+export function addressedFacets(here: { id: string }[], text: string): AgentId[] {
+  const lower = text.toLowerCase();
+  const out: AgentId[] = [];
+  for (const other of here) {
+    const label = (AGENT_LABELS[other.id as AgentId] ?? other.id).toLowerCase();
+    if (new RegExp(`\\b${escapeRegExp(label)}\\b`).test(lower)) out.push(other.id as AgentId);
+  }
+  return out;
 }
 
 const AGENT_LABELS: Record<AgentId, string> = {

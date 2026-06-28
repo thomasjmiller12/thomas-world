@@ -43,6 +43,10 @@ interface ChatPanelProps {
   // Imperative focus request from the parent (Enter / SPACE refocus). A bumped
   // counter re-runs the focus effect.
   focusNonce: number;
+  // Co-located facets other than the one being addressed — the room you're in.
+  // Tapping one re-focuses the conversation on them.
+  present: ThomasId[];
+  onAddress: (npcId: ThomasId) => void;
 }
 
 export function ChatPanel({
@@ -55,6 +59,8 @@ export function ChatPanel({
   onSend,
   onClose,
   focusNonce,
+  present,
+  onAddress,
 }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const [narrow, setNarrow] = useState(false);
@@ -216,6 +222,73 @@ export function ChatPanel({
           ×
         </button>
       </div>
+
+      {/* presence bar — who else is in the room. Tap a facet to bring them into
+          focus (the conversation is a room, not a 1:1). */}
+      {present.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 14px',
+            borderBottom: '1px solid var(--line)',
+            background: 'var(--paper)',
+            flexShrink: 0,
+            overflowX: 'auto',
+          }}
+        >
+          <span
+            style={{
+              font: '700 8.5px var(--mono)',
+              letterSpacing: '.12em',
+              textTransform: 'uppercase',
+              color: 'var(--ink-3)',
+              flexShrink: 0,
+            }}
+          >
+            Here
+          </span>
+          {present.map((id) => {
+            const c = agentColor(id);
+            return (
+              <button
+                key={id}
+                onClick={() => onAddress(id)}
+                title={`Talk to ${agentShortName(id)} Thomas`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '3px 9px 3px 3px',
+                  borderRadius: 999,
+                  border: `1px solid ${c}33`,
+                  background: `${c}12`,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                <span
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 6,
+                    overflow: 'hidden',
+                    display: 'grid',
+                    placeItems: 'center',
+                    background: `${c}24`,
+                  }}
+                >
+                  <SpritePortrait npcId={id} scale={0.7} />
+                </span>
+                <span style={{ font: '600 11px var(--sans)', color: 'var(--ink-2)' }}>
+                  {agentShortName(id)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* LATELY context strip (idle only). Bounded height + internal scroll so a
           long recent line (agents speak in paragraphs now) can't push the input

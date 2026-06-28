@@ -43,6 +43,7 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
           audience: 'public',
           location: ev.payload.location,
           ts: ev.ts,
+          id: ev.id,
         }),
       ];
 

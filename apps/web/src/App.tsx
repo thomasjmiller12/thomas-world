@@ -7,6 +7,7 @@ import { AgentRoster } from './components/AgentRoster';
 import { ThoughtBubble } from './components/ThoughtBubble';
 import { SpeechBubble } from './components/SpeechBubble';
 import { ChatSession } from './components/chat/ChatSession';
+import { AmbientRail } from './components/AmbientRail';
 import { HUD } from './components/HUD';
 import { WelcomeCard } from './components/WelcomeCard';
 import { SleepOverlay } from './components/SleepOverlay';
@@ -63,8 +64,10 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
   const [speechBubbles, setSpeechBubbles] = useState<SpeechBubbleData[]>([]);
   const [locationName, setLocationName] = useState("Thomas's Town");
   // The contract location the current Phaser scene materializes — drives
-  // presentation scoping (ambient bubbles render only for THIS room).
+  // presentation scoping (ambient bubbles render only for THIS room). Mirrored
+  // as state so the chat surface can scope room speech / presence reactively.
   const currentLocationRef = useRef<LocationId | null>('town');
+  const [currentLocation, setCurrentLocation] = useState<LocationId | null>('town');
   const [npcPositions, setNpcPositions] = useState<Record<string, { screenX: number; screenY: number }>>({});
   const [proximityNpcId, setProximityNpcId] = useState<ThomasId | null>(null);
   const [selectedNpcId, setSelectedNpcId] = useState<ThomasId | null>(null);
@@ -173,6 +176,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
       setLocationName(data.locationName);
       const loc = locationForScene(data.scene);
       currentLocationRef.current = loc;
+      setCurrentLocation(loc);
       // Bubbles from the room we just left don't belong here.
       setSpeechBubbles([]);
       if (loc) world.reportLocation(loc);
@@ -376,8 +380,15 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
               onSend={handleChatSend}
               onClose={handleChatSessionClose}
               suspended={chronicle != null || about != null}
+              currentLocation={currentLocation}
             />
           )}
+
+          {/* Ambient "around town" feed — what other facets are doing while you
+              talk (DMs like "Hobby → Writer", arrivals, things made). Shown
+              alongside a live chat on a wide viewport; the narrow bottom-sheet
+              chat owns the screen, so it's hidden there. */}
+          {!observe && chatNpcId && !viewport.narrow && <AmbientRail />}
 
           {/* Town Chronicle hub — full-screen popup ABOVE the chat (z 60). It
               coexists with a live chat: opening it never tears the chat down

@@ -34,8 +34,9 @@ export interface WorldEvents {
   // those must update state without flooding the screen with stale bubbles).
   'npc-thought': { npcId: ThomasId; thought: string; ts?: string };
   // Overheard ambient speech (contract agent.spoke). `location` scopes the
-  // bubble to the room; `ts` gates live-vs-replayed (see npc-thought).
-  'npc-speech': { npcId: ThomasId; message: string; audience: string; location?: LocationId; ts?: string };
+  // bubble to the room; `ts` gates live-vs-replayed (see npc-thought); `id` is
+  // the source event id so consumers (e.g. the room transcript) can de-dupe.
+  'npc-speech': { npcId: ThomasId; message: string; audience: string; location?: LocationId; ts?: string; id?: string };
   // What an agent is currently doing (contract agent.activity).
   'npc-activity': { npcId: ThomasId; activity: string };
   // A set/fixture effect — phone rings, lamp flickers (contract world.effect).

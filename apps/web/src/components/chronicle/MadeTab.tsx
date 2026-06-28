@@ -18,9 +18,11 @@ const MADE_KINDS = artifactKinds.filter((k) => k !== 'bulletin') as ArtifactKind
 
 interface Props {
   onOpenArtifact: (id: string) => void;
+  // Bumped by the hub on a live refresh — re-pull the list without changing filters.
+  refreshNonce?: number;
 }
 
-export function MadeTab({ onOpenArtifact }: Props) {
+export function MadeTab({ onOpenArtifact, refreshNonce = 0 }: Props) {
   const [kind, setKind] = useState<ArtifactKind | 'all'>('all');
   const [agent, setAgent] = useState<AgentId | 'all'>('all');
   const [artifacts, setArtifacts] = useState<ArtifactSummary[]>([]);
@@ -51,7 +53,7 @@ export function MadeTab({ onOpenArtifact }: Props) {
         if (seq === reqSeq.current) setLoading(false);
       });
     return () => ctrl.abort();
-  }, [kind, agent]);
+  }, [kind, agent, refreshNonce]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>

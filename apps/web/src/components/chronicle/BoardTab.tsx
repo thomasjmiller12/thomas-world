@@ -12,6 +12,8 @@ import { headerDate } from './chroniclePresentation';
 
 interface Props {
   onOpenArtifact: (id: string) => void;
+  // Bumped by the hub on a live refresh — re-pull bulletins.
+  refreshNonce?: number;
 }
 
 // Deterministic ±0.5deg tilt from the artifact id so a card doesn't jump on
@@ -23,7 +25,7 @@ function tiltFor(id: string): number {
   return ((Math.abs(h) % 100) / 100 - 0.5);
 }
 
-export function BoardTab({ onOpenArtifact }: Props) {
+export function BoardTab({ onOpenArtifact, refreshNonce = 0 }: Props) {
   const [bulletins, setBulletins] = useState<ArtifactSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -43,7 +45,7 @@ export function BoardTab({ onOpenArtifact }: Props) {
         if (!ctrl.signal.aborted) setLoading(false);
       });
     return () => ctrl.abort();
-  }, []);
+  }, [refreshNonce]);
 
   if (loading && bulletins.length === 0) {
     return (
