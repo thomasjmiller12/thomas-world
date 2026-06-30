@@ -16,6 +16,7 @@ import {
   integer,
   doublePrecision,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import type {
   AgentId,
@@ -561,4 +562,26 @@ export const inboundMail = pgTable(
     index("inbound_mail_agent_unread_idx").on(t.toAgent, t.readAt),
     index("inbound_mail_provider_idx").on(t.providerId),
   ],
+);
+
+// --- agent_presets (Phase B.5 — "customization within bounds", not raw beat
+// authoring) -----------------------------------------------------------------
+// An agent-saved, NAMED instance of an EXISTING catalog beat's params — e.g.
+// Hobby's own emote ("hobby-wave": beat "emote", params {emoji:"🤙"}). The beat
+// id + its param schema are still server-validated against @town/contract's
+// BEATS at save time AND at play time; a preset can never introduce a new
+// mechanic or surface, only a personalized default for one that already
+// exists. One name per agent (re-saving overwrites).
+export const agentPresets = pgTable(
+  "agent_presets",
+  {
+    id: text("id").primaryKey().$defaultFn(() => randomUUID()),
+    agentId: text("agent_id", { enum: agentEnum }).notNull(),
+    name: text("name").notNull(),
+    beat: text("beat").notNull(),
+    params: jsonb("params").notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("agent_presets_agent_name_idx").on(t.agentId, t.name)],
 );

@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 // Director/Effect protocol dispatcher tests. The DB-touching engine deps
-// (objects/events) and the chat-session lookup are mocked so the dispatcher's
-// LOGIC — beat validation, surface routing, dual-emit, target resolution,
-// pending-call lifecycle — is exercised without a live Postgres. The rate
-// limiter (fixtures.ts) is the REAL pure helper (reset per spec) so the
+// (objects/events/chat/presets) are mocked so the dispatcher's LOGIC — beat
+// validation, surface routing, dual-emit, target resolution, pending-call
+// lifecycle, preset resolution — is exercised without a live Postgres. The
+// rate limiter (fixtures.ts) is the REAL pure helper (reset per spec) so the
 // rate-limit refusal path runs end to end.
 
 // --- mocks ------------------------------------------------------------------
@@ -16,6 +16,7 @@ const findObjectAtLocationMock = vi.fn(
 );
 const eventsOfTypesMock = vi.fn(async () => [] as unknown[]);
 const getSessionMock = vi.fn(async () => null as { agentId: string; visitorId: string } | null);
+const getPresetMock = vi.fn(async () => undefined as { beat: string; params: unknown } | undefined);
 
 vi.mock("../engine/events.js", () => ({
   appendEvent: (input: unknown) => appendEventMock(input),
@@ -28,6 +29,9 @@ vi.mock("../engine/objects.js", () => ({
 }));
 vi.mock("./chat.js", () => ({
   getSession: (...args: unknown[]) => getSessionMock(...(args as [])),
+}));
+vi.mock("../engine/presets.js", () => ({
+  getPreset: (...args: unknown[]) => getPresetMock(...(args as [])),
 }));
 
 import { playBeat, consumePendingCall, _resetPendingCalls, _resetVisitorPacing } from "./director.js";
@@ -55,54 +59,56 @@ beforeEach(() => {
   eventsOfTypesMock.mockResolvedValue([]);
   getSessionMock.mockClear();
   getSessionMock.mockResolvedValue(null);
+  getPresetMock.mockClear();
+  getPresetMock.mockResolvedValue(undefined);
 });
 
 describe("playBeat — validation", () => {
-  it("an unknown beat returns an in-fiction error listing the real beats", async () => {
+  it("an unknown beat (and no matching preset) returns an in-fiction error listing the real beats", async () => {
     const out = await playBeat(ctx(), { beat: "nope", params: {} });
-    expect(out).toMatch(/no bit called "nope"/i);
-    expect(out).toMatch(/phone-ring/);
+    expect(out).toMatch(/no bit \(or saved preset\) called "nope"/i);
+    expect(out).toMatch(/fixture-effect/);
+    expect(getPresetMock).toHaveBeenCalledWith("hobby", "nope");
     // No effect was recorded / emitted on a validation miss.
     expect(appendEventMock).not.toHaveBeenCalled();
     expect(setObjectStateMock).not.toHaveBeenCalled();
   });
 
-  it("bad params (popup-card missing title) returns an in-fiction error, no emit", async () => {
-    const out = await playBeat(ctx(), { beat: "popup-card", params: { body: "hi" } });
+  it("bad params (screen-flourish with an invalid style) returns an in-fiction error, no emit", async () => {
+    const out = await playBeat(ctx(), { beat: "screen-flourish", params: { style: "not-a-real-style" } });
     expect(out).toMatch(/won't go/i);
     expect(appendEventMock).not.toHaveBeenCalled();
   });
 });
 
-describe("playBeat — rate limiting (shares use_fixture's 20/hr knob)", () => {
+describe("playBeat — rate limiting (shares the 20/hr effect-limiter knob)", () => {
   it("refuses once the per-hour cap is hit, with an in-fiction line", async () => {
     objectsAtLocationMock.mockResolvedValue([PHONE]);
     findObjectAtLocationMock.mockResolvedValue(PHONE);
     const CAP = 20; // fixtures.ts MAX_PER_WINDOW
     for (let i = 0; i < CAP; i++) {
-      const ok = await playBeat(ctx(), { beat: "phone-ring", params: {} });
+      const ok = await playBeat(ctx(), { beat: "fixture-effect", params: { effect: "ring" } });
       expect(ok).toMatch(/run the bit/i);
     }
-    const refused = await playBeat(ctx(), { beat: "phone-ring", params: {} });
+    const refused = await playBeat(ctx(), { beat: "fixture-effect", params: { effect: "ring" } });
     expect(refused).toMatch(/let it breathe|lands once/i);
   });
 });
 
-describe("playBeat — object surface (phone-ring)", () => {
+describe("playBeat — object surface (fixture-effect, effect:ring)", () => {
   it("resolves the object, sets state, and DUAL-EMITS world.effect", async () => {
     objectsAtLocationMock.mockResolvedValue([PHONE]);
     findObjectAtLocationMock.mockResolvedValue(PHONE);
 
-    const out = await playBeat(ctx(), { beat: "phone-ring", object: "payphone", params: {} });
+    const out = await playBeat(ctx(), {
+      beat: "fixture-effect",
+      object: "payphone",
+      params: { effect: "ring" },
+    });
     expect(out).toMatch(/run the bit/i);
 
-    // setObjectState got the effect + statePatch from the beat def.
-    expect(setObjectStateMock).toHaveBeenCalledWith(
-      "park.payphone",
-      "hobby",
-      "ring",
-      { ringing: true },
-    );
+    // setObjectState got the effect + the ring-specific statePatch.
+    expect(setObjectStateMock).toHaveBeenCalledWith("park.payphone", "hobby", "ring", { ringing: true });
     // world.effect dual-emit with the object's displayName as the fixture.
     const effectCall = appendEventMock.mock.calls.find(
       (c) => (c[0] as { type: string }).type === "world.effect",
@@ -116,7 +122,7 @@ describe("playBeat — object surface (phone-ring)", () => {
   it("a ring records a pending call consumable once", async () => {
     objectsAtLocationMock.mockResolvedValue([PHONE]);
     findObjectAtLocationMock.mockResolvedValue(PHONE);
-    await playBeat(ctx(), { beat: "phone-ring", params: {} });
+    await playBeat(ctx(), { beat: "fixture-effect", params: { effect: "ring" } });
 
     const first = consumePendingCall("park.payphone");
     expect(first).toEqual({ agentId: "hobby" });
@@ -130,26 +136,26 @@ describe("playBeat — object surface (phone-ring)", () => {
       PHONE,
     ]);
     findObjectAtLocationMock.mockResolvedValue(PHONE);
-    await playBeat(ctx(), { beat: "phone-ring", params: {} });
-    // The default resolver chose the phone by name; findObjectAtLocation got it.
+    await playBeat(ctx(), { beat: "fixture-effect", params: { effect: "ring" } });
+    // The default resolver chose the phone (only "device" here); findObjectAtLocation got it.
     expect(findObjectAtLocationMock).toHaveBeenCalledWith("park", "payphone");
   });
 
   it("returns an in-fiction miss (no emit) when no object is here", async () => {
     objectsAtLocationMock.mockResolvedValue([]);
-    const out = await playBeat(ctx(), { beat: "phone-ring", params: {} });
+    const out = await playBeat(ctx(), { beat: "fixture-effect", params: { effect: "ring" } });
     expect(out).toMatch(/nothing here/i);
     expect(setObjectStateMock).not.toHaveBeenCalled();
   });
 });
 
-// The use_fixture → beats consolidation: lamp-flicker/espresso-hiss/board-rustle
-// migrate the old free-string fixture verbs into the catalog. Default-object
-// resolution now matches on `affordances` (seeded straight from each fixture's
-// action whitelist) rather than a per-effect name regex, so it generalizes to a
-// non-"device" fixture like the notice board for free.
-describe("playBeat — consolidated fixture beats (lamp/espresso/board)", () => {
-  it("board-rustle resolves the notice board by affordance, not kind", async () => {
+// The use_fixture → beats consolidation, generalized further (Phase B.5): ONE
+// "fixture-effect" beat covers ring/flicker/hiss/rustle via its `effect` param
+// — default-object resolution matches `world_objects.affordances` (seeded
+// straight from each fixture's action whitelist), so it generalizes to a
+// non-"device" fixture like the notice board for free, with no per-effect code.
+describe("playBeat — fixture-effect generalizes across effects/fixture kinds", () => {
+  it("rustle resolves the notice board by affordance, not kind", async () => {
     const BOARD = {
       id: "town.notice-board",
       displayName: "notice board",
@@ -158,62 +164,39 @@ describe("playBeat — consolidated fixture beats (lamp/espresso/board)", () => 
     };
     objectsAtLocationMock.mockResolvedValue([BOARD]);
     findObjectAtLocationMock.mockResolvedValue(BOARD);
-    const out = await playBeat(ctx({ location: "town" }), { beat: "board-rustle", params: {} });
+    const out = await playBeat(ctx({ location: "town" }), {
+      beat: "fixture-effect",
+      params: { effect: "rustle" },
+    });
     expect(out).toMatch(/run the bit/i);
     expect(findObjectAtLocationMock).toHaveBeenCalledWith("town", "notice board");
     expect(setObjectStateMock).toHaveBeenCalledWith("town.notice-board", "hobby", "rustle", undefined);
   });
 
-  it("lamp-flicker and espresso-hiss dual-emit world.effect with their effect keyword", async () => {
+  it("flicker dual-emits world.effect with the chosen effect keyword (no statePatch — momentary)", async () => {
     const LAMP = { id: "library.lamp", displayName: "lamp", kind: "device", affordances: ["flicker"] };
     objectsAtLocationMock.mockResolvedValue([LAMP]);
     findObjectAtLocationMock.mockResolvedValue(LAMP);
-    await playBeat(ctx({ location: "library" }), { beat: "lamp-flicker", params: {} });
+    await playBeat(ctx({ location: "library" }), { beat: "fixture-effect", params: { effect: "flicker" } });
     const effectCall = appendEventMock.mock.calls.find(
       (c) => (c[0] as { type: string }).type === "world.effect",
     )![0] as { payload: { effect: string } };
     expect(effectCall.payload.effect).toBe("flicker");
+    expect(setObjectStateMock).toHaveBeenCalledWith("library.lamp", "hobby", "flicker", undefined);
+  });
+
+  it("rejects an effect outside the closed enum (no markup/free-text effects)", async () => {
+    const out = await playBeat(ctx(), { beat: "fixture-effect", params: { effect: "explode" } });
+    expect(out).toMatch(/won't go/i);
+    expect(appendEventMock).not.toHaveBeenCalled();
   });
 });
 
-describe("playBeat — per-visitor pacing budget (Phase B)", () => {
-  // resolveTargetVisitor only consults getSession when the turn is a chat reply
-  // (ctx.chatSessionId set) — these beats target whoever's in the chat session.
-  const chatCtx = ctx({ chatSessionId: "sess-pace" });
-
-  it("refuses a 5th directed screen beat at one visitor within the window", async () => {
-    getSessionMock.mockResolvedValue({ agentId: "hobby", visitorId: "visitor-7" });
-    for (let i = 0; i < 4; i++) {
-      const out = await playBeat(chatCtx, { beat: "confetti", params: {} });
-      expect(out).toMatch(/visitor's screen/i);
-    }
-    const refused = await playBeat(chatCtx, { beat: "confetti", params: {} });
-    expect(refused).toMatch(/had a few bits land/i);
-  });
-
-  it("does not pace a room-audience beat (emote) even after the visitor cap", async () => {
-    getSessionMock.mockResolvedValue({ agentId: "hobby", visitorId: "visitor-7" });
-    for (let i = 0; i < 4; i++) await playBeat(chatCtx, { beat: "confetti", params: {} });
-    // The visitor-7 directed budget is now exhausted, but emote is audience:"room"
-    // (visitorId always null) so it never consults the per-visitor pacing map.
-    const out = await playBeat(chatCtx, { beat: "emote", params: { emoji: "🤝" } });
-    expect(out).toMatch(/everyone here/i);
-  });
-
-  it("paces independently per visitor", async () => {
-    getSessionMock.mockResolvedValue({ agentId: "hobby", visitorId: "visitor-A" });
-    for (let i = 0; i < 4; i++) await playBeat(chatCtx, { beat: "confetti", params: {} });
-    getSessionMock.mockResolvedValue({ agentId: "hobby", visitorId: "visitor-B" });
-    const out = await playBeat(chatCtx, { beat: "confetti", params: {} });
-    expect(out).toMatch(/visitor's screen/i); // a different visitor, fresh budget
-  });
-});
-
-describe("playBeat — screen surface targeting", () => {
-  it("popup-card targets the chat-session visitor", async () => {
+describe("playBeat — screen surface targeting (screen-flourish)", () => {
+  it("a card-style flourish targets the chat-session visitor", async () => {
     getSessionMock.mockResolvedValue({ agentId: "hobby", visitorId: "visitor-7" });
     const out = await playBeat(ctx({ chatSessionId: "sess-1" }), {
-      beat: "popup-card",
+      beat: "screen-flourish",
       params: { title: "Vehicle Services", body: "your car's extended warranty", tone: "gag" },
     });
     expect(out).toMatch(/visitor's screen/i);
@@ -221,10 +204,10 @@ describe("playBeat — screen surface targeting", () => {
       (c) => (c[0] as { type: string }).type === "world.beat",
     )![0] as { visitorId: string; payload: { visitorId: string; beat: string } };
     expect(beatCall.visitorId).toBe("visitor-7");
-    expect(beatCall.payload).toMatchObject({ visitorId: "visitor-7", beat: "popup-card" });
+    expect(beatCall.payload).toMatchObject({ visitorId: "visitor-7", beat: "screen-flourish" });
   });
 
-  it("popup-card falls back to a recent local interactor when no chat session", async () => {
+  it("falls back to a recent local interactor when no chat session", async () => {
     eventsOfTypesMock.mockResolvedValue([
       {
         id: "9",
@@ -235,7 +218,7 @@ describe("playBeat — screen surface targeting", () => {
       },
     ]);
     const out = await playBeat(ctx(), {
-      beat: "popup-card",
+      beat: "screen-flourish",
       params: { title: "hey", body: "you answered" },
     });
     expect(out).toMatch(/visitor's screen/i);
@@ -257,9 +240,9 @@ describe("playBeat — screen surface targeting", () => {
     expect(beatCall.visitorId).toBeNull();
   });
 
-  it("popup-card with no resolvable target plays room-wide (visitorId null)", async () => {
+  it("a flourish with no resolvable target plays room-wide (visitorId null)", async () => {
     const out = await playBeat(ctx(), {
-      beat: "popup-card",
+      beat: "screen-flourish",
       params: { title: "hi", body: "anybody" },
     });
     expect(out).toMatch(/plays to the room/i);
@@ -267,6 +250,74 @@ describe("playBeat — screen surface targeting", () => {
       (c) => (c[0] as { type: string }).type === "world.beat",
     )![0] as { visitorId: string | null };
     expect(beatCall.visitorId).toBeNull();
+  });
+});
+
+describe("playBeat — per-visitor pacing budget (Phase B)", () => {
+  // resolveTargetVisitor only consults getSession when the turn is a chat reply
+  // (ctx.chatSessionId set) — these beats target whoever's in the chat session.
+  const chatCtx = ctx({ chatSessionId: "sess-pace" });
+
+  it("refuses a 5th directed screen beat at one visitor within the window", async () => {
+    getSessionMock.mockResolvedValue({ agentId: "hobby", visitorId: "visitor-7" });
+    for (let i = 0; i < 4; i++) {
+      const out = await playBeat(chatCtx, { beat: "screen-flourish", params: { style: "confetti" } });
+      expect(out).toMatch(/visitor's screen/i);
+    }
+    const refused = await playBeat(chatCtx, { beat: "screen-flourish", params: { style: "confetti" } });
+    expect(refused).toMatch(/had a few bits land/i);
+  });
+
+  it("does not pace a room-audience beat (emote) even after the visitor cap", async () => {
+    getSessionMock.mockResolvedValue({ agentId: "hobby", visitorId: "visitor-7" });
+    for (let i = 0; i < 4; i++) {
+      await playBeat(chatCtx, { beat: "screen-flourish", params: { style: "confetti" } });
+    }
+    // The visitor-7 directed budget is now exhausted, but emote is audience:"room"
+    // (visitorId always null) so it never consults the per-visitor pacing map.
+    const out = await playBeat(chatCtx, { beat: "emote", params: { emoji: "🤝" } });
+    expect(out).toMatch(/everyone here/i);
+  });
+
+  it("paces independently per visitor", async () => {
+    getSessionMock.mockResolvedValue({ agentId: "hobby", visitorId: "visitor-A" });
+    for (let i = 0; i < 4; i++) {
+      await playBeat(chatCtx, { beat: "screen-flourish", params: { style: "confetti" } });
+    }
+    getSessionMock.mockResolvedValue({ agentId: "hobby", visitorId: "visitor-B" });
+    const out = await playBeat(chatCtx, { beat: "screen-flourish", params: { style: "confetti" } });
+    expect(out).toMatch(/visitor's screen/i); // a different visitor, fresh budget
+  });
+});
+
+describe("playBeat — preset resolution (\"customization within bounds\")", () => {
+  it("a saved preset name resolves to its underlying beat, merging in saved params", async () => {
+    getPresetMock.mockResolvedValue({ beat: "emote", params: { emoji: "🤙", text: "heyyy" } });
+    const out = await playBeat(ctx(), { beat: "hobby-wave", params: {} });
+    expect(out).toMatch(/everyone here/i);
+    expect(getPresetMock).toHaveBeenCalledWith("hobby", "hobby-wave");
+    const beatCall = appendEventMock.mock.calls.find(
+      (c) => (c[0] as { type: string }).type === "world.beat",
+    )![0] as { payload: { beat: string; params: Record<string, unknown> } };
+    // The WIRE beat id is the underlying beat's, not the preset's name — a
+    // preset never introduces a new mechanic, just saved params for an old one.
+    expect(beatCall.payload.beat).toBe("emote");
+    expect(beatCall.payload.params).toMatchObject({ emoji: "🤙", text: "heyyy" });
+  });
+
+  it("per-call params override the preset's saved defaults", async () => {
+    getPresetMock.mockResolvedValue({ beat: "emote", params: { emoji: "🤙", text: "heyyy" } });
+    await playBeat(ctx(), { beat: "hobby-wave", params: { text: "one more time" } });
+    const beatCall = appendEventMock.mock.calls.find(
+      (c) => (c[0] as { type: string }).type === "world.beat",
+    )![0] as { payload: { params: Record<string, unknown> } };
+    expect(beatCall.payload.params).toMatchObject({ emoji: "🤙", text: "one more time" });
+  });
+
+  it("a preset pointing at a beat that no longer exists is treated as unknown", async () => {
+    getPresetMock.mockResolvedValue({ beat: "retired-beat", params: {} });
+    const out = await playBeat(ctx(), { beat: "stale-preset", params: {} });
+    expect(out).toMatch(/no bit \(or saved preset\) called "stale-preset"/i);
   });
 });
 
@@ -280,7 +331,7 @@ describe("consumePendingCall — TTL (10min, widened from the original 2min for 
     findObjectAtLocationMock.mockResolvedValue(PHONE);
     const t0 = 1_000_000_000_000;
     vi.spyOn(Date, "now").mockReturnValue(t0);
-    await playBeat(ctx(), { beat: "phone-ring", params: {} });
+    await playBeat(ctx(), { beat: "fixture-effect", params: { effect: "ring" } });
     vi.restoreAllMocks();
     expect(consumePendingCall("park.payphone", t0 + 5 * 60_000)).toEqual({ agentId: "hobby" });
   });
@@ -290,7 +341,7 @@ describe("consumePendingCall — TTL (10min, widened from the original 2min for 
     findObjectAtLocationMock.mockResolvedValue(PHONE);
     const t0 = 1_000_000_000_000;
     vi.spyOn(Date, "now").mockReturnValue(t0);
-    await playBeat(ctx(), { beat: "phone-ring", params: {} });
+    await playBeat(ctx(), { beat: "fixture-effect", params: { effect: "ring" } });
     vi.restoreAllMocks();
     // Consume 11 minutes later → stale → null, and the entry is gone afterward.
     expect(consumePendingCall("park.payphone", t0 + 11 * 60_000)).toBeNull();

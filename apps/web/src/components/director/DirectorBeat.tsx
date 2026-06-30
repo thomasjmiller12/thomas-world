@@ -14,9 +14,12 @@ import { NPC_CONFIGS } from '@/game/data/npc-configs';
 // sprite path and never reach here — this layer is only the screen surface
 // (cards popped on the visitor's screen, an emote over a head).
 //
-// Purely additive: a beat-id component catalog (POPUP_CARD / EMOTE), so a new
-// screen beat = a new entry, and unknown beat ids are ignored (forward-compat
-// with beats the backend may ship before the frontend learns to draw them).
+// A new MECHANIC = a new entry in this beat-id catalog (unknown beat ids are
+// ignored, forward-compat with beats the backend may ship before the frontend
+// learns to draw them). `screen-flourish` covers card/confetti/tag via its
+// `style` param rather than being three separate beats — the catalog stays
+// small on purpose; per-agent variety comes from presets (server-side), not
+// from more beats here.
 
 const AUTO_DISMISS_MS = 8_000;
 // The emote drifts up and fades over its own lifetime — shorter than a card.
@@ -43,7 +46,10 @@ interface ActiveBeat {
 
 // Beat ids this overlay can draw. Anything else is dropped (logged-free) so the
 // backend can roll out a beat ahead of the renderer without a console of noise.
-const RENDERABLE = new Set(['popup-card', 'emote', 'confetti', 'name-tag']);
+// `screen-flourish` covers three visual TREATMENTS via `params.style` (card,
+// confetti, tag) — one beat, several renderers, same pattern as the backend
+// catalog collapse (mechanics stay few; variety lives in params/presets).
+const RENDERABLE = new Set(['screen-flourish', 'emote']);
 
 interface DirectorBeatProps {
   // The current visitor's id, threaded from App.tsx. A directed beat
@@ -80,7 +86,7 @@ export function DirectorBeat({ visitorId }: DirectorBeatProps) {
       const life =
         payload.beat === 'emote'
           ? EMOTE_LIFE_MS
-          : payload.beat === 'confetti'
+          : payload.params.style === 'confetti'
             ? CONFETTI_LIFE_MS
             : AUTO_DISMISS_MS;
       setTimeout(() => dismiss(key), life);
@@ -97,17 +103,14 @@ export function DirectorBeat({ visitorId }: DirectorBeatProps) {
   return (
     <>
       {beats.map(({ key, payload }) => {
-        if (payload.beat === 'popup-card') {
-          return <PopupCard key={key} payload={payload} onClose={() => dismiss(key)} />;
-        }
         if (payload.beat === 'emote') {
           return <EmoteBubble key={key} payload={payload} />;
         }
-        if (payload.beat === 'confetti') {
-          return <Confetti key={key} payload={payload} />;
-        }
-        if (payload.beat === 'name-tag') {
-          return <NameTag key={key} payload={payload} />;
+        if (payload.beat === 'screen-flourish') {
+          const style = asStyle(payload.params.style);
+          if (style === 'confetti') return <Confetti key={key} payload={payload} />;
+          if (style === 'tag') return <NameTag key={key} payload={payload} />;
+          return <PopupCard key={key} payload={payload} onClose={() => dismiss(key)} />;
         }
         return null;
       })}
@@ -352,6 +355,10 @@ function asString(v: unknown): string | undefined {
 
 function asTone(v: unknown): 'gag' | 'info' | 'warm' {
   return v === 'gag' || v === 'warm' ? v : 'info';
+}
+
+function asStyle(v: unknown): 'card' | 'confetti' | 'tag' {
+  return v === 'confetti' || v === 'tag' ? v : 'card';
 }
 
 function agentDisplayName(agent: AgentId | null): string {
