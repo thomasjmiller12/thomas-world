@@ -13,9 +13,11 @@
 //
 // The agent can never inject markup — it can only sequence catalog beats, and
 // every param is validated server-side against the beat's zod schema. Beats
-// share `use_fixture`'s 3/hr limiter (the same anti-grind knob) so they can't
-// become a fidget. Every path returns an IN-FICTION string — we never throw to
-// the model (a thrown error would corrupt the agent's turn).
+// share `leave_note`'s 20/hr effect limiter (fixtures.ts, the anti-grind knob
+// every flourish draws from) so they can't become a fidget, PLUS a separate
+// per-visitor pacing budget for directed screen beats (below). Every path
+// returns an IN-FICTION string — we never throw to the model (a thrown error
+// would corrupt the agent's turn).
 
 import { getBeat, listBeats, type AgentId, type BeatDef } from "@town/contract";
 import type { AgentContext } from "./tools.js";
@@ -30,7 +32,7 @@ import { getSession } from "./chat.js";
 // lifetime/idiom as fixtures.ts `effectTimestamps` (module-level, in-memory,
 // resets on restart — a dropped pending call is acceptable, the same class as
 // the effect limiter). One-shot consume, TTL'd.
-const PENDING_TTL_MS = 2 * 60_000;
+const PENDING_TTL_MS = 10 * 60_000;
 interface PendingCall {
   agentId: AgentId;
   ts: number;
@@ -53,15 +55,39 @@ export function consumePendingCall(
 
 // Arm a pending call on an object: whoever answers it (a visitor clicking the
 // ringing phone → visitor.interacted) wakes `agentId` live to run the bit.
-// Exported so BOTH ring paths arm it — play_beat's phone-ring AND the legacy
-// use_fixture("ring") verb — so a visitor pickup works however the agent rang.
-export function recordPendingCall(objectId: string, agentId: AgentId, now: number = Date.now()): void {
+function recordPendingCall(objectId: string, agentId: AgentId, now: number = Date.now()): void {
   pendingCalls.set(objectId, { agentId, ts: now });
 }
 
 // Test seam so the module-level registry doesn't leak between specs.
 export function _resetPendingCalls(): void {
   pendingCalls.clear();
+}
+
+// --- per-visitor pacing budget (Phase B) ------------------------------------
+// A separate, smaller knob from fixtures.ts's per-AGENT 20/hr limiter: this one
+// tracks how many DIRECTED screen beats have landed on one VISITOR recently,
+// regardless of which agent fired them, so a visitor can't be bombarded by the
+// whole cast in turn. Same in-memory/module-level idiom as the effect limiter.
+const VISITOR_PACE_WINDOW_MS = 10 * 60_000;
+const VISITOR_PACE_MAX = 4;
+const visitorBeatTimestamps = new Map<string, number[]>();
+
+function tryRecordVisitorBeat(visitorId: string, now: number = Date.now()): boolean {
+  const cutoff = now - VISITOR_PACE_WINDOW_MS;
+  const recent = (visitorBeatTimestamps.get(visitorId) ?? []).filter((t) => t > cutoff);
+  if (recent.length >= VISITOR_PACE_MAX) {
+    visitorBeatTimestamps.set(visitorId, recent); // prune even on rejection
+    return false;
+  }
+  recent.push(now);
+  visitorBeatTimestamps.set(visitorId, recent);
+  return true;
+}
+
+// Test seam so the module-level pacing map doesn't leak between specs.
+export function _resetVisitorPacing(): void {
+  visitorBeatTimestamps.clear();
 }
 
 // --- target-visitor resolution (screen beats) -------------------------------
@@ -100,18 +126,22 @@ export interface PlayBeatArgs {
 }
 
 // Pick a sensible default object when a surface:"object" beat omits `object`.
-// For a "ring" effect, the location's `kind:"device"` phone is the obvious
-// target (the payphone in the park, the rotary phone in the office). Falls back
-// to the first device, else the first object here.
+// The world_objects.affordances column is seeded straight from each fixture's
+// `actions` whitelist (db/seed.ts), so it already names exactly which object(s)
+// here support a given effect — match on that first (works for any beat whose
+// effect lines up with a fixture affordance: ring/flicker/hiss/rustle alike, no
+// per-effect special-casing). Falls back to the first device, else the first
+// object here, for beats/locations where affordances aren't populated (tests,
+// future templates).
 function defaultObjectRef(
   beatDef: BeatDef,
-  here: { displayName: string; kind: string | null }[],
+  here: { displayName: string; kind: string | null; affordances?: string[] | null }[],
 ): string | null {
-  const devices = here.filter((o) => o.kind === "device");
-  if (beatDef.effect === "ring") {
-    const phone = devices.find((o) => /phone/i.test(o.displayName));
-    if (phone) return phone.displayName;
+  if (beatDef.effect) {
+    const byAffordance = here.find((o) => (o.affordances ?? []).includes(beatDef.effect!));
+    if (byAffordance) return byAffordance.displayName;
   }
+  const devices = here.filter((o) => o.kind === "device");
   if (devices.length > 0) return devices[0].displayName;
   if (here.length > 0) return here[0].displayName;
   return null;
@@ -136,7 +166,7 @@ export async function playBeat(ctx: AgentContext, args: PlayBeatArgs): Promise<s
   const params = parsed.data as Record<string, unknown>;
 
   // Rate-limit AFTER validation (a malformed call shouldn't burn a slot). Shares
-  // use_fixture's 3/hr limiter so beats can't become a fidget.
+  // the same per-agent effect limiter as leave_note so beats can't become a fidget.
   if (!tryRecordEffect(ctx.agentId)) {
     return `You've been pulling a lot of bits lately — let it breathe. A bit that lands once beats five that don't.`;
   }
@@ -202,6 +232,15 @@ async function runScreenBeat(
   // interactor), falling back to room-wide only when no one is resolvable.
   const visitorId =
     beatDef.audience === "room" ? null : await resolveTargetVisitor(ctx).catch(() => null);
+
+  // Per-visitor pacing budget (Façade concern, Phase B): the agent-level 20/hr
+  // knob caps any ONE agent's fidgeting, but a visitor could still get bombarded
+  // by several DIFFERENT agents' directed beats in one visit. Gate only a
+  // resolved, directed target — room-wide audience:"room" beats (emote) aren't
+  // aimed at anyone in particular and stay on the agent-level budget alone.
+  if (visitorId && !tryRecordVisitorBeat(visitorId)) {
+    return `This visitor's had a few bits land on their screen already — let this one go. A bit that lands once beats five that don't, and that goes double from their side.`;
+  }
 
   await appendEvent({
     type: "world.beat",

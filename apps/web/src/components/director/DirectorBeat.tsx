@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
+import type { CSSProperties } from 'react';
 import type { AgentId, LocationId } from '@town/contract';
 import { EventBus } from '@/game/EventBus';
 import { THOMAS_COLORS } from '@/lib/constants';
+import { NPC_CONFIGS } from '@/game/data/npc-configs';
 
 // ─── Director / Effect protocol — the visitor-facing "screen" surface ────────
 //
@@ -19,6 +21,9 @@ import { THOMAS_COLORS } from '@/lib/constants';
 const AUTO_DISMISS_MS = 8_000;
 // The emote drifts up and fades over its own lifetime — shorter than a card.
 const EMOTE_LIFE_MS = 3_000;
+// Confetti is even shorter-lived than an emote — it's a single celebratory beat,
+// not a thing to read.
+const CONFETTI_LIFE_MS = 2_200;
 
 interface DirectorBeatPayload {
   beat: string;
@@ -38,7 +43,7 @@ interface ActiveBeat {
 
 // Beat ids this overlay can draw. Anything else is dropped (logged-free) so the
 // backend can roll out a beat ahead of the renderer without a console of noise.
-const RENDERABLE = new Set(['popup-card', 'emote']);
+const RENDERABLE = new Set(['popup-card', 'emote', 'confetti', 'name-tag']);
 
 interface DirectorBeatProps {
   // The current visitor's id, threaded from App.tsx. A directed beat
@@ -72,7 +77,12 @@ export function DirectorBeat({ visitorId }: DirectorBeatProps) {
       const key = `${payload.beat}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       setBeats(prev => [...prev, { key, payload }]);
 
-      const life = payload.beat === 'emote' ? EMOTE_LIFE_MS : AUTO_DISMISS_MS;
+      const life =
+        payload.beat === 'emote'
+          ? EMOTE_LIFE_MS
+          : payload.beat === 'confetti'
+            ? CONFETTI_LIFE_MS
+            : AUTO_DISMISS_MS;
       setTimeout(() => dismiss(key), life);
     };
 
@@ -92,6 +102,12 @@ export function DirectorBeat({ visitorId }: DirectorBeatProps) {
         }
         if (payload.beat === 'emote') {
           return <EmoteBubble key={key} payload={payload} />;
+        }
+        if (payload.beat === 'confetti') {
+          return <Confetti key={key} payload={payload} />;
+        }
+        if (payload.beat === 'name-tag') {
+          return <NameTag key={key} payload={payload} />;
         }
         return null;
       })}
@@ -234,6 +250,99 @@ function EmoteBubble({ payload }: { payload: DirectorBeatPayload }) {
   );
 }
 
+// ─── confetti ────────────────────────────────────────────────────────────────
+// A celebratory beat for a real win/milestone landing — a handful of pieces
+// falling/spinning across the top of the screen, gone in ~2s. params: { text? }.
+// One agent-hue piece set (when known) + a few neutrals, so it reads as "from"
+// whoever ran it without needing a whole palette.
+const CONFETTI_PIECE_COLORS = ['#e8c468', '#7fb88f', '#d98a6b', '#8a9bd8'];
+function Confetti({ payload }: { payload: DirectorBeatPayload }) {
+  const text = asString(payload.params.text);
+  const accent = payload.agent ? THOMAS_COLORS[payload.agent] : undefined;
+  const colors = accent ? [accent, ...CONFETTI_PIECE_COLORS] : CONFETTI_PIECE_COLORS;
+  const pieces = Array.from({ length: 14 }, (_, i) => ({
+    left: 8 + ((i * 6.5) % 84),
+    delay: (i % 5) * 60,
+    dx: (i % 2 === 0 ? 1 : -1) * (10 + (i % 4) * 8),
+    spin: 280 + (i % 3) * 120,
+    color: colors[i % colors.length],
+  }));
+
+  return (
+    <div className="absolute inset-x-0 top-0 pointer-events-none" style={{ zIndex: 1, height: 200 }}>
+      {pieces.map((p, i) => (
+        <span
+          key={i}
+          aria-hidden
+          className="absolute rounded-sm"
+          style={
+            {
+              left: `${p.left}%`,
+              top: 0,
+              width: 6,
+              height: 9,
+              background: p.color,
+              animation: `beatConfettiFall ${CONFETTI_LIFE_MS}ms ease-in forwards`,
+              animationDelay: `${p.delay}ms`,
+              '--dx': `${p.dx}px`,
+              '--spin': `${p.spin}deg`,
+            } as CSSProperties
+          }
+        />
+      ))}
+      {text && (
+        <p
+          className="absolute left-1/2 text-center text-[11px]"
+          style={{
+            top: 18,
+            transform: 'translateX(-50%)',
+            fontFamily: 'var(--display)',
+            fontWeight: 600,
+            color: 'var(--ink)',
+            textShadow: '0 1px 0 rgba(255,255,255,0.6)',
+            animation: `beatNameTagIn 0.3s ease-out`,
+          }}
+        >
+          {text}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── name-tag ────────────────────────────────────────────────────────────────
+// A small floating tag — "hi, I'm Hobby Thomas" or a custom line — for the
+// moment it's genuinely unclear who's talking. params: { text? }; defaults to
+// the speaking agent's display name when omitted.
+function NameTag({ payload }: { payload: DirectorBeatPayload }) {
+  const text = asString(payload.params.text) ?? agentDisplayName(payload.agent);
+  const accent = payload.agent ? THOMAS_COLORS[payload.agent] : undefined;
+
+  return (
+    <div
+      className="absolute left-1/2 pointer-events-none"
+      style={{ zIndex: 1, top: '30%', animation: 'beatNameTagIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)', transform: 'translateX(-50%)' }}
+    >
+      <span
+        className="rounded-full px-3 py-1 text-[11px] inline-flex items-center gap-1.5"
+        style={{
+          fontFamily: 'var(--display)',
+          fontWeight: 600,
+          color: 'var(--ink)',
+          background: 'rgba(252,247,238,0.97)',
+          border: `1px solid ${accent ? `${accent}88` : 'var(--line)'}`,
+          boxShadow: 'var(--shadow)',
+        }}
+      >
+        {accent && (
+          <span aria-hidden className="rounded-full" style={{ width: 7, height: 7, background: accent }} />
+        )}
+        {text}
+      </span>
+    </div>
+  );
+}
+
 // ─── helpers ───────────────────────────────────────────────────────────────────
 
 // params is a loose record<string, unknown> off the wire; coerce defensively.
@@ -243,6 +352,11 @@ function asString(v: unknown): string | undefined {
 
 function asTone(v: unknown): 'gag' | 'info' | 'warm' {
   return v === 'gag' || v === 'warm' ? v : 'info';
+}
+
+function agentDisplayName(agent: AgentId | null): string {
+  if (!agent) return 'someone';
+  return NPC_CONFIGS[agent]?.displayName ?? agent;
 }
 
 // Fallback to the visitor identity WorldClient persists, in case the prop has

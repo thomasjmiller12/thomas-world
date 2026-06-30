@@ -49,6 +49,37 @@ export const BEATS = {
     params: z.object({ emoji: z.string().min(1).max(8), text: z.string().max(80).optional() }),
     description: "A quick visible gesture over your head — a wave, a dap-up, a 🤝. Body language, not speech.",
   },
+  // --- Phase A consolidation: the old free-string `use_fixture` verbs, now
+  // catalog beats (each id maps 1:1 onto a seeded fixture affordance, so the
+  // dispatcher's default-object resolution finds the right thing with `object`
+  // omitted).
+  "lamp-flicker": {
+    id: "lamp-flicker", label: "Flicker a lamp", surface: "object", audience: "room",
+    effect: "flicker", params: z.object({}),
+    description: "Make a lamp here flicker — a little mood, a little spookiness, a beat to land a line on.",
+  },
+  "espresso-hiss": {
+    id: "espresso-hiss", label: "Hiss the espresso machine", surface: "object", audience: "room",
+    effect: "hiss", params: z.object({}),
+    description: "Make the espresso machine here hiss — cafe ambiance, a punctuation mark on a line.",
+  },
+  "board-rustle": {
+    id: "board-rustle", label: "Rustle the notice board", surface: "object", audience: "room",
+    effect: "rustle", params: z.object({}),
+    description: "Make the notice board here rustle — draw the eye to a fresh post.",
+  },
+  // --- Phase B: catalog growth (more screen beats; pacing budget lives in the
+  // dispatcher, not the catalog).
+  "confetti": {
+    id: "confetti", label: "Pop confetti", surface: "screen", audience: "visitor",
+    params: z.object({ text: z.string().max(60).optional() }),
+    description: "Burst a little confetti on the visitor's screen — a celebration, a win, a milestone landing. Don't waste it on small stuff.",
+  },
+  "name-tag": {
+    id: "name-tag", label: "Pop a name tag", surface: "screen", audience: "visitor",
+    params: z.object({ text: z.string().min(1).max(40).optional() }),
+    description: "Pop a small floating tag introducing yourself (or a custom line) on the visitor's screen — handy the moment it's genuinely unclear who they're talking to.",
+  },
 } satisfies Record<string, BeatDef>;
 
 export type BeatId = keyof typeof BEATS;
