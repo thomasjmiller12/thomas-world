@@ -9,6 +9,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 interface AgentRow {
   id: string;
   locationId: string;
+  zone: string | null;
 }
 interface EventRow {
   type: string;
@@ -18,7 +19,7 @@ interface EventRow {
   payload: Record<string, unknown>;
 }
 
-const rows: AgentRow[] = [{ id: "hobby", locationId: "park" }];
+const rows: AgentRow[] = [{ id: "hobby", locationId: "park", zone: null }];
 const events: EventRow[] = [];
 let lastWhereId: string | undefined;
 
@@ -38,11 +39,13 @@ vi.mock("../db/client.js", () => {
     },
     update() {
       return {
-        set(patch: { locationId?: string }) {
+        set(patch: { locationId?: string; zone?: string | null }) {
           return {
             where() {
               const row = rows.find((r) => r.id === lastWhereId);
-              if (row && patch.locationId !== undefined) row.locationId = patch.locationId;
+              if (!row) return;
+              if (patch.locationId !== undefined) row.locationId = patch.locationId;
+              if (patch.zone !== undefined) row.zone = patch.zone;
             },
           };
         },
@@ -66,11 +69,11 @@ vi.mock("../db/client.js", () => {
   return { db, schema: { agents } };
 });
 
-const { moveAgent } = await import("./agents.js");
+const { moveAgent, zoneOf } = await import("./agents.js");
 
 beforeEach(() => {
   rows.length = 0;
-  rows.push({ id: "hobby", locationId: "park" });
+  rows.push({ id: "hobby", locationId: "park", zone: null });
   events.length = 0;
   lastWhereId = undefined;
 });
@@ -101,5 +104,18 @@ describe("moveAgent — targetZone (Phase C, space addressing)", () => {
   it("still persists locationId even on a within-room reposition (no actual change)", async () => {
     await moveAgent("hobby" as never, "park" as never, "park.bench-area");
     expect(rows[0].locationId).toBe("park");
+  });
+
+  it("persists the targetZone onto agents.zone, readable via zoneOf", async () => {
+    await moveAgent("hobby" as never, "park" as never, "park.bench-area");
+    expect(rows[0].zone).toBe("park.bench-area");
+    expect(await zoneOf("hobby" as never)).toBe("park.bench-area");
+  });
+
+  it("a plain room change with no targetZone clears the stored zone", async () => {
+    await moveAgent("hobby" as never, "park" as never, "park.bench-area");
+    expect(rows[0].zone).toBe("park.bench-area");
+    await moveAgent("hobby" as never, "town" as never);
+    expect(rows[0].zone).toBeNull();
   });
 });

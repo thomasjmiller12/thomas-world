@@ -67,6 +67,7 @@ const eventTypeEnum = [
   "visitor.left",
   "visitor.moved",
   "visitor.interacted",
+  "visitor.escorted",
   "world.effect",
   "chat.started",
   "chat.ended",
@@ -127,6 +128,11 @@ export const agents = pgTable("agents", {
   displayName: text("display_name").notNull(),
   soulVersion: text("soul_version").notNull().default("0"),
   locationId: text("location_id", { enum: locationEnum }).notNull(),
+  // A semantic zone WITHIN locationId (Phase C.5, space addressing) — e.g.
+  // "park.bench-area". Null = "just in the room, no specific spot known".
+  // Set by moveAgent when a targetZone is given; cleared on a plain room
+  // change (a new room with no spot named means no spot is known there yet).
+  zone: text("zone"),
   status: text("status").notNull().default("idle"),
   activity: text("activity"),
   // Nullable engagement reference (design doc §3.2). null => unengaged. The
@@ -336,6 +342,12 @@ export const visitors = pgTable("visitors", {
   // change; a change emits a public `visitor.moved` so agents at the
   // destination perceive the arrival.
   locationId: text("location_id", { enum: locationEnum }),
+  // A semantic zone WITHIN locationId, approximate (Phase C.5, space
+  // addressing) — set to the zone of whatever fixture the visitor last
+  // interacted with; null = no specific spot known. Lets an agent resolve
+  // "where the visitor is" with the same zone vocabulary used everywhere
+  // else, without tracking raw pixels server-side. Cleared on a room change.
+  zone: text("zone"),
   // Returned to the registering browser at creation; required to authorize
   // PATCH /visitors/:id and POST /visitors/:id/interact (design doc §5 Auth).
   // It lives only in that browser — never echoed by GET /visitors/:id.

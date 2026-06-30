@@ -15,6 +15,7 @@ import type { AgentId, LocationId, WorldEvent, ObjectNote } from "@town/contract
 import { db, schema } from "../db/client.js";
 import { getAgent } from "../engine/agents.js";
 import { getLocation, agentsAtLocation } from "../engine/locations.js";
+import { zonesForLocation } from "../engine/zones.js";
 import { perceivedEventsSince } from "../engine/events.js";
 import { objectsAtLocation, type WorldObjectRow } from "../engine/objects.js";
 import { inboxFor, type MessageRow } from "../engine/messages.js";
@@ -108,6 +109,26 @@ function arrivalPhrase(ms: number | undefined, now: number): string {
   return " (has been around a little while)";
 }
 
+// Render the "Also here:" co-presence line, naming WHERE a co-located facet
+// is standing when its zone is known (Phase C.5, space addressing) — "Builder
+// Thomas (at the workbench)" rather than just the name, so approaching them is
+// something the agent can actually act on. `zoneLabel` resolves a zone id to
+// its human label (zones.ts SemanticZone.label) for the current location;
+// degrades silently (bare name) when the zone is unset or unrecognized. Pure
+// so it's unit-testable without a DB.
+export function renderOthersLine(
+  here: { displayName: string; zone?: string | null }[],
+  zoneLabel: (zoneId: string) => string | undefined,
+): string {
+  if (here.length === 0) return "no one else is here right now";
+  return here
+    .map((a) => {
+      const label = a.zone ? zoneLabel(a.zone) : undefined;
+      return label ? `${a.displayName} (${label})` : a.displayName;
+    })
+    .join(", ");
+}
+
 // Render the location-aware Visitors section (design doc §2; de-prescribed in
 // M2.1). PLAIN FACT, no instruction: visitor presence is reported the same way
 // any other co-presence is — who's here and how recently they arrived. Whether
@@ -117,10 +138,11 @@ function arrivalPhrase(ms: number | undefined, now: number): string {
 // the phrasing is unit-testable. `here` is ordered most-recently-seen first;
 // `arrivalMs` maps visitorId → arrival epoch ms.
 export function renderVisitorsSection(
-  here: { id: string; name: string }[],
+  here: { id: string; name: string; zone?: string | null }[],
   arrivalMs: Map<string, number>,
   townCount: number,
   now: number,
+  zoneLabel?: (zoneId: string) => string | undefined,
 ): string {
   if (here.length === 0) {
     if (townCount > 0) {
@@ -128,8 +150,14 @@ export function renderVisitorsSection(
     }
     return `No visitors in town right now.`;
   }
+  // The zone is APPROXIMATE (set from their last interaction, not live
+  // pixels) — phrased as "near", never "at", so it doesn't overclaim.
   const lines = here
-    .map((v) => `${v.name} is here with you${arrivalPhrase(arrivalMs.get(v.id), now)}`)
+    .map((v) => {
+      const label = v.zone ? zoneLabel?.(v.zone) : undefined;
+      const spot = label ? `, near ${label}` : "";
+      return `${v.name} is here with you${spot}${arrivalPhrase(arrivalMs.get(v.id), now)}`;
+    })
     .join("; ");
   const elsewhere = Math.max(0, townCount - here.length);
   const tail =
@@ -380,10 +408,11 @@ export async function buildDelta(
     })),
     pinnedHere.map((a) => ({ title: a.title, kind: a.kind, id: a.id })),
   );
-  const others =
-    here.length > 0
-      ? here.map((a) => a.displayName).join(", ")
-      : "no one else is here right now";
+  const zonesHere = zonesForLocation(location);
+  const others = renderOthersLine(
+    here.map((a) => ({ displayName: a.displayName, zone: a.zone as string | null })),
+    (id) => zonesHere.find((z) => z.id === id)?.label,
+  );
 
   // The "since you last looked" block: only the parts that actually carry
   // something, with a single carry-on fallback when nothing reached the agent.
@@ -402,10 +431,11 @@ export async function buildDelta(
     ...placeLines,
     `Also here: ${others}.`,
     renderVisitorsSection(
-      visitorsHere.map((v: VisitorRow) => ({ id: v.id, name: v.name })),
+      visitorsHere.map((v: VisitorRow) => ({ id: v.id, name: v.name, zone: v.zone as string | null })),
       arrivalMs,
       visitorCount,
       Date.now(),
+      (zoneId) => zonesHere.find((z) => z.id === zoneId)?.label,
     ),
     ``,
     `## Your anchors (core memory — keep these short, current, and true at reflection)`,

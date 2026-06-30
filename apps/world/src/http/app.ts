@@ -77,6 +77,7 @@ import {
   visitorTokenValid,
   moveVisitor,
   renameVisitor,
+  setVisitorZone,
 } from "../engine/visitors.js";
 import { agentsAtLocation, getLocation } from "../engine/locations.js";
 import { appendEvent } from "../engine/events.js";
@@ -693,6 +694,10 @@ export function createApp() {
       const obj = await findObjectAtLocation(locationId as LocationId, fixture).catch(
         () => undefined,
       );
+      // Phase C.5: an interaction is the best signal we have of "approximately
+      // where the visitor is standing" — record it so an agent can later resolve
+      // "where's the visitor" via the same zone vocabulary used everywhere else.
+      if (obj) await setVisitorZone(id, obj.zone).catch(() => {});
       const call = obj ? consumePendingCall(obj.id) : null;
       if (call) {
         console.log(

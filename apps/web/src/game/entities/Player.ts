@@ -20,6 +20,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private stallY = 0;
   private stallFrames = 0;
   private static readonly TAP_ARRIVE_DIST = 6;
+  // Escort walk (Phase C.5, invite_visitor): a server-driven, full auto-walk —
+  // an agent invited the visitor along, so control is suspended for the
+  // duration (mirrors NPC's A*-routed walkPath, same stall-recovery shape).
+  // Highest priority in update(): overrides keyboard AND an active tap-walk.
+  private escortTarget: { x: number; y: number } | null = null;
+  private escortPath: { x: number; y: number }[] = [];
+  private escortDone: (() => void) | null = null;
+  private escortStallX = 0;
+  private escortStallY = 0;
+  private escortStallFrames = 0;
+  private escortKey?: Phaser.Input.Keyboard.Key;
+  private static readonly ESCORT_ARRIVE_DIST = 4;
+  private static readonly ESCORT_STALL_FRAMES = 30;
   // Scoped handler refs so destroy() removes ONLY this player's listeners.
   // The visitor can WALK while chatting (M2.1): movement freezes ONLY while the
   // chat input is focused (typing-focus), not for the whole chat. Canvas
@@ -72,6 +85,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
           EventBus.emit('player-interact', { x: this.x, y: this.y, direction: this.direction });
         }
       });
+
+      // Safety valve for an escort walk: Escape always hands control back. A
+      // deliberate, low-collision-risk key (never pressed by accident while
+      // trying to walk), so it doesn't undermine "full auto-walk" as the
+      // default — it's an emergency exit, not a cancel-on-any-input.
+      this.escortKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+      this.escortKey.on('down', () => this.cancelEscort());
     }
 
     EventBus.on('typing-focus', this.onTypingFocus);
@@ -80,7 +100,71 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     EventBus.on('tap-move', this.onTapMove);
   }
 
+  // Directed walk along an A*-computed route (Phase C.5 escort) — each leg
+  // reuses the same walking machinery as update()'s escort branch; `done`
+  // fires once after the LAST leg, or not at all if cancelled mid-walk.
+  // Overrides keyboard input AND an active tap-walk for the duration.
+  walkPath(points: { x: number; y: number }[], done?: () => void): void {
+    if (points.length === 0) {
+      done?.();
+      return;
+    }
+    this.tapTarget = null;
+    this.escortTarget = points[0];
+    this.escortPath = points.slice(1);
+    this.escortDone = done ?? null;
+    this.escortStallFrames = 0;
+    this.escortStallX = this.x;
+    this.escortStallY = this.y;
+    this.scene.input.keyboard?.disableGlobalCapture();
+  }
+
+  isEscorting(): boolean {
+    return this.escortTarget !== null;
+  }
+
+  // Hand control back without firing the completion callback — used by the
+  // Escape safety valve and by a scene that needs to abort an escort cleanly
+  // (e.g. a scene transition starting mid-walk).
+  cancelEscort(): void {
+    if (!this.escortTarget) return;
+    this.escortTarget = null;
+    this.escortPath = [];
+    this.escortDone = null;
+    if (!this.isInteracting) this.scene.input.keyboard?.enableGlobalCapture();
+  }
+
   update() {
+    if (this.escortTarget) {
+      const body = this.body as Phaser.Physics.Arcade.Body;
+      const dx = this.escortTarget.x - this.x;
+      const dy = this.escortTarget.y - this.y;
+      const dist = Math.hypot(dx, dy);
+      const moved = Math.hypot(this.x - this.escortStallX, this.y - this.escortStallY);
+      this.escortStallFrames = moved < 0.3 ? this.escortStallFrames + 1 : 0;
+      this.escortStallX = this.x;
+      this.escortStallY = this.y;
+      if (dist < Player.ESCORT_ARRIVE_DIST || this.escortStallFrames > Player.ESCORT_STALL_FRAMES) {
+        this.escortStallFrames = 0;
+        if (this.escortPath.length > 0) {
+          this.escortTarget = this.escortPath.shift()!;
+          return;
+        }
+        body.setVelocity(0, 0);
+        this.play(`player-idle-${this.direction}`, true);
+        this.escortTarget = null;
+        const cb = this.escortDone;
+        this.escortDone = null;
+        if (!this.isInteracting) this.scene.input.keyboard?.enableGlobalCapture();
+        cb?.();
+        return;
+      }
+      body.setVelocity((dx / dist) * PLAYER_SPEED, (dy / dist) * PLAYER_SPEED);
+      this.direction = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
+      this.play(`player-walk-${this.direction}`, true);
+      return;
+    }
+
     if (this.isInteracting) {
       this.setVelocity(0, 0);
       this.play(`player-idle-${this.direction}`, true);
