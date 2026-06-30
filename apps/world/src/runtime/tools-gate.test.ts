@@ -99,6 +99,24 @@ describe("tool location gates (plan §3.3, enforced server-side)", () => {
   });
 });
 
+describe("invite_visitor — offered only within a visitor turn (Phase C.5)", () => {
+  it("appears when a chat session is set, absent otherwise", () => {
+    const inChat: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
+    expect(names(inChat)).toContain("invite_visitor");
+    const idle: AgentContext = { agentId: "builder", location: "workshop" };
+    expect(names(idle)).not.toContain("invite_visitor");
+  });
+
+  it("refuses outside a chat session (the tool's own guard, belt-and-suspenders)", async () => {
+    const ctx: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
+    const tool = toolByName(ctx, "invite_visitor");
+    // No live chat.ts session exists for "s1" in this DB-free test, so
+    // getSession resolves null — the tool's own guard catches that too.
+    const out = await tool.run({ location: "town" });
+    expect(out as string).toMatch(/no visitor in this conversation/i);
+  });
+});
+
 describe("leave_chat — offered only within a visitor turn (M3)", () => {
   it("appears when a chat session is set, absent otherwise", () => {
     const inChat: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };

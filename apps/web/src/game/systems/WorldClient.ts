@@ -30,6 +30,9 @@ const TRANSIENT_ON_JOIN = new Set<WorldEvent['type']>([
   'world.beat', // director beat (popup card, emote)
   'agent.spoke', // speech bubble
   'agent.thought', // thought wisp
+  // A stale replayed escort COMMAND would yank the visitor's sprite into an
+  // unsolicited auto-walk on reconnect/late-join — never replay it.
+  'visitor.escorted',
 ]);
 
 const STORAGE_KEYS = {

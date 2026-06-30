@@ -20,7 +20,7 @@ import { hasLlm } from "./client.js";
 import { getProfile, soulGitHash } from "./roles.js";
 import { buildTools, type AgentContext } from "./tools.js";
 import { buildDelta, writeCursor } from "./observation.js";
-import { getAgent, setStatus, setActivity, markTicked } from "../engine/agents.js";
+import { getAgent, setStatus, setActivity, markTicked, moveAgent, zoneOf } from "../engine/agents.js";
 import { agentsAtLocation } from "../engine/locations.js";
 import { visitorsAtLocation } from "../engine/visitors.js";
 import { appendEvent } from "../engine/events.js";
@@ -399,8 +399,12 @@ async function emitUtterance(
   });
 
   // Push any co-located facet addressed by name an immediate turn. The addressed
-  // facet's delta will surface this speech (co-located notice-push).
-  pushAddressedFacets(agentId, here, text);
+  // facet's delta will surface this speech (co-located notice-push). Also walk
+  // the SPEAKER toward the addressee's known spot (Phase C.5, approach-then-
+  // speak) — pure staging/body-language for a facet-to-facet address, the same
+  // class of mechanical move as the narration guard, not a discretionary
+  // "must attend to" decision, so it doesn't touch agent autonomy.
+  pushAddressedFacets(agentId, here, text, { agentId, location });
 }
 
 // Scan `text` for the names of co-located facets and push each named one an
@@ -409,20 +413,44 @@ async function emitUtterance(
 // the window. Used for agent speech AND for a visitor's message (a visitor can
 // summon another facet into the chat by naming them, just like a facet can).
 // `here` must already exclude the speaker. Fire-and-forget; never throws.
+// `approach`, when given (agent speech only — a visitor has no agent body to
+// move), walks the speaker toward the addressee's stored zone alongside the
+// push; omitted for a visitor's address (the addressed facet perceives the
+// visitor's own zone via renderVisitorsSection and can choose to close the gap).
 function pushAddressedFacets(
   speakerKey: string,
   here: { id: string }[],
   text: string,
+  approach?: { agentId: AgentId; location: LocationId },
 ): void {
   for (const id of addressedFacets(here, text)) {
     const key = `${speakerKey}|${id}`;
     const now = Date.now();
     if (now - (lastAddressAt.get(key) ?? 0) < ADDRESS_THROTTLE_MS) continue;
     lastAddressAt.set(key, now);
+    if (approach) {
+      void approachAddressee(approach.agentId, approach.location, id as AgentId).catch((err) =>
+        console.warn(`[loop] approach ${approach.agentId}->${id} failed:`, (err as Error).message),
+      );
+    }
     void enqueue(id, { kind: "tick", interrupt: true }).catch((err) =>
       console.warn(`[loop] address-push ${id} failed:`, (err as Error).message),
     );
   }
+}
+
+// Walk `speakerId` toward `addresseeId`'s stored zone, if one's known. A
+// no-op (not an error) when the addressee's zone is unset — not every
+// conversation needs a literal walk-up, and an unset zone means there's
+// nothing more specific to close the gap toward.
+async function approachAddressee(
+  speakerId: AgentId,
+  location: LocationId,
+  addresseeId: AgentId,
+): Promise<void> {
+  const zone = await zoneOf(addresseeId);
+  if (!zone) return;
+  await moveAgent(speakerId, location, zone);
 }
 
 // Pure: which co-located facets does `text` address by name? Whole-word, case-

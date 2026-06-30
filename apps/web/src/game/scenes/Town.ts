@@ -13,6 +13,9 @@ import { DOOR_CONFIGS, type DoorConfig } from '../data/door-configs';
 import { resolveTravel } from '../data/travel';
 import { placeTownObject } from '../objects/TownObjects';
 import { FixtureRegistry } from '../objects/Fixtures';
+import { findPath } from '../systems/pathfinding';
+import { resolveEscortPoint, sceneKeyFor, doorTo, locationInScene, type EscortPayload } from '../systems/escort';
+import { getMyVisitorId } from '@/lib/visitor-id';
 import type { LocationId } from '@town/contract';
 /* END-USER-IMPORTS */
 
@@ -281,6 +284,8 @@ export default class Town extends Phaser.Scene {
 	// Scoped handler refs for the show-in-town travel + tap-to-move seams, removed
 	// (only these) on transition.
 	private onTravel?: (p: { locationId: LocationId; anchor?: { x: number; y: number } }) => void;
+	// Scoped escort handler ref (Phase C.5, removed on transition like onTravel).
+	private onEscort?: (p: EscortPayload) => void;
 	private static readonly DOOR_INTERACTION_RANGE = 20;
 	private static readonly PLAYER_SPAWN = { x: 152, y: 456 };
 
@@ -431,6 +436,29 @@ export default class Town extends Phaser.Scene {
 		};
 		EventBus.on('travel-to-location', this.onTravel);
 
+		// Bring-along (Phase C.5, invite_visitor — "full auto-walk to
+		// destination"). Every client receives visitor.escorted; only the
+		// addressed visitor's own client acts on it. Same-scene → A* walk here.
+		// Cross-scene → walk to the door, stash the continuation, transition
+		// exactly like a normal door entry (enterBuilding).
+		this.onEscort = (p) => {
+			if (this.isTransitioning) return;
+			if (p.visitorId !== getMyVisitorId()) return;
+			const point = resolveEscortPoint(p.to, p.targetZone ?? null);
+			if (sceneKeyFor(p.to) === SCENE_KEYS.TOWN) {
+				const path = findPath(collisionLayer ?? null, { x: this.player.x, y: this.player.y }, point);
+				this.player.walkPath(path ?? [point]);
+				return;
+			}
+			const door = doorTo(p.to);
+			if (!door) return; // shouldn't happen given the scene map
+			this.registry.set('pendingEscort', { to: p.to, targetZone: p.targetZone ?? null });
+			const doorPoint = { x: door.town.x, y: door.town.y };
+			const path = findPath(collisionLayer ?? null, { x: this.player.x, y: this.player.y }, doorPoint);
+			this.player.walkPath(path ?? [doorPoint], () => this.enterBuilding(door));
+		};
+		EventBus.on('visitor-escort', this.onEscort);
+
 		// Minimal touch: a tap on the canvas walks the player toward the world
 		// point in a straight line (the Player consumes `tap-move`).
 		this.input.on('pointerdown', this.handlePointerDown, this);
@@ -452,6 +480,31 @@ export default class Town extends Phaser.Scene {
 		if (pending) {
 			this.registry.set('pendingTravel', undefined);
 			this.time.delayedCall(50, () => this.onTravel?.(pending));
+		}
+
+		// An escort hopping through town (interior → town, or interior → a
+		// DIFFERENT interior) continues here: if town/park was the real
+		// destination, walk to the resolved point; otherwise re-issue the escort
+		// now that town is ready, which re-enters the pendingEscort branch above
+		// and carries it on to the next door.
+		const pendingEscort = this.registry.get('pendingEscort') as
+			{ to: LocationId; targetZone: string | null } | undefined;
+		if (pendingEscort) {
+			this.registry.set('pendingEscort', undefined);
+			this.time.delayedCall(50, () => {
+				if (sceneKeyFor(pendingEscort.to) === SCENE_KEYS.TOWN) {
+					const point = resolveEscortPoint(pendingEscort.to, pendingEscort.targetZone);
+					const path = findPath(collisionLayer ?? null, { x: this.player.x, y: this.player.y }, point);
+					this.player.walkPath(path ?? [point]);
+					return;
+				}
+				const door = doorTo(pendingEscort.to);
+				if (!door) return;
+				this.registry.set('pendingEscort', { to: pendingEscort.to, targetZone: pendingEscort.targetZone });
+				const doorPoint = { x: door.town.x, y: door.town.y };
+				const path = findPath(collisionLayer ?? null, { x: this.player.x, y: this.player.y }, doorPoint);
+				this.player.walkPath(path ?? [doorPoint], () => this.enterBuilding(door));
+			});
 		}
 	}
 
@@ -498,6 +551,10 @@ export default class Town extends Phaser.Scene {
 			if (this.onTravel) {
 				EventBus.off('travel-to-location', this.onTravel);
 				this.onTravel = undefined;
+			}
+			if (this.onEscort) {
+				EventBus.off('visitor-escort', this.onEscort);
+				this.onEscort = undefined;
 			}
 			this.input.off('pointerdown', this.handlePointerDown, this);
 			this.npcManager.destroy();

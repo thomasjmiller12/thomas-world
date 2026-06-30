@@ -8,6 +8,9 @@ import { getDoorByScene, type DoorConfig } from '../data/door-configs';
 import { locationForScene, locationInScene, LOCATION_ANCHORS } from '../data/location-anchors';
 import { resolveTravel } from '../data/travel';
 import { FixtureRegistry, INTERIOR_FIXTURE_POINTS } from '../objects/Fixtures';
+import { findPath } from '../systems/pathfinding';
+import { resolveEscortPoint, sceneKeyFor, type EscortPayload } from '../systems/escort';
+import { getMyVisitorId } from '@/lib/visitor-id';
 import type { LocationId } from '@town/contract';
 
 const EXIT_INTERACTION_RANGE = 20;
@@ -29,6 +32,8 @@ export interface InteriorState {
   onPlayerInteract?: () => void;
   // Scoped show-in-town handler ref (removed on exit).
   onTravel?: (p: { locationId: LocationId; anchor?: { x: number; y: number } }) => void;
+  // Scoped escort handler ref (Phase C.5, removed on exit like onTravel).
+  onEscort?: (p: EscortPayload) => void;
   // Fixture embodiment for this room (set in setupInterior). Scenes re-register
   // a placed sprite over the default point to give an effect a real target.
   fixtures?: FixtureRegistry;
@@ -173,6 +178,41 @@ export function setupInterior(
   };
   EventBus.on('travel-to-location', state.onTravel);
 
+  // Bring-along (Phase C.5, invite_visitor). Every client receives
+  // visitor.escorted; only the addressed visitor's own client acts on it.
+  // This room is the destination → A* walk here. Elsewhere → walk to the
+  // exit door, stash the continuation, transition exactly like a normal
+  // door exit (handleExit, which always lands back in town).
+  state.onEscort = (p) => {
+    if (state.isExiting) return;
+    if (p.visitorId !== getMyVisitorId()) return;
+    if (locationInScene(p.to, scene.scene.key)) {
+      const point = resolveEscortPoint(p.to, p.targetZone ?? null);
+      const path = findPath(collisionLayer ?? null, { x: state.player.x, y: state.player.y }, point);
+      state.player.walkPath(path ?? [point]);
+      return;
+    }
+    scene.registry.set('pendingEscort', { to: p.to, targetZone: p.targetZone ?? null });
+    const doorPoint = { x: door.interior.exitX, y: door.interior.exitY };
+    const path = findPath(collisionLayer ?? null, { x: state.player.x, y: state.player.y }, doorPoint);
+    state.player.walkPath(path ?? [doorPoint], () => handleExit(scene, state));
+  };
+  EventBus.on('visitor-escort', state.onEscort);
+
+  // An escort whose final destination IS this interior, continued from the
+  // town scene that walked the visitor to this door (mirrors Town.ts's own
+  // pendingTravel/pendingEscort continuation). Consumed once.
+  const pendingEscort = scene.registry.get('pendingEscort') as
+    { to: LocationId; targetZone: string | null } | undefined;
+  if (pendingEscort && sceneKeyFor(pendingEscort.to) === scene.scene.key) {
+    scene.registry.set('pendingEscort', undefined);
+    scene.time.delayedCall(50, () => {
+      const point = resolveEscortPoint(pendingEscort.to, pendingEscort.targetZone);
+      const path = findPath(collisionLayer ?? null, { x: state.player.x, y: state.player.y }, point);
+      state.player.walkPath(path ?? [point]);
+    });
+  }
+
   // Minimal touch: tap an agent → Tier-1 dialog, else tap-to-move.
   scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
     if (state.isExiting) return;
@@ -228,6 +268,10 @@ function handleExit(scene: Phaser.Scene, state: InteriorState) {
     if (state.onTravel) {
       EventBus.off('travel-to-location', state.onTravel);
       state.onTravel = undefined;
+    }
+    if (state.onEscort) {
+      EventBus.off('visitor-escort', state.onEscort);
+      state.onEscort = undefined;
     }
     scene.input.removeAllListeners('pointerdown');
     state.npcManager.destroy();

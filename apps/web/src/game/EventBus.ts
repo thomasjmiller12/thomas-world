@@ -41,6 +41,11 @@ export interface WorldEvents {
   'npc-activity': { npcId: ThomasId; activity: string };
   // A set/fixture effect — phone rings, lamp flickers (contract world.effect).
   'fixture-effect': { location: LocationId; fixture: string; effect: string; npcId?: ThomasId };
+  // An agent invited the visitor along (contract visitor.escorted, Phase C.5)
+  // — a COMMAND, not a report: every client receives it, but only the ONE
+  // whose own visitorId matches acts on it (suspends input, auto-walks).
+  // `targetZone` resolves the same way agent.moved's does (zone-bounds.ts).
+  'visitor-escort': { visitorId: string; agent: AgentId; from: LocationId; to: LocationId; targetZone: string | null };
 
   // --- per-agent live status (snapshot hydration + engagement flips) --------
   // Authoritative status for one agent: where it is, what it's doing, whether

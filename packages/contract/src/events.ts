@@ -140,6 +140,20 @@ export const VisitorInteractedPayload = z.object({
   fixture: z.string(),
 });
 
+// An agent invited a visitor along and the visitor accepted (Phase C.5,
+// invite_visitor) — a COMMAND, not a report: unlike visitor.moved (the
+// client tells the server it changed rooms), this tells the client to walk
+// the visitor's own sprite there. Scoped to `visitorId` on the client (only
+// that visitor's own session acts on it). `targetZone` is the same bare word
+// every other Phase C payload carries — the frontend resolves the pixel.
+export const VisitorEscortedPayload = z.object({
+  visitorId: z.string(),
+  agent: AgentId,
+  from: LocationId,
+  to: LocationId,
+  targetZone: z.string().nullable().optional(),
+});
+
 // An agent touched the *set* via `use_fixture` (phone rings, lamp flickers).
 // Public; the frontend materializes shake/sound/glow + a visitor affordance.
 // `agent` optional: an effect may be ambient/system-triggered.
@@ -268,6 +282,7 @@ export const WorldEvent = z.discriminatedUnion("type", [
   z.object({ ...envelopeBase, type: z.literal("visitor.left"), payload: VisitorLeftPayload }),
   z.object({ ...envelopeBase, type: z.literal("visitor.moved"), payload: VisitorMovedPayload }),
   z.object({ ...envelopeBase, type: z.literal("visitor.interacted"), payload: VisitorInteractedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("visitor.escorted"), payload: VisitorEscortedPayload }),
   z.object({ ...envelopeBase, type: z.literal("world.effect"), payload: WorldEffectPayload }),
   z.object({ ...envelopeBase, type: z.literal("chat.started"), payload: ChatStartedPayload }),
   z.object({ ...envelopeBase, type: z.literal("chat.ended"), payload: ChatEndedPayload }),
@@ -301,6 +316,7 @@ export const worldEventTypes = [
   "visitor.left",
   "visitor.moved",
   "visitor.interacted",
+  "visitor.escorted",
   "world.effect",
   "chat.started",
   "chat.ended",

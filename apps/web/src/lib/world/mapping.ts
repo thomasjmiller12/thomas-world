@@ -106,6 +106,19 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
     case 'visitor.left':
     case 'visitor.moved':
     case 'visitor.interacted':
+      return [];
+
+    case 'visitor.escorted':
+      return [
+        spec('visitor-escort', {
+          visitorId: ev.payload.visitorId,
+          agent: ev.payload.agent,
+          from: ev.payload.from,
+          to: ev.payload.to,
+          targetZone: ev.payload.targetZone ?? null,
+        }),
+      ];
+
     case 'chat.started':
     case 'chat.ended':
     // Paced scenes were removed in M2.1 — these types are no longer emitted but

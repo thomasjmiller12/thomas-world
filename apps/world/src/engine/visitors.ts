@@ -4,7 +4,7 @@
 
 import { eq, and, gt, desc } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import type { LocationId } from "@town/contract";
+import type { AgentId, LocationId } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { appendEvent } from "./events.js";
 
@@ -171,7 +171,9 @@ export async function moveVisitor(
   if (!row) return undefined;
   const from = (row.locationId ?? null) as LocationId | null;
   if (from === to) return { from, changed: false };
-  await db.update(visitors).set({ locationId: to }).where(eq(visitors.id, id));
+  // A room change clears the stored zone (Phase C.5) — a new room with no
+  // interaction yet means no specific spot is known there.
+  await db.update(visitors).set({ locationId: to, zone: null }).where(eq(visitors.id, id));
   await appendEvent({
     type: "visitor.moved",
     visitorId: id,
@@ -180,6 +182,55 @@ export async function moveVisitor(
     payload: { visitorId: id, name: row.name, from, to },
   });
   return { from, changed: true };
+}
+
+// Record the visitor's approximate within-room spot (Phase C.5, space
+// addressing) — set to the zone of whatever fixture they last interacted
+// with. Best-effort/approximate by design (the server never tracks raw
+// visitor pixels); lets an agent resolve "where the visitor is" with the
+// same zone vocabulary used everywhere else.
+export async function setVisitorZone(id: string, zone: string): Promise<void> {
+  await db.update(visitors).set({ zone }).where(eq(visitors.id, id));
+}
+
+// invite_visitor's write path: an agent brought a visitor along (Phase C.5).
+// Unlike moveVisitor (the CLIENT reporting a room change it already made),
+// this is the SERVER directing the move — it updates the row directly and
+// dual-emits: `visitor.moved` keeps the existing location/arrival bookkeeping
+// (arrivalTimesAtLocation etc.) consistent with any other move, and
+// `visitor.escorted` is the COMMAND the visitor's own client obeys (walks
+// their sprite there, full auto-walk). Returns undefined for an unknown
+// visitor; the caller (the tool) turns that into an in-fiction miss.
+export async function escortVisitorTo(
+  visitorId: string,
+  agentId: AgentId,
+  to: LocationId,
+  targetZone?: string,
+): Promise<{ from: LocationId | null } | undefined> {
+  const [row] = await db.select().from(visitors).where(eq(visitors.id, visitorId));
+  if (!row) return undefined;
+  const from = (row.locationId ?? null) as LocationId | null;
+  await db
+    .update(visitors)
+    .set({ locationId: to, zone: targetZone ?? null })
+    .where(eq(visitors.id, visitorId));
+  if (from !== to) {
+    await appendEvent({
+      type: "visitor.moved",
+      visitorId,
+      locationId: to,
+      visibility: "public",
+      payload: { visitorId, name: row.name, from, to },
+    });
+  }
+  await appendEvent({
+    type: "visitor.escorted",
+    visitorId,
+    locationId: to,
+    visibility: "public",
+    payload: { visitorId, agent: agentId, from: from ?? to, to, targetZone: targetZone ?? null },
+  });
+  return { from };
 }
 
 // Visitors currently AT a location (design doc §2 — the location-aware

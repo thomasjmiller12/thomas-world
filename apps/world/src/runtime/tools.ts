@@ -52,8 +52,10 @@ import {
   attachedArtifactsFor,
   recentObjectEvents,
 } from "../engine/objects.js";
-import { zoneExists } from "../engine/zones.js";
-import { renderPlace } from "./observation.js";
+import { zoneExists, zonesForLocation } from "../engine/zones.js";
+import { renderPlace, renderOthersLine } from "./observation.js";
+import { getVisitor, escortVisitorTo } from "../engine/visitors.js";
+import { getSession } from "./chat.js";
 import {
   searchShareables,
   renderShareableHits,
@@ -135,6 +137,25 @@ function dedupRead(agentId: string, key: string, content: string, label: string)
 
 const artifactKindEnum = z.enum(artifactKinds as unknown as [string, ...string[]]);
 
+// Resolve a named spot (an object or an explicit zone) to a zone id WITHIN
+// `to` — shared by move_to and invite_visitor (Phase C / C.5, space
+// addressing). The wire only ever carries the resolved WORD, never pixels.
+// An object resolves to ITS zone; an explicit zone is validated against the
+// destination location. Unresolvable → undefined, never an error (degrades
+// to "just the room", per the design's "unknown ref never errors" stance).
+async function resolveTargetZone(
+  to: LocationId,
+  toObject?: string,
+  toZone?: string,
+): Promise<string | undefined> {
+  if (toObject) {
+    const obj = await findObjectAtLocation(to, toObject).catch(() => undefined);
+    return obj?.zone;
+  }
+  if (toZone && zoneExists(toZone, to)) return toZone;
+  return undefined;
+}
+
 // Build the full tool array for one tick, bound to `ctx`.
 export function buildTools(ctx: AgentContext): RunnableTool[] {
   // --- World -----------------------------------------------------------------
@@ -152,16 +173,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       const wantsSpot = Boolean(toObject || toZone);
       if (to === ctx.location && !wantsSpot) return `You're already at the ${to}.`;
 
-      // Resolve the named spot to a zone id (the wire only ever carries the
-      // WORD — the frontend owns pixels). An object resolves to ITS zone; an
-      // explicit zone is validated against the destination location.
-      let targetZone: string | undefined;
-      if (toObject) {
-        const obj = await findObjectAtLocation(to, toObject).catch(() => undefined);
-        targetZone = obj?.zone;
-      } else if (toZone && zoneExists(toZone, to)) {
-        targetZone = toZone;
-      }
+      const targetZone = await resolveTargetZone(to, toObject, toZone);
       const spotLabel = toObject ?? toZone;
 
       if (to === ctx.location) {
@@ -191,6 +203,57 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       );
       const spotNote = targetZone ? `, over by the ${spotLabel}` : "";
       return `You walk to the ${name}${spotNote}. ${loc?.description ?? ""}`;
+    },
+  });
+
+  // invite_visitor (Phase C.5): bring the visitor you're chatting with along —
+  // a full, server-driven walk on their end too (not just yours), so this is
+  // chat-only and deliberate, not a casual add-on to every room change.
+  const invite_visitor = betaZodTool({
+    name: "invite_visitor",
+    description:
+      "Ask the visitor you're talking with to come along — you both walk to the place (and, optionally, a specific spot there, via toObject/toZone — same as move_to). Their character walks the whole way with you, automatically; this is for a real invite ('come see the workshop'), not idle movement. Only works while you're in a conversation with them.",
+    inputSchema: z.object({
+      location: z.enum(locationIds as unknown as [string, ...string[]]),
+      toObject: z.string().max(60).optional(),
+      toZone: z.string().max(60).optional(),
+    }),
+    run: async ({ location, toObject, toZone }) => {
+      if (!ctx.chatSessionId) {
+        return "You can only bring someone along while you're talking with them.";
+      }
+      const session = await getSession(ctx.chatSessionId).catch(() => null);
+      if (!session?.visitorId) {
+        return "There's no visitor in this conversation to bring along.";
+      }
+      const visitor = await getVisitor(session.visitorId).catch(() => undefined);
+      if (!visitor) return "Can't find that visitor anymore.";
+
+      const to = location as LocationId;
+      const targetZone = await resolveTargetZone(to, toObject, toZone);
+      const spotLabel = toObject ?? toZone;
+
+      // Move yourself too (mirrors move_to's own hub-and-spoke hop), unless
+      // it's a pure within-room reposition with both of you already here.
+      if (to !== ctx.location) {
+        const adjacent = await isAdjacent(ctx.location, to);
+        if (!adjacent) {
+          await moveAgent(ctx.agentId, "town");
+          ctx.location = "town";
+        }
+        await moveAgent(ctx.agentId, to, targetZone);
+        ctx.location = to;
+      } else if (targetZone) {
+        await moveAgent(ctx.agentId, to, targetZone);
+      }
+
+      await escortVisitorTo(session.visitorId, ctx.agentId, to, targetZone);
+
+      const loc = await getLocation(to);
+      const name = loc?.name ?? to;
+      const spotNote = targetZone ? `, over by the ${spotLabel}` : "";
+      await ctx.onAction?.("invite_visitor", `brings the visitor along to the ${name}`);
+      return `You bring them along to the ${name}${spotNote}. ${loc?.description ?? ""}`;
     },
   });
 
@@ -235,7 +298,11 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         })),
         [],
       );
-      const others = here.length ? here.map((a) => a.displayName).join(", ") : "no one else";
+      const zonesHere = zonesForLocation(ctx.location);
+      const others = renderOthersLine(
+        here.map((a) => ({ displayName: a.displayName, zone: a.zone as string | null })),
+        (id) => zonesHere.find((z) => z.id === id)?.label,
+      );
       return `You're at the ${loc?.name ?? ctx.location}. ${loc?.description ?? ""}\n${placeLines.join("\n")}\nAlso here: ${others}.`;
     },
   });
@@ -833,6 +900,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   // visitor turns always do.
   if (ctx.chatSessionId) {
     tools.push(buildLeaveChat(ctx));
+    tools.push(invite_visitor as RunnableTool);
     for (const t of buildShareTools(ctx)) tools.push(t);
   }
 

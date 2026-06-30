@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { WorldEvent } from "@town/contract";
-import { renderVisitorsSection, renderEvents, renderPlace } from "./observation.js";
+import { renderVisitorsSection, renderEvents, renderPlace, renderOthersLine } from "./observation.js";
 
 // renderPlace: the inhabited "Where you are" object rendering. The load-bearing
 // safety guarantee is that a CLEAN room (all-default state, no notes, no pins)
@@ -50,6 +50,44 @@ describe("renderPlace — inhabited room rendering with safe degradation", () =>
   });
 });
 
+// "Also here:" co-presence line (Phase C.5, space addressing) — names WHERE a
+// co-located facet is standing when its zone is known, so approaching them is
+// actionable, not just "they're in the room somewhere."
+describe("renderOthersLine", () => {
+  const labelOf = (id: string) => ({ "workshop.bench-area": "at the workbench" } as Record<string, string>)[id];
+
+  it("falls back to the bare name when no zone is known", () => {
+    expect(renderOthersLine([{ displayName: "Writer Thomas", zone: null }], labelOf)).toBe("Writer Thomas");
+  });
+
+  it("appends the zone's human label when one is set and recognized", () => {
+    expect(
+      renderOthersLine([{ displayName: "Builder Thomas", zone: "workshop.bench-area" }], labelOf),
+    ).toBe("Builder Thomas (at the workbench)");
+  });
+
+  it("degrades to the bare name for an unrecognized zone id", () => {
+    expect(renderOthersLine([{ displayName: "Builder Thomas", zone: "nope.nothing" }], labelOf)).toBe(
+      "Builder Thomas",
+    );
+  });
+
+  it("reports the no-one-else case unchanged", () => {
+    expect(renderOthersLine([], labelOf)).toBe("no one else is here right now");
+  });
+
+  it("mixes zoned and unzoned facets in one line", () => {
+    const out = renderOthersLine(
+      [
+        { displayName: "Builder Thomas", zone: "workshop.bench-area" },
+        { displayName: "Writer Thomas", zone: null },
+      ],
+      labelOf,
+    );
+    expect(out).toBe("Builder Thomas (at the workbench), Writer Thomas");
+  });
+});
+
 // Location-aware Visitors section (design doc §2). Pure renderer: leads with
 // who's HERE by name + arrival recency, then the town-wide count.
 describe("renderVisitorsSection", () => {
@@ -93,6 +131,24 @@ describe("renderVisitorsSection", () => {
     expect(out).not.toMatch(/say something/i);
     expect(out).not.toMatch(/standing there/i);
     expect(out).not.toMatch(/wander over/i);
+  });
+
+  // Phase C.5: an approximate zone (set from their last interaction) is phrased
+  // as "near", never "at" — it isn't live pixels, so it shouldn't overclaim.
+  it("phrases a known zone as 'near', not 'at' (approximate, not pixel-exact)", () => {
+    const out = renderVisitorsSection(
+      [{ id: "v1", name: "Ada", zone: "park.bench-area" }],
+      new Map(),
+      1,
+      now,
+      (id) => ({ "park.bench-area": "the bench" } as Record<string, string>)[id],
+    );
+    expect(out).toContain("Ada is here with you, near the bench");
+  });
+
+  it("degrades to the plain line when no zoneLabel resolver is given", () => {
+    const out = renderVisitorsSection([{ id: "v1", name: "Ada", zone: "park.bench-area" }], new Map(), 1, now);
+    expect(out).toBe("Ada is here with you.");
   });
 
   it("lists multiple co-located visitors", () => {
