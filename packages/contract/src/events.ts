@@ -217,6 +217,21 @@ export const ObjectNotedPayload = z.object({
   text: z.string(),
 });
 
+// --- director/effect protocol (Phase A) -------------------------------------
+// A `screen`-surface beat crossed the glass onto the visitor's client (popup
+// card, emote, etc.). `surface:"object"` beats ride the existing world.effect +
+// object.state_changed paths instead; this type carries only screen beats.
+// `agent` null => ambient/system. `visitorId` null => room-wide (every
+// co-located visitor renders it); a non-null id directs the beat at one visitor.
+export const WorldBeatPayload = z.object({
+  beat: z.string(),
+  agent: AgentId.nullable(),
+  location: LocationId,
+  objectId: z.string().nullable(),     // anchor object if any
+  visitorId: z.string().nullable(),    // directed beats: the target visitor; null = whole room
+  params: z.record(z.string(), z.unknown()),
+});
+
 // --- discriminated union ----------------------------------------------------
 
 // Envelope fields shared by every event. `payload` is attached per-member
@@ -258,6 +273,7 @@ export const WorldEvent = z.discriminatedUnion("type", [
   z.object({ ...envelopeBase, type: z.literal("object.state_changed"), payload: ObjectStateChangedPayload }),
   z.object({ ...envelopeBase, type: z.literal("object.attached"), payload: ObjectAttachedPayload }),
   z.object({ ...envelopeBase, type: z.literal("object.noted"), payload: ObjectNotedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("world.beat"), payload: WorldBeatPayload }),
 ]);
 export type WorldEvent = z.infer<typeof WorldEvent>;
 
@@ -290,6 +306,7 @@ export const worldEventTypes = [
   "object.state_changed",
   "object.attached",
   "object.noted",
+  "world.beat",
 ] as const;
 export const WorldEventType = z.enum(worldEventTypes);
 export type WorldEventType = z.infer<typeof WorldEventType>;

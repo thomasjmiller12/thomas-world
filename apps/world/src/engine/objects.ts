@@ -189,13 +189,43 @@ export async function moveObject(
   throw new Error("moveObject is not implemented in the foundation slice");
 }
 
+// setObjectState: the Director/Effect object-surface write path. Loads the
+// object, shallow-merges `statePatch` into its `state` bag, bumps updatedAt,
+// persists, and emits the canonical `object.state_changed` (visibility:location,
+// the perception layer renders it). Returns an in-fiction-friendly result rather
+// than throwing so the director dispatcher can surface a graceful reason.
 export async function setObjectState(
-  _objectId: string,
-  _agent: AgentId | null,
-  _effect: string,
-  _state?: WorldObjectState,
-): Promise<void> {
-  throw new Error("setObjectState is not implemented in the foundation slice");
+  objectId: string,
+  agent: AgentId | null,
+  effect: string,
+  statePatch?: WorldObjectState,
+): Promise<{ ok: boolean; reason?: string }> {
+  const obj = await getObject(objectId);
+  if (!obj) return { ok: false, reason: "object-missing" };
+
+  const mergedState: WorldObjectState = {
+    ...((obj.state ?? {}) as WorldObjectState),
+    ...(statePatch ?? {}),
+  };
+  await db
+    .update(worldObjects)
+    .set({ state: mergedState, updatedAt: new Date() })
+    .where(eq(worldObjects.id, objectId));
+
+  await appendEvent({
+    type: "object.state_changed",
+    agentId: agent,
+    locationId: obj.locationId as LocationId,
+    visibility: "location",
+    payload: {
+      objectId,
+      agent,
+      location: obj.locationId,
+      effect,
+      state: mergedState,
+    },
+  });
+  return { ok: true };
 }
 
 export async function attachArtifact(

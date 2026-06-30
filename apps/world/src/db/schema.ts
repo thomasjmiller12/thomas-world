@@ -76,6 +76,7 @@ const eventTypeEnum = [
   "object.state_changed",
   "object.attached",
   "object.noted",
+  "world.beat",
 ] as const;
 
 // Compile-time drift guards: every inlined literal must be assignable to (and

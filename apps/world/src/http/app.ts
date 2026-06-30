@@ -37,7 +37,7 @@ import type { ArtifactSummary } from "@town/contract";
 import type { z } from "zod";
 import { config } from "../config.js";
 import { buildSnapshot, engagementToContract } from "../engine/snapshot.js";
-import { allObjects, objectsAtLocation, rowToWorldObject } from "../engine/objects.js";
+import { allObjects, objectsAtLocation, findObjectAtLocation, rowToWorldObject } from "../engine/objects.js";
 import { allZones, zonesForLocation } from "../engine/zones.js";
 import {
   eventsAfter,
@@ -90,6 +90,7 @@ import {
   visitorTurnCount,
 } from "../runtime/chat.js";
 import { enqueue } from "../runtime/queue.js";
+import { consumePendingCall } from "../runtime/director.js";
 import type { FixtureDef } from "../runtime/fixtures.js";
 import {
   createRateLimiters,
@@ -596,6 +597,28 @@ export function createApp() {
       visibility: "public",
       payload: { visitorId: id, name: v.name, location: locationId, fixture },
     });
+
+    // Director/Effect: if this fixture is a world_object with a pending call (an
+    // agent rang it via play_beat phone-ring), the ringer wakes IMMEDIATELY to run
+    // the bit. Otherwise, give every agent currently here an interrupt tick so a
+    // co-located facet can react to the visitor touching the set. Fire-and-forget,
+    // bounded, never blocks the response (mirrors loop.ts:421 .catch idiom).
+    void (async () => {
+      const obj = await findObjectAtLocation(locationId as LocationId, fixture).catch(
+        () => undefined,
+      );
+      const call = obj ? consumePendingCall(obj.id) : null;
+      if (call) {
+        await enqueue(call.agentId, { kind: "tick", interrupt: true });
+        return;
+      }
+      const here = await agentsAtLocation(locationId as LocationId).catch(() => []);
+      for (const a of here.slice(0, 5)) {
+        await enqueue(a.id as AgentId, { kind: "tick", interrupt: true });
+      }
+    })().catch((err) =>
+      console.warn(`[visitors] interact-wake failed:`, (err as Error).message),
+    );
 
     return c.json({ ok: true });
   });

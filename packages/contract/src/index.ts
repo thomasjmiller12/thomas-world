@@ -6,6 +6,7 @@
 export * from "./ids.js";
 export * from "./artifacts.js";
 export * from "./objects.js";
+export * from "./beats.js";
 export * from "./events.js";
 export * from "./share-cards.js";
 export * from "./portfolio.js";

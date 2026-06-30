@@ -117,6 +117,20 @@ export interface WorldEvents {
   // straight line, stopping on collision (Phaser pointer → player target).
   'tap-move': { worldX: number; worldY: number };
 
+  // --- director / effect protocol (WorldClient → DirectorBeat overlay) ------
+  // A screen-surface beat an agent ran (contract world.beat) — a card popped on
+  // the visitor's screen, an emote over a head, etc. `visitorId` is the directed
+  // target (null = room-wide). The DirectorBeat overlay renders it via a beat-id
+  // component catalog and drops beats directed at a different visitor.
+  'director-beat': {
+    beat: string;
+    params: Record<string, unknown>;
+    agent: AgentId | null;
+    location: LocationId;
+    visitorId: string | null;
+    ts?: string;
+  };
+
   // --- raw world events (WorldClient → observers) ---------------------------
   // Every live contract event, unmapped. The observe dashboard's live feed
   // listens here (the mapped npc-* events only cover canvas-relevant types).

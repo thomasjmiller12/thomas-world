@@ -120,3 +120,35 @@ body {
     transform: translateY(-22px) scale(1.15);
   }
 }
+
+/* Director/Effect protocol overlay (DirectorBeat). A popped card lands with a
+   little overshoot; an emote bubble drifts up over its full ~3s life. */
+@keyframes beatCardIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes beatEmoteFloat {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.85);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -18px) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -30px) scale(1.05);
+  }
+}

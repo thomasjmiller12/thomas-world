@@ -16,7 +16,7 @@ import * as z from "zod/v4";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { betaMemoryTool } from "@anthropic-ai/sdk/helpers/beta/memory";
 import type { BetaRunnableTool } from "@anthropic-ai/sdk/lib/tools/BetaRunnableTool.mjs";
-import { agentIds, locationIds, artifactKinds, type AgentId, type LocationId, type ShareCard } from "@town/contract";
+import { agentIds, locationIds, artifactKinds, listBeats, type AgentId, type LocationId, type ShareCard } from "@town/contract";
 
 import { moveAgent, setActivity, getAgent } from "../engine/agents.js";
 import { checkGate, isAdjacent, getLocation, agentsAtLocation } from "../engine/locations.js";
@@ -42,6 +42,7 @@ import * as hindsight from "./hindsight.js";
 import * as vault from "./vault.js";
 import * as github from "./github.js";
 import { checkFixtureAction, tryRecordEffect, type FixtureDef } from "./fixtures.js";
+import { playBeat } from "./director.js";
 import {
   objectsAtLocation,
   findObjectAtLocation,
@@ -325,6 +326,32 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       await ctx.onAction?.("use_fixture", `${action}s the ${fixture}`);
       return `You ${action} the ${fixture}. It's noticeable to anyone here.`;
     },
+  });
+
+  // play_beat (Director/Effect protocol): the ONE spine tool for running a bit —
+  // a named catalog beat that changes an object's state here (a phone rings, a
+  // lamp flickers) or reaches across the glass onto a visitor's screen (a popup
+  // card, an emote). The agent picks a beat by id and parameterizes it; it can
+  // never inject markup. The description is GENERATED from the catalog so adding
+  // a beat is a data row in @town/contract — no tool change, no new token cost
+  // beyond the one line. Available on idle ticks AND chat (a core tool).
+  const play_beat = betaZodTool({
+    name: "play_beat",
+    description: [
+      "Run a bit: a small, named, pre-built effect — change something here in the world, or pop something onto the visitor's screen. It's seasoning, not a tic; a bit that lands once beats five that don't (shares your effect budget). The bits you can run:",
+      ...listBeats().map((b) => {
+        const shape = b.params instanceof z.ZodObject ? Object.keys(b.params.shape) : [];
+        const paramHint = shape.length ? ` params: {${shape.join(", ")}}` : " no params";
+        return `- "${b.id}" (${b.surface}): ${b.description}${paramHint}.`;
+      }),
+      'Pass the beat id as `beat`, its params as `params`, and (for object beats) optionally name the object via `object` — omit it and a sensible one here is chosen.',
+    ].join("\n"),
+    inputSchema: z.object({
+      beat: z.string(),
+      object: z.string().max(60).optional(),
+      params: z.record(z.string(), z.unknown()).optional(),
+    }),
+    run: async (a) => playBeat(ctx, { beat: a.beat, object: a.object, params: a.params ?? {} }),
   });
 
   // --- Social ----------------------------------------------------------------
@@ -707,6 +734,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     inspect_object as RunnableTool,
     leave_note as RunnableTool,
     use_fixture as RunnableTool,
+    play_beat as RunnableTool,
     send_dm as RunnableTool,
     broadcast as RunnableTool,
     create_artifact as RunnableTool,

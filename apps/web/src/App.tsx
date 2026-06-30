@@ -10,6 +10,7 @@ import { ChatSession } from './components/chat/ChatSession';
 import { AmbientRail } from './components/AmbientRail';
 import { HUD } from './components/HUD';
 import { WelcomeCard } from './components/WelcomeCard';
+import { DirectorBeat } from './components/director/DirectorBeat';
 import { SleepOverlay } from './components/SleepOverlay';
 import { ChroniclePanel } from './components/chronicle/ChroniclePanel';
 import { AboutPanel, type AboutTab } from './components/portfolio/AboutPanel';
@@ -88,6 +89,17 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
   const sleepingRef = useRef(false);
   sleepingRef.current = sleeping;
   const viewport = useViewport();
+  // The visitor's id (for the DirectorBeat directed-beat filter). WorldClient
+  // persists it to localStorage during identity bootstrap; we seed from there
+  // and re-read once after boot so a directed screen beat reaches the right
+  // visitor (DirectorBeat also falls back to localStorage as a safety net).
+  const [visitorId, setVisitorId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('town.visitorId');
+    } catch {
+      return null;
+    }
+  });
 
   // ── ChatSession seam (the container drives WorldClient through these) ──────
   // The single send path: WorldClient creates the session on the first message
@@ -153,7 +165,16 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
     // transitions re-fire that event, and start() wires the overlay bridge +
     // opens the SSE stream, which must happen exactly once (re-running it leaks
     // EventSource connections and duplicates chat POSTs).
-    void world.start();
+    void world.start().then(() => {
+      // Identity is established inside start(); pick up the persisted id so the
+      // DirectorBeat directed-beat filter has it before any beat arrives.
+      try {
+        const id = localStorage.getItem('town.visitorId');
+        if (id) setVisitorId(id);
+      } catch {
+        /* storage unavailable — DirectorBeat falls back to room-wide beats */
+      }
+    });
 
     // Keep handler refs so unmount removes ONLY our own listeners (no bare
     // removeAllListeners — that would nuke the Phaser scenes' listeners too,
@@ -336,6 +357,15 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
 
           {/* One-time premise framing for first-time visitors. */}
           {!observe && <WelcomeCard touch={viewport.touch} />}
+
+          {/* Director/Effect protocol — screen beats (popped cards, emotes) an
+              agent runs across the glass. Above chat (z-40), below the
+              full-screen Chronicle/About hubs (z-60). */}
+          {!observe && (
+            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 50 }}>
+              <DirectorBeat visitorId={visitorId} />
+            </div>
+          )}
 
           {/* Ghost-mode badge: you can walk, nobody can see you. */}
           {observe && (

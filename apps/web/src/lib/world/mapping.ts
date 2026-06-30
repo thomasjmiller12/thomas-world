@@ -60,6 +60,24 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
         }),
       ];
 
+    // A screen-surface director beat (contract world.beat) — a card/emote that
+    // crosses the glass onto the visitor's client. Object-surface beats arrive
+    // via the dual-emitted world.effect → fixture-effect path (sprite FX), so
+    // those don't come through here; this case carries only the screen layer.
+    // `visitorId` is the directed target (null = room-wide); the overlay does
+    // the per-visitor filtering, not this pure mapping.
+    case 'world.beat':
+      return [
+        spec('director-beat', {
+          beat: ev.payload.beat,
+          params: ev.payload.params,
+          agent: ev.payload.agent,
+          location: ev.payload.location,
+          visitorId: ev.payload.visitorId,
+          ts: ev.ts,
+        }),
+      ];
+
     case 'world.time':
       // Phase change updates only the tint; visitor count / awake come from the
       // snapshot's world block (and stay until the next snapshot). We surface
