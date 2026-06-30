@@ -51,6 +51,14 @@ export function consumePendingCall(
   return { agentId: call.agentId };
 }
 
+// Arm a pending call on an object: whoever answers it (a visitor clicking the
+// ringing phone → visitor.interacted) wakes `agentId` live to run the bit.
+// Exported so BOTH ring paths arm it — play_beat's phone-ring AND the legacy
+// use_fixture("ring") verb — so a visitor pickup works however the agent rang.
+export function recordPendingCall(objectId: string, agentId: AgentId, now: number = Date.now()): void {
+  pendingCalls.set(objectId, { agentId, ts: now });
+}
+
 // Test seam so the module-level registry doesn't leak between specs.
 export function _resetPendingCalls(): void {
   pendingCalls.clear();
@@ -177,7 +185,7 @@ async function runObjectBeat(
 
   // A "ring" records a pending call: whoever answers wakes this agent live.
   if (effect === "ring") {
-    pendingCalls.set(obj.id, { agentId: ctx.agentId, ts: Date.now() });
+    recordPendingCall(obj.id, ctx.agentId);
   }
 
   await ctx.onAction?.("play_beat", `runs the ${beatDef.label.toLowerCase()}`);

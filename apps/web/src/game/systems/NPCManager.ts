@@ -36,6 +36,12 @@ export class NPCManager {
 
   // Rendered sprites, keyed by agent id.
   private readonly sprites = new Map<ThomasId, NPC>();
+  // Sprites mid-departure: removed from `sprites` but still animating their walk
+  // to the exit door before they self-destruct. Tracked separately so a re-entry
+  // during that window (a 90s resync npc-status, a reconnect, or the agent
+  // flip-flopping its location back) RECLAIMS the same sprite instead of
+  // spawning a second one — the duplicate-sprite bug. Cleared on actual destroy.
+  private readonly departing = new Map<ThomasId, NPC>();
   // Last known authoritative location per agent (across all scenes), so we can
   // decide spawn/despawn without a snapshot re-read.
   private readonly agentLocations = new Map<ThomasId, LocationId>();
@@ -126,6 +132,18 @@ export class NPCManager {
     const sprite = this.sprites.get(id);
 
     if (here && !sprite && location) {
+      // Re-entry while the agent's prior sprite is still walking out the door:
+      // reclaim that sprite (cancel its departure, walk it back to the anchor)
+      // rather than spawn a second one stacked on top of it.
+      const leaving = this.departing.get(id);
+      if (leaving) {
+        this.departing.delete(id);
+        this.sprites.set(id, leaving);
+        this.placedAt.set(id, location);
+        const anchor = this.anchorFor(id, location);
+        this.walkSprite(leaving, anchor, () => this.applyStateFor(id));
+        return;
+      }
       this.spawn(id, location, /* walkIn */ true);
       this.placedAt.set(id, location);
     } else if (!here && sprite) {
@@ -157,6 +175,15 @@ export class NPCManager {
   private spawn(id: ThomasId, location: LocationId, walkIn: boolean): void {
     const config = NPC_CONFIGS[id];
     if (!config) return;
+    // Defense in depth: never leave a second sprite for this id alive. A reclaim
+    // in reconcile() handles the common case; this catches any other path that
+    // reaches spawn while a sprite (live or departing) still exists.
+    const stale = this.sprites.get(id) ?? this.departing.get(id);
+    if (stale) {
+      this.sprites.delete(id);
+      this.departing.delete(id);
+      stale.destroy();
+    }
     const target = this.anchorFor(id, location);
     const door = LOCATION_ANCHORS[location].door;
 
@@ -185,8 +212,16 @@ export class NPCManager {
     // Free its guest slot regardless of which scene it's leaving.
     this.releaseGuestSlot(id);
     this.sprites.delete(id);
+    // Park it as departing so a re-entry mid-exit reclaims it (see reconcile)
+    // instead of spawning a duplicate.
+    this.departing.set(id, sprite);
 
     const finish = () => {
+      // Only destroy if this sprite is STILL the departing one — a reclaim moved
+      // it back into `sprites` and re-tasked its walk, so its old exit callback
+      // firing must not destroy the now-live sprite.
+      if (this.departing.get(id) !== sprite) return;
+      this.departing.delete(id);
       sprite.destroy();
     };
     // Exit via the door of the location the sprite was actually placed at (a
@@ -263,6 +298,11 @@ export class NPCManager {
   // Update every sprite, run proximity checks, and return the nearest agent the
   // player can interact with (replaces the hardcoded single-NPC targeting).
   update(): NPC | null {
+    // Departing sprites still need per-frame ticks to animate their walk to the
+    // door and fire the arrival callback that destroys them; they are NOT
+    // interaction targets (they're on their way out of the scene).
+    for (const npc of this.departing.values()) npc.update();
+
     let nearest: NPC | null = null;
     let nearestDist = Infinity;
     for (const npc of this.sprites.values()) {
@@ -305,6 +345,8 @@ export class NPCManager {
   destroy(): void {
     this.unwire();
     for (const npc of this.sprites.values()) npc.destroy();
+    for (const npc of this.departing.values()) npc.destroy();
+    this.departing.clear();
     this.sprites.clear();
     this.guestSlots.clear();
     this.chatting.clear();

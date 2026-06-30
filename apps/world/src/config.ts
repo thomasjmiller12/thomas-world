@@ -13,6 +13,7 @@ const hindsightUrl = env("HINDSIGHT_URL");
 const langfuseSecret = env("LANGFUSE_SECRET_KEY");
 const langfusePublic = env("LANGFUSE_PUBLIC_KEY");
 const resendKey = env("RESEND_API_KEY");
+const resendInboundToken = env("RESEND_INBOUND_TOKEN");
 const vaultDir = env("VAULT_DIR");
 const githubToken = env("GITHUB_TOKEN");
 
@@ -39,6 +40,8 @@ export const config = {
     baseUrl: env("LANGFUSE_BASE_URL"),
   },
   resendApiKey: resendKey,
+  resendInboundToken,
+  resendAgentDomain: env("RESEND_AGENT_DOMAIN"),
   vaultDir,
 
   // Read-only GitHub access (fine-grained PAT on Thomas's account). The agents'

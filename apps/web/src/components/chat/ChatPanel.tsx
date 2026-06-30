@@ -93,8 +93,20 @@ export function ChatPanel({
     if (el) el.scrollTop = el.scrollHeight;
   }, [lines]);
 
-  // Autofocus on open and on an imperative refocus (Enter / SPACE).
+  // Refocus the input ONLY on an explicit imperative bump (Enter while open /
+  // re-interacting with the same agent) — NOT on open or on a phase flip. Auto-
+  // focusing on open silently froze the player (typing-focus fires on focus), so
+  // a visitor who opened a chat couldn't walk (e.g. over to the payphone) until
+  // they manually blurred. Opening now leaves movement free; the visitor clicks
+  // the input or presses Enter when they actually want to type. focusNonce starts
+  // at 0 (no bump), so the mount run is a no-op; guarded so it never grabs focus
+  // once the agent has ended the chat.
+  const firstRun = useRef(true);
   useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
     if (phase !== 'ended') inputRef.current?.focus();
   }, [focusNonce, phase]);
 

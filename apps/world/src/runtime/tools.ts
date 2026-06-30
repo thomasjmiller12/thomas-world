@@ -30,6 +30,7 @@ import {
   listArtifacts,
 } from "../engine/artifacts.js";
 import { recordCapabilityRequest, sendEmailToThomas } from "../engine/outside.js";
+import { readInboundMail, unreadInboundFor } from "../engine/inbound-mail.js";
 import {
   memView,
   memCreate,
@@ -42,7 +43,7 @@ import * as hindsight from "./hindsight.js";
 import * as vault from "./vault.js";
 import * as github from "./github.js";
 import { checkFixtureAction, tryRecordEffect, type FixtureDef } from "./fixtures.js";
-import { playBeat } from "./director.js";
+import { playBeat, recordPendingCall } from "./director.js";
 import {
   objectsAtLocation,
   findObjectAtLocation,
@@ -323,8 +324,15 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         visibility: "public",
         payload: { location: ctx.location, fixture, effect: action, agent: ctx.agentId },
       });
+      // A "ring" arms a pending call so a visitor who answers (clicks the ringing
+      // phone) wakes this agent live to run the bit — parity with play_beat's
+      // phone-ring, so call-and-response works whichever verb did the ringing.
+      if (action === "ring") {
+        const obj = await findObjectAtLocation(ctx.location, fixture).catch(() => undefined);
+        if (obj) recordPendingCall(obj.id, ctx.agentId);
+      }
       await ctx.onAction?.("use_fixture", `${action}s the ${fixture}`);
-      return `You ${action} the ${fixture}. It's noticeable to anyone here.`;
+      return `You ${action} the ${fixture}. It's noticeable to anyone here. If someone picks up, you'll know.`;
     },
   });
 
@@ -697,6 +705,37 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     },
   });
 
+  const check_mailbox = betaZodTool({
+    name: "check_mailbox",
+    description:
+      "List unread outside mail addressed to you from P-Thomas or the internet. Shows ids and subject lines only; use read_mail to open a letter.",
+    inputSchema: z.object({}),
+    run: async () => {
+      const rows = await unreadInboundFor(ctx.agentId);
+      if (!rows.length) return "No unread outside mail is waiting for you.";
+      return rows
+        .map((m) => `- ${m.id} from ${m.fromAddress} at ${m.receivedAt.toISOString()}: "${m.subject}"`)
+        .join("\n");
+    },
+  });
+
+  const read_mail = betaZodTool({
+    name: "read_mail",
+    description:
+      "Open one outside letter addressed to you by id. This marks it read. Use check_mailbox first if you need the ids.",
+    inputSchema: z.object({ id: z.string().min(1) }),
+    run: async ({ id }) => {
+      const row = await readInboundMail(ctx.agentId, id);
+      if (!row) return `No unread or addressed-to-you outside mail exists with id ${id}.`;
+      const body = row.text.trim() || "(No plain-text body was included.)";
+      return clampText(
+        `From: ${row.fromAddress}\nTo: ${row.toAddress}\nReceived: ${row.receivedAt.toISOString()}\nSubject: ${row.subject}\n\n${body}`,
+        8_000,
+        "ask Thomas to send a shorter note or inspect the raw inbound payload",
+      );
+    },
+  });
+
   // --- Sharing (curated, visitor-safe cards) --------------------------------
   // The catalog is an ALLOWLIST the SERVER owns: search returns ids; the share_*
   // tools resolve those ids to real cards. Agents never emit raw URLs (design
@@ -756,7 +795,9 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     browse_repo as RunnableTool,
     read_repo_file as RunnableTool,
     search_code as RunnableTool,
+    check_mailbox as RunnableTool,
     email_thomas as RunnableTool,
+    read_mail as RunnableTool,
     request_capability as RunnableTool,
   ];
 

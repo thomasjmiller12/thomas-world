@@ -18,6 +18,7 @@ import { getLocation, agentsAtLocation } from "../engine/locations.js";
 import { perceivedEventsSince } from "../engine/events.js";
 import { objectsAtLocation, type WorldObjectRow } from "../engine/objects.js";
 import { inboxFor, type MessageRow } from "../engine/messages.js";
+import { unreadInboundFor, type InboundMailRow } from "../engine/inbound-mail.js";
 import { coreMemorySnapshot } from "../engine/memory.js";
 import {
   visitorsAtLocation,
@@ -218,6 +219,17 @@ function renderInbox(msgs: MessageRow[]): string {
     .join("\n");
 }
 
+function renderOutsideMail(msgs: InboundMailRow[]): string {
+  if (msgs.length === 0) return "";
+  const lines = msgs.slice(0, 8).map((m) => {
+    const when = m.receivedAt.toISOString();
+    return `- outside mail id ${m.id} from ${m.fromAddress} at ${when}: "${m.subject}"`;
+  });
+  const suffix =
+    msgs.length > 8 ? `\n- ${msgs.length - 8} more outside letters are waiting.` : "";
+  return `Unread outside mail from P-Thomas / the internet. Use read_mail with the id when you want to open one.\n${lines.join("\n")}${suffix}`;
+}
+
 // Render the events-since-last-tick section from the PERSPECTIVE of `viewer`
 // (the ticking agent): an addressed agent.spoke shows whether it was aimed at
 // the viewer (`said (to you)`) or another facet (`said to <name>`). The
@@ -320,12 +332,13 @@ export async function buildDelta(
   const location = agent.locationId as LocationId;
 
   const cursor = await readCursor(agentId);
-  const [loc, here, perceivedRes, inboxRes, visitorCount, visitorsHere, core, objectsHere, pinnedHere] =
+  const [loc, here, perceivedRes, inboxRes, outsideMail, visitorCount, visitorsHere, core, objectsHere, pinnedHere] =
     await Promise.all([
       getLocation(location),
       agentsAtLocation(location, agentId),
       perceivedEventsSince(cursor.eventId, agentId, location),
       inboxFor(agentId, cursor.messageId),
+      unreadInboundFor(agentId),
       visitorsPresentCount(),
       visitorsAtLocation(location),
       coreMemorySnapshot(agentId),
@@ -376,6 +389,7 @@ export async function buildDelta(
   // something, with a single carry-on fallback when nothing reached the agent.
   const pushParts: string[] = [];
   if (inbox.length) pushParts.push(renderInbox(inbox));
+  if (outsideMail.length) pushParts.push(renderOutsideMail(outsideMail));
   if (noticePush.length) pushParts.push(renderEvents(noticePush, location, agentId));
   const since = pushParts.length
     ? pushParts.join("\n")

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import type { AgentId } from "@town/contract";
 import {
   checkFixtureAction,
   tryRecordEffect,
@@ -52,47 +53,45 @@ describe("checkFixtureAction whitelist (design doc §4)", () => {
   });
 });
 
-describe("effect rate limiter (3/hour per agent, design doc §4/§7)", () => {
+describe("effect rate limiter (20/hour per agent, raised from 3 for beats)", () => {
   beforeEach(() => _resetEffectLimiter());
 
-  it("allows 3 effects in a window then blocks the 4th", () => {
+  // The cap (fixtures.ts MAX_PER_WINDOW). Tests fill to the cap via a loop so
+  // they track the constant rather than hardcoding it in many places.
+  const CAP = 20;
+  const fill = (agent: AgentId, base: number, n: number) => {
+    for (let i = 0; i < n; i++) expect(tryRecordEffect(agent, base + i)).toBe(true);
+  };
+
+  it("allows CAP effects in a window then blocks the next", () => {
     const now = 1_000_000;
-    expect(tryRecordEffect("hobby", now)).toBe(true);
-    expect(tryRecordEffect("hobby", now + 1)).toBe(true);
-    expect(tryRecordEffect("hobby", now + 2)).toBe(true);
-    expect(tryRecordEffect("hobby", now + 3)).toBe(false);
+    fill("hobby", now, CAP);
+    expect(tryRecordEffect("hobby", now + CAP)).toBe(false);
   });
 
   it("does not record a blocked attempt (no permanent lockout)", () => {
     const now = 1_000_000;
-    tryRecordEffect("writer", now);
-    tryRecordEffect("writer", now + 1);
-    tryRecordEffect("writer", now + 2);
+    fill("writer", now, CAP);
     // Blocked — and the rejection must NOT push a timestamp, so once the window
     // rolls forward the agent is back to a clean slate, not perpetually capped.
-    expect(tryRecordEffect("writer", now + 3)).toBe(false);
+    expect(tryRecordEffect("writer", now + CAP)).toBe(false);
     const later = now + 60 * 60_000 + 10; // just past the 1h window
     expect(tryRecordEffect("writer", later)).toBe(true);
   });
 
   it("expires timestamps outside the rolling hour", () => {
     const base = 1_000_000;
-    tryRecordEffect("builder", base);
-    tryRecordEffect("builder", base + 1);
-    tryRecordEffect("builder", base + 2);
-    // 2 of the 3 fall outside the window an hour and a bit later; the agent has
-    // headroom again.
-    const t = base + 60 * 60_000 + 5;
+    fill("builder", base, CAP);
+    // The whole window falls outside an hour and a bit later; full headroom again.
+    const t = base + 60 * 60_000 + CAP;
     expect(tryRecordEffect("builder", t)).toBe(true);
   });
 
   it("tracks agents independently", () => {
     const now = 1_000_000;
-    tryRecordEffect("career", now);
-    tryRecordEffect("career", now + 1);
-    tryRecordEffect("career", now + 2);
-    expect(tryRecordEffect("career", now + 3)).toBe(false);
+    fill("career", now, CAP);
+    expect(tryRecordEffect("career", now + CAP)).toBe(false);
     // A different agent is unaffected.
-    expect(tryRecordEffect("researcher", now + 3)).toBe(true);
+    expect(tryRecordEffect("researcher", now + CAP)).toBe(true);
   });
 });

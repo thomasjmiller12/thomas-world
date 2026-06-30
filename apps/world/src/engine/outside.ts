@@ -11,6 +11,21 @@ import { config } from "../config.js";
 
 const { capabilityRequests, outbox } = schema;
 
+const agentNames: Record<AgentId, string> = {
+  career: "Career Thomas",
+  researcher: "Researcher Thomas",
+  builder: "Builder Thomas",
+  writer: "Writer Thomas",
+  hobby: "Hobby Thomas",
+};
+
+function senderFor(agentId: AgentId): string {
+  if (process.env.RESEND_FROM) return process.env.RESEND_FROM;
+  const domain = config.resendAgentDomain;
+  if (!domain) return "Thomas's Town <onboarding@resend.dev>";
+  return `${agentNames[agentId]} <${agentId}@${domain}>`;
+}
+
 export async function recordCapabilityRequest(
   agentId: AgentId,
   summary: string,
@@ -58,7 +73,7 @@ export async function sendEmailToThomas(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM ?? "Thomas's Town <onboarding@resend.dev>",
+        from: senderFor(agentId),
         // The only recipient email_thomas ever targets is Thomas's own Resend
         // account email (plan §9). RESEND_TO overrides for testing.
         to: [process.env.RESEND_TO ?? "delivered@resend.dev"],

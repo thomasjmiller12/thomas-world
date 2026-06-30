@@ -18,7 +18,10 @@ interface Point {
 }
 
 const MAX_EXPLORED = 4000; // hard cap; town maps are ~30x30 tiles, this is generous
-const SNAP_RADIUS = 4; // tiles to search when start/goal is blocked
+const SNAP_RADIUS = 6; // tiles to search when start/goal is blocked (anchor/door
+// on a collision tile). Wider than the original 4-ring so a goal a few tiles
+// deep into a prop cluster still snaps to a reachable walkable tile and gets a
+// real A* route, instead of returning null → a straight-line wall-run.
 
 export function findPath(
   layer: Phaser.Tilemaps.TilemapLayer | null,

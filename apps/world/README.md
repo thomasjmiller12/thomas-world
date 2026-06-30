@@ -124,6 +124,8 @@ result, never a crash) and the degradation is logged once at boot. The `features
 | `OPENAI_API_KEY` | no | — | Hindsight's external embeddings **and** its extraction LLM (verbatim mode still runs an LLM to index entities/temporal info). Half of the `hindsight` flag. |
 | `LANGFUSE_SECRET_KEY` + `LANGFUSE_PUBLIC_KEY` | no | — | **feature: langfuse**. Real OTel tracing via `@langfuse/otel` (trace = tick, `userId` = agent, `sessionId` = day, `soulGitHash` in metadata). Absent → tracing is a strict no-op; everything else identical. `LANGFUSE_BASE_URL` selects the region (default `https://us.cloud.langfuse.com`). |
 | `RESEND_API_KEY` | no | — | **feature: resend**. Outbound email (`email_thomas`). Absent → email is queued to an outbox row and reported queued-not-sent in-fiction. |
+| `RESEND_AGENT_DOMAIN` | no | — | When set, agent emails send from facet-specific addresses such as `builder@town.latent-garden.com`; replies route back through Resend Receiving. Absent → legacy `onboarding@resend.dev`. |
+| `RESEND_INBOUND_TOKEN` | no | — | Shared secret for `POST /webhooks/resend/inbound`. Put it in the Resend webhook URL as `?token=...` or send it as `x-webhook-token`. |
 | `VAULT_DIR` | no | — | **feature: vault**. Absolute path to the synced Obsidian clone. Absent → reference tools degrade in-fiction; `write_agent_note` writes to a local `vault-pending/` dir so nothing is lost. Sync also uses `VAULT_REPO_URL` + `VAULT_DEPLOY_KEY_PATH`. |
 | `GITHUB_TOKEN` | no | — | **feature: github**. A **fine-grained, read-only** PAT on Thomas's GitHub account (permissions: Contents → Read-only, Metadata → Read-only; repository access: all repos or a chosen set). Turns on the code-repo reference tools (`list_repos`, `browse_repo`, `read_repo_file`, `search_code`) — read-only, never gated to a place. Absent → those tools degrade in-fiction. `GITHUB_USER` (default `thomasjmiller12`) scopes listing/search to the account. |
 
@@ -142,6 +144,10 @@ Milestone 1 these three are wired and proven end-to-end against the real service
 - **Resend** key → real outbound mail (outbound-only MVP via `onboarding@resend.dev`).
   `email_thomas` → `sendEmailToThomas` returns Resend's provider `messageId` on success.
   `RESEND_TO` / `RESEND_FROM` override the recipient / sender for testing.
+- **Resend Receiving** → inbound replies. `email.received` webhooks hit
+  `/webhooks/resend/inbound`; the recipient local part routes to a facet
+  (`builder@town.latent-garden.com`, `career@...`). Ticks show unread outside
+  mail headers, and agents open the body with `read_mail`.
 - **Vault** repo + deploy key → the obsidian-git → GitHub → server-pull reference layer
   (still env-gated, not wired in M1).
 

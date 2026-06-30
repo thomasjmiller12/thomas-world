@@ -140,7 +140,13 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
         this.isWanderLeg = true;
         return;
       }
-      // Router set but no path → fall through to the straight-line walk below.
+      // Router set but NO route to this waypoint (it sits on a collision tile, or
+      // is walled off). Straight-lining there is exactly the "wall-running" bug —
+      // the sprite shoves into the wall until the stall guard nudges it. For an
+      // idle roam there's nothing to insist on: just skip to the next waypoint
+      // and pause, so a bad anchor never produces a stuck wall-runner.
+      this.skipWaypoint();
+      return;
     }
 
     const vx = (dx / dist) * NPC_SPEED;
@@ -148,6 +154,22 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     this.setVelocity(vx, vy);
     this.faceVelocity(dx, dy);
     this.play(`${this.npcConfig.sprite}-walk-${this.direction}`, true);
+  }
+
+  // No A* route to the current waypoint (it's on a collision tile or walled
+  // off). Don't straight-line into it — stand idle a beat, then advance to the
+  // next waypoint. Pausing (rather than looping synchronously to the next index)
+  // avoids spinning through every waypoint in one frame when several are blocked.
+  private skipWaypoint() {
+    this.setVelocity(0, 0);
+    this.play(`${this.npcConfig.sprite}-idle-${this.direction}`, true);
+    this.isPaused = true;
+    this.pauseTimer = this.scene.time.delayedCall(Phaser.Math.Between(2000, 5000), () => {
+      if (this.npcState !== 'wander') return;
+      this.isPaused = false;
+      this.currentWaypointIndex = (this.currentWaypointIndex + 1) % this.waypoints.length;
+      this.moveToWaypoint();
+    });
   }
 
   private arriveAtWaypoint() {

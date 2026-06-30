@@ -57,6 +57,7 @@ import { buildAbout, listProofs, getProof } from "../engine/portfolio.js";
 import { listReferences, getReferenceRow, rowToReference } from "../engine/references.js";
 import { getAgent, allAgents } from "../engine/agents.js";
 import { listMessages } from "../engine/messages.js";
+import { recordInboundMail } from "../engine/inbound-mail.js";
 import {
   listArtifacts,
   getArtifact,
@@ -106,6 +107,27 @@ const artifactKindSet = new Set<string>(artifactKinds);
 
 function isAgentId(v: unknown): v is AgentId {
   return typeof v === "string" && agentSet.has(v);
+}
+
+function asRecord(v: unknown): Record<string, unknown> {
+  return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
+}
+
+function firstAddress(v: unknown): string {
+  const value = Array.isArray(v) ? v[0] : v;
+  if (typeof value === "string") return value;
+  const obj = asRecord(value);
+  const email = obj.email ?? obj.address ?? obj.value;
+  if (typeof email === "string") return email;
+  return "";
+}
+
+function textField(obj: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = obj[key];
+    if (typeof value === "string") return value;
+  }
+  return "";
 }
 
 // Response validation (design doc §5): outside production, parse every JSON
@@ -169,6 +191,58 @@ export function createApp() {
         budgetExhausted,
       }),
     );
+  });
+
+  // --- POST /webhooks/resend/inbound --------------------------------------
+  // Resend Receiving → agent mailbox. Protected by a shared token in either
+  // ?token=... or x-webhook-token; Resend's dashboard/API can store the full URL.
+  app.post("/webhooks/resend/inbound", async (c) => {
+    if (config.resendInboundToken) {
+      const token = c.req.query("token") ?? c.req.header("x-webhook-token");
+      if (token !== config.resendInboundToken) return c.json({ error: "unauthorized" }, 401);
+    }
+
+    const payload = (await c.req.json().catch(() => null)) as unknown;
+    const root = asRecord(payload);
+    const eventType = textField(root, ["type", "event"]);
+    if (eventType && eventType !== "email.received") {
+      return c.json({ ok: true, ignored: eventType });
+    }
+
+    const data = asRecord(root.data ?? root);
+    const providerId =
+      textField(data, ["email_id", "emailId", "id", "message_id", "messageId"]) ||
+      `resend-${Date.now()}`;
+    const fromAddress = firstAddress(data.from);
+    const toAddress = firstAddress(data.to ?? data.recipients);
+    const subject = textField(data, ["subject"]);
+    const text = textField(data, ["text", "text_body", "textBody", "plain", "body"]);
+    const html = textField(data, ["html", "html_body", "htmlBody"]) || null;
+    const receivedAtText = textField(data, ["created_at", "createdAt", "received_at", "receivedAt"]);
+    const receivedAt = receivedAtText ? new Date(receivedAtText) : new Date();
+
+    if (!toAddress) {
+      return c.json({ error: "bad payload", message: "missing recipient address" }, 400);
+    }
+
+    const row = await recordInboundMail({
+      providerId,
+      fromAddress: fromAddress || "unknown sender",
+      toAddress,
+      subject,
+      text,
+      html,
+      raw: payload,
+      receivedAt: Number.isNaN(receivedAt.valueOf()) ? new Date() : receivedAt,
+    });
+
+    if (row.toAgent) {
+      void boostAgent(row.toAgent as AgentId, `mail:${row.id}`).catch((err) =>
+        console.warn(`[webhook] mail boost ${row.toAgent} failed:`, (err as Error).message),
+      );
+    }
+
+    return c.json({ ok: true, id: row.id, toAgent: row.toAgent });
   });
 
   // --- GET /world/snapshot -------------------------------------------------

@@ -4,6 +4,7 @@
 // it anywhere in the engine. Column enums reuse the @town/contract id lists so
 // the DB and the wire contract can never drift.
 
+import { randomUUID } from "node:crypto";
 import {
   pgTable,
   bigserial,
@@ -538,3 +539,26 @@ export const outbox = pgTable("outbox", {
   ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
   sentAt: timestamp("sent_at", { withTimezone: true }),
 });
+
+// --- inbound_mail (P-Thomas replies / outside mail into agent inboxes) -------
+export const inboundMail = pgTable(
+  "inbound_mail",
+  {
+    id: text("id").primaryKey().$defaultFn(() => randomUUID()),
+    providerId: text("provider_id").notNull().unique(),
+    fromAddress: text("from_address").notNull(),
+    toAddress: text("to_address").notNull(),
+    toAgent: text("to_agent", { enum: agentEnum }),
+    subject: text("subject").notNull().default(""),
+    text: text("text").notNull().default(""),
+    html: text("html"),
+    raw: jsonb("raw").notNull().default({}),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("inbound_mail_agent_unread_idx").on(t.toAgent, t.readAt),
+    index("inbound_mail_provider_idx").on(t.providerId),
+  ],
+);

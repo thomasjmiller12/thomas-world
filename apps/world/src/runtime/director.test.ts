@@ -73,11 +73,12 @@ describe("playBeat — validation", () => {
   });
 });
 
-describe("playBeat — rate limiting (shares use_fixture's 3/hr knob)", () => {
-  it("refuses the 4th bit in the window with an in-fiction line", async () => {
+describe("playBeat — rate limiting (shares use_fixture's 20/hr knob)", () => {
+  it("refuses once the per-hour cap is hit, with an in-fiction line", async () => {
     objectsAtLocationMock.mockResolvedValue([PHONE]);
     findObjectAtLocationMock.mockResolvedValue(PHONE);
-    for (let i = 0; i < 3; i++) {
+    const CAP = 20; // fixtures.ts MAX_PER_WINDOW
+    for (let i = 0; i < CAP; i++) {
       const ok = await playBeat(ctx(), { beat: "phone-ring", params: {} });
       expect(ok).toMatch(/run the bit/i);
     }

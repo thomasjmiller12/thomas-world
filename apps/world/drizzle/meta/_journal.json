@@ -64,6 +64,13 @@
       "when": 1782000000000,
       "tag": "0008_world_objects",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782846400000,
+      "tag": "0009_inbound_mail",
+      "breakpoints": true
     }
   ]
 }

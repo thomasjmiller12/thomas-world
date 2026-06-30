@@ -53,12 +53,13 @@ export function checkFixtureAction(
   return { ok: true, fixture: f, action };
 }
 
-// In-memory effect rate limiter: 3 effects per rolling hour per agent (§4, §7).
+// In-memory effect rate limiter: 20 effects per rolling hour per agent (raised
+// from 3 once beats/bits became a first-class, actively-demoed surface).
 // Module-level so it survives across ticks within one server process (the same
 // lifetime as the agent-lock map). Not persisted — a restart resets it, which
 // is fine for an anti-spam knob.
 const WINDOW_MS = 60 * 60_000;
-const MAX_PER_WINDOW = 3;
+const MAX_PER_WINDOW = 20;
 const effectTimestamps = new Map<AgentId, number[]>();
 
 // Returns true and RECORDS the effect if under the limit; returns false (records
