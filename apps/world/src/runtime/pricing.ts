@@ -11,6 +11,9 @@ interface ModelPrice {
 
 const PRICES: Record<string, ModelPrice> = {
   "claude-opus-4-8": { inputPerM: 5, outputPerM: 25 },
+  // Sonnet 5 sticker is $3/$15 (intro $2/$10 through 2026-08-31). We meter at the
+  // sticker rate so the budget cap never under-counts when intro pricing lapses.
+  "claude-sonnet-5": { inputPerM: 3, outputPerM: 15 },
   "claude-sonnet-4-6": { inputPerM: 3, outputPerM: 15 },
   "claude-haiku-4-5": { inputPerM: 1, outputPerM: 5 },
 };

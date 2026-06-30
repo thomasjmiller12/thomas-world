@@ -33,7 +33,7 @@ const { chronicleIssues, artifacts } = schema;
 
 // The model the Town Crier writes on. Sonnet for voice quality — generation is
 // lazy/nightly, so latency isn't the constraint (plan §"Target model").
-const CRIER_MODEL = "claude-sonnet-4-6";
+const CRIER_MODEL = "claude-sonnet-5";
 // Bump when the prompt/schema changes so stale cached issues can be told apart.
 export const PROMPT_VERSION = "crier-2026-06-20";
 

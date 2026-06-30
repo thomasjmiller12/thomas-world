@@ -158,6 +158,12 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
   const params = {
     model,
     max_tokens: maxTokens,
+    // Sonnet 5 turns adaptive thinking ON by default when `thinking` is omitted
+    // (Sonnet 4.6 omitted == thinking-off). We pin adaptive + low effort so the
+    // 24/7 loop gets a modest reasoning lift while staying close to the old
+    // cost profile — far below the default `high` effort token spend.
+    thinking: { type: "adaptive" as const },
+    output_config: { effort: "low" as const },
     system: systemBlocks(agentId),
     messages,
     // The user tools (runner dispatches their run()) plus the server-side
