@@ -10,41 +10,49 @@
 
 import type { LocationId, SemanticZone } from "@town/contract";
 
+// Bounds (Phase C, space addressing) were picked offline by rendering each
+// map with render_map.py --grid and reading real fixture coordinates straight
+// out of the scene source (Town.ts / Office.ts / Library.ts / Workshop.ts /
+// Cafe.ts placeTownObject calls + INTERIOR_FIXTURE_POINTS) — not guessed.
+// {x,y,w,h} is a rect; the resolver's target is its BOTTOM-CENTER, so a
+// fixture-adjacent zone's rect is sized/positioned so that point lands right
+// on the fixture. `scene` is the Phaser scene key that renders this location
+// ("Town" hosts both town + park — they're regions of one map).
 export const ZONES: Record<LocationId, SemanticZone[]> = {
   town: [
-    { id: "town.plaza-board", label: "by the notice board" },
-    { id: "town.fountain-edge", label: "at the fountain's edge" },
-    { id: "town.news-corner", label: "by the news stand" },
-    { id: "town.center", label: "in the middle of the square" },
+    { id: "town.plaza-board", label: "by the notice board", bounds: { scene: "Town", x: 376, y: 280, w: 40, h: 40 } },
+    { id: "town.fountain-edge", label: "at the fountain's edge", bounds: { scene: "Town", x: 440, y: 290, w: 40, h: 40 } },
+    { id: "town.news-corner", label: "by the news stand", bounds: { scene: "Town", x: 447, y: 300, w: 40, h: 40 } },
+    { id: "town.center", label: "in the middle of the square", bounds: { scene: "Town", x: 300, y: 310, w: 40, h: 40 } },
   ],
   office: [
-    { id: "office.outbox-nook", label: "by the outbox" },
-    { id: "office.desk", label: "at the desk" },
-    { id: "office.center", label: "in the middle of the office" },
+    { id: "office.outbox-nook", label: "by the outbox", bounds: { scene: "Office", x: 207, y: 10, w: 40, h: 40 } },
+    { id: "office.desk", label: "at the desk", bounds: { scene: "Office", x: 40, y: 100, w: 40, h: 40 } },
+    { id: "office.center", label: "in the middle of the office", bounds: { scene: "Office", x: 200, y: 110, w: 40, h: 40 } },
   ],
   library: [
-    { id: "library.stacks", label: "among the stacks" },
-    { id: "library.reading-nook", label: "in the reading nook" },
-    { id: "library.desk", label: "at the reading desk" },
-    { id: "library.center", label: "in the middle of the library" },
+    { id: "library.stacks", label: "among the stacks", bounds: { scene: "Library", x: 100, y: 40, w: 40, h: 40 } },
+    { id: "library.reading-nook", label: "in the reading nook", bounds: { scene: "Library", x: 75, y: 140, w: 40, h: 40 } },
+    { id: "library.desk", label: "at the reading desk", bounds: { scene: "Library", x: 90, y: 170, w: 40, h: 40 } },
+    { id: "library.center", label: "in the middle of the library", bounds: { scene: "Library", x: 120, y: 70, w: 40, h: 40 } },
   ],
   workshop: [
-    { id: "workshop.north-wall", label: "along the north wall" },
-    { id: "workshop.bench-area", label: "at the workbench" },
-    { id: "workshop.monitor-corner", label: "by the monitor" },
-    { id: "workshop.center", label: "in the middle of the workshop" },
+    { id: "workshop.north-wall", label: "along the north wall", bounds: { scene: "Workshop", x: 140, y: 0, w: 40, h: 40 } },
+    { id: "workshop.bench-area", label: "at the workbench", bounds: { scene: "Workshop", x: 32, y: 108, w: 40, h: 40 } },
+    { id: "workshop.monitor-corner", label: "by the monitor", bounds: { scene: "Workshop", x: 117, y: 35, w: 40, h: 40 } },
+    { id: "workshop.center", label: "in the middle of the workshop", bounds: { scene: "Workshop", x: 140, y: 80, w: 40, h: 40 } },
   ],
   cafe: [
-    { id: "cafe.press-corner", label: "by the press" },
-    { id: "cafe.counter", label: "at the counter" },
-    { id: "cafe.tables", label: "among the tables" },
-    { id: "cafe.center", label: "in the middle of the cafe" },
+    { id: "cafe.press-corner", label: "by the press", bounds: { scene: "Cafe", x: 115, y: 0, w: 40, h: 40 } },
+    { id: "cafe.counter", label: "at the counter", bounds: { scene: "Cafe", x: 37, y: 77, w: 40, h: 40 } },
+    { id: "cafe.tables", label: "among the tables", bounds: { scene: "Cafe", x: 135, y: 100, w: 40, h: 40 } },
+    { id: "cafe.center", label: "in the middle of the cafe", bounds: { scene: "Cafe", x: 100, y: 104, w: 40, h: 40 } },
   ],
   park: [
-    { id: "park.the-sign", label: "by the painted sign" },
-    { id: "park.bench-area", label: "by the bench" },
-    { id: "park.phone-box", label: "by the telephone box" },
-    { id: "park.center", label: "out on the grass" },
+    { id: "park.the-sign", label: "by the painted sign", bounds: { scene: "Town", x: 250, y: 340, w: 40, h: 40 } },
+    { id: "park.bench-area", label: "by the bench", bounds: { scene: "Town", x: 88, y: 356, w: 40, h: 40 } },
+    { id: "park.phone-box", label: "by the telephone box", bounds: { scene: "Town", x: 176, y: 320, w: 40, h: 40 } },
+    { id: "park.center", label: "out on the grass", bounds: { scene: "Town", x: 230, y: 360, w: 40, h: 40 } },
   ],
 };
 

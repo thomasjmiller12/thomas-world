@@ -1,5 +1,6 @@
 import type { WorldEvent, AgentStatus } from '@town/contract';
 import type { WorldEventName, WorldEvents } from '@/game/EventBus';
+import { pixelForZone } from '@/game/data/zone-bounds';
 
 // Pure mapping from contract WorldEvents → the typed EventBus events the UI
 // consumes (design doc §6.1). Kept pure (returns the events to emit instead of
@@ -29,6 +30,11 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
           npcId: ev.payload.agent,
           from: ev.payload.from,
           to: ev.payload.to,
+          // Phase C: the server names a zone (a word); we resolve it to a
+          // pixel here so NPCManager can walk there. An unresolvable/absent
+          // zone leaves `target` undefined — the manager falls back to the
+          // room anchor, never an error.
+          target: ev.payload.targetZone ? pixelForZone(ev.payload.targetZone) : undefined,
         }),
       ];
 

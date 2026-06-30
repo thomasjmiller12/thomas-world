@@ -53,6 +53,11 @@ export class NPCManager {
   // Which guest-anchor slots are taken, per location, so co-located agents fan
   // out instead of stacking on one tile.
   private readonly guestSlots = new Map<LocationId, Map<ThomasId, number>>();
+  // Phase C (space addressing): a specific pixel the next walk for this agent
+  // should aim at (resolved from agent.moved.targetZone by mapping.ts), set by
+  // onMoveTo and consumed — once — by the walk that actually moves it. Absent
+  // means "no specific spot" → the existing room anchor.
+  private readonly pendingTarget = new Map<ThomasId, { x: number; y: number }>();
 
   constructor(
     scene: Phaser.Scene,
@@ -83,9 +88,22 @@ export class NPCManager {
   private readonly onMoveTo = (m: WorldEvents['npc-move-to']) => {
     // An agent moved — walk its sprite even while it's chatting (a chatting
     // agent retains full agency mid-chat: it can get up and walk away).
+    if (m.target) this.pendingTarget.set(m.npcId, m.target);
     const prev = this.agentLocations.get(m.npcId);
     this.agentLocations.set(m.npcId, m.to);
-    if (prev === m.to) return;
+    if (prev === m.to) {
+      // Same room, but a targeted reposition (e.g. move_to toObject/toZone
+      // while already there) — reconcile() only walks on a ROOM change, so
+      // drive this one directly.
+      if (m.target) {
+        const sprite = this.sprites.get(m.npcId);
+        if (sprite) {
+          this.pendingTarget.delete(m.npcId);
+          this.walkSprite(sprite, m.target, () => this.applyStateFor(m.npcId));
+        }
+      }
+      return;
+    }
     this.reconcile(m.npcId);
   };
 
@@ -140,8 +158,8 @@ export class NPCManager {
         this.departing.delete(id);
         this.sprites.set(id, leaving);
         this.placedAt.set(id, location);
-        const anchor = this.anchorFor(id, location);
-        this.walkSprite(leaving, anchor, () => this.applyStateFor(id));
+        const target = this.targetFor(id, location);
+        this.walkSprite(leaving, target, () => this.applyStateFor(id));
         return;
       }
       this.spawn(id, location, /* walkIn */ true);
@@ -158,8 +176,8 @@ export class NPCManager {
       // Already in this scene but its sub-location changed (town↔park): glide
       // over. Skipped when location is unchanged so a status refresh is a no-op.
       this.placedAt.set(id, location);
-      const anchor = this.anchorFor(id, location);
-      this.walkSprite(sprite, anchor, () => this.applyStateFor(id));
+      const target = this.targetFor(id, location);
+      this.walkSprite(sprite, target, () => this.applyStateFor(id));
     }
   }
 
@@ -184,7 +202,7 @@ export class NPCManager {
       this.departing.delete(id);
       stale.destroy();
     }
-    const target = this.anchorFor(id, location);
+    const target = this.targetFor(id, location);
     const door = LOCATION_ANCHORS[location].door;
 
     const npc = new NPC(this.scene, {
@@ -253,6 +271,18 @@ export class NPCManager {
   }
 
   // --- anchor / slot bookkeeping --------------------------------------------
+
+  // The walk target for an agent arriving/repositioning at a location: a
+  // pending Phase-C target if one was just set (consumed once), else the
+  // ordinary room anchor.
+  private targetFor(id: ThomasId, location: LocationId): { x: number; y: number } {
+    const pending = this.pendingTarget.get(id);
+    if (pending) {
+      this.pendingTarget.delete(id);
+      return pending;
+    }
+    return this.anchorFor(id, location);
+  }
 
   // The standing point for an agent at a location: its own resident anchor if
   // it lives there, else a stable guest slot.
