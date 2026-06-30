@@ -141,13 +141,37 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   const move_to = betaZodTool({
     name: "move_to",
     description:
-      "Walk to another location: town, office, library, workshop, cafe, park. If it's across town you'll cut through the town square on the way. Updates where you are for the rest of this tick.",
+      "Walk to another location: town, office, library, workshop, cafe, park. If it's across town you'll cut through the town square on the way. Optionally stand somewhere SPECIFIC once you're there — name an object (toObject, e.g. 'bench') or a zone (toZone, e.g. 'park.bench-area'); an unrecognized one just leaves you in the room, never an error. Works even if you're already in that room (a pure reposition). Updates where you are for the rest of this tick.",
     inputSchema: z.object({
       location: z.enum(locationIds as unknown as [string, ...string[]]),
+      toObject: z.string().max(60).optional(),
+      toZone: z.string().max(60).optional(),
     }),
-    run: async ({ location }) => {
+    run: async ({ location, toObject, toZone }) => {
       const to = location as LocationId;
-      if (to === ctx.location) return `You're already at the ${to}.`;
+      const wantsSpot = Boolean(toObject || toZone);
+      if (to === ctx.location && !wantsSpot) return `You're already at the ${to}.`;
+
+      // Resolve the named spot to a zone id (the wire only ever carries the
+      // WORD — the frontend owns pixels). An object resolves to ITS zone; an
+      // explicit zone is validated against the destination location.
+      let targetZone: string | undefined;
+      if (toObject) {
+        const obj = await findObjectAtLocation(to, toObject).catch(() => undefined);
+        targetZone = obj?.zone;
+      } else if (toZone && zoneExists(toZone, to)) {
+        targetZone = toZone;
+      }
+      const spotLabel = toObject ?? toZone;
+
+      if (to === ctx.location) {
+        // Pure within-room reposition — no location change to emit otherwise.
+        await moveAgent(ctx.agentId, to, targetZone);
+        if (!targetZone) return `There's no "${spotLabel}" here to walk to — you stay put.`;
+        await ctx.onAction?.("move_to", `walks over to the ${spotLabel}`);
+        return `You walk over to the ${spotLabel}.`;
+      }
+
       const adjacent = await isAdjacent(ctx.location, to);
       if (!adjacent) {
         // Hub-and-spoke: every place connects through town, so a cross-town
@@ -157,7 +181,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         await moveAgent(ctx.agentId, "town");
         ctx.location = "town";
       }
-      await moveAgent(ctx.agentId, to);
+      await moveAgent(ctx.agentId, to, targetZone);
       ctx.location = to; // gated tools later this tick see the new place
       const loc = await getLocation(to);
       const name = loc?.name ?? to;
@@ -165,7 +189,8 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         "move_to",
         adjacent ? `walks over to the ${name}` : `cuts through the town square to the ${name}`,
       );
-      return `You walk to the ${name}. ${loc?.description ?? ""}`;
+      const spotNote = targetZone ? `, over by the ${spotLabel}` : "";
+      return `You walk to the ${name}${spotNote}. ${loc?.description ?? ""}`;
     },
   });
 

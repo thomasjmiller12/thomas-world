@@ -18,18 +18,24 @@ export async function allAgents(): Promise<AgentRow[]> {
 }
 
 // Move an agent and emit agent.moved (public — movement is visible to all).
-export async function moveAgent(id: AgentId, to: LocationId) {
+// `targetZone` (Phase C, space addressing) names a spot WITHIN `to` the agent
+// is walking toward — carried as a plain word on the wire; the frontend
+// resolves it to a pixel via its own zone-bounds table. Passing a targetZone
+// with `to` equal to the agent's current location still emits (a within-room
+// reposition, not just a room change) — that's the one case the room-unchanged
+// skip below must not swallow.
+export async function moveAgent(id: AgentId, to: LocationId, targetZone?: string) {
   const agent = await getAgent(id);
   if (!agent) throw new Error(`unknown agent: ${id}`);
   const from = agent.locationId as LocationId;
   await db.update(agents).set({ locationId: to }).where(eq(agents.id, id));
-  if (from !== to) {
+  if (from !== to || targetZone) {
     await appendEvent({
       type: "agent.moved",
       agentId: id,
       locationId: to,
       visibility: "public",
-      payload: { agent: id, from, to },
+      payload: { agent: id, from, to, targetZone: targetZone ?? null },
     });
   }
 }

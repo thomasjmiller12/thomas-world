@@ -13,6 +13,12 @@ export const AgentMovedPayload = z.object({
   agent: AgentId,
   from: LocationId,
   to: LocationId,
+  // Phase C (space addressing): a semantic zone ID within `to` (e.g.
+  // "park.bench-area") the agent is walking toward, when known. The server
+  // ships only the WORD — never pixels; the frontend resolves it to a point
+  // via its own zone-bounds table (mirrors how LOCATION_ANCHORS already
+  // works). Absent/unresolvable just means "no specific spot" (room anchor).
+  targetZone: z.string().nullable().optional(),
 });
 
 export const AgentActivityPayload = z.object({
