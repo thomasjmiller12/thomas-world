@@ -21,6 +21,17 @@ import {
 } from '@/lib/world/mapping';
 import { SseParser, isHeartbeat } from '@/lib/world/sse';
 
+// Momentary events — animations, popups, bubbles — that must NOT replay when a
+// visitor joins (they'd fire stale: a phone ringing / a bit popping for an event
+// from 30 minutes ago). They play normally on the LIVE stream; they're only
+// skipped during the initial snapshot replay (see applySnapshot).
+const TRANSIENT_ON_JOIN = new Set<WorldEvent['type']>([
+  'world.effect', // fixture effect (phone ring, lamp flicker, espresso hiss)
+  'world.beat', // director beat (popup card, emote)
+  'agent.spoke', // speech bubble
+  'agent.thought', // thought wisp
+]);
+
 const STORAGE_KEYS = {
   id: 'town.visitorId',
   token: 'town.visitorToken',
@@ -307,9 +318,16 @@ export class WorldClient {
       EventBus.emit('world-sleeping', { sleeping: false, reason: null });
     }
 
-    // Replay recent events so late joiners see the scene already in motion.
+    // Replay recent events so late joiners see the scene already in motion —
+    // but NOT the momentary ones. A phone that rang or a bit that popped 30
+    // minutes ago must not re-fire the instant you arrive (the "all the effects
+    // happen at once on join" bug). Positions/state already came from the
+    // snapshot.agents loop above, and the feed/Chronicle fetch their own
+    // history, so we skip transient animations/popups/bubbles here and let the
+    // live SSE stream drive anything new from now on.
     if (replayEvents) {
       for (const ev of snapshot.recentEvents) {
+        if (TRANSIENT_ON_JOIN.has(ev.type)) continue;
         this.dispatchWorldEvent(ev);
       }
     }
