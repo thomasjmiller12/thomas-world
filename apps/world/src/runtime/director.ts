@@ -1,16 +1,23 @@
-// The Director/Effect protocol dispatcher (Phase A). One spine tool —
+// The Director/Effect protocol dispatcher. One spine tool —
 // `play_beat({ beat, object?, params })` — routes a NAMED, validated catalog
-// beat (@town/contract `BEATS`) to one of two surfaces:
+// beat OR saved preset (@town/contract `BEATS` / engine/presets.ts) to one of
+// two surfaces:
 //
 //   surface:"object"  → mutate a world_object's visible state (phone rings, lamp
-//     flickers) via setObjectState (canonical `object.state_changed` for
-//     perception) AND dual-emit the existing `world.effect` so the proven
-//     frontend sprite path plays unchanged. A "ring" beat records a pending call
-//     so a visitor who answers wakes the ringer live.
-//   surface:"screen"  → cross the glass onto the visitor's client (popup card,
-//     emote) via a new `world.beat` event, directed at the resolved target
-//     visitor (chat visitor, or the most-recent local interactor, or room-wide).
+//     flickers — the effect keyword is a PARAM, not the beat id, so the catalog
+//     doesn't grow with every fixture in town) via setObjectState (canonical
+//     `object.state_changed` for perception) AND dual-emit the existing
+//     `world.effect` so the proven frontend sprite path plays unchanged. A
+//     "ring" effect records a pending call so a visitor who answers wakes the
+//     ringer live.
+//   surface:"screen"  → cross the glass onto the visitor's client (a styled
+//     flourish, an emote) via a new `world.beat` event, directed at the
+//     resolved target visitor (chat visitor, or the most-recent local
+//     interactor, or room-wide).
 //
+// `args.beat` resolves against the catalog FIRST, then against the calling
+// agent's saved presets — a preset is a named set of params for one of these
+// SAME beats (never a new mechanic), so it's exactly as safe as a direct call.
 // The agent can never inject markup — it can only sequence catalog beats, and
 // every param is validated server-side against the beat's zod schema. Beats
 // share `leave_note`'s 20/hr effect limiter (fixtures.ts, the anti-grind knob
@@ -25,6 +32,7 @@ import { tryRecordEffect } from "./fixtures.js";
 import { findObjectAtLocation, objectsAtLocation, setObjectState } from "../engine/objects.js";
 import { appendEvent, eventsOfTypes } from "../engine/events.js";
 import { getSession } from "./chat.js";
+import { getPreset } from "../engine/presets.js";
 
 // --- pending-call registry --------------------------------------------------
 // A "ring" object beat records a pending call so that when a visitor answers the
@@ -128,36 +136,61 @@ export interface PlayBeatArgs {
 // Pick a sensible default object when a surface:"object" beat omits `object`.
 // The world_objects.affordances column is seeded straight from each fixture's
 // `actions` whitelist (db/seed.ts), so it already names exactly which object(s)
-// here support a given effect — match on that first (works for any beat whose
-// effect lines up with a fixture affordance: ring/flicker/hiss/rustle alike, no
+// here support a given effect — match on that first (works for any effect that
+// lines up with a fixture affordance: ring/flicker/hiss/rustle alike, no
 // per-effect special-casing). Falls back to the first device, else the first
-// object here, for beats/locations where affordances aren't populated (tests,
-// future templates).
+// object here, for locations where affordances aren't populated (tests, future
+// templates).
 function defaultObjectRef(
-  beatDef: BeatDef,
+  effect: string,
   here: { displayName: string; kind: string | null; affordances?: string[] | null }[],
 ): string | null {
-  if (beatDef.effect) {
-    const byAffordance = here.find((o) => (o.affordances ?? []).includes(beatDef.effect!));
-    if (byAffordance) return byAffordance.displayName;
-  }
+  const byAffordance = here.find((o) => (o.affordances ?? []).includes(effect));
+  if (byAffordance) return byAffordance.displayName;
   const devices = here.filter((o) => o.kind === "device");
   if (devices.length > 0) return devices[0].displayName;
   if (here.length > 0) return here[0].displayName;
   return null;
 }
 
+// statePatch per effect keyword — only "ring" carries a persisted state today
+// (the phone "is ringing" until answered). The rest are momentary flourishes
+// with nothing to remember.
+const EFFECT_STATE_PATCH: Record<string, Record<string, unknown>> = {
+  ring: { ringing: true },
+};
+
 export async function playBeat(ctx: AgentContext, args: PlayBeatArgs): Promise<string> {
   const beatDef = getBeat(args.beat);
-  if (!beatDef) {
-    const names = listBeats()
-      .map((b) => b.id)
-      .join(", ");
-    return `There's no bit called "${args.beat}". The bits you can run: ${names}.`;
+  if (beatDef) return runBeat(ctx, beatDef, args.object, args.params ?? {});
+
+  // Not a catalog id — try it as one of THIS agent's saved presets (a named,
+  // params-only variant of an existing beat; see engine/presets.ts). The
+  // preset's saved params are the defaults; any params passed alongside the
+  // preset name override them for this one occasion.
+  const preset = await getPreset(ctx.agentId, args.beat).catch(() => undefined);
+  if (preset) {
+    const presetBeatDef = getBeat(preset.beat);
+    if (presetBeatDef) {
+      const merged = { ...(preset.params as Record<string, unknown>), ...(args.params ?? {}) };
+      return runBeat(ctx, presetBeatDef, args.object, merged);
+    }
   }
 
+  const names = listBeats()
+    .map((b) => b.id)
+    .join(", ");
+  return `There's no bit (or saved preset) called "${args.beat}". The bits you can run: ${names}.`;
+}
+
+async function runBeat(
+  ctx: AgentContext,
+  beatDef: BeatDef,
+  object: string | undefined,
+  rawParams: Record<string, unknown>,
+): Promise<string> {
   // Validate params against the beat's own schema (in-fiction error on failure).
-  const parsed = beatDef.params.safeParse(args.params ?? {});
+  const parsed = beatDef.params.safeParse(rawParams);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     const where = issue?.path?.length ? `"${issue.path.join(".")}": ` : "";
@@ -172,7 +205,7 @@ export async function playBeat(ctx: AgentContext, args: PlayBeatArgs): Promise<s
   }
 
   if (beatDef.surface === "object") {
-    return runObjectBeat(ctx, beatDef, args.object, params);
+    return runObjectBeat(ctx, beatDef, object, params);
   }
   return runScreenBeat(ctx, beatDef, params);
 }
@@ -181,10 +214,11 @@ async function runObjectBeat(
   ctx: AgentContext,
   beatDef: BeatDef,
   objectRef: string | undefined,
-  _params: Record<string, unknown>,
+  params: Record<string, unknown>,
 ): Promise<string> {
+  const effect = (params.effect as string | undefined) ?? "effect";
   const here = await objectsAtLocation(ctx.location).catch(() => []);
-  const ref = objectRef ?? defaultObjectRef(beatDef, here) ?? undefined;
+  const ref = objectRef ?? defaultObjectRef(effect, here) ?? undefined;
   const obj = ref ? await findObjectAtLocation(ctx.location, ref).catch(() => undefined) : undefined;
   if (!obj) {
     const names = here.map((o) => o.displayName).join(", ");
@@ -193,8 +227,7 @@ async function runObjectBeat(
       : `There's nothing here you can run "${beatDef.label.toLowerCase()}" on right now.`;
   }
 
-  const effect = beatDef.effect ?? "effect";
-  const res = await setObjectState(obj.id, ctx.agentId, effect, beatDef.statePatch).catch(
+  const res = await setObjectState(obj.id, ctx.agentId, effect, EFFECT_STATE_PATCH[effect]).catch(
     (err): { ok: boolean; reason?: string } => ({ ok: false, reason: (err as Error).message }),
   );
   if (!res.ok) {
