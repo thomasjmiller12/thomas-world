@@ -37,7 +37,13 @@ import type { ArtifactSummary } from "@town/contract";
 import type { z } from "zod";
 import { config } from "../config.js";
 import { buildSnapshot, engagementToContract } from "../engine/snapshot.js";
-import { allObjects, objectsAtLocation, findObjectAtLocation, rowToWorldObject } from "../engine/objects.js";
+import {
+  allObjects,
+  objectsAtLocation,
+  findObjectAtLocation,
+  rowToWorldObject,
+  setObjectState,
+} from "../engine/objects.js";
 import { allZones, zonesForLocation } from "../engine/zones.js";
 import {
   eventsAfter,
@@ -674,19 +680,38 @@ export function createApp() {
 
     // Director/Effect: if this fixture is a world_object with a pending call (an
     // agent rang it via play_beat phone-ring), the ringer wakes IMMEDIATELY to run
-    // the bit. Otherwise, give every agent currently here an interrupt tick so a
-    // co-located facet can react to the visitor touching the set. Fire-and-forget,
-    // bounded, never blocks the response (mirrors loop.ts:421 .catch idiom).
+    // the bit — with a DIRECTIVE cue (not a bare tick) so it reliably pays the bit
+    // off rather than depending on the agent connecting "they touched the thing I
+    // rang" to "now I run the punchline" on its own (the live-test reliability
+    // gap). The object's `ringing` state is also cleared so perception doesn't
+    // show it ringing forever once it's been answered. Otherwise, give every agent
+    // currently here an interrupt tick so a co-located facet can react to the
+    // visitor touching the set. Fire-and-forget, bounded, never blocks the
+    // response (mirrors loop.ts:421 .catch idiom). Logged so the chain (pending
+    // call hit/miss, who got woken) is debuggable in Railway logs.
     void (async () => {
       const obj = await findObjectAtLocation(locationId as LocationId, fixture).catch(
         () => undefined,
       );
       const call = obj ? consumePendingCall(obj.id) : null;
       if (call) {
-        await enqueue(call.agentId, { kind: "tick", interrupt: true });
+        console.log(
+          `[visitors] ${v.name} answered "${fixture}" in ${locationId} — pending call hit, waking ${call.agentId}`,
+        );
+        if (obj) {
+          await setObjectState(obj.id, null, "answered", { ringing: false }).catch(() => {});
+        }
+        await enqueue(call.agentId, {
+          kind: "tick",
+          interrupt: true,
+          note: `${v.name || "The visitor"} just answered the ${fixture} you rang — this is your cue to run the bit (play_beat) and pay it off now.`,
+        });
         return;
       }
       const here = await agentsAtLocation(locationId as LocationId).catch(() => []);
+      console.log(
+        `[visitors] ${v.name} touched "${fixture}" in ${locationId} — no pending call, nudging ${here.length} co-located agent(s)`,
+      );
       for (const a of here.slice(0, 5)) {
         await enqueue(a.id as AgentId, { kind: "tick", interrupt: true });
       }

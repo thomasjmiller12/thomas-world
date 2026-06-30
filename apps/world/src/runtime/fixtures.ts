@@ -1,56 +1,17 @@
-// Pure helpers for `use_fixture` (design doc §4): the fixture/action whitelist
-// check and the per-agent effect rate limiter. Kept DB-free so both are
-// trivially unit-testable; the tool in tools.ts wires them to live location
-// rows and the world event log.
-
+// The per-agent effect rate limiter shared by `play_beat` (director.ts) and
+// `leave_note` (tools.ts). Kept DB-free so it's trivially unit-testable. Also
+// holds `FixtureDef`, the shape of a `locations.fixtures` row (design doc §4 /
+// seed.ts) — still used by the visitor-interact endpoint (app.ts) to check a
+// fixture exists at a location, even though the action-whitelist verb
+// (`use_fixture`) it used to back is gone (those effects are catalog beats now;
+// see packages/contract/src/beats.ts's lamp-flicker/espresso-hiss/board-rustle).
 import type { AgentId } from "@town/contract";
 
-// A fixture row as seeded on `locations.fixtures` (design doc §4 / seed.ts). The
-// `actions` array is the whitelist of what an agent may do to it; absent/empty
-// means the fixture is decorative and can't be acted on via use_fixture.
 export interface FixtureDef {
   id: string;
   kind?: string;
   note?: string;
   actions?: string[];
-}
-
-export type FixtureCheck =
-  | { ok: true; fixture: FixtureDef; action: string }
-  | { ok: false; reason: string };
-
-// Validate that `fixture` exists at the current location AND declares `action`
-// in its whitelist. Returns an in-fiction reason on failure (the tool surfaces
-// it verbatim — a normal tool result, not a thrown error, per §4 / tools.ts).
-// `locationName` is for nicer copy ("here at The Office").
-export function checkFixtureAction(
-  fixtures: FixtureDef[],
-  fixture: string,
-  action: string,
-  locationName: string,
-): FixtureCheck {
-  const f = fixtures.find((x) => x.id === fixture);
-  if (!f) {
-    const here = fixtures.map((x) => x.id).join(", ");
-    return {
-      ok: false,
-      reason: `There's no ${fixture} here at ${locationName}. What's here: ${here || "nothing you can touch"}.`,
-    };
-  }
-  const actions = f.actions ?? [];
-  if (actions.length === 0) {
-    return {
-      ok: false,
-      reason: `The ${fixture} isn't something you can mess with — it just sits there.`,
-    };
-  }
-  if (!actions.includes(action)) {
-    return {
-      ok: false,
-      reason: `You can't ${action} the ${fixture}. The most you can do with it: ${actions.join(", ")}.`,
-    };
-  }
-  return { ok: true, fixture: f, action };
 }
 
 // In-memory effect rate limiter: 20 effects per rolling hour per agent (raised

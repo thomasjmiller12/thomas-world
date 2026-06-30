@@ -18,7 +18,11 @@ import type { AgentId } from "@town/contract";
 import type { TurnHandlers } from "./turn.js";
 
 export type AgentInput =
-  | { kind: "tick"; interrupt?: boolean }
+  // `note` is an optional directive cue folded into the tick's perceived delta
+  // (e.g. "X just answered the phone you rang — run your bit now") — used when a
+  // bare "something happened" tick is too weak a signal to reliably pay off a
+  // bit (director.ts's pending-call wake).
+  | { kind: "tick"; interrupt?: boolean; note?: string }
   | { kind: "reflection" }
   | {
       kind: "visitor";
@@ -80,9 +84,13 @@ export function enqueue(agentId: AgentId, input: AgentInput): Promise<ExecResult
 
     // Coalesce ticks: at most one normal tick and one interrupt tick queued at a
     // time. A duplicate resolves immediately as coalesced (the already-queued one
-    // will run with fresh world state anyway).
-    if (input.kind === "tick") {
-      const dup = q.some((i) => i.input.kind === "tick" && i.interrupt === interrupt);
+    // will run with fresh world state anyway) — UNLESS either tick carries a
+    // directive `note` (a pending-call wake), which is rare and load-bearing
+    // enough that it must never be silently dropped.
+    if (input.kind === "tick" && !input.note) {
+      const dup = q.some(
+        (i) => i.input.kind === "tick" && i.interrupt === interrupt && !i.input.note,
+      );
       if (dup) {
         resolve({ ran: false, reason: "coalesced" });
         return;

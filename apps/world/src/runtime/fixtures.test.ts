@@ -1,57 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import type { AgentId } from "@town/contract";
-import {
-  checkFixtureAction,
-  tryRecordEffect,
-  _resetEffectLimiter,
-  type FixtureDef,
-} from "./fixtures.js";
-
-// The office fixtures as seeded (design doc §4): a whitelisted phone + decorative
-// fixtures with no actions.
-const OFFICE: FixtureDef[] = [
-  { id: "outbox", kind: "mail" },
-  { id: "desk", kind: "workstation" },
-  { id: "phone", kind: "device", actions: ["ring"] },
-];
-
-describe("checkFixtureAction whitelist (design doc §4)", () => {
-  it("accepts a whitelisted action on a present fixture", () => {
-    const r = checkFixtureAction(OFFICE, "phone", "ring", "The Office");
-    expect(r.ok).toBe(true);
-    if (r.ok) {
-      expect(r.fixture.id).toBe("phone");
-      expect(r.action).toBe("ring");
-    }
-  });
-
-  it("rejects an action not in the fixture whitelist, listing what's allowed", () => {
-    const r = checkFixtureAction(OFFICE, "phone", "smash", "The Office");
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.reason).toMatch(/can't smash/i);
-      expect(r.reason).toMatch(/ring/);
-    }
-  });
-
-  it("rejects a fixture that isn't here, listing what is", () => {
-    const r = checkFixtureAction(OFFICE, "espresso machine", "hiss", "The Office");
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toMatch(/no espresso machine here/i);
-  });
-
-  it("rejects a decorative fixture with no actions", () => {
-    const r = checkFixtureAction(OFFICE, "desk", "wobble", "The Office");
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toMatch(/just sits there/i);
-  });
-
-  it("treats a missing actions array as no actions", () => {
-    const fixtures: FixtureDef[] = [{ id: "fountain" }];
-    const r = checkFixtureAction(fixtures, "fountain", "splash", "Town Square");
-    expect(r.ok).toBe(false);
-  });
-});
+import { tryRecordEffect, _resetEffectLimiter } from "./fixtures.js";
 
 describe("effect rate limiter (20/hour per agent, raised from 3 for beats)", () => {
   beforeEach(() => _resetEffectLimiter());

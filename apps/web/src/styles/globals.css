@@ -152,3 +152,30 @@ body {
     transform: translate(-50%, -30px) scale(1.05);
   }
 }
+
+/* Phase B beats: confetti (one falling/spinning piece, varied per-piece via CSS
+   vars) and a name-tag pop (reuses the card's overshoot landing). */
+@keyframes beatConfettiFall {
+  0% {
+    opacity: 0;
+    transform: translate(var(--dx, 0px), -16px) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx, 0px), 160px) rotate(var(--spin, 360deg));
+  }
+}
+
+@keyframes beatNameTagIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}

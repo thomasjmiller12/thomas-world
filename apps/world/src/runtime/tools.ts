@@ -42,8 +42,8 @@ import {
 import * as hindsight from "./hindsight.js";
 import * as vault from "./vault.js";
 import * as github from "./github.js";
-import { checkFixtureAction, tryRecordEffect, type FixtureDef } from "./fixtures.js";
-import { playBeat, recordPendingCall } from "./director.js";
+import { tryRecordEffect } from "./fixtures.js";
+import { playBeat } from "./director.js";
 import {
   objectsAtLocation,
   findObjectAtLocation,
@@ -261,8 +261,8 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
 
   // leave_note: the lightest "I shaped my space" act — jot a short persistent
   // note on an object or named zone HERE. Bounded (current location, short text,
-  // the same 3/hour effect limiter as use_fixture) so it can't become a fidget;
-  // the note persists and is re-read next time. One of object|zone required.
+  // the same 20/hour effect limiter play_beat shares) so it can't become a
+  // fidget; the note persists and is re-read next time. One of object|zone required.
   const leave_note = betaZodTool({
     name: "leave_note",
     description:
@@ -296,43 +296,6 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       return objectId
         ? `You leave a note on the ${object}. It'll be there when you come back.`
         : `You leave a note ${resolvedZone}. It'll be there when you come back.`;
-    },
-  });
-
-  const use_fixture = betaZodTool({
-    name: "use_fixture",
-    description:
-      "Do something physical with a fixture where you are — make the set react. e.g. ring the office phone, hiss the cafe espresso machine, flicker a lamp, rustle the town notice board. You can only act on a fixture that's HERE with you and only in ways it allows. Others and any visitors here will notice. Use sparingly — it's a flourish, not a fidget.",
-    inputSchema: z.object({
-      fixture: z.string().min(1).max(60),
-      action: z.string().min(1).max(40),
-      note: z.string().max(200).optional(),
-    }),
-    run: async ({ fixture, action }) => {
-      const loc = await getLocation(ctx.location);
-      const fixtures = ((loc?.fixtures as FixtureDef[]) ?? []);
-      const check = checkFixtureAction(fixtures, fixture, action, loc?.name ?? ctx.location);
-      if (!check.ok) return check.reason;
-      // Rate limit AFTER validation so a wrong-place attempt doesn't burn a slot.
-      if (!tryRecordEffect(ctx.agentId)) {
-        return `You've been fussing with the ${fixture} a lot — better not overdo it. Give it a rest for a bit.`;
-      }
-      await appendEvent({
-        type: "world.effect",
-        agentId: ctx.agentId,
-        locationId: ctx.location,
-        visibility: "public",
-        payload: { location: ctx.location, fixture, effect: action, agent: ctx.agentId },
-      });
-      // A "ring" arms a pending call so a visitor who answers (clicks the ringing
-      // phone) wakes this agent live to run the bit — parity with play_beat's
-      // phone-ring, so call-and-response works whichever verb did the ringing.
-      if (action === "ring") {
-        const obj = await findObjectAtLocation(ctx.location, fixture).catch(() => undefined);
-        if (obj) recordPendingCall(obj.id, ctx.agentId);
-      }
-      await ctx.onAction?.("use_fixture", `${action}s the ${fixture}`);
-      return `You ${action} the ${fixture}. It's noticeable to anyone here. If someone picks up, you'll know.`;
     },
   });
 
@@ -772,7 +735,6 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     look_around as RunnableTool,
     inspect_object as RunnableTool,
     leave_note as RunnableTool,
-    use_fixture as RunnableTool,
     play_beat as RunnableTool,
     send_dm as RunnableTool,
     broadcast as RunnableTool,

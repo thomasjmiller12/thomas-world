@@ -79,7 +79,7 @@ export interface TickResult extends ExecResult {
 async function executeInput(agentId: AgentId, input: AgentInput): Promise<ExecResult> {
   switch (input.kind) {
     case "tick":
-      return runTickInput(agentId);
+      return runTickInput(agentId, input.note);
     case "reflection":
       return runReflection(agentId).then((r) => ({ ran: r.ran, reason: "ok" }));
     case "visitor":
@@ -93,7 +93,7 @@ registerExecutor(executeInput);
 
 // --- tick -------------------------------------------------------------------
 
-async function runTickInput(agentId: AgentId): Promise<TickResult> {
+async function runTickInput(agentId: AgentId, note?: string): Promise<TickResult> {
   if (!hasLlm()) return { ran: false, reason: "no-llm" };
   const agent = await getAgent(agentId);
   if (!agent) return { ran: false, reason: "error" };
@@ -136,6 +136,7 @@ async function runTickInput(agentId: AgentId): Promise<TickResult> {
   const obs = await buildDelta(agentId);
   const ctx: AgentContext = { agentId, location: obs.location };
   const tools = buildTools(ctx);
+  const inputText = note ? `${obs.text}\n\n## Cue\n${note}` : obs.text;
 
   let outcome: TurnOutcome;
   try {
@@ -143,7 +144,7 @@ async function runTickInput(agentId: AgentId): Promise<TickResult> {
       agentId,
       model: profile.role.tickModel,
       maxTokens: 4096,
-      inputText: obs.text,
+      inputText,
       tools,
       advanceCursorTo: Number(obs.highWaterEventId),
       tickId,
@@ -221,7 +222,7 @@ async function runVisitorInput(
   // where it actually is, with whoever's present — appended as an interrupt input
   // to its continuous thread (the conversation lives IN its consciousness).
   const obs = await buildDelta(agentId);
-  const inputText = `${obs.text}\n\n## A visitor speaks to you\n${visitorName || "A visitor"} (here with you) says: "${text}"\n\nWhatever you write as plain text is spoken back to them, streamed word-for-word — so just talk, don't narrate what you're about to do (do it quietly with a tool instead). How you respond is entirely yours: engage warmly, be brief, or stay in your own world if that's truer to the moment — they share the town with you, they aren't an audience you owe a performance. You keep all your tools (walk somewhere, make something, check your memory). When a conversation has run its course, say your goodbye and call leave_chat in the same message.`;
+  const inputText = `${obs.text}\n\n## A visitor speaks to you\n${visitorName || "A visitor"} (here with you) says: "${text}"\n\nWhatever you write as plain text is spoken back to them, streamed word-for-word — so just talk, don't narrate what you're about to do (do it quietly with a tool instead). How you respond is entirely yours: engage warmly, be brief, or stay in your own world if that's truer to the moment — they share the town with you, they aren't an audience you owe a performance. You keep all your tools (walk somewhere, make something, check your memory). One thing to watch: if you use a tool mid-turn — checking mail, looking something up, sending a note — don't let your last line be just a recap of having done that, or a bare sign-off, while whatever you actually found sits unsaid. Brushing them off is fine; doing the work and then not telling them what it turned up isn't — say it, even in one line, or don't go looking. When a conversation has run its course, say your goodbye and call leave_chat in the same message.`;
 
   const ctx: AgentContext = {
     agentId,

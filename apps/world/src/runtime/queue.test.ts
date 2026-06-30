@@ -86,4 +86,29 @@ describe("agent input queue", () => {
     await Promise.all([p1, p2, p3]);
     expect(calls).toBe(3);
   });
+
+  it("never coalesces a tick carrying a directive note (a pending-call wake)", async () => {
+    // A bare interrupt tick is already queued; a SECOND interrupt tick carrying a
+    // note (e.g. the pending-call pickup cue) must still run — it's rare and
+    // load-bearing, unlike a redundant bare tick.
+    let releaseFirst!: () => void;
+    const firstGate = new Promise<void>((r) => (releaseFirst = r));
+    let calls = 0;
+    const seen: Array<string | undefined> = [];
+    registerExecutor(async (_id, input) => {
+      calls++;
+      if (calls === 1) await firstGate;
+      seen.push(input.kind === "tick" ? input.note : undefined);
+      return { ran: true };
+    });
+
+    const p1 = enqueue("builder", { kind: "tick", interrupt: true }); // running, blocked
+    const p2 = enqueue("builder", { kind: "tick", interrupt: true }); // queued interrupt
+    const p3 = enqueue("builder", { kind: "tick", interrupt: true, note: "pick up the phone!" });
+
+    releaseFirst();
+    await Promise.all([p1, p2, p3]);
+    expect(calls).toBe(3); // nothing coalesced away
+    expect(seen).toContain("pick up the phone!");
+  });
 });
