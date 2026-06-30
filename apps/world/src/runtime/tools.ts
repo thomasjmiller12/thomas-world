@@ -91,6 +91,45 @@ export interface AgentContext {
 // Tools the idle tick gets. The chat subset (plan §4.1) is a filtered view.
 export type RunnableTool = BetaRunnableTool<unknown>;
 
+// --- Token hygiene (cost lever) -------------------------------------------
+// Reference reads (repo files, vault notes, artifacts, recall) used to dump
+// their full body verbatim into the continuous thread — 3–5K tokens each, the
+// SAME artifact re-read 6×. That bloat rode in EVERY subsequent tick's cache
+// read and dragged the thread toward the compaction trigger. Two cheap guards:
+//   1. clampText: cap a read's output so one file/note can't dominate the thread.
+//   2. dedupRead: a re-read of the SAME unchanged thing returns a short pointer
+//      instead of re-dumping the body (the agent already has it above).
+function clampText(text: string, maxChars: number, hint: string): string {
+  if (text.length <= maxChars) return text;
+  const omitted = text.length - maxChars;
+  return `${text.slice(0, maxChars)}\n\n[… truncated ${omitted.toLocaleString()} more characters — ${hint} to see the rest.]`;
+}
+
+// Per-agent recent-read fingerprints (process memory; resets on restart, which
+// just re-warms the guard). Bounded so it only catches genuinely rapid re-reads.
+const RECENT_READS_MAX = 8;
+const recentReads = new Map<string, { key: string; hash: number }[]>();
+function fingerprint(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return h;
+}
+// Returns a pointer string if this exact key+content was read recently (so the
+// caller can skip re-dumping it); else records it and returns null.
+function dedupRead(agentId: string, key: string, content: string, label: string): string | null {
+  const hash = fingerprint(content);
+  const list = recentReads.get(agentId) ?? [];
+  const seen = list.find((e) => e.key === key);
+  if (seen && seen.hash === hash) {
+    return `You already opened ${label} earlier in this conversation and it hasn't changed — scroll back rather than re-reading it (you won't see anything new).`;
+  }
+  const next = list.filter((e) => e.key !== key);
+  next.push({ key, hash });
+  while (next.length > RECENT_READS_MAX) next.shift();
+  recentReads.set(agentId, next);
+  return null;
+}
+
 const artifactKindEnum = z.enum(artifactKinds as unknown as [string, ...string[]]);
 
 // Build the full tool array for one tick, bound to `ctx`.
@@ -403,7 +442,10 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     run: async ({ id }) => {
       const a = await getArtifact(id);
       if (!a) return `There's no artifact with id ${id} (it may have been removed, or the id's off).`;
-      return `"${a.title}" — a ${a.kind} by ${a.agentId}${a.published ? " (published)" : ""}\n\n${a.body}`;
+      const full = `"${a.title}" — a ${a.kind} by ${a.agentId}${a.published ? " (published)" : ""}\n\n${a.body}`;
+      const dup = dedupRead(ctx.agentId, `artifact:${id}`, full, `"${a.title}"`);
+      if (dup) return dup;
+      return clampText(full, 12_000, "open it again later if you genuinely need the rest");
     },
   });
 
@@ -493,7 +535,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     inputSchema: z.object({ query: z.string().min(1).max(500) }),
     run: async ({ query }) => {
       const r = await hindsight.recall(ctx.agentId, query);
-      return r.text;
+      return clampText(r.text, 4_000, "recall with a more specific query");
     },
   });
 
@@ -513,21 +555,26 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     description:
       "List the reference notes available in a folder of Thomas's knowledge base (the vault). Use '.' for the top level.",
     inputSchema: z.object({ dir: z.string().max(300).default(".") }),
-    run: async ({ dir }) => (await vault.listNotes(dir)).text,
+    run: async ({ dir }) => clampText((await vault.listNotes(dir)).text, 4_000, "list a more specific subfolder"),
   });
 
   const read_note = betaZodTool({
     name: "read_note",
     description: "Read a specific reference note from the knowledge base by its path.",
     inputSchema: z.object({ path: z.string().min(1).max(300) }),
-    run: async ({ path }) => (await vault.readNote(path)).text,
+    run: async ({ path }) => {
+      const out = (await vault.readNote(path)).text;
+      const dup = dedupRead(ctx.agentId, `note:${path}`, out, `the note ${path}`);
+      if (dup) return dup;
+      return clampText(out, 8_000, "read a specific section of the note");
+    },
   });
 
   const search_notes = betaZodTool({
     name: "search_notes",
     description: "Search the knowledge base for notes that mention a phrase.",
     inputSchema: z.object({ query: z.string().min(1).max(200) }),
-    run: async ({ query }) => (await vault.searchNotes(query)).text,
+    run: async ({ query }) => clampText((await vault.searchNotes(query)).text, 4_000, "narrow your search phrase"),
   });
 
   const write_agent_note = betaZodTool({
@@ -560,7 +607,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       repo: z.string().min(1).max(140),
       path: z.string().max(300).default("."),
     }),
-    run: async ({ repo, path }) => (await github.browseRepo(repo, path)).text,
+    run: async ({ repo, path }) => clampText((await github.browseRepo(repo, path)).text, 4_000, "browse a more specific subfolder"),
   });
 
   const read_repo_file = betaZodTool({
@@ -572,7 +619,12 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       path: z.string().min(1).max(300),
       ref: z.string().max(120).optional(),
     }),
-    run: async ({ repo, path, ref }) => (await github.readRepoFile(repo, path, ref)).text,
+    run: async ({ repo, path, ref }) => {
+      const out = (await github.readRepoFile(repo, path, ref)).text;
+      const dup = dedupRead(ctx.agentId, `repo:${repo}:${path}:${ref ?? ""}`, out, `the file ${repo}/${path}`);
+      if (dup) return dup;
+      return clampText(out, 8_000, "read a narrower path or a specific section");
+    },
   });
 
   const search_code = betaZodTool({
@@ -580,7 +632,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     description:
       "Search across the code in Thomas's repositories for a phrase or symbol. Returns matching repo/file paths (default branches only). Use read_repo_file to open a result.",
     inputSchema: z.object({ query: z.string().min(1).max(200) }),
-    run: async ({ query }) => (await github.searchCode(query)).text,
+    run: async ({ query }) => clampText((await github.searchCode(query)).text, 4_000, "search for a more specific phrase"),
   });
 
   // --- Outside world (gated to the office outbox) ---------------------------

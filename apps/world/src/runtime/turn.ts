@@ -44,8 +44,32 @@ export const LOOP_BETAS = [...TICK_BETAS, COMPACTION_BETA, FILES_BETA] as const;
 // continuous thread on replay — the agent's text takeaways are what persist.
 const CODE_EXEC_TOOL = { type: "code_execution_20260120", name: "code_execution" } as const;
 
+// Optional context-editing pass (cost lever, GATED). When
+// CONTEXT_CLEAR_TRIGGER_TOKENS is set, clear OLD tool results once the working
+// context crosses that many input tokens (keeping the most recent few), so
+// verbatim file/note/artifact reads don't ride in the thread forever. It fires
+// BELOW the compaction trigger so cheap clearing handles tool-result bloat and
+// the (more expensive, summarizing) compaction fires rarely. The beta header it
+// needs (context-management-2025-06-27) is already in TICK_BETAS.
+//
+// OFF by default: a bad context_management config 400s every turn, and the
+// compact+clear combination isn't yet validated against the live API. Enable by
+// setting CONTEXT_CLEAR_TRIGGER_TOKENS (e.g. 40000) once the town is confirmed
+// up, then watch /debug + logs for 400s before trusting it.
+const CLEAR_TRIGGER = Number(process.env.CONTEXT_CLEAR_TRIGGER_TOKENS ?? "");
+const CLEAR_EDIT =
+  Number.isFinite(CLEAR_TRIGGER) && CLEAR_TRIGGER > 0
+    ? [
+        {
+          type: "clear_tool_uses_20250919" as const,
+          trigger: { type: "input_tokens" as const, value: CLEAR_TRIGGER },
+          keep: { type: "tool_uses" as const, value: 5 },
+        },
+      ]
+    : [];
 const COMPACTION = {
   edits: [
+    ...CLEAR_EDIT,
     {
       type: "compact_20260112" as const,
       trigger: { type: "input_tokens" as const, value: COMPACT_TRIGGER_TOKENS },
