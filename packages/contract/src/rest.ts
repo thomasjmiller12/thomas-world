@@ -11,28 +11,12 @@ import { ShareCard } from "./share-cards.js";
 
 // --- shared resource entities ----------------------------------------------
 
-// What an agent is currently engaged in (design doc §3.2). One body, one
-// conversation: an agent is in a `chat` (with a visitor and maybe a second
-// agent). `with` lists the co-participants — other agents by id, plus the
-// literal `'visitor'` when a visitor is present. Absent => unengaged. `busy`
-// below is the derived boolean (`engagement != null`). Paced scenes are gone
-// as of M2.1, so `kind` is just `'chat'`.
-export const AgentEngagement = z.object({
-  kind: z.enum(["chat"]),
-  with: z.array(z.union([AgentId, z.literal("visitor")])),
-});
-export type AgentEngagement = z.infer<typeof AgentEngagement>;
-
 export const AgentStatus = z.object({
   id: AgentId,
   displayName: z.string(),
   locationId: LocationId,
   status: z.string(), // free-form: "working", "sleeping (budget)", "in conversation"
   activity: z.string().nullable(),
-  // Derived: true iff `engagement` is present. Kept for back-compat with
-  // surfaces that only need the boolean.
-  busy: z.boolean(),
-  engagement: AgentEngagement.optional(),
   lastTickAt: z.string().nullable(), // ISO 8601
 });
 export type AgentStatus = z.infer<typeof AgentStatus>;

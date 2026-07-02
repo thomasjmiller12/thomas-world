@@ -460,56 +460,31 @@ describe("M2 REST shapes round-trip", () => {
     expect(h.budgetExhausted).toBe(false);
   });
 
-  it("validates an AgentStatus with engagement and `with` participants", () => {
+  it("validates an AgentStatus", () => {
     const a = AgentStatus.parse({
       id: "builder",
       displayName: "Builder Thomas",
       locationId: "workshop",
       status: "in conversation",
       activity: null,
-      busy: true,
-      engagement: { kind: "chat", with: ["researcher", "visitor"] },
       lastTickAt: null,
     });
-    expect(a.engagement?.kind).toBe("chat");
-    expect(a.engagement?.with).toEqual(["researcher", "visitor"]);
-    // engagement is optional — unengaged agents omit it
-    const idle = AgentStatus.parse({
+    expect(a.id).toBe("builder");
+    // The removed engagement-era fields (busy/engagement) are stripped, not
+    // rejected — a not-yet-redeployed world server that still sends them must
+    // parse cleanly on a newer frontend.
+    const legacy = AgentStatus.parse({
       id: "writer",
       displayName: "Writer Thomas",
       locationId: "cafe",
       status: "working",
       activity: "drafting",
       busy: false,
+      engagement: { kind: "chat", with: ["visitor"] },
       lastTickAt: null,
     });
-    expect(idle.engagement).toBeUndefined();
-    // a bad `with` member is rejected
-    expect(() =>
-      AgentStatus.parse({
-        id: "writer",
-        displayName: "Writer Thomas",
-        locationId: "cafe",
-        status: "x",
-        activity: null,
-        busy: true,
-        engagement: { kind: "chat", with: ["nobody"] },
-        lastTickAt: null,
-      }),
-    ).toThrow();
-    // scenes are gone as of M2.1 — `chat` is the only valid engagement kind
-    expect(() =>
-      AgentStatus.parse({
-        id: "writer",
-        displayName: "Writer Thomas",
-        locationId: "cafe",
-        status: "x",
-        activity: null,
-        busy: true,
-        engagement: { kind: "scene", with: ["researcher"] },
-        lastTickAt: null,
-      }),
-    ).toThrow();
+    expect("busy" in legacy).toBe(false);
+    expect("engagement" in legacy).toBe(false);
   });
 
   it("validates a FeedResponse with typed/located items and a count", () => {

@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { EventBus, type WorldEvents } from '@/game/EventBus';
 import type { ThomasId } from '@/lib/types';
 
-// Live per-agent status, hydrated from the snapshot and updated as engagement /
-// activity changes stream in (design doc §6.2 — status is server-authoritative
+// Live per-agent status, hydrated from the snapshot and updated as activity /
+// movement changes stream in (design doc §6.2 — status is server-authoritative
 // now, not a static config field). Components subscribe to render the roster +
 // profile rail with current state, falling back to a neutral line before the
 // first snapshot lands (or while the town is sleeping).

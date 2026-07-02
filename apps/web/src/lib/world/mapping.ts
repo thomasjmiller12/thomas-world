@@ -149,16 +149,14 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
   }
 }
 
-// Snapshot hydration → per-agent status emits (positions/status/engagement,
-// design doc §6.1). One npc-status per agent.
+// Snapshot hydration → per-agent status emits (positions/status, design doc
+// §6.1). One npc-status per agent.
 export function mapAgentStatus(agent: AgentStatus): EmitSpec<'npc-status'> {
   return spec('npc-status', {
     npcId: agent.id,
     locationId: agent.locationId,
     status: agent.status,
     activity: agent.activity,
-    busy: agent.busy,
-    engagement: agent.engagement,
   });
 }
 

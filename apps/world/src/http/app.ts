@@ -36,7 +36,7 @@ import type { LocationId } from "@town/contract";
 import type { ArtifactSummary } from "@town/contract";
 import type { z } from "zod";
 import { config } from "../config.js";
-import { buildSnapshot, engagementToContract } from "../engine/snapshot.js";
+import { buildSnapshot } from "../engine/snapshot.js";
 import {
   allObjects,
   objectsAtLocation,
@@ -499,8 +499,6 @@ export function createApp() {
           locationId: a.locationId,
           status: a.status,
           activity: a.activity ?? null,
-          busy: a.engagement != null,
-          engagement: engagementToContract(a.engagement),
           lastTickAt: a.lastTickAt ? a.lastTickAt.toISOString() : null,
         },
         recentArtifacts: artifactRows.map(toArtifactSummary),
@@ -728,9 +726,7 @@ export function createApp() {
   });
 
   // --- POST /chats {agentId, visitorId} -----------------------------------
-  // Opens a chat session + returns the per-session token. An engaged agent → a
-  // 409 carrying the in-fiction engagement (the client renders alternatives); a
-  // locked agent (tick mid-flight) → a distinct 409 "mid-thought".
+  // Opens a chat session + returns the per-session token.
   app.post("/chats", async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const agentId = body?.agentId;
