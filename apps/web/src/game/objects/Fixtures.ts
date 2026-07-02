@@ -29,6 +29,7 @@ export interface RegisterOpts {
 
 export class FixtureRegistry {
   private readonly entries = new Map<string, FixtureTarget>();
+  private readonly interactiveKeys = new Set<string>();
   private readonly handler: (p: {
     location: LocationId;
     fixture: string;
@@ -65,6 +66,7 @@ export class FixtureRegistry {
         : { x: target.x, y: target.y };
     this.entries.set(key(locationId, fixtureId), entry);
 
+    if (opts.interactive) this.interactiveKeys.add(key(locationId, fixtureId));
     if (opts.interactive && entry.obj) {
       const obj = entry.obj;
       obj.setInteractive({ useHandCursor: true });
@@ -80,6 +82,17 @@ export class FixtureRegistry {
         },
       );
     }
+  }
+
+  // Look up a registered fixture's embodiment (PlacedObjects uses this to hang
+  // artifact-open clicks on seeded fixture sprites). `isInteractive` tells the
+  // caller a click handler already exists (e.g. the payphone's pickup) so it
+  // must not stack a second one.
+  get(locationId: LocationId, fixtureId: string): FixtureTarget | undefined {
+    return this.entries.get(key(locationId, fixtureId));
+  }
+  isInteractive(locationId: LocationId, fixtureId: string): boolean {
+    return this.interactiveKeys.has(key(locationId, fixtureId));
   }
 }
 

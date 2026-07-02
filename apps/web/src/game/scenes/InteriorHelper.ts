@@ -8,6 +8,7 @@ import { getDoorByScene, type DoorConfig } from '../data/door-configs';
 import { locationForScene, locationInScene, LOCATION_ANCHORS } from '../data/location-anchors';
 import { resolveTravel } from '../data/travel';
 import { FixtureRegistry, INTERIOR_FIXTURE_POINTS } from '../objects/Fixtures';
+import { PlacedObjects } from '../systems/PlacedObjects';
 import { findPath } from '../systems/pathfinding';
 import { resolveEscortPoint, sceneKeyFor, type EscortPayload } from '../systems/escort';
 import { getMyVisitorId } from '@/lib/visitor-id';
@@ -37,6 +38,8 @@ export interface InteriorState {
   // Fixture embodiment for this room (set in setupInterior). Scenes re-register
   // a placed sprite over the default point to give an effect a real target.
   fixtures?: FixtureRegistry;
+  // Agent-placed object renderer (programmable world) — set in setupInterior.
+  placedObjects?: PlacedObjects;
 }
 
 export function initInterior(
@@ -106,6 +109,14 @@ export function setupInterior(
       state.fixtures.register(locationId, fixtureId, point);
     }
   }
+
+  // Agent-placed objects (programmable world): render this room's placed props
+  // + hang click-to-open on anything carrying mounted artifacts. Deferred one
+  // frame so the scene's own placeTownObject calls have registered their
+  // sprites in state.fixtures first (seeded-fixture mounts need them).
+  scene.time.delayedCall(0, () => {
+    state.placedObjects = new PlacedObjects(scene, state.fixtures, state.player);
+  });
 
   // Camera
   scene.cameras.main.setRoundPixels(true);

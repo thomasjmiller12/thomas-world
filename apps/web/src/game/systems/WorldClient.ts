@@ -33,6 +33,14 @@ const TRANSIENT_ON_JOIN = new Set<WorldEvent['type']>([
   // A stale replayed escort COMMAND would yank the visitor's sprite into an
   // unsolicited auto-walk on reconnect/late-join — never replay it.
   'visitor.escorted',
+  // Object-graph + artifact-state events: PlacedObjects / ArtifactFrame do a
+  // full authoritative fetch on scene create / open, so join-replay would only
+  // double-apply what the fetch already delivered.
+  'object.created',
+  'object.removed',
+  'object.moved',
+  'object.attached',
+  'artifact.state_changed',
 ]);
 
 const STORAGE_KEYS = {

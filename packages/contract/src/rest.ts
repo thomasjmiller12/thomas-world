@@ -39,6 +39,22 @@ export type Artifact = z.infer<typeof Artifact>;
 export const ArtifactSummary = Artifact.omit({ body: true });
 export type ArtifactSummary = z.infer<typeof ArtifactSummary>;
 
+// --- artifact state (programmable world, D3) ---------------------------------
+// GET /artifacts/:id/state — the artifact's whole keyed JSON state store (the
+// per-app "database" an interactive artifact and its owning agent share).
+export const ArtifactStateResponse = z.object({
+  artifactId: z.string(),
+  state: z.record(z.string(), z.unknown()),
+});
+export type ArtifactStateResponse = z.infer<typeof ArtifactStateResponse>;
+
+// PUT /artifacts/:id/state/:key {value} — visitor-token authorized; value is
+// any JSON (size-capped server-side). null deletes the key.
+export const PutArtifactStateRequest = z.object({
+  value: z.unknown(),
+});
+export type PutArtifactStateRequest = z.infer<typeof PutArtifactStateRequest>;
+
 export const Message = z.object({
   id: z.string(),
   from: AgentId,

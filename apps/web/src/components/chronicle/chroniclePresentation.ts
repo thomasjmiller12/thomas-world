@@ -111,6 +111,8 @@ const ARTIFACT_KIND_LABELS: Record<string, string> = {
   fun_list: 'List',
   diary_entry: 'Diary',
   daily_digest: 'Digest',
+  interactive: 'App',
+  shared_page: 'Shared Page',
 };
 
 export function artifactKindLabel(kind: string): string {

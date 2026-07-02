@@ -574,3 +574,55 @@ describe("M2 REST shapes round-trip", () => {
     ).toThrow();
   });
 });
+
+describe("programmable-world schemas (D1–D4)", () => {
+  it("parses the new artifact kinds", () => {
+    expect(ArtifactKind.parse("interactive")).toBe("interactive");
+    expect(ArtifactKind.parse("shared_page")).toBe("shared_page");
+  });
+
+  it("round-trips artifact.state_changed (keys only, never values)", () => {
+    const ev = WorldEvent.parse({
+      id: "evt_ps1",
+      ts: "2026-07-02T10:00:00.000Z",
+      visibility: "public",
+      type: "artifact.state_changed",
+      payload: { artifactId: "a1", keys: ["board"], agent: null, visitorId: "v1" },
+    });
+    expect(ev.type).toBe("artifact.state_changed");
+    if (ev.type === "artifact.state_changed") {
+      expect(ev.payload.keys).toEqual(["board"]);
+      expect(ev.payload.visitorId).toBe("v1");
+    }
+  });
+
+  it("round-trips object.created with a placement hint and object.removed", () => {
+    const created = WorldEvent.parse({
+      id: "evt_ps2",
+      ts: "2026-07-02T10:01:00.000Z",
+      visibility: "public",
+      type: "object.created",
+      payload: {
+        objectId: "cafe.arcade-1a2b",
+        agent: "hobby",
+        location: "cafe",
+        zone: "cafe.tables",
+        template: "arcade-controller-handheld",
+        displayName: "arcade corner",
+        placement: { scene: "Cafe", x: 140, y: 120 },
+      },
+    });
+    expect(created.type).toBe("object.created");
+    if (created.type === "object.created") {
+      expect(created.payload.placement?.scene).toBe("Cafe");
+    }
+    const removed = WorldEvent.parse({
+      id: "evt_ps3",
+      ts: "2026-07-02T10:02:00.000Z",
+      visibility: "public",
+      type: "object.removed",
+      payload: { objectId: "cafe.arcade-1a2b", agent: "hobby", location: "cafe", displayName: "arcade corner" },
+    });
+    expect(removed.type).toBe("object.removed");
+  });
+});

@@ -24,6 +24,8 @@ const ARTIFACT_KIND_LABELS: Record<string, string> = {
   fun_list: "List",
   diary_entry: "Diary",
   daily_digest: "Digest",
+  interactive: "App",
+  shared_page: "Shared Page",
 };
 function artifactKindLabel(kind: string): string {
   return ARTIFACT_KIND_LABELS[kind] ?? kind.replace(/_/g, " ");
@@ -74,17 +76,22 @@ export async function shareCardFromArtifact(artifactId: string): Promise<ShareCa
   const a = await getArtifact(artifactId);
   if (!a) return null;
   const agentId = a.agentId as AgentId;
+  // An interactive artifact's body is HTML source — never snippet it; the card
+  // invites the visitor to open the app instead.
+  const interactive = a.kind === "interactive";
   return {
     id: `artifact:${a.id}`,
     kind: "artifact",
     title: a.title,
     subtitle: null,
-    summary: snippet(a.body),
+    summary: interactive
+      ? "A little app built right here in town — open it and try it."
+      : snippet(a.body),
     agentId,
     color: colorFor(agentId),
     imageUrl: null,
     sourceLabel: artifactKindLabel(a.kind),
-    actions: [{ label: "Read", href: `artifact:${a.id}`, kind: "internal" }],
+    actions: [{ label: interactive ? "Open" : "Read", href: `artifact:${a.id}`, kind: "internal" }],
     metadata: { artifactKind: a.kind, published: a.published },
   };
 }

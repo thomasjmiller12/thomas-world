@@ -188,13 +188,29 @@ export const WorldTimePayload = z.object({
 // forward-ready render arms (their emission lands with the control-verb /
 // cutover slices). All visibility "location".
 
-// An agent placed a new object instance in a zone.
+// An agent placed a new object instance in a zone. `placement` is the
+// renderer hint the server picked inside the zone's bounds ({scene,x,y}) —
+// carried on the event so a live client can draw the object without a
+// snapshot refetch (objects are the one place the wire carries pixels; they
+// are placement, not agent movement).
 export const ObjectCreatedPayload = z.object({
   objectId: z.string(),
   agent: AgentId,
   location: LocationId,
   zone: z.string(),
   template: z.string().nullable(),
+  displayName: z.string(),
+  placement: z
+    .object({ scene: z.string(), x: z.number(), y: z.number() })
+    .nullable()
+    .optional(),
+});
+
+// An agent removed a (movable, agent-placed) object from the world.
+export const ObjectRemovedPayload = z.object({
+  objectId: z.string(),
+  agent: AgentId,
+  location: LocationId,
   displayName: z.string(),
 });
 
@@ -235,6 +251,19 @@ export const ObjectNotedPayload = z.object({
   agent: AgentId,
   location: LocationId,
   text: z.string(),
+});
+
+// --- artifact state (programmable world, D3) ---------------------------------
+// A key (or keys) in an interactive artifact's state store changed — a visitor
+// made a move in an agent-built app, or the owning agent replied. Carries only
+// WHICH keys changed, never values (an open ArtifactFrame refetches state; the
+// event is an invalidation signal, not a data channel). `agent` set when the
+// writer was an agent; `visitorId` when it was a visitor.
+export const ArtifactStateChangedPayload = z.object({
+  artifactId: z.string(),
+  keys: z.array(z.string()),
+  agent: AgentId.nullable(),
+  visitorId: z.string().nullable(),
 });
 
 // --- director/effect protocol (Phase A) -------------------------------------
@@ -290,10 +319,12 @@ export const WorldEvent = z.discriminatedUnion("type", [
   z.object({ ...envelopeBase, type: z.literal("conversation.converted"), payload: ConversationConvertedPayload }),
   z.object({ ...envelopeBase, type: z.literal("world.time"), payload: WorldTimePayload }),
   z.object({ ...envelopeBase, type: z.literal("object.created"), payload: ObjectCreatedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("object.removed"), payload: ObjectRemovedPayload }),
   z.object({ ...envelopeBase, type: z.literal("object.moved"), payload: ObjectMovedPayload }),
   z.object({ ...envelopeBase, type: z.literal("object.state_changed"), payload: ObjectStateChangedPayload }),
   z.object({ ...envelopeBase, type: z.literal("object.attached"), payload: ObjectAttachedPayload }),
   z.object({ ...envelopeBase, type: z.literal("object.noted"), payload: ObjectNotedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("artifact.state_changed"), payload: ArtifactStateChangedPayload }),
   z.object({ ...envelopeBase, type: z.literal("world.beat"), payload: WorldBeatPayload }),
 ]);
 export type WorldEvent = z.infer<typeof WorldEvent>;
@@ -324,10 +355,12 @@ export const worldEventTypes = [
   "conversation.converted",
   "world.time",
   "object.created",
+  "object.removed",
   "object.moved",
   "object.state_changed",
   "object.attached",
   "object.noted",
+  "artifact.state_changed",
   "world.beat",
 ] as const;
 export const WorldEventType = z.enum(worldEventTypes);

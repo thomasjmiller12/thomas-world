@@ -19,6 +19,10 @@ const DEFAULT_ANCHOR: Record<ArtifactKind, { location: LocationId | null; fixtur
   fun_list: { location: "park", fixture: "the dumb sign" },
   diary_entry: { location: null, fixture: null },
   daily_digest: { location: "town", fixture: "news stand" },
+  // Programmable-world kinds live where they're MOUNTED (attachArtifact), not
+  // at a per-kind home fixture.
+  interactive: { location: null, fixture: null },
+  shared_page: { location: null, fixture: null },
 };
 
 export interface CreateArtifactInput {

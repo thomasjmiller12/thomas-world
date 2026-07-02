@@ -17,6 +17,7 @@ import {
   doublePrecision,
   index,
   uniqueIndex,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import type {
   AgentId,
@@ -49,6 +50,8 @@ const artifactKindEnum = [
   "fun_list",
   "diary_entry",
   "daily_digest",
+  "interactive",
+  "shared_page",
 ] as const;
 const eventTypeEnum = [
   "agent.moved",
@@ -75,10 +78,12 @@ const eventTypeEnum = [
   "conversation.converted",
   "world.time",
   "object.created",
+  "object.removed",
   "object.moved",
   "object.state_changed",
   "object.attached",
   "object.noted",
+  "artifact.state_changed",
   "world.beat",
 ] as const;
 
@@ -254,6 +259,27 @@ export const artifacts = pgTable(
     index("artifacts_agent_idx").on(t.agentId),
     index("artifacts_kind_idx").on(t.kind),
   ],
+);
+
+// --- artifact_state (programmable world, D3) ---------------------------------
+// The per-artifact keyed JSON store — the "database" an interactive artifact
+// gets for free: a Go board's position, a guestbook's entries, a poll's tallies.
+// Visitors write through PUT /artifacts/:id/state/:key (rate-limited,
+// size-capped); the owning agent writes through the write_artifact_state tool.
+// One row per (artifact, key); a null-value write deletes the row. `updatedBy`
+// is an agent id or "visitor:<id>" for provenance.
+export const artifactState = pgTable(
+  "artifact_state",
+  {
+    artifactId: text("artifact_id").notNull(),
+    key: text("key").notNull(),
+    value: jsonb("value").notNull(),
+    updatedBy: text("updated_by").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.artifactId, t.key] })],
 );
 
 // --- world_objects (MUD embodiment: the canonical object graph) -------------

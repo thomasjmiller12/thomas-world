@@ -6,6 +6,7 @@ import { agentShortName } from '@/components/chat/primitives';
 import { fetchArtifact } from './chronicleClient';
 import { artifactKindLabel, headerDate } from './chroniclePresentation';
 import { MarkdownBody } from './MarkdownBody';
+import { ArtifactFrame } from '@/components/artifact/ArtifactFrame';
 
 // ArtifactReader — the in-hub document reader (M2.1). Lazily GETs the full
 // artifact body (list views carry only the headline) and renders it as a paper
@@ -98,7 +99,7 @@ export function ArtifactReader({ artifactId, onBack }: Props) {
 
       {artifact && !loading && !error && (
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          {/* the paper page */}
+          {/* the paper page (interactive artifacts get a wider stage — the app IS the page) */}
           <article
             style={{
               background: 'var(--card)',
@@ -106,7 +107,7 @@ export function ArtifactReader({ artifactId, onBack }: Props) {
               borderRadius: 14,
               boxShadow: 'var(--shadow)',
               padding: '28px 30px 32px',
-              maxWidth: 640,
+              maxWidth: artifact.kind === 'interactive' ? 860 : 640,
               margin: '0 auto',
             }}
           >
@@ -128,7 +129,13 @@ export function ArtifactReader({ artifactId, onBack }: Props) {
             </h1>
             {/* agent-hue accent rule */}
             <div style={{ height: 3, width: 48, borderRadius: 999, background: color, margin: '10px 0 18px' }} />
-            <MarkdownBody body={artifact.body} color={color} />
+            {artifact.kind === 'interactive' ? (
+              // An agent-built app: run it in the sandboxed frame instead of
+              // rendering its HTML source as prose.
+              <ArtifactFrame artifact={artifact} />
+            ) : (
+              <MarkdownBody body={artifact.body} color={color} />
+            )}
           </article>
 
           {/* Silkscreen meta footer */}

@@ -13,6 +13,7 @@ import { DOOR_CONFIGS, type DoorConfig } from '../data/door-configs';
 import { resolveTravel } from '../data/travel';
 import { placeTownObject } from '../objects/TownObjects';
 import { FixtureRegistry } from '../objects/Fixtures';
+import { PlacedObjects } from '../systems/PlacedObjects';
 import { findPath } from '../systems/pathfinding';
 import { resolveEscortPoint, sceneKeyFor, doorTo, locationInScene, type EscortPayload } from '../systems/escort';
 import { getMyVisitorId } from '@/lib/visitor-id';
@@ -274,6 +275,7 @@ export default class Town extends Phaser.Scene {
 	private player!: Player;
 	private npcManager!: NPCManager;
 	private fixtures!: FixtureRegistry;
+	private placedObjects?: PlacedObjects;
 	private nearestNPC: NPC | null = null;
 	private nearestDoor: DoorConfig | null = null;
 	private isTransitioning: boolean = false;
@@ -381,6 +383,11 @@ export default class Town extends Phaser.Scene {
 		this.fixtures.register('town', 'news stand', { x: 467, y: 340 });
 		placeTownObject(this, 'globe-lamp-post-short', 392, 462, { depth: 20, collideWith: this.player });
 		placeTownObject(this, 'globe-lamp-post-short', 566, 462, { depth: 20, collideWith: this.player });
+
+		// Agent-placed objects (programmable world): render town+park placed props
+		// and hang click-to-open on anything carrying mounted artifacts. After the
+		// fixture registrations above so seeded-fixture mounts find their sprites.
+		this.placedObjects = new PlacedObjects(this, this.fixtures, this.player);
 
 		// Door proximity prompts — small arrow above each door
 		for (const door of Object.values(DOOR_CONFIGS)) {
