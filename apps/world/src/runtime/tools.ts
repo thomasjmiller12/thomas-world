@@ -724,7 +724,10 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       const r = await attachArtifact(obj.id, artifact_id, ctx.agentId);
       if (!r.ok) return `Couldn't mount it (${r.reason}).`;
       await ctx.onAction?.("mount_artifact", `mounts "${art.title}" on the ${obj.displayName}`);
-      return `Mounted "${art.title}" on the ${obj.displayName} — it's now the thing that opens when someone clicks it.`;
+      return (
+        `Mounted "${art.title}" on the ${obj.displayName} — a visitor clicking it (or its ✦ marker) opens it, ` +
+        `and it's listed in the town Chronicle under Made. In a chat, share_artifact ${artifact_id} drops it as a card they can open right there — the surest way to put it in someone's hands.`
+      );
     },
   });
 
