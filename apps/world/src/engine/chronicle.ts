@@ -26,7 +26,7 @@ import { renderLine } from "./feed.js";
 import { anthropic, hasLlm } from "../runtime/client.js";
 import { recordUsage } from "./usage.js";
 import { estimateCostUsd, tokensFromUsage } from "../runtime/pricing.js";
-import { attachIssue, regenerateIssue } from "./chronicle-issue.js";
+import { attachIssue, regenerateIssue, loadCachedIssue } from "./chronicle-issue.js";
 
 const { worldEvents, artifacts, threadSummaries } = schema;
 
@@ -396,61 +396,90 @@ async function buildChronicle(dayUtc: string): Promise<CacheEntry> {
   return entry;
 }
 
-// The public Chronicle read (the GET /chronicle handler). Builds (or serves
-// cached) the day, then lazily fills thread summaries: for each CLOSED thread
-// (its last line older than the gap) without a cached summary, fire ONE Haiku
-// call, persist it to thread_summaries, and attach it — capped at SUMMARY_GEN_CAP
-// generations per request (others stay summary: null and fill on later reads).
-// Open threads always stay summary: null. Existing summaries from prior requests
-// are loaded from the table and attached for free. Throws on a malformed day.
+// The public Chronicle read (the GET /chronicle handler). This is a PURE DB read
+// on the critical path — no LLM generation blocks the response:
+//
+//   1. Build (or serve cached) the day's timeline.
+//   2. Attach thread summaries + the Town Crier issue that are ALREADY persisted.
+//   3. Fire any needed generation (closed-thread summaries + the issue) in the
+//      BACKGROUND; the next fetch (the frontend live-refreshes / does a one-shot
+//      follow-up) picks up the filled-in content.
+//
+// This is the fix for the "Chronicle takes forever / can't switch days / doesn't
+// update live" symptoms: those all came from up to SUMMARY_GEN_CAP sequential
+// Haiku calls PLUS a Sonnet Town-Crier generation running synchronously on every
+// uncached read. Background generation is self-guarded against duplicate work
+// (summaryGenInflight here; attachIssue's own in-flight + freshness + backoff),
+// so a quiet day costs nothing extra. Throws on a malformed day.
 export async function getChronicle(dayUtc: string): Promise<ChronicleResponse> {
   const { payload, threads } = await buildChronicle(dayUtc);
 
-  // Load every already-summarized thread for this day in one query, attach them,
-  // and remember which ids are covered so we don't regenerate.
+  // Attach already-persisted thread summaries (one query, no generation).
   const existing = await db
     .select({ threadId: threadSummaries.threadId, summary: threadSummaries.summary })
     .from(threadSummaries)
     .where(eq(threadSummaries.day, dayUtc));
   const summaryById = new Map(existing.map((r) => [r.threadId, r.summary]));
-
-  // Closed threads still missing a summary → candidates for generation.
-  const candidates = closedThreadsNeedingSummary(
-    threads,
-    new Set(summaryById.keys()),
-    Date.now(),
-  ).slice(0, SUMMARY_GEN_CAP);
-
-  // Generate (best-effort) and persist. A single failure never breaks the read.
-  if (hasLlm()) {
-    for (const thread of candidates) {
-      try {
-        const summary = await summarizeThread(thread, dayUtc);
-        if (summary) summaryById.set(thread.id, summary);
-      } catch (err) {
-        console.warn(`[chronicle] summary failed for ${thread.id}:`, (err as Error).message);
-      }
-    }
-  }
-
-  // Attach whatever summaries we now have onto the thread items in the payload.
   for (const item of payload.items) {
-    if (item.kind === "thread") {
-      item.summary = summaryById.get(item.id) ?? null;
-    }
+    if (item.kind === "thread") item.summary = summaryById.get(item.id) ?? null;
   }
 
-  // The Town Crier issue (M2.2). attachIssue serves a cached row when fresh and
-  // only spends on the LLM when missing/stale (its own in-flight + TTL guards),
-  // so this stays cheap on the common path. Never let a generation hiccup break
-  // the timeline read — fall through to a null issue on any error.
+  // Attach the already-printed Town Crier issue if any (no generation here).
   let issue: ChronicleResponse["issue"] = null;
   try {
-    issue = await attachIssue(dayUtc, payload.items, todayUtc());
+    issue = await loadCachedIssue(dayUtc);
   } catch (err) {
-    console.warn(`[chronicle] issue attach failed for ${dayUtc}:`, (err as Error).message);
+    console.warn(`[chronicle] issue load failed for ${dayUtc}:`, (err as Error).message);
   }
+
+  // Kick off whatever still needs generating, off the response path.
+  scheduleChronicleGeneration(dayUtc, payload.items, threads, new Set(summaryById.keys()));
+
   return { ...payload, issue };
+}
+
+// Per-day guard so overlapping reads don't fan out duplicate summary batches.
+const summaryGenInflight = new Set<string>();
+
+// Fire background generation for a day: closed-thread summaries (capped) and the
+// Town Crier issue. Fire-and-forget — the world server is a long-lived process,
+// so this keeps running after the response is sent, and its results land in
+// thread_summaries / chronicle_issues for the next read. Never throws into the
+// caller.
+function scheduleChronicleGeneration(
+  dayUtc: string,
+  items: ChronicleItem[],
+  threads: ChronicleThread[],
+  summarizedIds: Set<string>,
+): void {
+  if (!hasLlm()) return;
+
+  const candidates = closedThreadsNeedingSummary(threads, summarizedIds, Date.now()).slice(
+    0,
+    SUMMARY_GEN_CAP,
+  );
+  if (candidates.length > 0 && !summaryGenInflight.has(dayUtc)) {
+    summaryGenInflight.add(dayUtc);
+    void (async () => {
+      try {
+        for (const thread of candidates) {
+          try {
+            await summarizeThread(thread, dayUtc);
+          } catch (err) {
+            console.warn(`[chronicle] summary failed for ${thread.id}:`, (err as Error).message);
+          }
+        }
+      } finally {
+        summaryGenInflight.delete(dayUtc);
+      }
+    })();
+  }
+
+  // attachIssue self-guards (freshness TTL, in-flight de-dupe, failure backoff),
+  // so calling it every read is cheap when the issue is already fresh.
+  void attachIssue(dayUtc, items, todayUtc()).catch((err) =>
+    console.warn(`[chronicle] background issue gen failed for ${dayUtc}:`, (err as Error).message),
+  );
 }
 
 // Admin: force-regenerate the Town Crier issue for a day (POST /admin/chronicle/

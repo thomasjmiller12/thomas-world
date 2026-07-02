@@ -569,6 +569,16 @@ export async function attachIssue(
   }
 }
 
+// Read the persisted issue for a day WITHOUT triggering generation. Returns null
+// if none has been printed yet. The chronicle read path uses this so GET
+// /chronicle stays a pure DB read; `attachIssue` is fired separately in the
+// background to (re)generate. Serving a slightly-stale issue for one refresh
+// cycle is the deliberate trade for a fast, non-blocking read.
+export async function loadCachedIssue(day: string): Promise<ChronicleIssue | null> {
+  const row = await loadIssueRow(day);
+  return row ? rowToIssue(row) : null;
+}
+
 // Admin regenerate (POST /admin/chronicle/:day/regenerate). Forces a fresh build.
 export async function regenerateIssue(day: string, items: ChronicleItem[], todayUtc: string): Promise<ChronicleIssue> {
   return attachIssue(day, items, todayUtc, { force: true });
