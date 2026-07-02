@@ -5,7 +5,7 @@ import { EventBus } from '../EventBus';
 import { placeTownObject } from '../objects/TownObjects';
 import { FixtureRegistry } from '../objects/Fixtures';
 import { resolveWorldBaseUrl } from '@/lib/world/mapping';
-import { pixelForZone } from '../data/zone-bounds';
+import { pixelForZone, ZONE_BOUNDS } from '../data/zone-bounds';
 
 // PlacedObjects (programmable world D1/D2) — the scene-side renderer for the
 // canonical object graph. Two jobs:
@@ -115,6 +115,7 @@ export class PlacedObjects {
       EventBus.off('world-event', this.onWorldEvent);
       this.sprites.clear();
       this.rows.clear();
+      this.markers.clear();
     });
     void this.hydrate();
   }
@@ -191,27 +192,82 @@ export class PlacedObjects {
     }
   }
 
-  // Seeded fixtures (hand-placed by the scene, registered in FixtureRegistry):
-  // when one carries attachments, hang the artifact-open click on its existing
-  // sprite — unless the fixture already owns an interaction (payphone pickup).
+  // Seeded fixtures carrying attachments need a clickable embodiment. Three
+  // cases, best first:
+  //   1. The scene registered a real sprite for the fixture → hang the open
+  //      click on it (unless the fixture already owns an interaction — the
+  //      payphone's pickup wins).
+  //   2. No sprite, but the registry or the zone-bounds table knows a point →
+  //      drop a small bobbing marker there and make THAT clickable. Without
+  //      this, a mount on an unregistered fixture (the dumb sign, the
+  //      bookshelf, the press…) exists in the world but is invisible on
+  //      screen — an agent saying "come see it at the sign" leads nowhere
+  //      (observed live, day one: Hobby's coin-flip app).
+  //   3. No point known for this scene → nothing to draw (the Chronicle's
+  //      Made tab remains the fallback surface).
+  private readonly markers = new Map<string, Phaser.GameObjects.Text>();
+
   private wireSeededFixture(row: WorldObject): void {
-    if (!this.fixtures) return;
+    if (row.attachedArtifactIds.length === 0) return;
     const location = row.locationId as LocationId;
-    if (this.fixtures.isInteractive(location, row.displayName)) return;
-    const target = this.fixtures.get(location, row.displayName);
-    const obj = target?.obj;
-    if (!obj) return;
-    obj.setInteractive({ useHandCursor: true });
-    obj.off('pointerdown');
-    obj.on(
+
+    const open = (event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+      const fresh = this.rows.get(row.id) ?? row;
+      const latest = fresh.attachedArtifactIds[fresh.attachedArtifactIds.length - 1];
+      if (latest) EventBus.emit('open-card-target', { href: `artifact:${latest}` });
+    };
+
+    const registered = this.fixtures?.get(location, row.displayName);
+    const obj = registered?.obj;
+    if (obj && this.fixtures && !this.fixtures.isInteractive(location, row.displayName)) {
+      obj.setInteractive({ useHandCursor: true });
+      obj.off('pointerdown');
+      obj.on(
+        'pointerdown',
+        (_p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) =>
+          open(event),
+      );
+      return;
+    }
+    if (obj) return; // interactive fixture (payphone) — its own click wins
+
+    // No sprite: find a point for THIS scene (registry bare point, else the
+    // fixture's zone bounds) and drop a marker.
+    if (this.markers.has(row.id)) return;
+    const zoneScene = ZONE_BOUNDS[row.zone]?.scene;
+    const point = registered ?? (zoneScene === this.scene.scene.key ? pixelForZone(row.zone) : undefined);
+    if (!point) return;
+    const marker = this.scene.add
+      .text(point.x, point.y - 18, '✦', {
+        fontFamily: 'monospace',
+        fontSize: '12px',
+        color: '#ffd94a',
+        stroke: '#1a1a2e',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(5999)
+      .setInteractive({ useHandCursor: true });
+    this.scene.tweens.add({
+      targets: marker,
+      y: marker.y - 4,
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'sine.inOut',
+    });
+    marker.on('pointerover', () => {
+      const fresh = this.rows.get(row.id) ?? row;
+      marker.setText(`${fresh.displayName} · click to open`);
+    });
+    marker.on('pointerout', () => marker.setText('✦'));
+    marker.on(
       'pointerdown',
-      (_p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
-        event.stopPropagation();
-        const fresh = this.rows.get(row.id) ?? row;
-        const latest = fresh.attachedArtifactIds[fresh.attachedArtifactIds.length - 1];
-        if (latest) EventBus.emit('open-card-target', { href: `artifact:${latest}` });
-      },
+      (_p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) =>
+        open(event),
     );
+    this.markers.set(row.id, marker);
   }
 
   private showPlacard(row: WorldObject, img: Phaser.GameObjects.Image): void {
