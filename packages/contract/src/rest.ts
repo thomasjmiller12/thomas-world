@@ -11,28 +11,12 @@ import { ShareCard } from "./share-cards.js";
 
 // --- shared resource entities ----------------------------------------------
 
-// What an agent is currently engaged in (design doc §3.2). One body, one
-// conversation: an agent is in a `chat` (with a visitor and maybe a second
-// agent). `with` lists the co-participants — other agents by id, plus the
-// literal `'visitor'` when a visitor is present. Absent => unengaged. `busy`
-// below is the derived boolean (`engagement != null`). Paced scenes are gone
-// as of M2.1, so `kind` is just `'chat'`.
-export const AgentEngagement = z.object({
-  kind: z.enum(["chat"]),
-  with: z.array(z.union([AgentId, z.literal("visitor")])),
-});
-export type AgentEngagement = z.infer<typeof AgentEngagement>;
-
 export const AgentStatus = z.object({
   id: AgentId,
   displayName: z.string(),
   locationId: LocationId,
   status: z.string(), // free-form: "working", "sleeping (budget)", "in conversation"
   activity: z.string().nullable(),
-  // Derived: true iff `engagement` is present. Kept for back-compat with
-  // surfaces that only need the boolean.
-  busy: z.boolean(),
-  engagement: AgentEngagement.optional(),
   lastTickAt: z.string().nullable(), // ISO 8601
 });
 export type AgentStatus = z.infer<typeof AgentStatus>;
@@ -54,6 +38,22 @@ export type Artifact = z.infer<typeof Artifact>;
 // Headline for list views; `body` omitted (fetch the full Artifact by id).
 export const ArtifactSummary = Artifact.omit({ body: true });
 export type ArtifactSummary = z.infer<typeof ArtifactSummary>;
+
+// --- artifact state (programmable world, D3) ---------------------------------
+// GET /artifacts/:id/state — the artifact's whole keyed JSON state store (the
+// per-app "database" an interactive artifact and its owning agent share).
+export const ArtifactStateResponse = z.object({
+  artifactId: z.string(),
+  state: z.record(z.string(), z.unknown()),
+});
+export type ArtifactStateResponse = z.infer<typeof ArtifactStateResponse>;
+
+// PUT /artifacts/:id/state/:key {value} — visitor-token authorized; value is
+// any JSON (size-capped server-side). null deletes the key.
+export const PutArtifactStateRequest = z.object({
+  value: z.unknown(),
+});
+export type PutArtifactStateRequest = z.infer<typeof PutArtifactStateRequest>;
 
 export const Message = z.object({
   id: z.string(),

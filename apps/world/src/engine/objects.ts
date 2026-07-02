@@ -1,13 +1,9 @@
-// World-object engine (MUD embodiment foundation). READ helpers over the
-// world_objects table plus the ONE write path used in this slice — appendNote,
-// behind the leave_note tool. The structural write helpers (createObject /
-// moveObject / setObjectState / attachArtifact) are STUBBED here: their shape is
-// fixed so later slices (the control-verb + cutover slices) wire them to emit
-// the forward-ready object.created/moved/state_changed/attached events.
-//
-// world_objects is shadow-built in this slice: nothing here is read by
-// buildDelta/use_fixture yet (that cutover is deferred). These helpers back the
-// read API and leave_note only.
+// World-object engine (MUD embodiment). READ helpers over the world_objects
+// table plus the write paths: appendNote (leave_note), setObjectState (the
+// director's object surface), and — since the programmable-world slice — the
+// structural verbs createObject / moveObject / removeObject / attachArtifact
+// behind place_object / move_object / remove_object / mount_artifact. Each
+// write emits its object.* event; the renderer materializes changes live.
 
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type {
@@ -20,7 +16,7 @@ import type {
 } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { appendEvent } from "./events.js";
-import { defaultZone, zoneExists } from "./zones.js";
+import { defaultZone, zoneExists, zonesForLocation } from "./zones.js";
 
 const { worldObjects, artifacts } = schema;
 
@@ -163,9 +159,9 @@ export async function appendNote(
   return { ok: true };
 }
 
-// --- stubbed structural writes (wired by later slices) ----------------------
-// Their signatures are fixed so the control-verb / cutover slices can implement
-// them without re-deciding the shape. NOT called in this slice.
+// --- structural writes (programmable world, D2) ------------------------------
+// The control-verb slice the foundation stubbed for. Every write emits its
+// forward-ready event so the renderer materializes the change live.
 
 export interface CreateObjectInput {
   id: string;
@@ -175,18 +171,115 @@ export interface CreateObjectInput {
   template?: string | null;
   displayName: string;
   kind?: string | null;
+  description?: string | null;
+  affordances?: string[];
 }
 
-export async function createObject(_input: CreateObjectInput): Promise<WorldObjectRow> {
-  throw new Error("createObject is not implemented in the foundation slice");
+// Pick a renderer placement point inside a zone's bounds: bottom-center-ish
+// with a deterministic-per-id horizontal scatter so several objects placed in
+// one zone don't stack pixel-perfectly. Zones without bounds → null (the
+// renderer falls back to the zone/room anchor).
+export function placementForZone(
+  location: LocationId,
+  zoneId: string,
+  seedKey: string,
+): ObjectPlacement | null {
+  const zone = (zonesForLocation(location) ?? []).find((z) => z.id === zoneId);
+  const b = zone?.bounds;
+  if (!b) return null;
+  let h = 2166136261;
+  for (let i = 0; i < seedKey.length; i++) h = (h ^ seedKey.charCodeAt(i)) * 16777619;
+  const frac = ((h >>> 0) % 1000) / 1000;
+  const x = Math.round(b.x + 6 + frac * Math.max(1, b.w - 12));
+  const y = Math.round(b.y + b.h - 2);
+  return { scene: b.scene, x, y };
+}
+
+export async function createObject(input: CreateObjectInput): Promise<WorldObjectRow> {
+  const placement = placementForZone(input.location, input.zone, input.id);
+  const [row] = await db
+    .insert(worldObjects)
+    .values({
+      id: input.id,
+      template: input.template ?? null,
+      displayName: input.displayName,
+      locationId: input.location,
+      zone: input.zone,
+      placement,
+      kind: input.kind ?? null,
+      description: input.description ?? null,
+      affordances: input.affordances ?? [],
+      movable: true,
+      ownerAgentId: input.agent,
+    })
+    .returning();
+  await appendEvent({
+    type: "object.created",
+    agentId: input.agent,
+    locationId: input.location,
+    visibility: "public",
+    payload: {
+      objectId: row.id,
+      agent: input.agent,
+      location: input.location,
+      zone: input.zone,
+      template: row.template ?? null,
+      displayName: row.displayName,
+      placement: placement ? { scene: placement.scene, x: placement.x, y: placement.y } : null,
+    },
+  });
+  return row;
 }
 
 export async function moveObject(
-  _objectId: string,
-  _agent: AgentId,
-  _toZone: string,
-): Promise<void> {
-  throw new Error("moveObject is not implemented in the foundation slice");
+  objectId: string,
+  agent: AgentId,
+  toZone: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const obj = await getObject(objectId);
+  if (!obj) return { ok: false, reason: "object-missing" };
+  if (!obj.movable) return { ok: false, reason: "immovable" };
+  const location = obj.locationId as LocationId;
+  if (!zoneExists(toZone, location)) return { ok: false, reason: "zone-not-here" };
+  const fromZone = obj.zone;
+  const placement = placementForZone(location, toZone, obj.id);
+  await db
+    .update(worldObjects)
+    .set({ zone: toZone, placement, updatedAt: new Date() })
+    .where(eq(worldObjects.id, objectId));
+  await appendEvent({
+    type: "object.moved",
+    agentId: agent,
+    locationId: location,
+    visibility: "location",
+    payload: { objectId, agent, location, fromZone, toZone },
+  });
+  return { ok: true };
+}
+
+// Remove an agent-placed object. Seeded fixtures (movable: false) are
+// structural and refuse; anything movable is fair game — the town is a commons.
+export async function removeObject(
+  objectId: string,
+  agent: AgentId,
+): Promise<{ ok: boolean; reason?: string; displayName?: string }> {
+  const obj = await getObject(objectId);
+  if (!obj) return { ok: false, reason: "object-missing" };
+  if (!obj.movable) return { ok: false, reason: "immovable" };
+  await db.delete(worldObjects).where(eq(worldObjects.id, objectId));
+  await appendEvent({
+    type: "object.removed",
+    agentId: agent,
+    locationId: obj.locationId as LocationId,
+    visibility: "public",
+    payload: {
+      objectId,
+      agent,
+      location: obj.locationId,
+      displayName: obj.displayName,
+    },
+  });
+  return { ok: true, displayName: obj.displayName };
 }
 
 // setObjectState: the Director/Effect object-surface write path. Loads the
@@ -228,11 +321,44 @@ export async function setObjectState(
   return { ok: true };
 }
 
+// Mount an artifact on an object (programmable world, D1). Denormalizes onto
+// worldObjects.attachedArtifactIds AND back-references artifacts.objectId, then
+// emits object.attached — the renderer's cue to make the object's sprite
+// clickable (click opens the most recently attached artifact). Re-attaching an
+// already-attached artifact moves it to the end (it becomes the click target).
 export async function attachArtifact(
-  _objectId: string,
-  _artifactId: string,
-): Promise<void> {
-  throw new Error("attachArtifact is not implemented in the foundation slice");
+  objectId: string,
+  artifactId: string,
+  agent: AgentId,
+): Promise<{ ok: boolean; reason?: string }> {
+  const obj = await getObject(objectId);
+  if (!obj) return { ok: false, reason: "object-missing" };
+  const [art] = await db.select().from(artifacts).where(eq(artifacts.id, artifactId));
+  if (!art) return { ok: false, reason: "artifact-missing" };
+
+  const ids = ((obj.attachedArtifactIds ?? []) as string[]).filter((id) => id !== artifactId);
+  ids.push(artifactId);
+  await db
+    .update(worldObjects)
+    .set({ attachedArtifactIds: ids, updatedAt: new Date() })
+    .where(eq(worldObjects.id, objectId));
+  await db.update(artifacts).set({ objectId }).where(eq(artifacts.id, artifactId));
+
+  await appendEvent({
+    type: "object.attached",
+    agentId: agent,
+    locationId: obj.locationId as LocationId,
+    visibility: "public",
+    payload: {
+      objectId,
+      artifactId,
+      agent,
+      location: obj.locationId,
+      kind: art.kind,
+      title: art.title,
+    },
+  });
+  return { ok: true };
 }
 
 // Recent world events touching one object (for inspect_object's history view):

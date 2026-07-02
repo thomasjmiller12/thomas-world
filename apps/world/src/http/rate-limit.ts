@@ -30,6 +30,8 @@ export const IN_FICTION_429 = {
     "Looks like you've already got a window open onto the town. Close one of your other tabs to look in from here.",
   sseGlobal:
     "The town square is packed right now — more visitors than usual. Try again in a little while; the place isn't going anywhere.",
+  artifactState:
+    "You're working that thing faster than it can keep up. Give it a few seconds and try again.",
 } as const;
 
 // --- session turn cap (design §7: 40-turn max, wrap-up note at ~36) ---------
@@ -151,6 +153,9 @@ export interface RateLimiters {
   // 5 was tight enough that ordinary testing tripped it; returning visitors
   // with a valid stored identity bypass this entirely)
   sse: ConcurrencyLimiter; // 2 per IP + 200 global
+  // Artifact state writes (programmable world D3): a Go move is one write, so
+  // 60/min per visitor is roomy for games while stopping a scripted flood.
+  artifactState: SlidingWindow;
 }
 
 export function createRateLimiters(): RateLimiters {
@@ -159,6 +164,7 @@ export function createRateLimiters(): RateLimiters {
     chatPerDay: new SlidingWindow(150, 24 * 60 * 60_000),
     visitorCreate: new SlidingWindow(20, 60 * 60_000),
     sse: new ConcurrencyLimiter(2, 200),
+    artifactState: new SlidingWindow(60, 60_000),
   };
 }
 

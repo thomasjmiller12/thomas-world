@@ -176,11 +176,6 @@ export function ObserveDashboard() {
                   <span style={{ font: '400 10px var(--mono)', color: 'var(--ink-3)' }}>
                     {s ? `· ${s.locationId}` : ''}
                   </span>
-                  {s?.busy && (
-                    <span title="in a conversation" style={{ marginLeft: 'auto', fontSize: 10 }}>
-                      💬
-                    </span>
-                  )}
                 </div>
                 <p
                   style={{

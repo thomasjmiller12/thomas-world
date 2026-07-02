@@ -47,16 +47,14 @@ export interface WorldEvents {
   // `targetZone` resolves the same way agent.moved's does (zone-bounds.ts).
   'visitor-escort': { visitorId: string; agent: AgentId; from: LocationId; to: LocationId; targetZone: string | null };
 
-  // --- per-agent live status (snapshot hydration + engagement flips) --------
-  // Authoritative status for one agent: where it is, what it's doing, whether
-  // it's engaged. Drives the roster + canvas spawn/despawn + sprite state.
+  // --- per-agent live status (snapshot hydration) ---------------------------
+  // Authoritative status for one agent: where it is and what it's doing.
+  // Drives the roster + canvas spawn/despawn + sprite state.
   'npc-status': {
     npcId: ThomasId;
     locationId: LocationId;
     status: string;
     activity: string | null;
-    busy: boolean;
-    engagement?: { kind: 'chat'; with: (AgentId | 'visitor')[] };
   };
 
   // --- world-level state (snapshot + world.time) ---------------------------

@@ -2,7 +2,6 @@
 import { eq, sql } from "drizzle-orm";
 import type { AgentId, LocationId } from "@town/contract";
 import { db, schema } from "../db/client.js";
-import type { Engagement } from "../db/schema.js";
 import { appendEvent } from "./events.js";
 
 const { agents } = schema;
@@ -67,20 +66,6 @@ export async function setActivity(id: AgentId, activity: string) {
 
 export async function setStatus(id: AgentId, status: string) {
   await db.update(agents).set({ status }).where(eq(agents.id, id));
-}
-
-// --- engagement (legacy, M3) -----------------------------------------------
-// The `engagement` column predates M3's input queue, which now serializes an
-// agent's turns (no "one body, one conversation" lock needed). Nothing SETS
-// engagement anymore — the boot sweep clears any stale value — but the column +
-// the derived `busy` boolean are kept so the snapshot/debug contract is stable.
-
-export type { Engagement };
-
-// Derive the contract's `busy` boolean from an engagement reference (always null
-// in M3, so always false — retained for the snapshot contract).
-export function isBusy(engagement: Engagement | null | undefined): boolean {
-  return engagement != null;
 }
 
 export async function markTicked(id: AgentId) {

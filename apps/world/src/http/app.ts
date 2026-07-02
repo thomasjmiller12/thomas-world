@@ -30,13 +30,14 @@ import {
   ReferencesResponse,
   ReferenceResponse,
   WorldObjectsResponse,
+  ArtifactStateResponse,
 } from "@town/contract";
 import type { ExternalReferenceKind } from "@town/contract";
 import type { LocationId } from "@town/contract";
 import type { ArtifactSummary } from "@town/contract";
 import type { z } from "zod";
 import { config } from "../config.js";
-import { buildSnapshot, engagementToContract } from "../engine/snapshot.js";
+import { buildSnapshot } from "../engine/snapshot.js";
 import {
   allObjects,
   objectsAtLocation,
@@ -99,6 +100,7 @@ import {
 } from "../runtime/chat.js";
 import { enqueue } from "../runtime/queue.js";
 import { consumePendingCall } from "../runtime/director.js";
+import { getArtifactState, setArtifactStateKey, shouldCueOwner } from "../engine/artifact-state.js";
 import type { FixtureDef } from "../runtime/fixtures.js";
 import {
   createRateLimiters,
@@ -178,7 +180,7 @@ export function createApp() {
     cors({
       origin: (origin) => (allowSet.has(origin.replace(/\/+$/, "")) ? origin : null),
       allowHeaders: ["Content-Type", "x-visitor-token", "x-session-token", "x-admin-token", "Last-Event-ID"],
-      allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
+      allowMethods: ["GET", "POST", "PATCH", "PUT", "OPTIONS"],
     }),
   );
 
@@ -499,8 +501,6 @@ export function createApp() {
           locationId: a.locationId,
           status: a.status,
           activity: a.activity ?? null,
-          busy: a.engagement != null,
-          engagement: engagementToContract(a.engagement),
           lastTickAt: a.lastTickAt ? a.lastTickAt.toISOString() : null,
         },
         recentArtifacts: artifactRows.map(toArtifactSummary),
@@ -546,6 +546,53 @@ export function createApp() {
     const row = await getArtifact(c.req.param("id"));
     if (!row) return c.json({ error: "not found" }, 404);
     return c.json({ artifact: toArtifact(row) });
+  });
+
+  // --- artifact state (programmable world, D3) -----------------------------
+  // The keyed JSON store an interactive artifact shares with its owning agent.
+  // Reads are public (the town is a public place); writes are visitor-token
+  // authorized + rate-limited, and cue the owning agent (throttled) so it can
+  // take its turn.
+  app.get("/artifacts/:id/state", async (c) => {
+    const id = c.req.param("id");
+    const art = await getArtifact(id);
+    if (!art) return c.json({ error: "not found" }, 404);
+    const state = await getArtifactState(id);
+    return c.json(validated(ArtifactStateResponse, { artifactId: id, state }));
+  });
+
+  app.put("/artifacts/:id/state/:key", async (c) => {
+    const id = c.req.param("id");
+    const key = c.req.param("key");
+    const art = await getArtifact(id);
+    if (!art) return c.json({ error: "not found" }, 404);
+
+    const body = await c.req.json().catch(() => ({}));
+    const visitorId = typeof body?.visitorId === "string" ? body.visitorId : "";
+    const v = visitorId ? await getVisitor(visitorId) : undefined;
+    if (!v) return c.json({ error: "unknown visitor" }, 404);
+    const token = c.req.header("x-visitor-token");
+    if (!(await visitorTokenValid(visitorId, token))) return c.json({ error: "unauthorized" }, 401);
+    if (!limits.artifactState.hit(visitorId, Date.now())) {
+      return c.json({ error: "too fast", message: IN_FICTION_429.artifactState }, 429);
+    }
+
+    const r = await setArtifactStateKey(id, key, body?.value ?? null, { visitorId });
+    if (!r.ok) return c.json({ error: r.reason ?? "bad write" }, 400);
+
+    // Cue the app's owner (throttled per artifact): a visitor interacting with
+    // an agent's app is the "your move" signal — same directive-cue mechanism
+    // as the phonebooth pickup, so the tick reliably pays off.
+    if (shouldCueOwner(id)) {
+      const note =
+        `${v.name} is using your "${art.title}" — its state just changed (key "${key}"). ` +
+        `If it's your move (a game, a guestbook reply), read_artifact_state ${id} and respond with write_artifact_state.`;
+      void enqueue(art.agentId as AgentId, { kind: "tick", interrupt: true, note }).catch((err) =>
+        console.warn(`[artifacts] owner cue ${art.agentId} failed:`, (err as Error).message),
+      );
+      console.log(`[artifacts] state write by ${v.name} on "${art.title}" (${key}) — cued ${art.agentId}`);
+    }
+    return c.json({ ok: true });
   });
 
   // --- POST /visitors {name} ----------------------------------------------
@@ -728,9 +775,7 @@ export function createApp() {
   });
 
   // --- POST /chats {agentId, visitorId} -----------------------------------
-  // Opens a chat session + returns the per-session token. An engaged agent → a
-  // 409 carrying the in-fiction engagement (the client renders alternatives); a
-  // locked agent (tick mid-flight) → a distinct 409 "mid-thought".
+  // Opens a chat session + returns the per-session token.
   app.post("/chats", async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const agentId = body?.agentId;

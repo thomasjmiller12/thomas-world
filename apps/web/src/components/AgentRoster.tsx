@@ -139,7 +139,6 @@ export function AgentRoster({
             isChatting={chatNpcId === config.id}
             isSelected={selectedNpcId === config.id || profile?.id === config.id}
             onClick={(rowEl) => handleRowClick(config.id, rowEl)}
-            onTravel={onTravelToAgent}
           />
         ))}
       </div>
@@ -167,14 +166,13 @@ export function AgentRoster({
   );
 }
 
-function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick, onTravel }: {
+function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick }: {
   config: NPCConfig;
   status: AgentStatusMap;
   isNear: boolean;
   isChatting: boolean;
   isSelected: boolean;
   onClick: (rowEl: HTMLElement) => void;
-  onTravel: (id: ThomasId, locationId: LocationId) => void;
 }) {
   const live = status[config.id];
   const color = config.color;
@@ -182,8 +180,6 @@ function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick, 
   const locationId: LocationId =
     live?.locationId ?? HOME_FALLBACK[config.homeBuilding] ?? 'town';
   const location = locationLabel(locationId);
-  // The only engagement now is a visitor chat (paced scenes removed in M2.1).
-  const engaged = live?.engagement?.kind === 'chat';
   const highlight = isChatting || isSelected;
 
   return (
@@ -216,52 +212,21 @@ function RosterEntry({ config, status, isNear, isChatting, isSelected, onClick, 
           </div>
         </div>
       </div>
-      {engaged ? (
-        // CLICKABLE engagement chip: travel to where the agent is (go say hi).
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={(e) => { e.stopPropagation(); onTravel(config.id, locationId); }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onTravel(config.id, locationId); }
-          }}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5,
-            marginTop: 7,
-            padding: '3px 8px',
-            borderRadius: 999,
-            background: `${color}12`,
-            border: `1px solid ${color}2e`,
-            font: '700 8px var(--mono)',
-            letterSpacing: '.08em',
-            textTransform: 'uppercase',
-            color,
-            cursor: 'pointer',
-            lineHeight: 1.4,
-          }}
-        >
-          <StatusDot color={color} size={5} />
-          with a visitor · {location} ›
-        </span>
-      ) : (
-        <p
-          style={{
-            marginTop: 6,
-            paddingLeft: 1,
-            fontSize: 10.5,
-            color: 'var(--ink-2)',
-            lineHeight: 1.4,
-            overflow: 'hidden',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-          }}
-        >
-          {statusLine(live)}
-        </p>
-      )}
+      <p
+        style={{
+          marginTop: 6,
+          paddingLeft: 1,
+          fontSize: 10.5,
+          color: 'var(--ink-2)',
+          lineHeight: 1.4,
+          overflow: 'hidden',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+        }}
+      >
+        {statusLine(live)}
+      </p>
     </button>
   );
 }

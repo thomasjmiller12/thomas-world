@@ -76,12 +76,6 @@ export class NPCManager {
   private readonly onStatus = (s: WorldEvents['npc-status']) => {
     this.agentLocations.set(s.npcId, s.locationId);
     this.reconcile(s.npcId);
-    // engagement.kind === 'chat' with 'visitor' means this agent is in a chat
-    // with the visitor; face the player while it lasts.
-    const withVisitor =
-      s.engagement?.kind === 'chat' && s.engagement.with.includes('visitor');
-    if (withVisitor) this.chatting.add(s.npcId);
-    else this.chatting.delete(s.npcId);
     this.applyStateFor(s.npcId);
   };
 
@@ -113,7 +107,7 @@ export class NPCManager {
   };
 
   // Both close paths (visitor-initiated chat-closed, agent-initiated chat-ended)
-  // clear the chatting mark; npc-status remains the authoritative resync source.
+  // clear the chatting mark.
   private readonly onChatClosed = (c: WorldEvents['chat-closed']) => {
     this.chatting.delete(c.npcId);
     this.applyStateFor(c.npcId);

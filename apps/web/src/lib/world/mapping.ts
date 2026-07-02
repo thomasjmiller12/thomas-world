@@ -129,15 +129,16 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
     case 'conversation.ended':
     case 'conversation.converted':
     case 'chat.joined':
-    // Canonical object-graph events (World Embodiment / MUD layer, Phase 0).
-    // The model ships first; the `WorldObjectLayer` renderer that turns these
-    // into sprite placements/updates is Phase 2. Until then they parse on SSE
-    // but have no canvas surface — same pattern as the feed-only events above.
+    // Canonical object-graph + artifact-state events. These have canvas/panel
+    // surfaces, but their consumers (PlacedObjects, ArtifactFrame) subscribe to
+    // the raw 'world-event' channel directly — no mapped npc-* emit needed.
     case 'object.created':
+    case 'object.removed':
     case 'object.moved':
     case 'object.state_changed':
     case 'object.attached':
     case 'object.noted':
+    case 'artifact.state_changed':
       return [];
 
     default: {
@@ -149,16 +150,14 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
   }
 }
 
-// Snapshot hydration → per-agent status emits (positions/status/engagement,
-// design doc §6.1). One npc-status per agent.
+// Snapshot hydration → per-agent status emits (positions/status, design doc
+// §6.1). One npc-status per agent.
 export function mapAgentStatus(agent: AgentStatus): EmitSpec<'npc-status'> {
   return spec('npc-status', {
     npcId: agent.id,
     locationId: agent.locationId,
     status: agent.status,
     activity: agent.activity,
-    busy: agent.busy,
-    engagement: agent.engagement,
   });
 }
 

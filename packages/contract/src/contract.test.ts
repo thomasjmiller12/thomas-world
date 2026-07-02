@@ -460,56 +460,31 @@ describe("M2 REST shapes round-trip", () => {
     expect(h.budgetExhausted).toBe(false);
   });
 
-  it("validates an AgentStatus with engagement and `with` participants", () => {
+  it("validates an AgentStatus", () => {
     const a = AgentStatus.parse({
       id: "builder",
       displayName: "Builder Thomas",
       locationId: "workshop",
       status: "in conversation",
       activity: null,
-      busy: true,
-      engagement: { kind: "chat", with: ["researcher", "visitor"] },
       lastTickAt: null,
     });
-    expect(a.engagement?.kind).toBe("chat");
-    expect(a.engagement?.with).toEqual(["researcher", "visitor"]);
-    // engagement is optional — unengaged agents omit it
-    const idle = AgentStatus.parse({
+    expect(a.id).toBe("builder");
+    // The removed engagement-era fields (busy/engagement) are stripped, not
+    // rejected — a not-yet-redeployed world server that still sends them must
+    // parse cleanly on a newer frontend.
+    const legacy = AgentStatus.parse({
       id: "writer",
       displayName: "Writer Thomas",
       locationId: "cafe",
       status: "working",
       activity: "drafting",
       busy: false,
+      engagement: { kind: "chat", with: ["visitor"] },
       lastTickAt: null,
     });
-    expect(idle.engagement).toBeUndefined();
-    // a bad `with` member is rejected
-    expect(() =>
-      AgentStatus.parse({
-        id: "writer",
-        displayName: "Writer Thomas",
-        locationId: "cafe",
-        status: "x",
-        activity: null,
-        busy: true,
-        engagement: { kind: "chat", with: ["nobody"] },
-        lastTickAt: null,
-      }),
-    ).toThrow();
-    // scenes are gone as of M2.1 — `chat` is the only valid engagement kind
-    expect(() =>
-      AgentStatus.parse({
-        id: "writer",
-        displayName: "Writer Thomas",
-        locationId: "cafe",
-        status: "x",
-        activity: null,
-        busy: true,
-        engagement: { kind: "scene", with: ["researcher"] },
-        lastTickAt: null,
-      }),
-    ).toThrow();
+    expect("busy" in legacy).toBe(false);
+    expect("engagement" in legacy).toBe(false);
   });
 
   it("validates a FeedResponse with typed/located items and a count", () => {
@@ -597,5 +572,57 @@ describe("M2 REST shapes round-trip", () => {
         messages: [{ id: "m3", sender: "operator", body: "note", ts: "2026-06-11T10:00:00.000Z" }],
       }),
     ).toThrow();
+  });
+});
+
+describe("programmable-world schemas (D1–D4)", () => {
+  it("parses the new artifact kinds", () => {
+    expect(ArtifactKind.parse("interactive")).toBe("interactive");
+    expect(ArtifactKind.parse("shared_page")).toBe("shared_page");
+  });
+
+  it("round-trips artifact.state_changed (keys only, never values)", () => {
+    const ev = WorldEvent.parse({
+      id: "evt_ps1",
+      ts: "2026-07-02T10:00:00.000Z",
+      visibility: "public",
+      type: "artifact.state_changed",
+      payload: { artifactId: "a1", keys: ["board"], agent: null, visitorId: "v1" },
+    });
+    expect(ev.type).toBe("artifact.state_changed");
+    if (ev.type === "artifact.state_changed") {
+      expect(ev.payload.keys).toEqual(["board"]);
+      expect(ev.payload.visitorId).toBe("v1");
+    }
+  });
+
+  it("round-trips object.created with a placement hint and object.removed", () => {
+    const created = WorldEvent.parse({
+      id: "evt_ps2",
+      ts: "2026-07-02T10:01:00.000Z",
+      visibility: "public",
+      type: "object.created",
+      payload: {
+        objectId: "cafe.arcade-1a2b",
+        agent: "hobby",
+        location: "cafe",
+        zone: "cafe.tables",
+        template: "arcade-controller-handheld",
+        displayName: "arcade corner",
+        placement: { scene: "Cafe", x: 140, y: 120 },
+      },
+    });
+    expect(created.type).toBe("object.created");
+    if (created.type === "object.created") {
+      expect(created.payload.placement?.scene).toBe("Cafe");
+    }
+    const removed = WorldEvent.parse({
+      id: "evt_ps3",
+      ts: "2026-07-02T10:02:00.000Z",
+      visibility: "public",
+      type: "object.removed",
+      payload: { objectId: "cafe.arcade-1a2b", agent: "hobby", location: "cafe", displayName: "arcade corner" },
+    });
+    expect(removed.type).toBe("object.removed");
   });
 });

@@ -17,6 +17,7 @@ import {
   doublePrecision,
   index,
   uniqueIndex,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import type {
   AgentId,
@@ -49,6 +50,8 @@ const artifactKindEnum = [
   "fun_list",
   "diary_entry",
   "daily_digest",
+  "interactive",
+  "shared_page",
 ] as const;
 const eventTypeEnum = [
   "agent.moved",
@@ -75,10 +78,12 @@ const eventTypeEnum = [
   "conversation.converted",
   "world.time",
   "object.created",
+  "object.removed",
   "object.moved",
   "object.state_changed",
   "object.attached",
   "object.noted",
+  "artifact.state_changed",
   "world.beat",
 ] as const;
 
@@ -109,19 +114,6 @@ void [
   _eventCover,
 ];
 
-// What an agent is currently engaged in (design doc §3.2). Replaces the old
-// `busy` boolean: an agent is either in a `chat` (visitor ± a second agent) or
-// a `scene` (agent↔agent). `participants` lists the OTHER agents engaged in the
-// same session, so `clearEngagement(kind, id)` can release every holder at once
-// (a 2-agent chat would otherwise strand the second agent engaged forever).
-// Mirrors the contract's AgentEngagement but stores agent participants only —
-// the `with` field the contract exposes derives from this plus visitor presence.
-export interface Engagement {
-  kind: "chat" | "scene";
-  id: string;
-  participants: AgentId[];
-}
-
 // --- agents -----------------------------------------------------------------
 export const agents = pgTable("agents", {
   id: text("id", { enum: agentEnum }).primaryKey(),
@@ -135,9 +127,6 @@ export const agents = pgTable("agents", {
   zone: text("zone"),
   status: text("status").notNull().default("idle"),
   activity: text("activity"),
-  // Nullable engagement reference (design doc §3.2). null => unengaged. The
-  // derived `busy` boolean (engagement != null) is what surfaces in the contract.
-  engagement: jsonb("engagement").$type<Engagement | null>(),
   lastTickAt: timestamp("last_tick_at", { withTimezone: true }),
 });
 
@@ -216,10 +205,11 @@ export const messages = pgTable(
 );
 
 // --- conversations / turns (agent↔agent scenes) -----------------------------
-// FROZEN — legacy paced scenes (pre-M2.1). Room talk is now emergent `say`
-// across boosted ticks; the scene engine is gone, so no write paths remain.
-// These table definitions are kept only so historical rows still exist and the
-// boot sweep can close any left open by a pre-M2.1 deploy.
+// FROZEN — legacy paced scenes (pre-M2.1). Room talk is now emergent speech
+// across ticks; the scene engine is gone, so no read or write paths remain.
+// These table definitions are kept only as a historical archive (Chronicle
+// reads historical `conversation.turn` rows from world_events, not from here);
+// dropping them would be an irreversible deletion of prod transcript data.
 export const conversations = pgTable("conversations", {
   id: text("id").primaryKey(),
   locationId: text("location_id", { enum: locationEnum }).notNull(),
@@ -269,6 +259,27 @@ export const artifacts = pgTable(
     index("artifacts_agent_idx").on(t.agentId),
     index("artifacts_kind_idx").on(t.kind),
   ],
+);
+
+// --- artifact_state (programmable world, D3) ---------------------------------
+// The per-artifact keyed JSON store — the "database" an interactive artifact
+// gets for free: a Go board's position, a guestbook's entries, a poll's tallies.
+// Visitors write through PUT /artifacts/:id/state/:key (rate-limited,
+// size-capped); the owning agent writes through the write_artifact_state tool.
+// One row per (artifact, key); a null-value write deletes the row. `updatedBy`
+// is an agent id or "visitor:<id>" for provenance.
+export const artifactState = pgTable(
+  "artifact_state",
+  {
+    artifactId: text("artifact_id").notNull(),
+    key: text("key").notNull(),
+    value: jsonb("value").notNull(),
+    updatedBy: text("updated_by").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.artifactId, t.key] })],
 );
 
 // --- world_objects (MUD embodiment: the canonical object graph) -------------

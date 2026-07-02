@@ -51,7 +51,16 @@ import {
   appendNote,
   attachedArtifactsFor,
   recentObjectEvents,
+  createObject,
+  moveObject,
+  removeObject,
+  attachArtifact,
+  objectsByOwner,
 } from "../engine/objects.js";
+import { OBJECT_TEMPLATES } from "../engine/object-templates.js";
+import { getArtifactState, setArtifactStateKey } from "../engine/artifact-state.js";
+import { readWebPage } from "./webread.js";
+import { randomUUID } from "node:crypto";
 import { zoneExists, zonesForLocation } from "../engine/zones.js";
 import { renderPlace, renderOthersLine } from "./observation.js";
 import { getVisitor, escortVisitorTo } from "../engine/visitors.js";
@@ -136,6 +145,41 @@ function dedupRead(agentId: string, key: string, content: string, label: string)
 }
 
 const artifactKindEnum = z.enum(artifactKinds as unknown as [string, ...string[]]);
+
+// Search the 648-template object library by name / tag / category. Pure, so
+// it's unit-testable; returns names best-first with footprint hints.
+export function searchObjectTemplates(query: string, limit = 20): string[] {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return [];
+  const scored: { name: string; score: number }[] = [];
+  for (const [name, t] of Object.entries(OBJECT_TEMPLATES)) {
+    let score = 0;
+    for (const term of terms) {
+      if (name === term) score += 4;
+      else if (name.includes(term)) score += 2;
+      if (t.tags.some((tag) => tag === term)) score += 2;
+      else if (t.tags.some((tag) => tag.includes(term))) score += 1;
+      if (t.category === term) score += 1;
+    }
+    if (score > 0) scored.push({ name, score });
+  }
+  scored.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+  return scored.slice(0, limit).map((s) => s.name);
+}
+
+function describeTemplate(name: string): string {
+  const t = OBJECT_TEMPLATES[name];
+  if (!t) return name;
+  return `${name} (${t.category}, ${t.w}×${t.h} tiles${t.collides ? "" : ", walkable"})`;
+}
+
+function slugifyName(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
 
 // Resolve a named spot (an object or an explicit zone) to a zone id WITHIN
 // `to` — shared by move_to and invite_visitor (Phase C / C.5, space
@@ -629,6 +673,285 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     },
   });
 
+  // --- The workshop (programmable world: build, mount, place) ----------------
+  const build_interactive = betaZodTool({
+    name: "build_interactive",
+    description:
+      "Build a real, usable web app as a single self-contained HTML file — a playable game, a generative art piece, a tiny tool, a guestbook — and make it a durable artifact visitors can open and USE. Rules of the medium: ONE file (inline <style> and <script>, no external scripts/stylesheets/fetch — the frame is sandboxed offline; images only as data: URIs or https <img>). Your app gets a free persistent store via the injected `window.town` bridge: `town.artifactId`; `town.visitor` ({id,name} or null); `await town.getState()` → the whole keyed state object; `await town.setState(key, value)` (JSON value; null deletes); `town.onChange(cb)` → cb(freshState) whenever anyone changes state. That store is SHARED with you — you read/write the same keys via read_artifact_state / write_artifact_state, so you can play turn-based games against visitors (you'll be nudged when someone interacts). After building, mount_artifact it on an object so people can find it in the world.",
+    inputSchema: z.object({
+      title: z.string().min(1).max(160),
+      html: z.string().min(1).max(100_000),
+    }),
+    run: async ({ title, html }) => {
+      // Building discipline: an app is a big swing — two a day is plenty. Revise
+      // with update_artifact instead of stamping out variants.
+      const todaysApps = await recentArtifactsBy(ctx.agentId, 24, "interactive" as never);
+      if (todaysApps.length >= 2) {
+        return (
+          `You've already built ${todaysApps.length} apps today (${todaysApps
+            .map((a) => `"${a.title}"`)
+            .join(", ")}). ` +
+          `Polish one of those with update_artifact instead — a town full of half-finished apps reads as noise, not craft.`
+        );
+      }
+      const row = await createArtifact({
+        agentId: ctx.agentId,
+        kind: "interactive" as never,
+        title,
+        body: html,
+      });
+      await ctx.onAction?.("build_interactive", `builds "${title}"`);
+      return (
+        `Built "${title}" (id ${row.id}). It's live — anyone opening it gets your app in a sandboxed frame. ` +
+        `Mount it somewhere physical with mount_artifact so visitors can find it, and check on it later with read_artifact_state.`
+      );
+    },
+  });
+
+  const mount_artifact = betaZodTool({
+    name: "mount_artifact",
+    description:
+      "Mount an artifact (yours or another facet's — an app, a page, a note) onto a physical object HERE in the room you're in, so visitors can click the object and open it. Name the object the way you see it (e.g. 'monitor', 'the dumb sign', or something you placed).",
+    inputSchema: z.object({
+      artifact_id: z.string().min(1),
+      object: z.string().min(1).max(80),
+    }),
+    run: async ({ artifact_id, object }) => {
+      const obj = await findObjectAtLocation(ctx.location, object);
+      if (!obj) return `There's no "${object}" here in ${ctx.location}. look_around to see what's actually in the room.`;
+      const art = await getArtifact(artifact_id);
+      if (!art) return `No artifact with id ${artifact_id}.`;
+      const r = await attachArtifact(obj.id, artifact_id, ctx.agentId);
+      if (!r.ok) return `Couldn't mount it (${r.reason}).`;
+      await ctx.onAction?.("mount_artifact", `mounts "${art.title}" on the ${obj.displayName}`);
+      return `Mounted "${art.title}" on the ${obj.displayName} — it's now the thing that opens when someone clicks it.`;
+    },
+  });
+
+  const search_object_library = betaZodTool({
+    name: "search_object_library",
+    description:
+      "Search the town's object library — the ~650 physical props you can place_object into the world (furniture, devices, plants, signs, food, arcade bits...). Search by what it is ('arcade', 'bookshelf', 'neon sign', 'piano'). Returns exact template names with footprint sizes; place_object needs the exact name.",
+    inputSchema: z.object({ query: z.string().min(1).max(120) }),
+    run: async ({ query }) => {
+      const hits = searchObjectTemplates(query, 20);
+      if (hits.length === 0) return `Nothing in the library matches "${query}". Try a broader word ('table', 'lamp', 'sign', 'plant', 'game').`;
+      return `Library matches for "${query}":\n${hits.map((h) => `- ${describeTemplate(h)}`).join("\n")}`;
+    },
+  });
+
+  const place_object = betaZodTool({
+    name: "place_object",
+    description:
+      "Place a new physical object from the library into the room you're in — it appears on screen for everyone, permanently, with your name on it. Pass the exact library template name (from search_object_library), what to call it, and optionally which zone of the room to put it in (look_around shows zones). Place things with intent: an arcade cabinet to mount your game on, a shelf for your zines, one good lamp — not clutter.",
+    inputSchema: z.object({
+      template: z.string().min(1).max(80),
+      name: z.string().min(1).max(60),
+      zone: z.string().max(60).optional(),
+      description: z.string().max(300).optional(),
+    }),
+    run: async ({ template, name, zone, description }) => {
+      if (!OBJECT_TEMPLATES[template]) {
+        const near = searchObjectTemplates(template, 5);
+        return near.length
+          ? `"${template}" isn't an exact library name. Closest: ${near.map(describeTemplate).join(", ")}.`
+          : `"${template}" isn't in the library. search_object_library first.`;
+      }
+      const mine = await objectsByOwner(ctx.agentId);
+      if (mine.length >= 30) {
+        return (
+          `You already have ${mine.length} placed objects around town — the place is starting to look like your storage unit. ` +
+          `remove_object something you no longer need before placing more.`
+        );
+      }
+      const targetZone = zone && zoneExists(zone, ctx.location) ? zone : undefined;
+      if (zone && !targetZone) {
+        const zones = zonesForLocation(ctx.location).map((z) => z.id).join(", ");
+        return `"${zone}" isn't a zone here. This room's zones: ${zones}.`;
+      }
+      const id = `${ctx.location}.${slugifyName(name)}-${randomUUID().slice(0, 4)}`;
+      const row = await createObject({
+        id,
+        agent: ctx.agentId,
+        location: ctx.location,
+        zone: targetZone ?? `${ctx.location}.center`,
+        template,
+        displayName: name,
+        kind: OBJECT_TEMPLATES[template].category,
+        description: description ?? null,
+      });
+      await ctx.onAction?.("place_object", `sets up ${name}`);
+      return (
+        `Placed "${name}" (${describeTemplate(template)}) ${targetZone ? `in ${targetZone}` : "here"} — object id ${row.id}. ` +
+        `It's on screen now. You can mount_artifact things onto it, leave_note on it, move_object or remove_object it later.`
+      );
+    },
+  });
+
+  const move_object = betaZodTool({
+    name: "move_object",
+    description:
+      "Move a placed (movable) object in this room to a different zone of the room. Seeded town fixtures don't move.",
+    inputSchema: z.object({
+      object: z.string().min(1).max(80),
+      to_zone: z.string().min(1).max(60),
+    }),
+    run: async ({ object, to_zone }) => {
+      const obj = await findObjectAtLocation(ctx.location, object);
+      if (!obj) return `There's no "${object}" here.`;
+      const r = await moveObject(obj.id, ctx.agentId, to_zone);
+      if (!r.ok) {
+        if (r.reason === "immovable") return `The ${obj.displayName} is part of the town — it doesn't move.`;
+        if (r.reason === "zone-not-here") {
+          const zones = zonesForLocation(ctx.location).map((z) => z.id).join(", ");
+          return `"${to_zone}" isn't a zone here. This room's zones: ${zones}.`;
+        }
+        return `Couldn't move it (${r.reason}).`;
+      }
+      await ctx.onAction?.("move_object", `moves the ${obj.displayName}`);
+      return `Moved the ${obj.displayName} to ${to_zone}.`;
+    },
+  });
+
+  const remove_object = betaZodTool({
+    name: "remove_object",
+    description:
+      "Remove a placed (movable) object from this room — it disappears from the world. Anything an agent placed is fair game (the town is a commons); seeded fixtures can't be removed.",
+    inputSchema: z.object({ object: z.string().min(1).max(80) }),
+    run: async ({ object }) => {
+      const obj = await findObjectAtLocation(ctx.location, object);
+      if (!obj) return `There's no "${object}" here.`;
+      const r = await removeObject(obj.id, ctx.agentId);
+      if (!r.ok) {
+        if (r.reason === "immovable") return `The ${obj.displayName} is part of the town — it stays.`;
+        return `Couldn't remove it (${r.reason}).`;
+      }
+      await ctx.onAction?.("remove_object", `clears away the ${obj.displayName}`);
+      return `Removed the ${obj.displayName}.`;
+    },
+  });
+
+  const read_artifact_state = betaZodTool({
+    name: "read_artifact_state",
+    description:
+      "Read the live state store of an interactive artifact (an app you or another facet built) — the same keyed data the app's visitors read and write. Pass a key to get just that value, or omit it for the whole store. This is how you see moves visitors made, guestbook entries, poll results.",
+    inputSchema: z.object({
+      artifact_id: z.string().min(1),
+      key: z.string().max(64).optional(),
+    }),
+    run: async ({ artifact_id, key }) => {
+      const art = await getArtifact(artifact_id);
+      if (!art) return `No artifact with id ${artifact_id}.`;
+      const state = await getArtifactState(artifact_id);
+      const keys = Object.keys(state);
+      if (keys.length === 0) return `"${art.title}" has no state yet — nobody has interacted with it.`;
+      if (key !== undefined) {
+        if (!(key in state)) return `No key "${key}" in "${art.title}" state. Keys: ${keys.join(", ")}.`;
+        return clampText(`${key} = ${JSON.stringify(state[key], null, 1)}`, 8_000, "read a narrower key");
+      }
+      return clampText(
+        `State of "${art.title}" (${keys.length} keys):\n${JSON.stringify(state, null, 1)}`,
+        8_000,
+        "read one key at a time",
+      );
+    },
+  });
+
+  const write_artifact_state = betaZodTool({
+    name: "write_artifact_state",
+    description:
+      "Write one key of an interactive artifact's state store — your hands inside the apps. This is how you make your move in a game a visitor is playing against you, reply in a guestbook, update a scoreboard. `value` is parsed as JSON when it looks like JSON, else stored as a plain string; pass the literal string 'null' to delete the key.",
+    inputSchema: z.object({
+      artifact_id: z.string().min(1),
+      key: z.string().min(1).max(64),
+      value: z.string().max(30_000),
+    }),
+    run: async ({ artifact_id, key, value }) => {
+      const art = await getArtifact(artifact_id);
+      if (!art) return `No artifact with id ${artifact_id}.`;
+      let parsed: unknown = value;
+      const trimmed = value.trim();
+      if (
+        trimmed === "null" ||
+        trimmed === "true" ||
+        trimmed === "false" ||
+        /^-?\d+(\.\d+)?$/.test(trimmed) ||
+        trimmed.startsWith("{") ||
+        trimmed.startsWith("[") ||
+        trimmed.startsWith('"')
+      ) {
+        try {
+          parsed = JSON.parse(trimmed);
+        } catch {
+          parsed = value;
+        }
+      }
+      const r = await setArtifactStateKey(artifact_id, key, parsed, { agent: ctx.agentId });
+      if (!r.ok) {
+        if (r.reason === "too-big") return "That value is too large for one key (32KB max) — split it up.";
+        if (r.reason === "too-many-keys") return `"${art.title}" already has the maximum number of state keys — clean up old ones (write 'null') first.`;
+        return `Couldn't write it (${r.reason}).`;
+      }
+      return parsed === null ? `Deleted "${key}" from "${art.title}".` : `Wrote "${key}" in "${art.title}". Anyone with the app open sees it live.`;
+    },
+  });
+
+  // --- Reading the outside web ------------------------------------------------
+  const read_web_page = betaZodTool({
+    name: "read_web_page",
+    description:
+      "Fetch and read a public web page (an article, docs, a blog post) as clean text. Use it to actually read something a visitor mentions, research a topic, or pull a piece to share on a screen with share_to_screen. Public sites only.",
+    inputSchema: z.object({ url: z.string().min(8).max(1_000) }),
+    run: async ({ url }) => {
+      const r = await readWebPage(url);
+      if (!r.ok) return r.reason ?? "Couldn't read that page.";
+      const head = r.title ? `# ${r.title}\n(${r.url})\n\n` : `(${r.url})\n\n`;
+      const out = head + (r.text ?? "");
+      const dup = dedupRead(ctx.agentId, `web:${r.url}`, out, `that page`);
+      if (dup) return dup;
+      await ctx.onAction?.("read_web_page", `reads ${r.title ?? url}`);
+      return clampText(out, 16_000, "read_web_page it again — the cap is per read");
+    },
+  });
+
+  const share_to_screen = betaZodTool({
+    name: "share_to_screen",
+    description:
+      "Put a page of text/markdown up on a screen-ish object HERE (the workshop monitor, a TV you placed, a shelf) so visitors can click it and read the same thing you're looking at — for reading an article together, posting today's plan, a menu. Creates a durable shared_page artifact and mounts it. Name the object, or omit it to use the most screen-like thing in the room.",
+    inputSchema: z.object({
+      title: z.string().min(1).max(160),
+      body: z.string().min(1).max(20_000),
+      object: z.string().max(80).optional(),
+    }),
+    run: async ({ title, body, object }) => {
+      let target = object ? await findObjectAtLocation(ctx.location, object) : undefined;
+      if (object && !target) return `There's no "${object}" here.`;
+      if (!target) {
+        const here = await objectsAtLocation(ctx.location);
+        const screenish = (o: (typeof here)[number]) =>
+          /screen|monitor|tv|projector|display/.test(`${o.displayName} ${o.kind ?? ""}`.toLowerCase())
+            ? 2
+            : o.kind === "artifact_shelf" || o.kind === "publisher"
+              ? 1
+              : 0;
+        target = [...here].sort((a, b) => screenish(b) - screenish(a)).find((o) => screenish(o) > 0);
+      }
+      if (!target) {
+        return "Nothing here works as a screen. place_object something screen-like first (search_object_library 'tv' or 'screen'), or name an object to mount on.";
+      }
+      const row = await createArtifact({
+        agentId: ctx.agentId,
+        kind: "shared_page" as never,
+        title,
+        body,
+      });
+      const r = await attachArtifact(target.id, row.id, ctx.agentId);
+      if (!r.ok) return `Made the page but couldn't mount it (${r.reason}).`;
+      await ctx.onAction?.("share_to_screen", `puts "${title}" up on the ${target.displayName}`);
+      return `"${title}" is up on the ${target.displayName} (artifact id ${row.id}) — anyone here can click it and read it.`;
+    },
+  });
+
   // --- Memory ---------------------------------------------------------------
   // Core memory: the SDK's betaMemoryTool over our memory_files table. Claude
   // is post-trained on these command semantics — we implement storage only.
@@ -876,6 +1199,16 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     read_board as RunnableTool,
     post_bulletin as RunnableTool,
     publish_blog_post as RunnableTool,
+    build_interactive as RunnableTool,
+    mount_artifact as RunnableTool,
+    search_object_library as RunnableTool,
+    place_object as RunnableTool,
+    move_object as RunnableTool,
+    remove_object as RunnableTool,
+    read_artifact_state as RunnableTool,
+    write_artifact_state as RunnableTool,
+    read_web_page as RunnableTool,
+    share_to_screen as RunnableTool,
     memory,
     remember as RunnableTool,
     recall as RunnableTool,

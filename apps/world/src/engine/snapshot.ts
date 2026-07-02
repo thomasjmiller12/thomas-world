@@ -3,27 +3,12 @@ import { sql, gt } from "drizzle-orm";
 import type { SnapshotResponse, AgentStatus, AgentId, LocationId } from "@town/contract";
 import { db } from "../db/client.js";
 import { visitors } from "../db/schema.js";
-import type { Engagement } from "../db/schema.js";
 import { currentPhase, isOvernight } from "../runtime/clock.js";
 import { allAgents } from "./agents.js";
 import { recentEvents } from "./events.js";
 import { isBudgetExhausted } from "./usage.js";
 import { allObjects, rowToWorldObject } from "./objects.js";
 import { allZones } from "./zones.js";
-
-// Project a stored Engagement row onto the contract's AgentStatus.engagement
-// shape (design doc §5): `with` is the OTHER participants plus the literal
-// 'visitor' (a visitor is always present in a chat session). Only `chat`
-// engagements exist post-M2.1 (paced scenes are gone); a stale `scene`
-// engagement (only possible from a pre-M2.1 row the boot sweep hasn't cleared
-// yet) projects to undefined rather than a kind the contract no longer allows.
-export function engagementToContract(
-  e: Engagement | null | undefined,
-): AgentStatus["engagement"] {
-  if (!e || e.kind !== "chat") return undefined;
-  const withList: (AgentId | "visitor")[] = [...e.participants, "visitor"];
-  return { kind: "chat", with: withList };
-}
 
 // Visitors seen within the last 2 minutes count as "present in town" — same
 // liveness window the observation packet uses.
@@ -51,9 +36,6 @@ export async function buildSnapshot(): Promise<SnapshotResponse> {
     locationId: a.locationId as LocationId,
     status: a.status,
     activity: a.activity ?? null,
-    // Derived from engagement (design doc §3.2): busy === engagement != null.
-    busy: a.engagement != null,
-    engagement: engagementToContract(a.engagement),
     lastTickAt: a.lastTickAt ? a.lastTickAt.toISOString() : null,
   }));
 
