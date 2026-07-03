@@ -105,6 +105,43 @@ export async function sendEmailToThomas(
   return { id, sent: true, messageId };
 }
 
+// System notification email (NOT an agent email): a message from the town
+// infrastructure to Thomas — e.g. "a real visitor just arrived". Sends via
+// Resend to RESEND_TO and, unlike sendEmailToThomas, does NOT touch the outbox
+// table (the outbox is the in-fiction agent-mail surface). Best-effort: returns
+// false and logs when Resend is off or RESEND_TO is unset. `from` prefers
+// RESEND_FROM, else a verified-domain system address, else the resend.dev sink.
+function systemSender(): string {
+  if (process.env.RESEND_FROM) return process.env.RESEND_FROM;
+  const domain = config.resendAgentDomain;
+  if (domain) return `Thomas's Town <town@${domain}>`;
+  return "Thomas's Town <onboarding@resend.dev>";
+}
+
+export async function sendSystemEmail(subject: string, body: string): Promise<boolean> {
+  if (!config.features.resend) return false;
+  const to = process.env.RESEND_TO;
+  if (!to) {
+    console.warn("[outside] system email skipped: RESEND_TO unset");
+    return false;
+  }
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from: systemSender(), to: [to], subject, text: body }),
+    });
+    if (!res.ok) throw new Error(`resend ${res.status}: ${await res.text()}`);
+    return true;
+  } catch (err) {
+    console.warn("[outside] system email send failed:", (err as Error).message);
+    return false;
+  }
+}
+
 // tiny local helper to avoid importing eq at module top for one use
 import { eq } from "drizzle-orm";
 function eqId(id: string) {

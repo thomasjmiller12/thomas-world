@@ -76,6 +76,12 @@ export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = nul
   // Messages) re-pull too — Today / Conversations refresh via `items` directly.
   const [refreshNonce, setRefreshNonce] = useState(0);
   const reqSeq = useRef(0);
+  // One-shot silent follow-up after a user-driven load: the server now generates
+  // thread summaries + the Town Crier issue in the BACKGROUND (off the read path),
+  // so the first response for a fresh day can come back with a null issue / null
+  // summaries. This picks up the generated content a few seconds later without
+  // needing a world event or a manual refresh.
+  const followupRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Freeze player movement while the hub owns the keyboard (the established
   // dialog-opened/closed hook). Mount/unmount only.
@@ -103,6 +109,23 @@ export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = nul
           setIssue(page.issue);
           setDays(page.days);
           setResolvedDay(page.day);
+          // If content is still being generated server-side (no issue yet, or a
+          // closed thread without its summary), schedule ONE silent follow-up to
+          // pick it up. Only on user-driven loads — a silent load never re-arms,
+          // so this can't loop.
+          if (!silent) {
+            const pending =
+              page.issue == null ||
+              page.items.some((i) => i.kind === 'thread' && i.summary == null);
+            if (followupRef.current) clearTimeout(followupRef.current);
+            followupRef.current = null;
+            if (pending) {
+              followupRef.current = setTimeout(() => {
+                followupRef.current = null;
+                if (seq === reqSeq.current) loadChronicle(targetDay, true);
+              }, 7_000);
+            }
+          }
         })
         .catch(() => {
           if (seq !== reqSeq.current || silent) return;
@@ -111,7 +134,13 @@ export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = nul
         .finally(() => {
           if (seq === reqSeq.current && !silent) setLoading(false);
         });
-      return () => ctrl.abort();
+      return () => {
+        ctrl.abort();
+        if (followupRef.current) {
+          clearTimeout(followupRef.current);
+          followupRef.current = null;
+        }
+      };
     },
     [],
   );

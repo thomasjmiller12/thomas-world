@@ -58,13 +58,40 @@ vi.mock("./events.js", () => ({
   },
 }));
 
-const { moveVisitor, setVisitorZone, escortVisitorTo } = await import("./visitors.js");
+const { moveVisitor, setVisitorZone, escortVisitorTo, isOwnerOrTestVisitor } = await import(
+  "./visitors.js"
+);
 
 beforeEach(() => {
   rows.length = 0;
   rows.push({ id: "v1", name: "Ada", locationId: "park", zone: null, lastSeenAt: new Date() });
   events.length = 0;
   lastWhereId = undefined;
+});
+
+describe("isOwnerOrTestVisitor — owner-alert exclusion", () => {
+  const OWNER_ID = "e92dff53-ecbf-49d0-8601-4d7658d1c2e3"; // default owner id
+
+  it("treats the known owner visitor id as owner regardless of name", () => {
+    expect(isOwnerOrTestVisitor(OWNER_ID, "Bill")).toBe(true);
+    expect(isOwnerOrTestVisitor(OWNER_ID, "Haylee")).toBe(true);
+  });
+
+  it("treats any name containing 'thomas' as owner (case-insensitive)", () => {
+    expect(isOwnerOrTestVisitor("other-id", "P-Thomas")).toBe(true);
+    expect(isOwnerOrTestVisitor("other-id", "  P-THOMAS  ")).toBe(true);
+  });
+
+  it("treats dev smoke-test names as test", () => {
+    expect(isOwnerOrTestVisitor("id-1", "Verifier")).toBe(true);
+    expect(isOwnerOrTestVisitor("id-2", "SmokeTest")).toBe(true);
+    expect(isOwnerOrTestVisitor("id-3", "debugsmoke")).toBe(true);
+  });
+
+  it("treats a genuine stranger (unknown id, ordinary name) as NOT owner/test", () => {
+    expect(isOwnerOrTestVisitor("brand-new-id", "Ada")).toBe(false);
+    expect(isOwnerOrTestVisitor("brand-new-id", "Bill")).toBe(false);
+  });
 });
 
 describe("setVisitorZone", () => {

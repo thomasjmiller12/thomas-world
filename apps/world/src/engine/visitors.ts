@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import type { AgentId, LocationId } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { appendEvent } from "./events.js";
+import { sendSystemEmail } from "./outside.js";
 
 const { visitors, worldEvents } = schema;
 export type VisitorRow = typeof visitors.$inferSelect;
@@ -139,8 +140,81 @@ export function createPresenceTracker(opts: {
   };
 }
 
-// The live tracker the SSE route uses.
-const presence = createPresenceTracker({ onArrive: visitorArrived, onLeave: visitorLeft });
+// --- owner alert -------------------------------------------------------------
+// Email Thomas when a REAL visitor (not him, not a dev smoke test) genuinely
+// arrives. Hooked to the presence tracker's onArrive, so it fires on a true
+// arrival only — never on a proxy SSE recycle or a second tab (the debounce
+// upstream guarantees that).
+//
+// "Not Thomas" is best-effort by construction: a visitor's identity is its
+// browser-persisted id, so anyone who borrows Thomas's browser inherits his id
+// and won't alert (the Bill/Haylee case in the history). OWNER_VISITOR_IDS lets
+// us add ids Thomas uses from other devices; any name containing "thomas" and
+// the known dev-test names are also treated as owner/test.
+const OWNER_VISITOR_IDS = new Set(
+  (process.env.OWNER_VISITOR_IDS ?? "e92dff53-ecbf-49d0-8601-4d7658d1c2e3")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
+// Names used by Thomas's own smoke/verification runs — never real strangers.
+const TEST_VISITOR_NAMES = new Set(["verifier", "smoketest", "debugsmoke"]);
+
+export function isOwnerOrTestVisitor(id: string, name: string): boolean {
+  if (OWNER_VISITOR_IDS.has(id)) return true;
+  const n = name.trim().toLowerCase();
+  if (TEST_VISITOR_NAMES.has(n)) return true;
+  if (n.includes("thomas")) return true; // P-Thomas, Timtom-style aliases
+  return false;
+}
+
+// One alert per visitor id per cooldown window. In-memory by design (same as the
+// rate limiters — resets on restart, fine for a portfolio). Suppresses a stranger
+// popping in and out; a genuine return after the window alerts again.
+const ALERT_COOLDOWN_MS = 30 * 60_000;
+const lastAlerted = new Map<string, number>();
+
+export async function notifyOwnerOfVisit(id: string, name: string): Promise<void> {
+  if (isOwnerOrTestVisitor(id, name)) return;
+  const now = Date.now();
+  const prev = lastAlerted.get(id);
+  if (prev !== undefined && now - prev < ALERT_COOLDOWN_MS) return;
+  lastAlerted.set(id, now);
+
+  const town = process.env.TOWN_PUBLIC_URL ?? "https://town.latent-garden.com";
+  const debug = process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/debug`
+    : "https://world-production-4aa5.up.railway.app/debug";
+  const subject = `👋 New visitor in Thomas's Town: ${name}`;
+  const body = [
+    `Someone besides you is visiting Thomas's Town.`,
+    ``,
+    `Name:       ${name}`,
+    `Visitor id: ${id}`,
+    `Arrived:    ${new Date(now).toISOString()}`,
+    ``,
+    `Town:       ${town}`,
+    `Live state: ${debug}`,
+  ].join("\n");
+
+  const sent = await sendSystemEmail(subject, body);
+  if (!sent) {
+    console.warn(`[visitors] owner alert not sent (resend off / RESEND_TO unset) for "${name}"`);
+  }
+}
+
+// The live tracker the SSE route uses. A genuine arrival both emits the world
+// event (agents perceive it) and fires the owner alert — the alert is
+// best-effort and never blocks the arrival path.
+const presence = createPresenceTracker({
+  onArrive: async (id, name) => {
+    await visitorArrived(id, name);
+    void notifyOwnerOfVisit(id, name).catch((err) =>
+      console.warn("[visitors] owner alert failed:", (err as Error).message),
+    );
+  },
+  onLeave: visitorLeft,
+});
 
 export async function visitorConnected(
   id: string,
