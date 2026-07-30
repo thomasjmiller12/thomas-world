@@ -180,16 +180,19 @@ function scheduleNext(agentId: AgentId): void {
 
 // Decide whether a boost (co-location OR say) is allowed right now and, if so,
 // the new delay to re-arm at. Pure so it's unit-testable (design doc §2):
-//   - location-budget: the per-location say-boost budget is spent this hour
 //   - throttled: a prior boost for this key landed within `throttleMs`
 //   - no-timer: the agent has no armed timer to pull forward
 //   - otherwise re-arm at min(remaining, jittered target ≤ maxDelayMs)
-// A boost NEVER pushes the tick later than it was already due. The location
-// budget is checked FIRST (a spent room stops boosting regardless of the pair
-// throttle) so the storm cap is unconditional.
+// A boost NEVER pushes the tick later than it was already due.
+//
+// A `locationBudgetExceeded` flag (and the "location-budget" reason) lived here
+// through 2026-07-30 for a per-location say-boost storm cap — removed because
+// no live caller ever set it (grep confirmed the flag was permanently dead), so
+// that branch could never fire in production. Re-add at the call site that
+// actually computes the flag if a per-location budget is needed again.
 export interface BoostDecision {
   boost: boolean;
-  reason?: "throttled" | "engaged" | "not-running" | "no-timer" | "location-budget";
+  reason?: "throttled" | "engaged" | "not-running" | "no-timer";
   delayMs?: number;
 }
 
@@ -203,15 +206,10 @@ export function decideBoost(args: {
   // The throttle window for THIS boost's key (defaults to the 5-min visitor
   // window; say-boosts pass the tighter SAY_THROTTLE_MS).
   throttleMs?: number;
-  // True iff the per-location say-boost budget is already spent this hour. The
-  // caller computes it from the in-memory counter; absent/false for co-location
-  // boosts (which aren't budgeted per location).
-  locationBudgetExceeded?: boolean;
 }): BoostDecision {
   const { now, lastBoostAt: last, remainingMs, maxDelayMs, jitterMs } = args;
   const floor = args.floorMs ?? 30_000;
   const throttleMs = args.throttleMs ?? BOOST_THROTTLE_MS;
-  if (args.locationBudgetExceeded) return { boost: false, reason: "location-budget" };
   if (last !== undefined && now - last < throttleMs) {
     return { boost: false, reason: "throttled" };
   }
@@ -235,7 +233,6 @@ export async function boostAgent(
     maxDelayMs?: number;
     floorMs?: number;
     throttleMs?: number;
-    locationBudgetExceeded?: boolean;
   } = {},
 ): Promise<BoostDecision> {
   if (!running) return { boost: false, reason: "not-running" };
@@ -254,7 +251,6 @@ export async function boostAgent(
     jitterMs,
     floorMs: floor,
     throttleMs: opts.throttleMs,
-    locationBudgetExceeded: opts.locationBudgetExceeded,
   });
   if (decision.boost && decision.delayMs !== undefined) {
     lastBoostAt.set(throttleKey, Date.now());

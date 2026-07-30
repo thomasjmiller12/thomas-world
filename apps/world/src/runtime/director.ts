@@ -1,7 +1,6 @@
 // The Director/Effect protocol dispatcher. One spine tool —
 // `play_beat({ beat, object?, params })` — routes a NAMED, validated catalog
-// beat OR saved preset (@town/contract `BEATS` / engine/presets.ts) to one of
-// two surfaces:
+// beat (@town/contract `BEATS`) to one of two surfaces:
 //
 //   surface:"object"  → mutate a world_object's visible state (phone rings, lamp
 //     flickers — the effect keyword is a PARAM, not the beat id, so the catalog
@@ -15,16 +14,18 @@
 //     resolved target visitor (chat visitor, or the most-recent local
 //     interactor, or room-wide).
 //
-// `args.beat` resolves against the catalog FIRST, then against the calling
-// agent's saved presets — a preset is a named set of params for one of these
-// SAME beats (never a new mechanic), so it's exactly as safe as a direct call.
-// The agent can never inject markup — it can only sequence catalog beats, and
-// every param is validated server-side against the beat's zod schema. Beats
-// share `leave_note`'s 20/hr effect limiter (fixtures.ts, the anti-grind knob
-// every flourish draws from) so they can't become a fidget, PLUS a separate
-// per-visitor pacing budget for directed screen beats (below). Every path
-// returns an IN-FICTION string — we never throw to the model (a thrown error
-// would corrupt the agent's turn).
+// `args.beat` resolves against the catalog only. The agent can never inject
+// markup — it can only sequence catalog beats, and every param is validated
+// server-side against the beat's zod schema. Beats share `leave_note`'s 20/hr
+// effect limiter (fixtures.ts, the anti-grind knob every flourish draws from)
+// so they can't become a fidget, PLUS a separate per-visitor pacing budget for
+// directed screen beats (below). Every path returns an IN-FICTION string — we
+// never throw to the model (a thrown error would corrupt the agent's turn).
+//
+// Agent-saved presets (Phase B.5: `beat` used to also resolve against the
+// calling agent's saved presets via engine/presets.ts) were removed 2026-07-30
+// — production had zero `agent_presets` rows and neither `save_preset` nor
+// `list_my_presets` was ever called across any agent's recorded history.
 
 import { getBeat, listBeats, type AgentId, type BeatDef } from "@town/contract";
 import type { AgentContext } from "./tools.js";
@@ -32,7 +33,6 @@ import { tryRecordEffect } from "./fixtures.js";
 import { findObjectAtLocation, objectsAtLocation, setObjectState } from "../engine/objects.js";
 import { appendEvent, eventsOfTypes } from "../engine/events.js";
 import { getSession } from "./chat.js";
-import { getPreset } from "../engine/presets.js";
 
 // --- pending-call registry --------------------------------------------------
 // A "ring" object beat records a pending call so that when a visitor answers the
@@ -164,23 +164,10 @@ export async function playBeat(ctx: AgentContext, args: PlayBeatArgs): Promise<s
   const beatDef = getBeat(args.beat);
   if (beatDef) return runBeat(ctx, beatDef, args.object, args.params ?? {});
 
-  // Not a catalog id — try it as one of THIS agent's saved presets (a named,
-  // params-only variant of an existing beat; see engine/presets.ts). The
-  // preset's saved params are the defaults; any params passed alongside the
-  // preset name override them for this one occasion.
-  const preset = await getPreset(ctx.agentId, args.beat).catch(() => undefined);
-  if (preset) {
-    const presetBeatDef = getBeat(preset.beat);
-    if (presetBeatDef) {
-      const merged = { ...(preset.params as Record<string, unknown>), ...(args.params ?? {}) };
-      return runBeat(ctx, presetBeatDef, args.object, merged);
-    }
-  }
-
   const names = listBeats()
     .map((b) => b.id)
     .join(", ");
-  return `There's no bit (or saved preset) called "${args.beat}". The bits you can run: ${names}.`;
+  return `There's no bit called "${args.beat}". The bits you can run: ${names}.`;
 }
 
 async function runBeat(
