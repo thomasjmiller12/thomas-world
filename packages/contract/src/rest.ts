@@ -100,13 +100,37 @@ export type WorldObjectsResponse = z.infer<typeof WorldObjectsResponse>;
 // --- GET /health ------------------------------------------------------------
 
 // Liveness + cheap status. `llm` reflects whether the model provider is
-// reachable; `budgetExhausted` true => ticks/chat paused, town is "sleeping"
+// configured; `budgetExhausted` true => ticks/chat paused, town is "sleeping"
 // (the frontend shows dream mode; reads stay live).
+//
+// `ok` USED TO BE HARDCODED TRUE. On 2026-07-30 this endpoint reported
+// {ok:true, llm:true, budgetExhausted:false} while one agent had been dead for 27
+// days and the other four for 4 days — it could not observe the only thing that
+// matters ("are the agents actually alive?"). It now reflects real agent liveness:
+// `ok` is false when every agent is stale or any agent is circuit-broken, and the
+// per-agent detail is included so a failure is diagnosable from one request.
+export const AgentHealth = z.object({
+  id: z.string(),
+  status: z.string(),
+  // Seconds since this agent last COMPLETED a turn (null = never).
+  staleSeconds: z.number().nullable(),
+  consecutiveFailures: z.number(),
+  circuitBroken: z.boolean(),
+  lastError: z.string().nullable(),
+});
+export type AgentHealth = z.infer<typeof AgentHealth>;
+
 export const HealthResponse = z.object({
   ok: z.boolean(),
   ts: z.string(), // ISO 8601
   llm: z.boolean(),
   budgetExhausted: z.boolean(),
+  // True when autonomous ticking is intentionally paused (outside waking hours),
+  // so a monitor can tell "deliberately quiet" from "broken".
+  dormant: z.boolean().optional(),
+  agents: z.array(AgentHealth).optional(),
+  // Human-readable reason `ok` is false.
+  detail: z.string().optional(),
 });
 export type HealthResponse = z.infer<typeof HealthResponse>;
 

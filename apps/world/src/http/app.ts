@@ -87,6 +87,9 @@ import { subscribe } from "../engine/bus.js";
 import { spendTodayUsd, isBudgetExhausted } from "../engine/usage.js";
 import { renderDebugPage } from "./debug.js";
 import { runTick } from "../runtime/loop.js";
+import { circuitBroken } from "../runtime/failures.js";
+import { isActiveHours } from "../runtime/clock.js";
+import { getProfile } from "../runtime/roles.js";
 import { hasLlm } from "../runtime/client.js";
 import { flushTracing } from "../runtime/tracing.js";
 import {
@@ -191,14 +194,50 @@ export function createApp() {
   // {ok, ts, llm, budgetExhausted} (design doc §5): llm = model provider
   // configured; budgetExhausted = today's spend met the global daily ceiling.
   app.get("/health", async (c) => {
-    const budgetExhausted = await isBudgetExhausted();
+    const [budgetExhausted, agentRows] = await Promise.all([isBudgetExhausted(), allAgents()]);
+    const now = Date.now();
+    const dormant = !isActiveHours();
+
+    const agents = agentRows.map((a) => ({
+      id: a.id,
+      status: a.status,
+      staleSeconds: a.lastTickAt ? Math.round((now - a.lastTickAt.getTime()) / 1000) : null,
+      consecutiveFailures: a.consecutiveFailures ?? 0,
+      circuitBroken: circuitBroken(a.consecutiveFailures),
+      lastError: a.lastError ?? null,
+    }));
+
+    // "Stale" = hasn't completed a turn in well over its own cadence. Generous
+    // (3x the longest cadence, floored at 2h) so a slow agent or a dormant window
+    // never reads as a failure — we're detecting DEATH, not lateness.
+    const maxCadenceMs =
+      Math.max(...agentIds.map((id) => getProfile(id).role.tickCadenceMinutes)) * 60_000;
+    const staleThresholdSec = Math.max(2 * 3600, (maxCadenceMs * 3) / 1000);
+    const stale = agents.filter((a) => a.staleSeconds === null || a.staleSeconds > staleThresholdSec);
+    const broken = agents.filter((a) => a.circuitBroken);
+
+    // Dormancy and an exhausted budget are DELIBERATE quiet — they must not read
+    // as broken, or the signal is useless during the hours the town is asleep.
+    const reasons: string[] = [];
+    if (broken.length) reasons.push(`circuit-broken: ${broken.map((a) => a.id).join(", ")}`);
+    if (!dormant && !budgetExhausted && stale.length === agents.length && agents.length > 0) {
+      reasons.push(`no agent has completed a turn in ${Math.round(staleThresholdSec / 60)}m`);
+    }
+    if (!hasLlm()) reasons.push("no model provider configured");
+
+    const ok = reasons.length === 0;
     return c.json(
       validated(HealthResponse, {
-        ok: true,
+        ok,
         ts: new Date().toISOString(),
         llm: hasLlm(),
         budgetExhausted,
+        dormant,
+        agents,
+        ...(ok ? {} : { detail: reasons.join("; ") }),
       }),
+      // A monitor should be able to alert on the status code alone.
+      ok ? 200 : 503,
     );
   });
 

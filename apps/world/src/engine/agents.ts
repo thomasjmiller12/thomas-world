@@ -68,6 +68,39 @@ export async function setStatus(id: AgentId, status: string) {
   await db.update(agents).set({ status }).where(eq(agents.id, id));
 }
 
+// Stamp a SUCCESSFUL turn and clear the failure streak. Only ever called on a
+// turn that actually completed — see 0014's note on why this used to be called
+// in the failure path too, and what that cost us.
 export async function markTicked(id: AgentId) {
-  await db.update(agents).set({ lastTickAt: new Date() }).where(eq(agents.id, id));
+  await db
+    .update(agents)
+    .set({ lastTickAt: new Date(), consecutiveFailures: 0, lastError: null })
+    .where(eq(agents.id, id));
+}
+
+// Record a FAILED turn and return the new consecutive-failure count, which the
+// loop uses to decide whether to reseed the thread or circuit-break the agent.
+export async function markTurnFailed(id: AgentId, error: string): Promise<number> {
+  const [row] = await db
+    .update(agents)
+    .set({
+      lastErrorAt: new Date(),
+      // Bound it: a full API error body can be kilobytes and this column is read
+      // by /health and /debug on every request.
+      lastError: error.slice(0, 500),
+      consecutiveFailures: sql`${agents.consecutiveFailures} + 1`,
+    })
+    .where(eq(agents.id, id))
+    .returning({ n: agents.consecutiveFailures });
+  return row?.n ?? 0;
+}
+
+// Clear the failure streak without claiming a successful turn (used after a
+// thread reseed, so the agent gets a clean run at its next tick rather than
+// tripping the breaker on failures that predate the repair).
+export async function clearFailures(id: AgentId) {
+  await db
+    .update(agents)
+    .set({ consecutiveFailures: 0 })
+    .where(eq(agents.id, id));
 }

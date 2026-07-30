@@ -85,10 +85,27 @@ export async function getSession(
   return { agentId: s.agentId as AgentId, visitorId: s.visitorId };
 }
 
+// Called once per session when it actually closes, AFTER the chat.ended event.
+// The loop registers a handler that writes the conversation into episodic memory
+// (see loop.ts logVisitToEpisodicMemory); registered rather than imported so
+// this module keeps no dependency on the loop — same seam as queue.ts's executor.
+type SessionEndedHook = (args: {
+  agentId: AgentId;
+  visitorId: string;
+  sessionId: string;
+}) => Promise<void>;
+
+let onSessionEnded: SessionEndedHook | null = null;
+
+export function registerSessionEndedHook(fn: SessionEndedHook): void {
+  onSessionEnded = fn;
+}
+
 export async function endSession(sessionId: string): Promise<void> {
   const [session] = await db.select().from(chatSessions).where(eq(chatSessions.id, sessionId));
   if (!session) return;
   // Idempotency: leave_chat, the sweep, and POST /chats/:id/close can race.
+  // This guard is also what keeps the hook below to exactly one call per session.
   if (session.endedAt) return;
   await db.update(chatSessions).set({ endedAt: new Date() }).where(eq(chatSessions.id, sessionId));
   await appendEvent({
@@ -97,6 +114,17 @@ export async function endSession(sessionId: string): Promise<void> {
     visibility: "public",
     payload: { agent: session.agentId, visitorId: session.visitorId },
   });
+  if (onSessionEnded && session.visitorId) {
+    // Awaited so the write lands before a sweep-triggered teardown finishes, but
+    // never allowed to fail the close.
+    await onSessionEnded({
+      agentId: session.agentId as AgentId,
+      visitorId: session.visitorId,
+      sessionId,
+    }).catch((err) =>
+      console.warn(`[chat] session-ended hook failed for ${sessionId}:`, (err as Error).message),
+    );
+  }
 }
 
 // Token check for the auth-gated chat endpoints. True iff the session exists and
