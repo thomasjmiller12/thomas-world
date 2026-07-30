@@ -124,8 +124,13 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
   const thread = await loadThread(agentId);
   // Strip any cache breakpoints carried over from a prior call's persisted input
   // so we never accumulate past the API's 4-breakpoint limit (we add exactly one
-  // fresh breakpoint below).
-  const messages: ThreadMessage[] = stripForPersist(thread.messages);
+  // fresh breakpoint below), then prune history the API has already compacted
+  // away. Pruning on LOAD as well as persist means an oversized legacy thread is
+  // never UPLOADED even once — the shrink takes effect on this turn rather than
+  // the next one. Safe because the pruned shape is byte-identical in input tokens
+  // (verified against the live API for all five agents; see
+  // pruneCompactedHistory).
+  const messages: ThreadMessage[] = pruneCompactedHistory(stripForPersist(thread.messages));
 
   // Fresh thread → orient it (core memory + last diary) so a (re)started agent
   // picks up its life rather than booting cold. One-time, folded into this input.
