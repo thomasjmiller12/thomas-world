@@ -9,9 +9,12 @@ import { z } from "zod";
 // general (an `effect`/`style` enum param, not a beat-per-occasion), because a
 // fixed, recognizable kit is what makes a bit read as intentional rather than
 // a checklist (Hobby's framing, live in-chat 2026-06-30 — see the vault build
-// log). Personality/variety lives in PRESETS (engine/presets.ts: a named,
-// saved set of params for one of these beats — "customization within bounds",
-// never a new mechanic), not in catalog growth.
+// log).
+//
+// Agent-saved presets (a named, saved set of params for one of these beats,
+// engine/presets.ts) were tried in Phase B.5 and removed 2026-07-30 — zero
+// rows in production and neither preset tool was ever called. Variety, for
+// now, is just each agent's own taste in which beat/params it reaches for.
 
 export type BeatSurface = "object" | "screen";
 export type BeatAudience = "room" | "visitor";

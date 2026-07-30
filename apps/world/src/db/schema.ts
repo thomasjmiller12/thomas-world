@@ -16,7 +16,6 @@ import {
   integer,
   doublePrecision,
   index,
-  uniqueIndex,
   primaryKey,
 } from "drizzle-orm/pg-core";
 import type {
@@ -384,18 +383,12 @@ export const visitors = pgTable("visitors", {
 // --- chat sessions / messages (visitor chat) --------------------------------
 export const chatSessions = pgTable("chat_sessions", {
   id: text("id").primaryKey(),
-  // The PRIMARY agent — the one the visitor opened the chat with. Kept for
-  // back-compat (chat.started/.ended attribution, 1-agent paths). The full
-  // roster lives in `participantAgentIds` (defaults to [agentId]); a group chat
-  // (invite_to_chat / scene conversion) adds a second agent there (design §3.3).
+  // The one agent the visitor is chatting with (chat.started/.ended
+  // attribution). Group chat (a `participantAgentIds` roster + a
+  // `pendingOperatorNote` mid-chat cue) was retired-era director machinery that
+  // never shipped a reader — both columns were write-only (or unwritten) and
+  // were DROPPED 2026-07-30; see drizzle/0015_drop_dead_machinery.sql.
   agentId: text("agent_id", { enum: agentEnum }).notNull(),
-  // Every agent in the session (design doc §3.3). Defaults to [agentId]; a
-  // second agent joins via invite_to_chat or a scene→chat conversion. Hard cap
-  // of 2 agents + 1 visitor is enforced in the runtime, not the schema.
-  participantAgentIds: jsonb("participant_agent_ids")
-    .$type<AgentId[]>()
-    .notNull()
-    .default([]),
   visitorId: text("visitor_id").notNull(),
   // Per-session bearer required on /open, /messages, /close, /ping (design doc
   // §3.3). Makes visitor↔agent chat content private and enforced. Returned only
@@ -409,11 +402,6 @@ export const chatSessions = pgTable("chat_sessions", {
   // sessions with NO ping AND no message for 3 min — so a slow-typing or
   // long-reading visitor is never cut off, but an abandoned tab frees the agent.
   lastPingAt: timestamp("last_ping_at", { withTimezone: true }),
-  // A one-shot operator note to inject on the NEXT runChatTurn, then clear
-  // (design doc §4). Set when a visitor.interacted event routes to a live
-  // session WITH this visitor ("The visitor just answered the phone.") so the
-  // agent can land the payoff line mid-chat; consumed-and-cleared per turn.
-  pendingOperatorNote: text("pending_operator_note"),
   endedAt: timestamp("ended_at", { withTimezone: true }),
 });
 
@@ -597,24 +585,8 @@ export const inboundMail = pgTable(
   ],
 );
 
-// --- agent_presets (Phase B.5 — "customization within bounds", not raw beat
-// authoring) -----------------------------------------------------------------
-// An agent-saved, NAMED instance of an EXISTING catalog beat's params — e.g.
-// Hobby's own emote ("hobby-wave": beat "emote", params {emoji:"🤙"}). The beat
-// id + its param schema are still server-validated against @town/contract's
-// BEATS at save time AND at play time; a preset can never introduce a new
-// mechanic or surface, only a personalized default for one that already
-// exists. One name per agent (re-saving overwrites).
-export const agentPresets = pgTable(
-  "agent_presets",
-  {
-    id: text("id").primaryKey().$defaultFn(() => randomUUID()),
-    agentId: text("agent_id", { enum: agentEnum }).notNull(),
-    name: text("name").notNull(),
-    beat: text("beat").notNull(),
-    params: jsonb("params").notNull().default({}),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [uniqueIndex("agent_presets_agent_name_idx").on(t.agentId, t.name)],
-);
+// agent_presets (Phase B.5 "customization within bounds") was DROPPED
+// 2026-07-30: production held zero rows and neither save_preset nor
+// list_my_presets was ever called across any agent's recorded conversation
+// history — a reasonable theory (personalized beat variants) that never
+// materialized. See drizzle/0015_drop_dead_machinery.sql.

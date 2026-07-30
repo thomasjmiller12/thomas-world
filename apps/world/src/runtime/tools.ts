@@ -44,7 +44,6 @@ import * as vault from "./vault.js";
 import * as github from "./github.js";
 import { tryRecordEffect } from "./fixtures.js";
 import { playBeat } from "./director.js";
-import { savePreset, listPresetsFor } from "../engine/presets.js";
 import {
   objectsAtLocation,
   findObjectAtLocation,
@@ -439,14 +438,19 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   // play_beat (Director/Effect protocol): the ONE spine tool for running a bit —
   // a named catalog beat that changes an object's state here (a phone rings, a
   // lamp flickers) or reaches across the glass onto a visitor's screen (a
-  // flourish, an emote) — OR one of your own saved presets (see save_preset
-  // below). The agent picks a beat (or preset) by name and parameterizes it; it
-  // can never inject markup, and a preset can never define a new mechanic, only
-  // a saved set of params for one that already exists. The catalog description
-  // is GENERATED from @town/contract so adding a MECHANIC is a data row there —
-  // no tool change, no new token cost beyond one line — but the catalog itself
-  // stays deliberately small; variety lives in presets, not in more beats.
+  // flourish, an emote). The agent picks a beat by name and parameterizes it; it
+  // can never inject markup, only sequence catalog beats. The catalog
+  // description is GENERATED from @town/contract so adding a MECHANIC is a data
+  // row there — no tool change, no new token cost beyond one line — but the
+  // catalog itself stays deliberately small on purpose (Hobby's framing: a fixed
+  // shared kit is what makes a bit read as intentional rather than a checklist).
   // Available on idle ticks AND chat (a core tool).
+  //
+  // Agent-saved presets (Phase B.5, `save_preset`/`list_my_presets`) were removed
+  // 2026-07-30: production had zero `agent_presets` rows and neither tool was
+  // ever called across any agent's full recorded history — a reasonable theory
+  // (personal variants of a beat) that never materialized. `beat` now resolves
+  // against the catalog only.
   const play_beat = betaZodTool({
     name: "play_beat",
     description: [
@@ -456,7 +460,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         const paramHint = shape.length ? ` params: {${shape.join(", ")}}` : " no params";
         return `- "${b.id}" (${b.surface}): ${b.description}${paramHint}.`;
       }),
-      'Pass the beat id (or a preset name from list_my_presets) as `beat`, its params as `params`, and (for object beats) optionally name the object via `object` — omit it and a sensible one here is chosen.',
+      'Pass the beat id as `beat`, its params as `params`, and (for object beats) optionally name the object via `object` — omit it and a sensible one here is chosen.',
     ].join("\n"),
     inputSchema: z.object({
       beat: z.string(),
@@ -464,38 +468,6 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       params: z.record(z.string(), z.unknown()).optional(),
     }),
     run: async (a) => playBeat(ctx, { beat: a.beat, object: a.object, params: a.params ?? {} }),
-  });
-
-  // save_preset (Phase B.5 — "customization within bounds"): save a NAMED set
-  // of params for an EXISTING beat as your own. It's still re-validated against
-  // that beat's schema at save time, so a preset can't be (or become) anything
-  // a direct play_beat call couldn't do — it's a personal default, not a new
-  // mechanic. One name per agent; re-saving overwrites.
-  const save_preset = betaZodTool({
-    name: "save_preset",
-    description:
-      "Save a named variant of one of your bits — your own emote set, your own popup-card tone — so you can call it by that name later via play_beat instead of re-specifying the params each time. Still validated against the underlying bit's schema; this can't create a new kind of effect, only a personal default for one that exists.",
-    inputSchema: z.object({
-      name: z.string().min(1).max(40),
-      beat: z.string().min(1),
-      params: z.record(z.string(), z.unknown()).optional(),
-    }),
-    run: async ({ name, beat, params }) => {
-      const res = await savePreset(ctx.agentId, name, beat, params ?? {});
-      if (!res.ok) return res.reason;
-      return `Saved "${name}" — play_beat({beat:"${name}"}) runs it from now on.`;
-    },
-  });
-
-  const list_my_presets = betaZodTool({
-    name: "list_my_presets",
-    description: "List the bit presets you've saved for yourself — each one's name and which beat it's a variant of.",
-    inputSchema: z.object({}),
-    run: async () => {
-      const rows = await listPresetsFor(ctx.agentId);
-      if (rows.length === 0) return "You haven't saved any presets yet — save_preset to make one.";
-      return rows.map((r) => `- "${r.name}" (a variant of "${r.beat}")`).join("\n");
-    },
   });
 
   // --- Social ----------------------------------------------------------------
@@ -1191,8 +1163,6 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     inspect_object as RunnableTool,
     leave_note as RunnableTool,
     play_beat as RunnableTool,
-    save_preset as RunnableTool,
-    list_my_presets as RunnableTool,
     send_dm as RunnableTool,
     broadcast as RunnableTool,
     create_artifact as RunnableTool,

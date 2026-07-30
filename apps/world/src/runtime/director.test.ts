@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 // Director/Effect protocol dispatcher tests. The DB-touching engine deps
-// (objects/events/chat/presets) are mocked so the dispatcher's LOGIC — beat
+// (objects/events/chat) are mocked so the dispatcher's LOGIC — beat
 // validation, surface routing, dual-emit, target resolution, pending-call
-// lifecycle, preset resolution — is exercised without a live Postgres. The
-// rate limiter (fixtures.ts) is the REAL pure helper (reset per spec) so the
-// rate-limit refusal path runs end to end.
+// lifecycle — is exercised without a live Postgres. The rate limiter
+// (fixtures.ts) is the REAL pure helper (reset per spec) so the rate-limit
+// refusal path runs end to end.
 
 // --- mocks ------------------------------------------------------------------
 const appendEventMock = vi.fn(async (_input: unknown) => ({ id: "1" }));
@@ -16,7 +16,6 @@ const findObjectAtLocationMock = vi.fn(
 );
 const eventsOfTypesMock = vi.fn(async () => [] as unknown[]);
 const getSessionMock = vi.fn(async () => null as { agentId: string; visitorId: string } | null);
-const getPresetMock = vi.fn(async () => undefined as { beat: string; params: unknown } | undefined);
 
 vi.mock("../engine/events.js", () => ({
   appendEvent: (input: unknown) => appendEventMock(input),
@@ -29,9 +28,6 @@ vi.mock("../engine/objects.js", () => ({
 }));
 vi.mock("./chat.js", () => ({
   getSession: (...args: unknown[]) => getSessionMock(...(args as [])),
-}));
-vi.mock("../engine/presets.js", () => ({
-  getPreset: (...args: unknown[]) => getPresetMock(...(args as [])),
 }));
 
 import { playBeat, consumePendingCall, _resetPendingCalls, _resetVisitorPacing } from "./director.js";
@@ -59,16 +55,13 @@ beforeEach(() => {
   eventsOfTypesMock.mockResolvedValue([]);
   getSessionMock.mockClear();
   getSessionMock.mockResolvedValue(null);
-  getPresetMock.mockClear();
-  getPresetMock.mockResolvedValue(undefined);
 });
 
 describe("playBeat — validation", () => {
-  it("an unknown beat (and no matching preset) returns an in-fiction error listing the real beats", async () => {
+  it("an unknown beat returns an in-fiction error listing the real beats", async () => {
     const out = await playBeat(ctx(), { beat: "nope", params: {} });
-    expect(out).toMatch(/no bit \(or saved preset\) called "nope"/i);
+    expect(out).toMatch(/no bit called "nope"/i);
     expect(out).toMatch(/fixture-effect/);
-    expect(getPresetMock).toHaveBeenCalledWith("hobby", "nope");
     // No effect was recorded / emitted on a validation miss.
     expect(appendEventMock).not.toHaveBeenCalled();
     expect(setObjectStateMock).not.toHaveBeenCalled();
@@ -287,37 +280,6 @@ describe("playBeat — per-visitor pacing budget (Phase B)", () => {
     getSessionMock.mockResolvedValue({ agentId: "hobby", visitorId: "visitor-B" });
     const out = await playBeat(chatCtx, { beat: "screen-flourish", params: { style: "confetti" } });
     expect(out).toMatch(/visitor's screen/i); // a different visitor, fresh budget
-  });
-});
-
-describe("playBeat — preset resolution (\"customization within bounds\")", () => {
-  it("a saved preset name resolves to its underlying beat, merging in saved params", async () => {
-    getPresetMock.mockResolvedValue({ beat: "emote", params: { emoji: "🤙", text: "heyyy" } });
-    const out = await playBeat(ctx(), { beat: "hobby-wave", params: {} });
-    expect(out).toMatch(/everyone here/i);
-    expect(getPresetMock).toHaveBeenCalledWith("hobby", "hobby-wave");
-    const beatCall = appendEventMock.mock.calls.find(
-      (c) => (c[0] as { type: string }).type === "world.beat",
-    )![0] as { payload: { beat: string; params: Record<string, unknown> } };
-    // The WIRE beat id is the underlying beat's, not the preset's name — a
-    // preset never introduces a new mechanic, just saved params for an old one.
-    expect(beatCall.payload.beat).toBe("emote");
-    expect(beatCall.payload.params).toMatchObject({ emoji: "🤙", text: "heyyy" });
-  });
-
-  it("per-call params override the preset's saved defaults", async () => {
-    getPresetMock.mockResolvedValue({ beat: "emote", params: { emoji: "🤙", text: "heyyy" } });
-    await playBeat(ctx(), { beat: "hobby-wave", params: { text: "one more time" } });
-    const beatCall = appendEventMock.mock.calls.find(
-      (c) => (c[0] as { type: string }).type === "world.beat",
-    )![0] as { payload: { params: Record<string, unknown> } };
-    expect(beatCall.payload.params).toMatchObject({ emoji: "🤙", text: "one more time" });
-  });
-
-  it("a preset pointing at a beat that no longer exists is treated as unknown", async () => {
-    getPresetMock.mockResolvedValue({ beat: "retired-beat", params: {} });
-    const out = await playBeat(ctx(), { beat: "stale-preset", params: {} });
-    expect(out).toMatch(/no bit \(or saved preset\) called "stale-preset"/i);
   });
 });
 

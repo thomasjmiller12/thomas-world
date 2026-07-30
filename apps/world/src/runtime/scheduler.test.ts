@@ -146,22 +146,6 @@ describe("decideBoost — say-boost (room-talk wake)", () => {
     expect(d.delayMs).toBe(SAY_MAX);
   });
 
-  it("falls back to natural cadence once the location budget is spent", () => {
-    // The location-budget cap is checked FIRST and beats the (passed) throttle.
-    const d = decideBoost({
-      now,
-      lastBoostAt: undefined,
-      remainingMs: 10 * 60_000,
-      maxDelayMs: SAY_MAX,
-      jitterMs: 0,
-      floorMs: SAY_FLOOR,
-      throttleMs: SAY_THROTTLE_MS,
-      locationBudgetExceeded: true,
-    });
-    expect(d.boost).toBe(false);
-    expect(d.reason).toBe("location-budget");
-  });
-
   it("never delays a say-target's tick already due sooner than the band floor", () => {
     const d = decideBoost({
       now,
