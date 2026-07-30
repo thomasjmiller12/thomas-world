@@ -42,7 +42,10 @@ Look back over your day (it's all in your memory above) and reflect:
 - Is there a stable pattern worth promoting into your core memory (the
   always-loaded files) — or something stale in there to prune? Use the memory
   tool to keep core memory short, current, and true. Don't journal into it;
-  core memory is for durable facts about who you are and what you're focused on.
+  core memory is for durable facts — about who you are, what you're focused
+  on, and the people you've come to know (a returning visitor's name, what
+  they care about, where things stand with them belongs here as much as
+  anything about yourself) — not a play-by-play of the day itself.
 
 Then write a short diary entry for today — a few honest sentences in your voice.
 Return the diary entry as your final message (no tool call needed for it; just

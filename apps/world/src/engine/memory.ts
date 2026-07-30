@@ -14,7 +14,24 @@ const { memoryFiles } = schema;
 
 // Per-file and per-agent total caps. Core memory is meant to be a handful of
 // short files (identity, current focus, relationships) — not a journal.
-export const MAX_FILE_CHARS = 8_000;
+//
+// Rebalanced 2026-07-30 from measured production behaviour: all five agents
+// had settled on exactly ONE memory file each, sitting at 7,041–7,831 chars —
+// 88–98% of the OLD 8,000 per-file cap — while using only ~19% of the 40,000
+// total. The per-file cap was binding 5x below the total, and nothing ever
+// taught an agent to open a SECOND file, so every new durable fact had to
+// evict an old one. This is not hypothetical: mid-conversation, Career Thomas
+// told a visitor "Memory file's capped out — need to trim before adding
+// more." The total cap was never the actual constraint here, so it's left
+// unchanged — context cost is real (core memory rides EVERY turn's prompt),
+// and 40,000 chars was already generous relative to actual usage. Doubling
+// MAX_FILE_CHARS gives a single file real headroom above the largest file
+// ever observed (7,831 — over 2x below the new cap) while staying well under
+// the total: reaching the full 40,000-char budget now takes at least three
+// files (2 × 16,000 = 32,000, still short of 40,000), which leaves room for —
+// without mandating — the per-person split suggested in protocol.ts, at no
+// extra per-turn token cost.
+export const MAX_FILE_CHARS = 16_000;
 export const MAX_TOTAL_CHARS = 40_000;
 
 export interface MemoryFile {
@@ -56,11 +73,28 @@ async function totalChars(agentId: AgentId, excludePath?: string): Promise<numbe
 
 async function writeFile(agentId: AgentId, path: string, content: string): Promise<void> {
   if (content.length > MAX_FILE_CHARS) {
-    throw new Error(`file exceeds ${MAX_FILE_CHARS} char cap`);
+    // This used to just say "file exceeds N char cap" — read as "trim this
+    // file," it's what produced Career Thomas telling a visitor his memory
+    // was "capped out — need to trim before adding more." Hitting the
+    // PER-FILE cap doesn't mean core memory is full (the total cap is far
+    // away); it means this one file is trying to hold too much. Naming the
+    // actual fix (split it — a new file, e.g. per person) steers toward the
+    // structure this cap is meant to encourage instead of lossy compression.
+    throw new Error(
+      `file exceeds ${MAX_FILE_CHARS} char cap — split this into another file ` +
+        `(e.g. /memories/people/<name>.md for a specific person) rather than ` +
+        `trimming everything into one place`,
+    );
   }
   const existing = await totalChars(agentId, path);
   if (existing + content.length > MAX_TOTAL_CHARS) {
-    throw new Error(`core memory would exceed ${MAX_TOTAL_CHARS} char cap`);
+    // The total cap is the real ceiling across every file, so here "prune
+    // something stale" is the honest instruction — unlike the per-file cap
+    // above, there's no other file to move this into.
+    throw new Error(
+      `core memory would exceed ${MAX_TOTAL_CHARS} char cap across all files — ` +
+        `prune something stale before adding more`,
+    );
   }
   const existed = await readFile(agentId, path);
   if (existed) {
