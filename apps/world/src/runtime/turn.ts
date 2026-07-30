@@ -257,10 +257,11 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
   }
 
   // Persist the accumulated thread — only reached when the loop ran to
-  // completion. Strip the cache breakpoint + ephemeral code-exec/upload blocks.
+  // completion. Strip the cache breakpoint + ephemeral code-exec/upload blocks,
+  // then drop history the API has already compacted away (see below).
   const cursor =
     opts.advanceCursorTo === undefined ? thread.inputCursor : opts.advanceCursorTo;
-  await persistThread(agentId, stripForPersist(accumulated), cursor);
+  await persistThread(agentId, pruneCompactedHistory(stripForPersist(accumulated)), cursor);
 
   return { rounds, totalCost, totalCacheRead, refused, finalText };
 }
@@ -312,6 +313,58 @@ export function stripForPersist(messages: ThreadMessage[]): ThreadMessage[] {
     if (content.length > 0) out.push({ ...m, content });
   }
   return out;
+}
+
+// How many trailing compaction checkpoints to retain. 1 would be provably
+// sufficient (see the measurement below); 2 keeps one checkpoint of slack, which
+// costs almost nothing and preserves a little recent verbatim texture.
+const KEEP_COMPACTIONS = 2;
+
+// DROP HISTORY THE API HAS ALREADY COMPACTED AWAY (2026-07-30).
+//
+// Server-side compaction shrinks the WORKING CONTEXT but never touched what we
+// persisted, so `agent_threads.content` grew without bound: 2.3–2.9 MB and
+// 1,600–2,200 messages per agent, all of it loaded, JSON-parsed, deep-copied,
+// re-serialized and UPLOADED on every single turn.
+//
+// Measured against the live API using Builder's real 2,183-message thread: the
+// full thread and a 17-message suffix starting at the most recent compaction
+// block both reported input_tokens = 15,021, exactly equal. The API discards
+// everything before the newest compaction block — so ~99% of what we stored and
+// shipped every turn was doing nothing at all. Pruning it is lossless by
+// measurement, not by assumption.
+//
+// (Note for anyone chasing cost: this is NOT where the per-tick $ spread comes
+// from. Cost tracks ROUNDS and output tokens — researcher's 6-round tick cost
+// $0.38 while hobby's 2-round tick cost $0.03, on similar working contexts. The
+// win here is DB size, latency, request payload and serialization work.)
+//
+// Anything genuinely durable already lives elsewhere: `world_events` is the
+// queryable record, plus diaries, core memory and Hindsight. A thread with fewer
+// than KEEP_COMPACTIONS checkpoints is left completely alone.
+export function pruneCompactedHistory(
+  messages: ThreadMessage[],
+  keepCompactions = KEEP_COMPACTIONS,
+): ThreadMessage[] {
+  const compactionAt: number[] = [];
+  for (let i = 0; i < messages.length; i++) {
+    const c = messages[i].content;
+    if (Array.isArray(c) && c.some((b) => (b as { type?: string }).type === "compaction")) {
+      compactionAt.push(i);
+    }
+  }
+  if (compactionAt.length < keepCompactions) return messages;
+  const from = compactionAt[compactionAt.length - keepCompactions];
+  if (from <= 0) return messages;
+  // The retained array starts at the assistant message carrying that compaction
+  // block. A leading assistant message is unusual but VERIFIED accepted by the
+  // API (that's exactly the shape the suffix probe above sent).
+  const kept = messages.slice(from);
+  console.log(
+    `[thread] pruned ${from} pre-compaction message(s); ${kept.length} retained ` +
+      `(${compactionAt.length} checkpoints seen, keeping last ${keepCompactions}).`,
+  );
+  return kept;
 }
 
 // THE POISONED-THREAD GUARD (2026-07-30). An assistant message carrying TWO
