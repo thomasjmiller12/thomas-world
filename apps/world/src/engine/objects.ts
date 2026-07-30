@@ -179,10 +179,32 @@ export interface CreateObjectInput {
 // with a deterministic-per-id horizontal scatter so several objects placed in
 // one zone don't stack pixel-perfectly. Zones without bounds → null (the
 // renderer falls back to the zone/room anchor).
+// Minimum horizontal gap between two objects sharing a zone. Sprites are drawn
+// on a 16px tile grid, so anything closer than this visually overlaps — and an
+// overlapped object can end up unclickable, which for a mounted interactive
+// artifact means a real app the visitor cannot open.
+export const MIN_OBJECT_SEPARATION_PX = 14;
+
+// Pick the pixel an agent-placed object sits at inside its zone.
+//
+// `y` is pinned to the zone's bottom edge (objects sit at the front of their
+// zone) so separation has to come from `x`. The x used to be a pure hash of the
+// object id, with NO awareness of what was already in the zone — and zones are
+// small: `workshop.center` is 40px wide, i.e. a 28px usable band. That collided
+// in production: Builder's "Lights Out cabinet" landed at x=153 and the "Seed
+// Garden planter" at x=159, six pixels apart on the same y, so two mounted
+// interactive apps were stacked on top of each other.
+//
+// Now the hash only chooses a STARTING slot, and we step deterministically
+// through the band for one that clears `occupied` by MIN_OBJECT_SEPARATION_PX.
+// Still pure (occupancy is passed in, not queried) so it stays unit-testable,
+// and still deterministic per id. Falls back to the raw hash position when the
+// zone is genuinely full — a crowded zone is better than refusing to place.
 export function placementForZone(
   location: LocationId,
   zoneId: string,
   seedKey: string,
+  occupied: { x: number; y: number }[] = [],
 ): ObjectPlacement | null {
   const zone = (zonesForLocation(location) ?? []).find((z) => z.id === zoneId);
   const b = zone?.bounds;
@@ -190,13 +212,38 @@ export function placementForZone(
   let h = 2166136261;
   for (let i = 0; i < seedKey.length; i++) h = (h ^ seedKey.charCodeAt(i)) * 16777619;
   const frac = ((h >>> 0) % 1000) / 1000;
-  const x = Math.round(b.x + 6 + frac * Math.max(1, b.w - 12));
+
+  const left = b.x + 6;
+  const span = Math.max(1, b.w - 12);
   const y = Math.round(b.y + b.h - 2);
-  return { scene: b.scene, x, y };
+  const hashed = Math.round(left + frac * span);
+
+  // Candidate slots across the band, spaced so neighbours can't overlap.
+  const slots = Math.max(1, Math.floor(span / MIN_OBJECT_SEPARATION_PX) + 1);
+  const step = slots > 1 ? span / (slots - 1) : 0;
+  const start = slots > 1 ? Math.round(frac * (slots - 1)) : 0;
+  const taken = occupied.map((o) => o.x);
+  for (let i = 0; i < slots; i++) {
+    const x = Math.round(left + ((start + i) % slots) * step);
+    if (taken.every((tx) => Math.abs(tx - x) >= MIN_OBJECT_SEPARATION_PX)) {
+      return { scene: b.scene, x, y };
+    }
+  }
+  return { scene: b.scene, x: hashed, y };
 }
 
 export async function createObject(input: CreateObjectInput): Promise<WorldObjectRow> {
-  const placement = placementForZone(input.location, input.zone, input.id);
+  // Feed the placer what's already standing in this zone so a new object doesn't
+  // land on top of one (see placementForZone's note on the real collision).
+  const siblings = await db
+    .select({ placement: worldObjects.placement })
+    .from(worldObjects)
+    .where(and(eq(worldObjects.locationId, input.location), eq(worldObjects.zone, input.zone)));
+  const occupied = siblings
+    .map((s) => s.placement as ObjectPlacement | null)
+    .filter((p): p is ObjectPlacement => Boolean(p))
+    .map((p) => ({ x: p.x, y: p.y }));
+  const placement = placementForZone(input.location, input.zone, input.id, occupied);
   const [row] = await db
     .insert(worldObjects)
     .values({
