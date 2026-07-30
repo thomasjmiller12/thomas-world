@@ -193,7 +193,9 @@ export function createApp() {
   // --- health -------------------------------------------------------------
   // {ok, ts, llm, budgetExhausted} (design doc §5): llm = model provider
   // configured; budgetExhausted = today's spend met the global daily ceiling.
-  app.get("/health", async (c) => {
+  // Shared body for /health and /health/agents. The two differ ONLY in status
+  // code — see the route comments below for why that split matters.
+  async function healthBody() {
     const [budgetExhausted, agentRows] = await Promise.all([isBudgetExhausted(), allAgents()]);
     const now = Date.now();
     const dormant = !isActiveHours();
@@ -226,19 +228,35 @@ export function createApp() {
     if (!hasLlm()) reasons.push("no model provider configured");
 
     const ok = reasons.length === 0;
-    return c.json(
-      validated(HealthResponse, {
-        ok,
-        ts: new Date().toISOString(),
-        llm: hasLlm(),
-        budgetExhausted,
-        dormant,
-        agents,
-        ...(ok ? {} : { detail: reasons.join("; ") }),
-      }),
-      // A monitor should be able to alert on the status code alone.
-      ok ? 200 : 503,
-    );
+    return validated(HealthResponse, {
+      ok,
+      ts: new Date().toISOString(),
+      llm: hasLlm(),
+      budgetExhausted,
+      dormant,
+      agents,
+      ...(ok ? {} : { detail: reasons.join("; ") }),
+    });
+  }
+
+  // PROCESS liveness — ALWAYS 200 while we're serving and the DB is reachable.
+  //
+  // This is railway.json's `healthcheckPath`, so its STATUS CODE gates every
+  // deploy. It must never depend on whether the agents are happy: a
+  // circuit-broken agent returning 503 here would fail the healthcheck and roll
+  // the deploy back, meaning a sick agent would block the very deploy that fixes
+  // it. Agent health is reported in the BODY (`ok` + `detail` + per-agent rows)
+  // and gated by status code on /health/agents instead.
+  app.get("/health", async (c) => c.json(await healthBody()));
+
+  // AGENT liveness — 503 when the town is actually broken, for an external
+  // uptime monitor or cron alert. Same body as /health; the status code is the
+  // whole point. `ok` is false when any agent is circuit-broken, when no agent
+  // has completed a turn in well over its cadence, or when no model provider is
+  // configured. Deliberate quiet (dormant hours, exhausted budget) stays ok.
+  app.get("/health/agents", async (c) => {
+    const body = await healthBody();
+    return c.json(body, body.ok ? 200 : 503);
   });
 
   // --- POST /webhooks/resend/inbound --------------------------------------
