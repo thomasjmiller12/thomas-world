@@ -550,6 +550,36 @@ export const llmUsage = pgTable(
   (t) => [index("llm_usage_agent_ts_idx").on(t.agentId, t.ts)],
 );
 
+// --- llm_usage_daily (retention rollup, 2026-07-30) -------------------------
+// A day × agent × model rollup of llm_usage, written by engine/retention.ts
+// immediately before it deletes the raw per-call rows it summarizes — so
+// historical cost analysis ("what did last quarter cost") survives after the
+// raw ledger is pruned. `spendTodayUsd`/`spendTodayForAgent` (engine/usage.ts)
+// never read this table; they only ever read TODAY's raw llm_usage rows,
+// which the sweep never touches (see retention.ts for why that's guaranteed).
+// `agentId` uses the sentinel "_system" (engine/retention.ts SYSTEM_AGENT_KEY)
+// for llm_usage rows recorded with a null agentId (Town Crier / Chronicle
+// summary calls — see chronicle.ts/chronicle-issue.ts) instead of allowing
+// NULL here, so (day, agent_id, model) can be a real, NOT-NULL composite
+// primary key with a clean `ON CONFLICT` upsert — Postgres NULLs never
+// collide under a unique constraint, which would silently break idempotency.
+export const llmUsageDaily = pgTable(
+  "llm_usage_daily",
+  {
+    day: text("day").notNull(), // YYYY-MM-DD, UTC
+    agentId: text("agent_id").notNull(), // an AgentId, or SYSTEM_AGENT_KEY
+    model: text("model").notNull(),
+    calls: integer("calls").notNull().default(0),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
+    cacheWriteTokens: integer("cache_write_tokens").notNull().default(0),
+    estCostUsd: doublePrecision("est_cost_usd").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.day, t.agentId, t.model] })],
+);
+
 // --- outbox (queued outbound email when Resend is absent, brief) ------------
 export const outbox = pgTable("outbox", {
   id: text("id").primaryKey(),

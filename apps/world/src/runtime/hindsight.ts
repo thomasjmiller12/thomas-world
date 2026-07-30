@@ -7,7 +7,7 @@
 //   retain : POST /v1/default/banks/{bank}/memories   body {items:[{content,…}]}
 //   recall : POST /v1/default/banks/{bank}/memories/recall  body {query,max_tokens}
 //   delete : DELETE /v1/default/banks/{bank}/memories[?type=]  (bank/type-wide only —
-//            Hindsight has NO single-memory delete; see forget() below)
+//            Hindsight has NO single-memory delete; see forgetAll() below)
 //   reflect: POST /v1/default/banks/{bank}/reflect    body {query}
 //
 // Env-gated: when HINDSIGHT is off (no URL / no OpenAI key for embeddings), every
@@ -43,7 +43,7 @@ function warnOnce() {
   if (warned) return;
   warned = true;
   console.warn(
-    "[hindsight] episodic memory is off (HINDSIGHT_URL / OPENAI_API_KEY absent) — remember/recall/forget degrade in-fiction.",
+    "[hindsight] episodic memory is off (HINDSIGHT_URL / OPENAI_API_KEY absent) — remember/recall degrade in-fiction.",
   );
 }
 
@@ -124,23 +124,12 @@ export async function recall(
   }
 }
 
-// "Let go" of memories. IMPORTANT: Hindsight 0.7 exposes no per-memory delete —
-// only a bank-wide (optionally type-filtered) destructive clear. Pinpoint
-// "forget this one thing" is therefore not achievable; rather than silently
-// nuke the agent's whole episodic store on a stray tool call, we treat forget
-// as a no-op acknowledgement in-fiction (the memory simply fades on its own).
-// Bank/type-wide clears are an explicit operator action via forgetAll().
-export async function forget(agentId: AgentId, _query: string): Promise<HindsightResult> {
-  if (!config.features.hindsight) {
-    warnOnce();
-    return SOFT_FAIL;
-  }
-  void agentId;
-  return {
-    ok: true,
-    text: "You let that one drift to the back of your mind — it'll fade on its own.",
-  };
-}
+// NOTE: the model-facing `forget` tool (and this file's forget() behind it)
+// was deleted 2026-07-30 — zero calls across the town's full recorded history.
+// It was always a canned no-op acknowledgement anyway: Hindsight 0.7 exposes
+// no per-memory delete, only a bank-wide (optionally type-filtered)
+// destructive clear, so "forget this one thing" was never achievable — see
+// forgetAll() below for the real (operator-only) bank clear.
 
 // Destructive bank (or type) clear. Operator/test path only — never wired to a
 // model-facing tool. `type` is one of Hindsight's: world | experience | opinion.

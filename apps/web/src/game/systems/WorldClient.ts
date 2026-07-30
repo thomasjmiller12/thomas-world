@@ -5,6 +5,7 @@ import {
   GetVisitorResponse,
   CreateChatResponse,
   GetChatResponse,
+  ChatHistoryResponse,
   ChatStreamFrame,
   worldEventTypes,
   type AgentId,
@@ -657,6 +658,9 @@ export class WorldClient {
     };
     this.startPing();
     EventBus.emit('chat-opened', { npcId: agentId });
+    // Show the visitor where they left off. Fire-and-forget: history is a nicety
+    // and must never delay or block the panel opening.
+    void this.loadChatHistory(agentId, session.sessionId);
     return true;
   }
 
@@ -877,6 +881,45 @@ export class WorldClient {
     // Six polls (~27s) with nothing new — let the visitor know rather than
     // leaving a silently hung bubble.
     EventBus.emit('chat-error', { npcId: chat.primaryAgent, reason: 'stream-failed' });
+  }
+
+  // GET /visitors/:id/chat-history?agent= — the visitor's earlier messages with
+  // this facet, from BEFORE this session.
+  //
+  // Why this is separate from rehydrateChat below: that one recovers the CURRENT
+  // session after a dropped stream and needs the session token, which lives only
+  // in memory. So a page reload — or just switching facets and coming back —
+  // left the panel blank even though the agent remembers the visitor perfectly
+  // well. That mismatch is what made continuity feel broken: the facet greets you
+  // as someone it has talked to nine times, above an empty transcript.
+  private async loadChatHistory(agentId: ThomasId, excludeSessionId: string): Promise<void> {
+    if (!this.visitorId || !this.visitorToken) return;
+    try {
+      const url =
+        `${this.baseUrl}/visitors/${encodeURIComponent(this.visitorId)}/chat-history` +
+        `?agent=${encodeURIComponent(agentId)}&exclude=${encodeURIComponent(excludeSessionId)}`;
+      const res = await fetch(url, { headers: { 'x-visitor-token': this.visitorToken } });
+      if (!res.ok) return;
+      const parsed = ChatHistoryResponse.parse(await res.json());
+      if (parsed.messages.length === 0) return;
+      // The panel may have been closed again while this was in flight.
+      if (this.activeChat?.primaryAgent !== agentId) return;
+      EventBus.emit('chat-history', {
+        npcId: agentId,
+        lastAt: parsed.lastAt,
+        messages: parsed.messages.map((m) => ({
+          sender: m.sender as 'visitor' | ThomasId,
+          senderName:
+            m.sender === 'visitor'
+              ? 'You'
+              : (NPC_CONFIGS[m.sender]?.displayName ?? m.sender),
+          text: m.body,
+          timestamp: new Date(m.ts).getTime(),
+        })),
+      });
+    } catch {
+      /* history is a nicety — never surface a failure to fetch it */
+    }
   }
 
   // GET /chats/:id — rehydrate the panel after a dropped stream (token-gated).

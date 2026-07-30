@@ -378,31 +378,44 @@ export function ChatPanel({
           </p>
         )}
         {lines.map((line) => {
-          if (line.kind === 'system') {
-            return <SystemLine key={line.id} text={line.text} silkscreen={false} />;
-          }
-          if (line.kind === 'ended') {
-            return <SystemLine key={line.id} text={line.text} silkscreen />;
-          }
-          if (line.kind === 'action') {
-            const c = line.speaker && line.speaker !== 'visitor' ? agentColor(line.speaker) : color;
-            return <ActionLine key={line.id} text={line.text} color={c} />;
-          }
-          if (line.kind === 'share-card' && line.card) {
-            return <ShareCardBubble key={line.id} card={line.card} />;
-          }
-          const isAgent = line.kind === 'agent';
-          const speaker = line.speaker as ThomasId | undefined;
-          return (
-            <Bubble
-              key={line.id}
-              side={isAgent ? 'agent' : 'visitor'}
-              color={isAgent && speaker ? agentColor(speaker) : undefined}
-              name={isAgent && speaker ? `${agentShortName(speaker)} Thomas` : undefined}
-              memory={line.memory}
-            >
-              {line.text}
-            </Bubble>
+          const rendered = (() => {
+            if (line.kind === 'system') {
+              return <SystemLine key={line.id} text={line.text} silkscreen={false} />;
+            }
+            if (line.kind === 'ended') {
+              return <SystemLine key={line.id} text={line.text} silkscreen />;
+            }
+            if (line.kind === 'action') {
+              const c = line.speaker && line.speaker !== 'visitor' ? agentColor(line.speaker) : color;
+              return <ActionLine key={line.id} text={line.text} color={c} />;
+            }
+            if (line.kind === 'share-card' && line.card) {
+              return <ShareCardBubble key={line.id} card={line.card} />;
+            }
+            const isAgent = line.kind === 'agent';
+            const speaker = line.speaker as ThomasId | undefined;
+            return (
+              <Bubble
+                key={line.id}
+                side={isAgent ? 'agent' : 'visitor'}
+                color={isAgent && speaker ? agentColor(speaker) : undefined}
+                name={isAgent && speaker ? `${agentShortName(speaker)} Thomas` : undefined}
+                memory={line.memory}
+              >
+                {line.text}
+              </Bubble>
+            );
+          })();
+          // Lines replayed from an EARLIER session render dimmed, so a visitor
+          // can tell at a glance what was just said from what was said last
+          // time. Wrapping the finished element keeps this one concern in one
+          // place instead of threading opacity through every line kind.
+          return line.historical ? (
+            <div key={line.id} style={{ opacity: 0.58 }}>
+              {rendered}
+            </div>
+          ) : (
+            rendered
           );
         })}
         {generating && <StreamDots color={streamingSpeaker ? agentColor(streamingSpeaker) : color} />}
