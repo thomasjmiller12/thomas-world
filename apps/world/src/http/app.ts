@@ -87,6 +87,9 @@ import { subscribe } from "../engine/bus.js";
 import { spendTodayUsd, isBudgetExhausted } from "../engine/usage.js";
 import { renderDebugPage } from "./debug.js";
 import { runTick } from "../runtime/loop.js";
+import { circuitBroken } from "../runtime/failures.js";
+import { isActiveHours } from "../runtime/clock.js";
+import { getProfile } from "../runtime/roles.js";
 import { hasLlm } from "../runtime/client.js";
 import { flushTracing } from "../runtime/tracing.js";
 import {
@@ -190,16 +193,70 @@ export function createApp() {
   // --- health -------------------------------------------------------------
   // {ok, ts, llm, budgetExhausted} (design doc §5): llm = model provider
   // configured; budgetExhausted = today's spend met the global daily ceiling.
-  app.get("/health", async (c) => {
-    const budgetExhausted = await isBudgetExhausted();
-    return c.json(
-      validated(HealthResponse, {
-        ok: true,
-        ts: new Date().toISOString(),
-        llm: hasLlm(),
-        budgetExhausted,
-      }),
-    );
+  // Shared body for /health and /health/agents. The two differ ONLY in status
+  // code — see the route comments below for why that split matters.
+  async function healthBody() {
+    const [budgetExhausted, agentRows] = await Promise.all([isBudgetExhausted(), allAgents()]);
+    const now = Date.now();
+    const dormant = !isActiveHours();
+
+    const agents = agentRows.map((a) => ({
+      id: a.id,
+      status: a.status,
+      staleSeconds: a.lastTickAt ? Math.round((now - a.lastTickAt.getTime()) / 1000) : null,
+      consecutiveFailures: a.consecutiveFailures ?? 0,
+      circuitBroken: circuitBroken(a.consecutiveFailures),
+      lastError: a.lastError ?? null,
+    }));
+
+    // "Stale" = hasn't completed a turn in well over its own cadence. Generous
+    // (3x the longest cadence, floored at 2h) so a slow agent or a dormant window
+    // never reads as a failure — we're detecting DEATH, not lateness.
+    const maxCadenceMs =
+      Math.max(...agentIds.map((id) => getProfile(id).role.tickCadenceMinutes)) * 60_000;
+    const staleThresholdSec = Math.max(2 * 3600, (maxCadenceMs * 3) / 1000);
+    const stale = agents.filter((a) => a.staleSeconds === null || a.staleSeconds > staleThresholdSec);
+    const broken = agents.filter((a) => a.circuitBroken);
+
+    // Dormancy and an exhausted budget are DELIBERATE quiet — they must not read
+    // as broken, or the signal is useless during the hours the town is asleep.
+    const reasons: string[] = [];
+    if (broken.length) reasons.push(`circuit-broken: ${broken.map((a) => a.id).join(", ")}`);
+    if (!dormant && !budgetExhausted && stale.length === agents.length && agents.length > 0) {
+      reasons.push(`no agent has completed a turn in ${Math.round(staleThresholdSec / 60)}m`);
+    }
+    if (!hasLlm()) reasons.push("no model provider configured");
+
+    const ok = reasons.length === 0;
+    return validated(HealthResponse, {
+      ok,
+      ts: new Date().toISOString(),
+      llm: hasLlm(),
+      budgetExhausted,
+      dormant,
+      agents,
+      ...(ok ? {} : { detail: reasons.join("; ") }),
+    });
+  }
+
+  // PROCESS liveness — ALWAYS 200 while we're serving and the DB is reachable.
+  //
+  // This is railway.json's `healthcheckPath`, so its STATUS CODE gates every
+  // deploy. It must never depend on whether the agents are happy: a
+  // circuit-broken agent returning 503 here would fail the healthcheck and roll
+  // the deploy back, meaning a sick agent would block the very deploy that fixes
+  // it. Agent health is reported in the BODY (`ok` + `detail` + per-agent rows)
+  // and gated by status code on /health/agents instead.
+  app.get("/health", async (c) => c.json(await healthBody()));
+
+  // AGENT liveness — 503 when the town is actually broken, for an external
+  // uptime monitor or cron alert. Same body as /health; the status code is the
+  // whole point. `ok` is false when any agent is circuit-broken, when no agent
+  // has completed a turn in well over its cadence, or when no model provider is
+  // configured. Deliberate quiet (dormant hours, exhausted budget) stays ok.
+  app.get("/health/agents", async (c) => {
+    const body = await healthBody();
+    return c.json(body, body.ok ? 200 : 503);
   });
 
   // --- POST /webhooks/resend/inbound --------------------------------------

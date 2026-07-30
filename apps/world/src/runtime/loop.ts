@@ -20,7 +20,17 @@ import { hasLlm } from "./client.js";
 import { getProfile, soulGitHash } from "./roles.js";
 import { buildTools, type AgentContext } from "./tools.js";
 import { buildDelta, writeCursor } from "./observation.js";
-import { getAgent, setStatus, setActivity, markTicked, moveAgent, zoneOf } from "../engine/agents.js";
+import {
+  getAgent,
+  setStatus,
+  setActivity,
+  markTicked,
+  moveAgent,
+  zoneOf,
+} from "../engine/agents.js";
+import { recordTurnFailure } from "./failure-handler.js";
+import { historyFor, transcriptDigest, agoPhrase } from "../engine/visitor-history.js";
+import * as hindsight from "./hindsight.js";
 import { agentsAtLocation } from "../engine/locations.js";
 import { visitorsAtLocation } from "../engine/visitors.js";
 import { appendEvent } from "../engine/events.js";
@@ -40,9 +50,61 @@ import {
   appendAgentLine,
   sanitizeVisitorText,
   endSession,
+  registerSessionEndedHook,
 } from "./chat.js";
 
 export const SLEEPING_BUDGET = "sleeping (budget)";
+
+// --- episodic memory of people ----------------------------------------------
+// Ask Hindsight what this agent remembers about a person, for the delta's
+// "Things you recall that may be relevant" section. Soft-fails to undefined:
+// episodic memory being down must never stop a reply.
+async function recallAboutVisitor(agentId: AgentId, name: string): Promise<string | undefined> {
+  try {
+    const r = await hindsight.recall(agentId, `conversations and visits with ${name}`, 600);
+    const text = r.ok ? r.text?.trim() : undefined;
+    return text ? text : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Write a finished conversation into episodic memory, so the NEXT visit has
+// something to recall. This closes the gap Hobby Thomas filed itself on Day 19:
+// "visits (P-Thomas's in particular) don't auto-log to episodic memory unless
+// actively remembered" — which is why `recall` always came back empty even
+// though the agents were calling it (74 times across the five threads).
+//
+// Fire-and-forget by design: this runs at session teardown and must never
+// surface an error to the visitor or block the sweep.
+export async function logVisitToEpisodicMemory(
+  agentId: AgentId,
+  visitorId: string,
+  sessionId: string,
+): Promise<void> {
+  try {
+    const [history, digest] = await Promise.all([
+      historyFor(agentId, visitorId, sessionId),
+      transcriptDigest(sessionId),
+    ]);
+    if (!digest) return; // nothing was actually said
+    const name = history?.name ?? "a visitor";
+    const nth = history?.priorSessions
+      ? ` (conversation ${history.priorSessions + 1} with them)`
+      : " (our first conversation)";
+    const when = new Date().toISOString().slice(0, 10);
+    await hindsight.remember(
+      agentId,
+      `Conversation with ${name} on ${when}${nth}:\n${digest}`,
+      "visit",
+    );
+  } catch (err) {
+    console.warn(
+      `[visit-log ${agentId}] failed to write visit to episodic memory:`,
+      (err as Error).message,
+    );
+  }
+}
 
 // Ordered-pair throttle for addressed-speech interrupts (speaker→addressee): an
 // addressed facet is pushed an immediate turn at most this often, so A↔B can't
@@ -90,6 +152,12 @@ async function executeInput(agentId: AgentId, input: AgentInput): Promise<ExecRe
 }
 
 registerExecutor(executeInput);
+
+// Every closed conversation becomes an episodic memory, so the next visit has
+// something for `recall` to find.
+registerSessionEndedHook(({ agentId, visitorId, sessionId }) =>
+  logVisitToEpisodicMemory(agentId, visitorId, sessionId),
+);
 
 // --- tick -------------------------------------------------------------------
 
@@ -151,9 +219,11 @@ async function runTickInput(agentId: AgentId, note?: string): Promise<TickResult
       trace,
     });
   } catch (err) {
-    console.warn(`[tick ${agentId}] error:`, (err as Error).message);
+    // NOTE: deliberately NOT markTicked() here. Stamping lastTickAt in the
+    // failure path is what let Researcher Thomas look healthy on /debug for the
+    // 27 days it was making zero LLM calls.
+    await recordTurnFailure(agentId, err, "tick");
     trace.end({ error: (err as Error).message });
-    await markTicked(agentId);
     return { ran: false, reason: "error", traceId: trace.traceId };
   }
 
@@ -218,11 +288,28 @@ async function runVisitorInput(
     metadata: { soulGitHash: soulGitHash(agentId) },
   });
 
+  // WHO IS THIS (the person tier, 2026-07-30). Before this, a visitor turn told
+  // the agent a display name and nothing else — so an agent with a rich model of
+  // Thomas in core memory greeted him with "your name's literally 'P-Thomas'
+  // too, funny coincidence". Two things fix that: the acquaintance fact (how many
+  // times we've talked, how long ago) and an actual RECALL against episodic
+  // memory, folded into the delta through the `recallText` seam that has been
+  // sitting unused since M3. Both are best-effort — neither may block a reply.
+  const history = await historyFor(agentId, input.visitorId, sessionId).catch(() => null);
+  const recallText = history?.priorSessions
+    ? await recallAboutVisitor(agentId, history.name)
+    : undefined;
+
   // The visitor's words ride on a fresh world delta so the agent answers from
   // where it actually is, with whoever's present — appended as an interrupt input
   // to its continuous thread (the conversation lives IN its consciousness).
-  const obs = await buildDelta(agentId);
-  const inputText = `${obs.text}\n\n## A visitor speaks to you\n${visitorName || "A visitor"} (here with you) says: "${text}"\n\nWhatever you write as plain text is spoken back to them, streamed word-for-word — so just talk, don't narrate what you're about to do (do it quietly with a tool instead). How you respond is entirely yours: engage warmly, be brief, or stay in your own world if that's truer to the moment — they share the town with you, they aren't an audience you owe a performance. You keep all your tools (walk somewhere, make something, check your memory). One thing to watch: if you use a tool mid-turn — checking mail, looking something up, sending a note — don't let your last line be just a recap of having done that, or a bare sign-off, while whatever you actually found sits unsaid. Brushing them off is fine; doing the work and then not telling them what it turned up isn't — say it, even in one line, or don't go looking. When a conversation has run its course, say your goodbye and call leave_chat in the same message.`;
+  const obs = await buildDelta(agentId, { recallText, excludeSessionId: sessionId });
+  const acquaintance = history?.priorSessions
+    ? ` You've talked with them ${history.priorSessions === 1 ? "once" : `${history.priorSessions} times`} before${
+        history.lastSeenAt ? `, most recently ${agoPhrase(history.lastSeenAt)}` : ""
+      } — if you remember any of it, talk to them like someone you know rather than a stranger.`
+    : "";
+  const inputText = `${obs.text}\n\n## A visitor speaks to you\n${visitorName || "A visitor"} (here with you) says: "${text}"\n${acquaintance}\nWhatever you write as plain text is spoken back to them, streamed word-for-word — so just talk, don't narrate what you're about to do (do it quietly with a tool instead). How you respond is entirely yours: engage warmly, be brief, or stay in your own world if that's truer to the moment — they share the town with you, they aren't an audience you owe a performance. You keep all your tools (walk somewhere, make something, check your memory). One thing to watch: if you use a tool mid-turn — checking mail, looking something up, sending a note — don't let your last line be just a recap of having done that, or a bare sign-off, while whatever you actually found sits unsaid. Brushing them off is fine; doing the work and then not telling them what it turned up isn't — say it, even in one line, or don't go looking. When a conversation has run its course, say your goodbye and call leave_chat in the same message.`;
 
   const ctx: AgentContext = {
     agentId,
@@ -258,7 +345,7 @@ async function runVisitorInput(
       stream: handlers,
     });
   } catch (err) {
-    console.warn(`[visitor ${agentId}] turn error:`, (err as Error).message);
+    await recordTurnFailure(agentId, err, "visitor");
     trace.end({ error: (err as Error).message });
     const note = "Sorry — something glitched on our end.";
     await handlers.onFrame({ type: "text", text: note, agent: agentId });

@@ -21,6 +21,7 @@ import { objectsAtLocation, type WorldObjectRow } from "../engine/objects.js";
 import { inboxFor, type MessageRow } from "../engine/messages.js";
 import { unreadInboundFor, type InboundMailRow } from "../engine/inbound-mail.js";
 import { coreMemorySnapshot } from "../engine/memory.js";
+import { historyForMany, agoPhrase } from "../engine/visitor-history.js";
 import {
   visitorsAtLocation,
   arrivalTimesAtLocation,
@@ -129,6 +130,23 @@ export function renderOthersLine(
     .join(", ");
 }
 
+// The acquaintance clause appended to a visitor's presence line. Deliberately a
+// PLAIN FACT with no instruction attached — same stance as the rest of this
+// section (the agent decides what to do about it; see the de-prescription note
+// below). It gives the agent the one thing it was missing: a reason to know it
+// has met this person, and therefore a reason to reach for `recall`.
+//
+// Says nothing at all for a genuine first meeting, so a new visitor's line is
+// byte-identical to before this change.
+export function renderAcquaintance(
+  h: { priorSessions: number; lastSeenAt: Date | null } | undefined,
+): string {
+  if (!h || h.priorSessions <= 0) return "";
+  const times = h.priorSessions === 1 ? "once before" : `${h.priorSessions} times before`;
+  const when = h.lastSeenAt ? `, most recently ${agoPhrase(h.lastSeenAt)}` : "";
+  return ` — you've talked ${times}${when}`;
+}
+
 // Render the location-aware Visitors section (design doc §2; de-prescribed in
 // M2.1). PLAIN FACT, no instruction: visitor presence is reported the same way
 // any other co-presence is — who's here and how recently they arrived. Whether
@@ -143,6 +161,10 @@ export function renderVisitorsSection(
   townCount: number,
   now: number,
   zoneLabel?: (zoneId: string) => string | undefined,
+  // HISTORY (the person tier). Without this the agent was told a name and
+  // nothing else, so it had no reason to suspect it had ever met anyone — the
+  // direct cause of "do you not remember? I've visited a ton of times".
+  history?: Map<string, { priorSessions: number; lastSeenAt: Date | null }>,
 ): string {
   if (here.length === 0) {
     if (townCount > 0) {
@@ -156,7 +178,7 @@ export function renderVisitorsSection(
     .map((v) => {
       const label = v.zone ? zoneLabel?.(v.zone) : undefined;
       const spot = label ? `, near ${label}` : "";
-      return `${v.name} is here with you${spot}${arrivalPhrase(arrivalMs.get(v.id), now)}`;
+      return `${v.name} is here with you${spot}${arrivalPhrase(arrivalMs.get(v.id), now)}${renderAcquaintance(history?.get(v.id))}`;
     })
     .join("; ");
   const elsewhere = Math.max(0, townCount - here.length);
@@ -353,7 +375,13 @@ export function renderEvents(events: WorldEvent[], location: LocationId, viewer:
 // Appended to the continuous thread as the tick input by the loop.
 export async function buildDelta(
   agentId: AgentId,
-  opts: { recallText?: string } = {},
+  opts: {
+    recallText?: string;
+    // The live chat session, when this delta is being built for a visitor turn.
+    // Excluded from the prior-visit count so an in-progress conversation never
+    // reports itself as history.
+    excludeSessionId?: string;
+  } = {},
 ): Promise<DeltaPacket> {
   const agent = await getAgent(agentId);
   if (!agent) throw new Error(`unknown agent ${agentId}`);
@@ -377,10 +405,18 @@ export async function buildDelta(
         .where(eq(schema.artifacts.locationId, location)),
     ]);
   const inbox = inboxRes.rows;
-  const arrivalMs = await arrivalTimesAtLocation(
-    location,
-    visitorsHere.map((v) => v.id),
-  );
+  const [arrivalMs, visitorHistory] = await Promise.all([
+    arrivalTimesAtLocation(
+      location,
+      visitorsHere.map((v) => v.id),
+    ),
+    // Best-effort: a history lookup must never be what stops an agent ticking.
+    historyForMany(
+      agentId,
+      visitorsHere.map((v) => v.id),
+      opts.excludeSessionId,
+    ).catch(() => new Map()),
+  ]);
 
   // NOTICE-PUSH filter: co-located events I did not author. Self-events are
   // already in the thread; elsewhere-headlines are pull, not push.
@@ -436,6 +472,7 @@ export async function buildDelta(
       visitorCount,
       Date.now(),
       (zoneId) => zonesHere.find((z) => z.id === zoneId)?.label,
+      visitorHistory,
     ),
     ``,
     `## Your anchors (core memory — keep these short, current, and true at reflection)`,

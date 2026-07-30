@@ -13,6 +13,8 @@ import { config } from "../config.js";
 import { hasLlm } from "./client.js";
 import { getProfile } from "./roles.js";
 import { enqueue } from "./queue.js";
+import { circuitBroken } from "./failures.js";
+import { getAgent } from "../engine/agents.js";
 import { isOvernight, isActiveHours, currentPhase } from "./clock.js";
 import { appendEvent } from "../engine/events.js";
 import { db, schema } from "../db/client.js";
@@ -103,6 +105,23 @@ async function nextDelayMs(agentId: AgentId): Promise<number> {
 // the turn settles.
 async function tickAgent(agentId: AgentId): Promise<void> {
   try {
+    // CIRCUIT BREAKER (2026-07-30): stop enqueuing for an agent that has failed
+    // N consecutive turns. Without this, a permanently-failing agent (dead API
+    // key, no credits, un-replayable thread) is retried at full cadence forever
+    // — the out-of-credits incident burned ~10 futile calls/hour/agent for 11
+    // hours, and Researcher's poisoned thread did it for 27 days. The timer keeps
+    // rescheduling, so a repaired agent resumes on its own once the streak is
+    // cleared (a successful turn or a reseed resets it).
+    const agent = await getAgent(agentId);
+    if (circuitBroken(agent?.consecutiveFailures)) {
+      console.warn(
+        `[scheduler] skipping ${agentId} — circuit broken ` +
+          `(${agent?.consecutiveFailures} consecutive failures). Last error: ${
+            agent?.lastError?.slice(0, 200) ?? "unknown"
+          }`,
+      );
+      return;
+    }
     // Nightly reflection ALWAYS runs — exempt from both the budget cap and the
     // waking-hours window. It's the end-of-day ritual (diary + core-memory
     // curation), cheap and important; we never want to skip it. Reflection's own

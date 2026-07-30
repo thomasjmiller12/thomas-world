@@ -127,7 +127,17 @@ export const agents = pgTable("agents", {
   zone: text("zone"),
   status: text("status").notNull().default("idle"),
   activity: text("activity"),
+  // Set ONLY when a turn actually completed. Before 0014 this was also stamped
+  // on total failure, which is how Researcher looked healthy on /debug for the
+  // 27 days it was clinically dead — the one field that reads as a liveness
+  // signal was identical on success and hard failure.
   lastTickAt: timestamp("last_tick_at", { withTimezone: true }),
+  // Failure bookkeeping (0014). `consecutiveFailures` resets to 0 on any
+  // successful turn and drives both the circuit breaker and thread auto-recovery
+  // (a poisoned thread fails deterministically forever otherwise).
+  lastErrorAt: timestamp("last_error_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  consecutiveFailures: integer("consecutive_failures").notNull().default(0),
 });
 
 // --- agent_threads (M3: continuity) -----------------------------------------

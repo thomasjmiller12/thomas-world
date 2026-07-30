@@ -292,21 +292,56 @@ const EPHEMERAL_BLOCK_TYPES = new Set([
 
 // Prepare a thread for persistence: (1) drop cache_control from every block (we
 // add a fresh breakpoint per call; persisting them would exceed the API's
-// 4-breakpoint limit) and (2) drop ephemeral code-exec/upload blocks (see above).
+// 4-breakpoint limit), (2) drop ephemeral code-exec/upload blocks (see above),
+// and (3) collapse multi-`thinking` assistant messages (see below).
 // A message left with empty content after filtering is dropped entirely.
-function stripForPersist(messages: ThreadMessage[]): ThreadMessage[] {
+export function stripForPersist(messages: ThreadMessage[]): ThreadMessage[] {
   const out: ThreadMessage[] = [];
   for (const m of messages) {
     if (typeof m.content === "string") {
       out.push(m);
       continue;
     }
-    const content = m.content
-      .filter((b) => !EPHEMERAL_BLOCK_TYPES.has((b as { type: string }).type))
-      .map((b) =>
-        "cache_control" in b && b.cache_control != null ? { ...b, cache_control: undefined } : b,
-      );
+    const content = collapseThinking(
+      m.content
+        .filter((b) => !EPHEMERAL_BLOCK_TYPES.has((b as { type: string }).type))
+        .map((b) =>
+          "cache_control" in b && b.cache_control != null ? { ...b, cache_control: undefined } : b,
+        ),
+    );
     if (content.length > 0) out.push({ ...m, content });
   }
   return out;
+}
+
+// THE POISONED-THREAD GUARD (2026-07-30). An assistant message carrying TWO
+// consecutive `thinking` blocks is accepted when the API produces it but REJECTED
+// when we replay it:
+//
+//   400 messages.N.content.M: `thinking` or `redacted_thinking` blocks in the
+//   latest assistant message cannot be modified.
+//
+// Because the thread is replayed on every single turn, one such message bricks
+// the agent permanently. Researcher Thomas hit this on 2026-07-03 and made zero
+// LLM calls for the following 27 days; the offending blocks both had EMPTY
+// thinking text and carried only signatures, so dropping the extras costs no
+// reasoning content. We keep the first thinking block and drop later ones,
+// which was verified against the live API to restore the thread to 200 OK.
+function collapseThinking(blocks: ThreadMessage["content"]): ThreadMessage["content"] {
+  if (typeof blocks === "string") return blocks;
+  let seenThinking = false;
+  const kept = blocks.filter((b) => {
+    const t = (b as { type?: string }).type;
+    if (t !== "thinking" && t !== "redacted_thinking") return true;
+    if (seenThinking) return false;
+    seenThinking = true;
+    return true;
+  });
+  if (kept.length !== blocks.length) {
+    console.warn(
+      `[thread] dropped ${blocks.length - kept.length} extra thinking block(s) before persist ` +
+        `(would poison the thread on replay).`,
+    );
+  }
+  return kept;
 }

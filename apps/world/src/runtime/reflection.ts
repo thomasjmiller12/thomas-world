@@ -29,6 +29,7 @@ import { createArtifact, recentArtifactsBy } from "../engine/artifacts.js";
 import { reflect as hindsightReflect } from "./hindsight.js";
 import { startTrace } from "./tracing.js";
 import { runTurn } from "./turn.js";
+import { recordTurnFailure } from "./failure-handler.js";
 import { randomUUID } from "node:crypto";
 import type { BetaRunnableTool } from "@anthropic-ai/sdk/lib/tools/BetaRunnableTool.mjs";
 
@@ -105,7 +106,10 @@ async function runReflectionTurn(agentId: AgentId): Promise<{ ran: boolean }> {
     });
     if (!outcome.refused) diaryText = outcome.finalText;
   } catch (err) {
-    console.warn(`[reflection ${agentId}] error:`, (err as Error).message);
+    // Reflection runs on the same continuous thread, so a poisoned-thread error
+    // shows up here too — often FIRST, since reflection keeps firing overnight
+    // while ticks are gated by waking hours.
+    await recordTurnFailure(agentId, err, "reflection");
     trace.end({ error: (err as Error).message });
     return { ran: false };
   }
