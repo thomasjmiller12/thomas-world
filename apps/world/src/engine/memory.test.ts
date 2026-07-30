@@ -111,6 +111,7 @@ const {
   memRename,
   listMemoryFiles,
   MAX_FILE_CHARS,
+  MAX_TOTAL_CHARS,
 } = await import("./memory.js");
 
 describe("memory-tool handler (storage backing betaMemoryTool)", () => {
@@ -168,6 +169,60 @@ describe("memory-tool handler (storage backing betaMemoryTool)", () => {
     await expect(
       memCreate("career", "/memories/big.md", "x".repeat(MAX_FILE_CHARS + 1)),
     ).rejects.toThrow(/char cap/i);
+  });
+
+  it("allows a file exactly at the per-file cap (boundary is inclusive)", async () => {
+    await expect(
+      memCreate("career", "/memories/exact.md", "x".repeat(MAX_FILE_CHARS)),
+    ).resolves.toBe("created /memories/exact.md");
+  });
+
+  // The per-file cap error used to just say "file exceeds N char cap," which
+  // read as "trim this file" — that's the exact phrasing that produced Career
+  // Thomas telling a visitor his memory was "capped out — need to trim before
+  // adding more" while the total budget sat mostly empty. The fix is naming
+  // the actual remedy (another file) instead of implying lossy compression.
+  it("suggests splitting into another file when the per-file cap is hit", async () => {
+    await expect(
+      memCreate("career", "/memories/big.md", "x".repeat(MAX_FILE_CHARS + 1)),
+    ).rejects.toThrow(/split this into another file.*\/memories\/people\//i);
+  });
+
+  // Three files, each comfortably under MAX_FILE_CHARS, whose first two
+  // thirds sum to exactly (MAX_TOTAL_CHARS - third): this is derived from the
+  // exported constants (not hardcoded chars) so it stays correct if the caps
+  // are rebalanced again, as long as splitting the total three ways still
+  // fits under the per-file cap — true both before and after this change
+  // (that's the whole point of raising MAX_FILE_CHARS: reaching the total
+  // now takes several files, not one).
+  const third = Math.floor(MAX_TOTAL_CHARS / 3);
+  const remainder = MAX_TOTAL_CHARS - 2 * third; // what's left after two `third`-sized files
+
+  it("enforces the total cap across multiple files even when each is under the per-file cap", async () => {
+    await memCreate("builder", "/memories/a.md", "x".repeat(third));
+    await memCreate("builder", "/memories/b.md", "x".repeat(third));
+    await expect(
+      memCreate("builder", "/memories/c.md", "x".repeat(remainder + 1)), // one over the total
+    ).rejects.toThrow(/char cap/i);
+  });
+
+  it("allows total usage exactly at the total cap (boundary is inclusive)", async () => {
+    await memCreate("builder", "/memories/a.md", "x".repeat(third));
+    await memCreate("builder", "/memories/b.md", "x".repeat(third));
+    await expect(
+      memCreate("builder", "/memories/c.md", "x".repeat(remainder)), // exactly the total
+    ).resolves.toBe("created /memories/c.md");
+  });
+
+  // Unlike the per-file cap, there's no "move it to another file" fix once
+  // the TOTAL is full — pruning is the honest instruction here, so the two
+  // error messages should read differently.
+  it("suggests pruning (not splitting) when the total cap is hit", async () => {
+    await memCreate("writer", "/memories/a.md", "x".repeat(third));
+    await memCreate("writer", "/memories/b.md", "x".repeat(third));
+    await expect(
+      memCreate("writer", "/memories/c.md", "x".repeat(remainder + 1)),
+    ).rejects.toThrow(/prune something stale/i);
   });
 
   it("rejects path traversal", async () => {
