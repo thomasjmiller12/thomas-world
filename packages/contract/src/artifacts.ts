@@ -12,8 +12,10 @@ import { z } from "zod";
 //                  BUILT — rendered in a sandboxed iframe, mountable on world
 //                  objects, with a per-artifact keyed state store visitors and
 //                  the owning agent both read/write (programmable-world D1/D3)
-//  - shared_page   a page/article an agent pulled in to share on a room screen
-//                  (read_web_page → share_to_screen); markdown-ish text body
+//  - shared_page   a page/article an agent pulled in to share on a room screen;
+//                  markdown-ish text body. The share_to_screen tool that made
+//                  these was deleted 2026-07-30 (zero measured usage) — the
+//                  kind stays for historical rows and existing renderers.
 export const artifactKinds = [
   "blog_post",
   "project_log",

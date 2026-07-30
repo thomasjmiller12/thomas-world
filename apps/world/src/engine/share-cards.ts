@@ -1,8 +1,9 @@
 // Share cards (M2.2 — Part 4). Builds the one ShareCard shape from real records
 // — an agent's artifact, a curated external reference, or a portfolio proof —
-// for the chat share tools. The server owns card construction and the allowlist
-// check, so agents share by id and can never emit an arbitrary URL. Also powers
-// `search_shareables`, the read-only "what can I show this visitor" lookup.
+// for the chat share_card tool. The server owns card construction and the
+// allowlist check, so agents share by id and can never emit an arbitrary URL.
+// Also powers `search_shareables`, the read-only "what can I show this
+// visitor" lookup.
 
 import type {
   AgentId,
@@ -149,8 +150,8 @@ export function shareCardFromProof(proof: PortfolioProof): ShareCard {
   };
 }
 
-// `share_reference` / `share_proof` entry points used by the tools — resolve +
-// allowlist-check, return a card or null.
+// `share_card` (kind: external_reference / portfolio_proof) entry points —
+// resolve + allowlist-check, return a card or null.
 export async function shareCardForReferenceId(referenceId: string): Promise<ShareCard | null> {
   const row = await getReferenceRow(referenceId);
   if (!row || !row.public) return null;
@@ -168,13 +169,11 @@ export async function shareCardForProofId(proofId: string): Promise<ShareCard | 
 export type ShareableKind = "artifact" | "portfolio_proof" | "external_reference";
 
 export interface ShareableHit {
-  // The id the agent passes to a share tool (raw id, not the card's prefixed id).
+  // The id the agent passes to share_card (raw id, not the card's prefixed id).
   shareId: string;
   kind: ShareableKind;
   title: string;
   summary: string;
-  // Which tool shares this hit.
-  tool: "share_artifact" | "share_reference" | "share_proof";
   label: string; // a short "[kind/subkind]" badge for the listing
 }
 
@@ -204,7 +203,6 @@ export async function searchShareables(opts: SearchShareablesOpts): Promise<Shar
         kind: "external_reference",
         title: r.title,
         summary: r.summary,
-        tool: "share_reference",
         label: `external_reference/${r.kind}`,
       });
     }
@@ -219,7 +217,6 @@ export async function searchShareables(opts: SearchShareablesOpts): Promise<Shar
         kind: "portfolio_proof",
         title: p.title,
         summary: p.summary,
-        tool: "share_proof",
         label: "portfolio_proof",
       });
     }
@@ -235,7 +232,6 @@ export async function searchShareables(opts: SearchShareablesOpts): Promise<Shar
         kind: "artifact",
         title: a.title,
         summary: artifactKindLabel(a.kind),
-        tool: "share_artifact",
         label: `artifact/${a.kind}`,
       });
     }
@@ -249,14 +245,8 @@ export function renderShareableHits(hits: ShareableHit[]): string {
   if (hits.length === 0) {
     return "No shareable references match that. You can answer from your own context, but say you don't have a card to share yet (you can request one via the office outbox).";
   }
-  const lines = hits.map((h, i) => {
-    const idHint =
-      h.tool === "share_artifact"
-        ? `share_artifact id ${h.shareId}`
-        : h.tool === "share_reference"
-          ? `share_reference id ${h.shareId}`
-          : `share_proof id ${h.shareId}`;
-    return `${i + 1}. [${h.label}] ${h.title} — ${h.summary} (${idHint})`;
-  });
+  const lines = hits.map(
+    (h, i) => `${i + 1}. [${h.label}] ${h.title} — ${h.summary} (share_card id ${h.shareId}, kind ${h.kind})`,
+  );
   return `Found ${hits.length} shareable${hits.length === 1 ? "" : "s"}:\n${lines.join("\n")}`;
 }

@@ -66,14 +66,13 @@ describe("tool location gates (plan §3.3, enforced server-side)", () => {
       "send_dm",
       "broadcast",
       "create_artifact",
-      "update_artifact",
+      "edit_artifact",
       "list_my_artifacts",
       "post_bulletin",
       "publish_blog_post",
       "memory",
       "remember",
       "recall",
-      "forget",
       "list_notes",
       "read_note",
       "search_notes",
@@ -85,12 +84,28 @@ describe("tool location gates (plan §3.3, enforced server-side)", () => {
     }
     // M3 speech unification: `say` is gone (plain text is speech). The paced-scene
     // tools and group-chat invite are gone too.
+    //
+    // Tool-diet pass (2026-07-30): forget/move_object/remove_object/
+    // share_to_screen were deleted (zero measured calls across the town's full
+    // recorded history); update_artifact was renamed to edit_artifact (agents
+    // were observed inventing that exact name and getting a not-found error);
+    // share_artifact/share_reference/share_proof (also zero calls) were merged
+    // into one share_card tool — see the "only in a visitor turn" describe
+    // block below for its presence/absence coverage.
     for (const removed of [
       "say",
       "start_conversation",
       "reply",
       "end_conversation",
       "invite_to_chat",
+      "forget",
+      "move_object",
+      "remove_object",
+      "share_to_screen",
+      "update_artifact",
+      "share_artifact",
+      "share_reference",
+      "share_proof",
     ]) {
       expect(got).not.toContain(removed);
     }
@@ -114,6 +129,15 @@ describe("invite_visitor — offered only within a visitor turn (Phase C.5)", ()
     // getSession resolves null — the tool's own guard catches that too.
     const out = await tool.run({ location: "town" });
     expect(out as string).toMatch(/no visitor in this conversation/i);
+  });
+});
+
+describe("share_card — offered only within a visitor turn, merged from three tools (2026-07-30)", () => {
+  it("appears when a chat session is set, absent otherwise", () => {
+    const inChat: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
+    expect(names(inChat)).toContain("share_card");
+    const idle: AgentContext = { agentId: "builder", location: "workshop" };
+    expect(names(idle)).not.toContain("share_card");
   });
 });
 
