@@ -1,9 +1,15 @@
 // World-object engine (MUD embodiment). READ helpers over the world_objects
 // table plus the write paths: appendNote (leave_note), setObjectState (the
 // director's object surface), and — since the programmable-world slice — the
-// structural verbs createObject / moveObject / removeObject / attachArtifact
-// behind place_object / move_object / remove_object / mount_artifact. Each
-// write emits its object.* event; the renderer materializes changes live.
+// structural verbs createObject / attachArtifact behind place_object /
+// mount_artifact. Each write emits its object.* event; the renderer
+// materializes changes live.
+//
+// moveObject / removeObject (behind the move_object / remove_object tools)
+// were deleted 2026-07-30 — zero calls to either tool across the town's full
+// recorded history, so placed objects are permanent once set (place_object's
+// own copy says so). object.moved / object.removed stay in the contract event
+// taxonomy and observation.ts's renderer since historical rows still use them.
 
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type {
@@ -229,57 +235,6 @@ export async function createObject(input: CreateObjectInput): Promise<WorldObjec
     },
   });
   return row;
-}
-
-export async function moveObject(
-  objectId: string,
-  agent: AgentId,
-  toZone: string,
-): Promise<{ ok: boolean; reason?: string }> {
-  const obj = await getObject(objectId);
-  if (!obj) return { ok: false, reason: "object-missing" };
-  if (!obj.movable) return { ok: false, reason: "immovable" };
-  const location = obj.locationId as LocationId;
-  if (!zoneExists(toZone, location)) return { ok: false, reason: "zone-not-here" };
-  const fromZone = obj.zone;
-  const placement = placementForZone(location, toZone, obj.id);
-  await db
-    .update(worldObjects)
-    .set({ zone: toZone, placement, updatedAt: new Date() })
-    .where(eq(worldObjects.id, objectId));
-  await appendEvent({
-    type: "object.moved",
-    agentId: agent,
-    locationId: location,
-    visibility: "location",
-    payload: { objectId, agent, location, fromZone, toZone },
-  });
-  return { ok: true };
-}
-
-// Remove an agent-placed object. Seeded fixtures (movable: false) are
-// structural and refuse; anything movable is fair game — the town is a commons.
-export async function removeObject(
-  objectId: string,
-  agent: AgentId,
-): Promise<{ ok: boolean; reason?: string; displayName?: string }> {
-  const obj = await getObject(objectId);
-  if (!obj) return { ok: false, reason: "object-missing" };
-  if (!obj.movable) return { ok: false, reason: "immovable" };
-  await db.delete(worldObjects).where(eq(worldObjects.id, objectId));
-  await appendEvent({
-    type: "object.removed",
-    agentId: agent,
-    locationId: obj.locationId as LocationId,
-    visibility: "public",
-    payload: {
-      objectId,
-      agent,
-      location: obj.locationId,
-      displayName: obj.displayName,
-    },
-  });
-  return { ok: true, displayName: obj.displayName };
 }
 
 // setObjectState: the Director/Effect object-surface write path. Loads the

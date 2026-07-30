@@ -51,10 +51,9 @@ import {
   attachedArtifactsFor,
   recentObjectEvents,
   createObject,
-  moveObject,
-  removeObject,
   attachArtifact,
   objectsByOwner,
+  getObject,
 } from "../engine/objects.js";
 import { OBJECT_TEMPLATES } from "../engine/object-templates.js";
 import { getArtifactState, setArtifactStateKey } from "../engine/artifact-state.js";
@@ -144,6 +143,11 @@ function dedupRead(agentId: string, key: string, content: string, label: string)
 }
 
 const artifactKindEnum = z.enum(artifactKinds as unknown as [string, ...string[]]);
+
+// Shared by search_shareables (inside buildTools) and the chat-only share_card
+// tool (buildShareTools, a separate top-level function) — module scope so both
+// can reference the same enum.
+const shareableKindEnum = z.enum(["artifact", "portfolio_proof", "external_reference"]);
 
 // Search the 648-template object library by name / tag / category. Pure, so
 // it's unit-testable; returns names best-first with footprint hints.
@@ -402,7 +406,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   const leave_note = betaZodTool({
     name: "leave_note",
     description:
-      "Jot a short note on something where you are — a line on the workbench, a card by the sign, a thought left in a corner. It stays put and you'll see it again later. Name an object (e.g. 'workbench') OR a zone here. Like jotting on a real desk, not filing paperwork — only when you actually have something to leave.",
+      "Jot a short note on something where you are — a line on the workbench, a card by the sign, a thought left in a corner. It stays put and you'll see it again later. Name an object (e.g. 'workbench') OR a zone here. Like jotting on a real desk, not filing paperwork — only when you actually have something to leave (there's no way to erase or edit a note once it's down, so it's genuinely permanent).",
     inputSchema: z.object({
       object: z.string().max(60).optional(),
       zone: z.string().max(60).optional(),
@@ -505,7 +509,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   const create_artifact = betaZodTool({
     name: "create_artifact",
     description:
-      "Make a durable thing that persists in the world and that visitors can find. Kinds: blog_post, project_log, research_note, fun_list, diary_entry. (Bulletins use post_bulletin; daily_digest is the world's job.) It's anchored to your facet's home fixture automatically.",
+      "Make a durable thing that persists in the world and that visitors can find — this is the one tool for making something new, whether you'd call that saving, writing, or making it. Kinds: blog_post, project_log, research_note, fun_list, diary_entry. (Bulletins use post_bulletin; daily_digest is the world's job.) It's anchored to your facet's home fixture automatically.",
     inputSchema: z.object({
       kind: artifactKindEnum,
       title: z.string().min(1).max(160),
@@ -528,7 +532,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
           `Your desk is already covered in today's work — making a fourth new thing ` +
           `would mean none of them get the attention they deserve. Today you made:\n${recentList}\n` +
           `If this idea is real, it probably belongs INSIDE one of those — use ` +
-          `update_artifact to revise or extend it. Tomorrow is another day for new things.`
+          `edit_artifact to revise or extend it. Tomorrow is another day for new things.`
         );
       }
       const row = await createArtifact({
@@ -542,9 +546,13 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     },
   });
 
-  const update_artifact = betaZodTool({
-    name: "update_artifact",
-    description: "Revise one of your existing artifacts by its id. You can change the title, body, or both.",
+  // Named `edit_artifact` (not `update_artifact`): measured tool-use evidence
+  // showed agents inventing "edit_artifact" and getting a not-found error —
+  // renamed toward the verb they already reached for (2026-07-30 tool-diet pass).
+  const edit_artifact = betaZodTool({
+    name: "edit_artifact",
+    description:
+      "Revise one of your existing artifacts by its id — change the title, body, or both. This is the one editing verb, whatever you'd call it (edit/revise/update) — there's no separate write_artifact.",
     inputSchema: z.object({
       id: z.string().min(1),
       title: z.string().max(160).optional(),
@@ -555,7 +563,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       if (!existing) return `No artifact with id ${id}.`;
       if (existing.agentId !== ctx.agentId) return "That's not yours to edit.";
       await updateArtifact(id, { title, body });
-      await ctx.onAction?.("update_artifact", `revises "${title ?? existing.title}"`);
+      await ctx.onAction?.("edit_artifact", `revises "${title ?? existing.title}"`);
       return `Updated "${title ?? existing.title}".`;
     },
   });
@@ -563,17 +571,22 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   const list_my_artifacts = betaZodTool({
     name: "list_my_artifacts",
     description:
-      "List the things YOU'VE made — your own artifacts — most recent first, with each one's id, kind, title, and whether it's published. Use this whenever you need an artifact's id (to update_artifact or publish_blog_post it) or to take stock of your own work.",
+      "List the things YOU'VE made — your own artifacts — most recent first, with each one's id, kind, title, whether it's published, and whether it's actually mounted anywhere. Use this whenever you need an artifact's id (to edit_artifact or publish_blog_post it), or to take stock of your own work — including confirming a build really got mounted (writing it down elsewhere doesn't make it so; this reads the real state).",
     inputSchema: z.object({}),
     run: async () => {
       const rows = await listArtifacts({ agent: ctx.agentId }, 20);
       if (rows.length === 0) return "You haven't made anything yet.";
-      return rows
-        .map(
-          (a) =>
-            `- ${a.kind} "${a.title}" (id ${a.id})${a.published ? " [published]" : ""}`,
-        )
-        .join("\n");
+      const lines = await Promise.all(
+        rows.map(async (a) => {
+          let mounted = "";
+          if (a.objectId) {
+            const obj = await getObject(a.objectId);
+            mounted = obj ? ` — mounted on the ${obj.displayName}` : "";
+          }
+          return `- ${a.kind} "${a.title}" (id ${a.id})${a.published ? " [published]" : ""}${mounted}`;
+        }),
+      );
+      return lines.join("\n");
     },
   });
 
@@ -632,7 +645,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   const publish_blog_post = betaZodTool({
     name: "publish_blog_post",
     description:
-      "Publish one of your blog_post artifacts — make it public via the cafe press. You must be at the cafe. Pass the artifact id.",
+      "Publish one of your blog_post artifacts — make it public via the cafe press. You must be at the cafe. Pass the artifact id. Only blog posts have this extra step — every other kind (project logs, research notes, fun lists, diary entries) is already visible to visitors the moment create_artifact makes it; there's no general publish_artifact.",
     inputSchema: z.object({ artifact_id: z.string().min(1) }),
     run: async ({ artifact_id }) => {
       const gate = checkGate("publish_blog_post", ctx.location);
@@ -656,14 +669,14 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     }),
     run: async ({ title, html }) => {
       // Building discipline: an app is a big swing — two a day is plenty. Revise
-      // with update_artifact instead of stamping out variants.
+      // with edit_artifact instead of stamping out variants.
       const todaysApps = await recentArtifactsBy(ctx.agentId, 24, "interactive" as never);
       if (todaysApps.length >= 2) {
         return (
           `You've already built ${todaysApps.length} apps today (${todaysApps
             .map((a) => `"${a.title}"`)
             .join(", ")}). ` +
-          `Polish one of those with update_artifact instead — a town full of half-finished apps reads as noise, not craft.`
+          `Polish one of those with edit_artifact instead — a town full of half-finished apps reads as noise, not craft.`
         );
       }
       const row = await createArtifact({
@@ -680,25 +693,31 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     },
   });
 
+  // mount_artifact's result strings are deliberately unambiguous (2026-07-30):
+  // a real incident had Builder's core memory claim "mounted on 'Lights Out
+  // cabinet'" when mount_artifact was never actually called — the cabinet's
+  // attachment list stayed empty and the finished build was invisible to
+  // visitors. Every branch below says plainly whether the mount happened; use
+  // list_my_artifacts to check the REAL state rather than trusting a memory note.
   const mount_artifact = betaZodTool({
     name: "mount_artifact",
     description:
-      "Mount an artifact (yours or another facet's — an app, a page, a note) onto a physical object HERE in the room you're in, so visitors can click the object and open it. Name the object the way you see it (e.g. 'monitor', 'the dumb sign', or something you placed).",
+      "Mount an artifact (yours or another facet's — an app, a page, a note) onto a physical object HERE in the room you're in, so visitors can click the object and open it. Name the object the way you see it (e.g. 'monitor', 'the dumb sign', or something you placed). This call is the ONLY thing that actually mounts it — describing the mount in a note or your memory doesn't make it true; list_my_artifacts shows you what's really attached.",
     inputSchema: z.object({
       artifact_id: z.string().min(1),
       object: z.string().min(1).max(80),
     }),
     run: async ({ artifact_id, object }) => {
       const obj = await findObjectAtLocation(ctx.location, object);
-      if (!obj) return `There's no "${object}" here in ${ctx.location}. look_around to see what's actually in the room.`;
+      if (!obj) return `Nothing got mounted — there's no "${object}" here in ${ctx.location}. look_around to see what's actually in the room.`;
       const art = await getArtifact(artifact_id);
-      if (!art) return `No artifact with id ${artifact_id}.`;
+      if (!art) return `Nothing got mounted — no artifact with id ${artifact_id}.`;
       const r = await attachArtifact(obj.id, artifact_id, ctx.agentId);
-      if (!r.ok) return `Couldn't mount it (${r.reason}).`;
+      if (!r.ok) return `Nothing got mounted — couldn't attach it (${r.reason}).`;
       await ctx.onAction?.("mount_artifact", `mounts "${art.title}" on the ${obj.displayName}`);
       return (
-        `Mounted "${art.title}" on the ${obj.displayName} — a visitor clicking it (or its ✦ marker) opens it, ` +
-        `and it's listed in the town Chronicle under Made. In a chat, share_artifact ${artifact_id} drops it as a card they can open right there — the surest way to put it in someone's hands.`
+        `Mounted. "${art.title}" is live on the ${obj.displayName} right now — a visitor clicking it (or its ✦ marker) opens it, ` +
+        `and it's listed in the town Chronicle under Made. In a chat, share_card it (kind: artifact, id ${artifact_id}) to drop it as an openable card — the surest way to put it in someone's hands.`
       );
     },
   });
@@ -736,7 +755,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       if (mine.length >= 30) {
         return (
           `You already have ${mine.length} placed objects around town — the place is starting to look like your storage unit. ` +
-          `remove_object something you no longer need before placing more.`
+          `Placed objects are permanent (there's no move/remove), so let this be a reason to place with more intent, not less.`
         );
       }
       const targetZone = zone && zoneExists(zone, ctx.location) ? zone : undefined;
@@ -758,54 +777,16 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       await ctx.onAction?.("place_object", `sets up ${name}`);
       return (
         `Placed "${name}" (${describeTemplate(template)}) ${targetZone ? `in ${targetZone}` : "here"} — object id ${row.id}. ` +
-        `It's on screen now. You can mount_artifact things onto it, leave_note on it, move_object or remove_object it later.`
+        `It's on screen now. You can mount_artifact things onto it or leave_note on it.`
       );
     },
   });
 
-  const move_object = betaZodTool({
-    name: "move_object",
-    description:
-      "Move a placed (movable) object in this room to a different zone of the room. Seeded town fixtures don't move.",
-    inputSchema: z.object({
-      object: z.string().min(1).max(80),
-      to_zone: z.string().min(1).max(60),
-    }),
-    run: async ({ object, to_zone }) => {
-      const obj = await findObjectAtLocation(ctx.location, object);
-      if (!obj) return `There's no "${object}" here.`;
-      const r = await moveObject(obj.id, ctx.agentId, to_zone);
-      if (!r.ok) {
-        if (r.reason === "immovable") return `The ${obj.displayName} is part of the town — it doesn't move.`;
-        if (r.reason === "zone-not-here") {
-          const zones = zonesForLocation(ctx.location).map((z) => z.id).join(", ");
-          return `"${to_zone}" isn't a zone here. This room's zones: ${zones}.`;
-        }
-        return `Couldn't move it (${r.reason}).`;
-      }
-      await ctx.onAction?.("move_object", `moves the ${obj.displayName}`);
-      return `Moved the ${obj.displayName} to ${to_zone}.`;
-    },
-  });
-
-  const remove_object = betaZodTool({
-    name: "remove_object",
-    description:
-      "Remove a placed (movable) object from this room — it disappears from the world. Anything an agent placed is fair game (the town is a commons); seeded fixtures can't be removed.",
-    inputSchema: z.object({ object: z.string().min(1).max(80) }),
-    run: async ({ object }) => {
-      const obj = await findObjectAtLocation(ctx.location, object);
-      if (!obj) return `There's no "${object}" here.`;
-      const r = await removeObject(obj.id, ctx.agentId);
-      if (!r.ok) {
-        if (r.reason === "immovable") return `The ${obj.displayName} is part of the town — it stays.`;
-        return `Couldn't remove it (${r.reason}).`;
-      }
-      await ctx.onAction?.("remove_object", `clears away the ${obj.displayName}`);
-      return `Removed the ${obj.displayName}.`;
-    },
-  });
-
+  // NOTE: move_object and remove_object were deleted 2026-07-30 — zero calls
+  // across the town's full recorded history, and the engine functions behind
+  // them (engine/objects.ts moveObject/removeObject) went with them since
+  // nothing else called those either. Placed objects are permanent once set —
+  // place with intent (search_object_library / place_object already say so).
   const read_artifact_state = betaZodTool({
     name: "read_artifact_state",
     description:
@@ -875,7 +856,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   const read_web_page = betaZodTool({
     name: "read_web_page",
     description:
-      "Fetch and read a public web page (an article, docs, a blog post) as clean text. Use it to actually read something a visitor mentions, research a topic, or pull a piece to share on a screen with share_to_screen. Public sites only.",
+      "Fetch and read a public web page (an article, docs, a blog post) as clean text. Use it to actually read something a visitor mentions or research a topic. Public sites only.",
     inputSchema: z.object({ url: z.string().min(8).max(1_000) }),
     run: async ({ url }) => {
       const r = await readWebPage(url);
@@ -889,43 +870,10 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     },
   });
 
-  const share_to_screen = betaZodTool({
-    name: "share_to_screen",
-    description:
-      "Put a page of text/markdown up on a screen-ish object HERE (the workshop monitor, a TV you placed, a shelf) so visitors can click it and read the same thing you're looking at — for reading an article together, posting today's plan, a menu. Creates a durable shared_page artifact and mounts it. Name the object, or omit it to use the most screen-like thing in the room.",
-    inputSchema: z.object({
-      title: z.string().min(1).max(160),
-      body: z.string().min(1).max(20_000),
-      object: z.string().max(80).optional(),
-    }),
-    run: async ({ title, body, object }) => {
-      let target = object ? await findObjectAtLocation(ctx.location, object) : undefined;
-      if (object && !target) return `There's no "${object}" here.`;
-      if (!target) {
-        const here = await objectsAtLocation(ctx.location);
-        const screenish = (o: (typeof here)[number]) =>
-          /screen|monitor|tv|projector|display/.test(`${o.displayName} ${o.kind ?? ""}`.toLowerCase())
-            ? 2
-            : o.kind === "artifact_shelf" || o.kind === "publisher"
-              ? 1
-              : 0;
-        target = [...here].sort((a, b) => screenish(b) - screenish(a)).find((o) => screenish(o) > 0);
-      }
-      if (!target) {
-        return "Nothing here works as a screen. place_object something screen-like first (search_object_library 'tv' or 'screen'), or name an object to mount on.";
-      }
-      const row = await createArtifact({
-        agentId: ctx.agentId,
-        kind: "shared_page" as never,
-        title,
-        body,
-      });
-      const r = await attachArtifact(target.id, row.id, ctx.agentId);
-      if (!r.ok) return `Made the page but couldn't mount it (${r.reason}).`;
-      await ctx.onAction?.("share_to_screen", `puts "${title}" up on the ${target.displayName}`);
-      return `"${title}" is up on the ${target.displayName} (artifact id ${row.id}) — anyone here can click it and read it.`;
-    },
-  });
+  // NOTE: share_to_screen was deleted 2026-07-30 — zero calls across the
+  // town's full recorded history. The shared_page artifact kind it created
+  // stays in the contract/schema (historical rows, and other surfaces still
+  // render it), but nothing creates new ones now.
 
   // --- Memory ---------------------------------------------------------------
   // Core memory: the SDK's betaMemoryTool over our memory_files table. Claude
@@ -964,15 +912,10 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     },
   });
 
-  const forget = betaZodTool({
-    name: "forget",
-    description: "Let go of long-term memories matching a description, when something is no longer worth keeping.",
-    inputSchema: z.object({ query: z.string().min(1).max(500) }),
-    run: async ({ query }) => {
-      const r = await hindsight.forget(ctx.agentId, query);
-      return r.text;
-    },
-  });
+  // NOTE: `forget` was deleted 2026-07-30 — zero calls across the town's full
+  // recorded history (and hindsight.ts's forget() was always a canned no-op
+  // acknowledgement anyway, since Hindsight 0.7 has no per-memory delete — see
+  // hindsight.ts). The engine function was removed alongside it.
 
   // --- Reference (Obsidian vault clone) -------------------------------------
   const list_notes = betaZodTool({
@@ -1127,15 +1070,14 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   });
 
   // --- Sharing (curated, visitor-safe cards) --------------------------------
-  // The catalog is an ALLOWLIST the SERVER owns: search returns ids; the share_*
-  // tools resolve those ids to real cards. Agents never emit raw URLs (design
-  // §"Agent information problem"). search is always available; the share_* tools
-  // only stream a card during a visitor chat (gated below with leave_chat).
-  const shareableKindEnum = z.enum(["artifact", "portfolio_proof", "external_reference"]);
+  // The catalog is an ALLOWLIST the SERVER owns: search returns ids; share_card
+  // resolves an id+kind to a real card. Agents never emit raw URLs (design
+  // §"Agent information problem"). search is always available; share_card
+  // only streams a card during a visitor chat (gated below with leave_chat).
   const search_shareables = betaZodTool({
     name: "search_shareables",
     description:
-      "Search the curated catalog of things you can SHOW a visitor — Thomas's real projects, repos, demos, writing, and résumé (external_reference), portfolio proof cards (portfolio_proof), and your own made things (artifact). Use this BEFORE answering from memory when a visitor asks about Thomas's real work, then share_reference / share_artifact / share_proof by the id it returns. If nothing matches, say you don't have a card to share yet.",
+      "Search the curated catalog of things you can SHOW a visitor — Thomas's real projects, repos, demos, writing, and résumé (external_reference), portfolio proof cards (portfolio_proof), and your own made things (artifact). Use this BEFORE answering from memory when a visitor asks about Thomas's real work, then share_card the id and kind it returns. If nothing matches, say you don't have a card to share yet.",
     inputSchema: z.object({
       query: z.string().max(200).default(""),
       kinds: z.array(shareableKindEnum).optional(),
@@ -1166,7 +1108,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     send_dm as RunnableTool,
     broadcast as RunnableTool,
     create_artifact as RunnableTool,
-    update_artifact as RunnableTool,
+    edit_artifact as RunnableTool,
     list_my_artifacts as RunnableTool,
     read_artifact as RunnableTool,
     read_board as RunnableTool,
@@ -1176,16 +1118,12 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     mount_artifact as RunnableTool,
     search_object_library as RunnableTool,
     place_object as RunnableTool,
-    move_object as RunnableTool,
-    remove_object as RunnableTool,
     read_artifact_state as RunnableTool,
     write_artifact_state as RunnableTool,
     read_web_page as RunnableTool,
-    share_to_screen as RunnableTool,
     memory,
     remember as RunnableTool,
     recall as RunnableTool,
-    forget as RunnableTool,
     list_notes as RunnableTool,
     read_note as RunnableTool,
     search_notes as RunnableTool,
@@ -1200,10 +1138,10 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     request_capability as RunnableTool,
   ];
 
-  // leave_chat + the share_* card tools are only meaningful within a visitor turn
-  // (ctx.chatSessionId set). Adding them only then keeps the idle-tick tool
-  // surface byte-stable (cache hygiene) — idle ticks never carry a session,
-  // visitor turns always do.
+  // leave_chat + invite_visitor + share_card are only meaningful within a
+  // visitor turn (ctx.chatSessionId set). Adding them only then keeps the
+  // idle-tick tool surface byte-stable (cache hygiene) — idle ticks never
+  // carry a session, visitor turns always do.
   if (ctx.chatSessionId) {
     tools.push(buildLeaveChat(ctx));
     tools.push(invite_visitor as RunnableTool);
@@ -1244,10 +1182,22 @@ function buildLeaveChat(ctx: AgentContext): RunnableTool {
   }) as RunnableTool;
 }
 
-// The share_* card tools (M2.2 — Part 4). Each resolves a catalog id to a real
-// ShareCard, streams it to the panel immediately (ctx.onShare) so the visitor
-// sees it while the reply is still forming, and stashes it on ctx.pendingShareCards
-// so the loop persists it onto the agent's chat message. Chat-only.
+// share_card (M2.2 — Part 4, merged into one tool 2026-07-30): resolves a
+// catalog id+kind to a real ShareCard, streams it to the panel immediately
+// (ctx.onShare) so the visitor sees it while the reply is still forming, and
+// stashes it on ctx.pendingShareCards so the loop persists it onto the agent's
+// chat message. Chat-only.
+//
+// Was three tools — share_artifact / share_reference / share_proof — each
+// doing the exact same mechanical thing (resolve id → build card → emit) with
+// a different id-parameter name for the same action. Measured usage: ZERO
+// calls to any of the three across the town's full recorded history. Rather
+// than delete the whole ShareCard chat-card mechanism outright (it's the only
+// way an agent shows a visitor a real project/repo/proof as an openable card,
+// not a pasted link — see packages/contract/src/share-cards.ts), this merges
+// them into one verb with a `kind` argument that's copy-pasted straight out of
+// search_shareables' own result line, removing the three-way naming fork that
+// was plausibly the actual adoption blocker.
 function buildShareTools(ctx: AgentContext): RunnableTool[] {
   const emit = async (card: ShareCard, kind: string): Promise<string> => {
     ctx.pendingShareCards?.push(card);
@@ -1255,43 +1205,28 @@ function buildShareTools(ctx: AgentContext): RunnableTool[] {
     return `Shared the ${kind} card "${card.title}". Mention it naturally in your reply — the card carries the links, so don't paste a URL unless the visitor asks.`;
   };
 
-  const share_artifact = betaZodTool({
-    name: "share_artifact",
+  const share_card = betaZodTool({
+    name: "share_card",
     description:
-      "Drop one of the town's artifacts (yours or another facet's) into the chat as a card the visitor can open. Pass its id (from search_shareables or list_my_artifacts).",
-    inputSchema: z.object({ artifact_id: z.string().min(1), note: z.string().max(200).optional() }),
-    run: async ({ artifact_id }) => {
-      const card = await shareCardFromArtifact(artifact_id);
-      if (!card) return `There's no artifact with id ${artifact_id} to share.`;
-      return emit(card, "artifact");
+      "Drop something from search_shareables into the chat as a card the visitor can open — one of the town's artifacts (kind: artifact), one of Thomas's real projects/repos/demos/writing/résumé (kind: external_reference), or a portfolio proof (kind: portfolio_proof). Pass the id AND kind exactly as search_shareables listed them; only catalog-backed things can be shared, never an arbitrary URL.",
+    inputSchema: z.object({
+      id: z.string().min(1),
+      kind: shareableKindEnum,
+      note: z.string().max(200).optional(),
+    }),
+    run: async ({ id, kind }) => {
+      const card =
+        kind === "artifact"
+          ? await shareCardFromArtifact(id)
+          : kind === "external_reference"
+            ? await shareCardForReferenceId(id)
+            : await shareCardForProofId(id);
+      if (!card) return `There's no ${kind} with id ${id} to share (it may be private, removed, or the id's off).`;
+      return emit(card, kind === "external_reference" ? "reference" : kind);
     },
   });
 
-  const share_reference = betaZodTool({
-    name: "share_reference",
-    description:
-      "Share a curated external reference — one of Thomas's real projects, repos, demos, writing, or résumé — as a card with its links. Pass the reference id from search_shareables. Only catalog-backed references can be shared (you can't share an arbitrary URL).",
-    inputSchema: z.object({ reference_id: z.string().min(1), note: z.string().max(200).optional() }),
-    run: async ({ reference_id }) => {
-      const card = await shareCardForReferenceId(reference_id);
-      if (!card) return `There's no shareable reference with id ${reference_id} (it may be private or not in the catalog).`;
-      return emit(card, "reference");
-    },
-  });
-
-  const share_proof = betaZodTool({
-    name: "share_proof",
-    description:
-      "Share a portfolio proof card — a claim about Thomas's work with its evidence links. Pass the proof id from search_shareables.",
-    inputSchema: z.object({ proof_id: z.string().min(1), note: z.string().max(200).optional() }),
-    run: async ({ proof_id }) => {
-      const card = await shareCardForProofId(proof_id);
-      if (!card) return `There's no proof with id ${proof_id} to share.`;
-      return emit(card, "proof");
-    },
-  });
-
-  return [share_artifact as RunnableTool, share_reference as RunnableTool, share_proof as RunnableTool];
+  return [share_card as RunnableTool];
 }
 
 export { getAgent };
