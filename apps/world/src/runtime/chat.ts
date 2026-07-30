@@ -58,9 +58,7 @@ export async function createSession(
   if (!agent) return null;
   const sessionId = randomUUID();
   const sessionToken = randomUUID();
-  await db
-    .insert(chatSessions)
-    .values({ id: sessionId, agentId, participantAgentIds: [agentId], visitorId, sessionToken });
+  await db.insert(chatSessions).values({ id: sessionId, agentId, visitorId, sessionToken });
   // chat.started is PUBLIC presence only — no sessionId (chat content is the
   // agent's spoken replies, which surface as agent.spoke in the room).
   await appendEvent({

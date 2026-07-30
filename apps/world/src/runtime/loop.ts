@@ -125,6 +125,21 @@ export function budgetExceeded(opts: {
   );
 }
 
+// The budget rule for CONVERSATION, which is deliberately different from the tick
+// rule above: only the GLOBAL ceiling can silence a facet mid-conversation.
+//
+// The per-role `daily_token_budget` is a pacing device for autonomous ticks —
+// applying it here would mean "this facet won't speak to you for the rest of the
+// day", which is a far worse outcome than a few cents of overshoot on one facet.
+// The global cap is real money, so it gates everything, chat included. Pure so
+// the distinction is pinned by a test rather than living only in a comment.
+export function chatBudgetBlocked(opts: {
+  globalSpendUsd: number;
+  globalCapUsd: number;
+}): boolean {
+  return opts.globalSpendUsd >= opts.globalCapUsd;
+}
+
 export interface TickResult extends ExecResult {
   reason?:
     | "no-llm"
@@ -277,6 +292,34 @@ async function runVisitorInput(
     const id = await appendAgentLine(sessionId, agentId, note);
     await handlers.onFrame({ type: "done", messageId: id, agent: agentId });
     return { ran: false, reason: "no-llm" };
+  }
+
+  // THE HARD BUDGET CEILING APPLIES TO CHAT TOO (2026-07-30).
+  //
+  // `budgetExceeded` was checked ONLY in runTickInput, so `DAILY_BUDGET_USD` was
+  // never actually a ceiling — visitor turns run on the expensive chat model and
+  // were completely ungated. The rate limiters bound THROUGHPUT, not spend: 150
+  // chat messages/day/IP at ~$0.05–0.25 a turn is ~$7–37 from one IP alone, and
+  // nothing stopped several IPs stacking on top of that.
+  //
+  // Only the GLOBAL ceiling gates conversation. The per-role `daily_token_budget`
+  // is deliberately NOT applied here: it's a pacing device for autonomous ticks,
+  // and "this facet refuses to speak to you for the rest of the day" is a worse
+  // outcome than a few cents of overshoot on one facet. The global cap is about
+  // real money, so it wins over everything.
+  if (chatBudgetBlocked({ globalSpendUsd: await spendTodayUsd(), globalCapUsd: config.dailyBudgetUsd })) {
+    // In-fiction, and consistent with the existing dream-mode metaphor the
+    // frontend already renders when `world.awake` is false.
+    const note =
+      "…they're somewhere far off right now — the whole town's gone quiet for the night. Come find them tomorrow.";
+    await handlers.onFrame({ type: "turn_started", agent: agentId });
+    await handlers.onFrame({ type: "text", text: note, agent: agentId });
+    const id = await appendAgentLine(sessionId, agentId, note);
+    await handlers.onFrame({ type: "done", messageId: id, agent: agentId });
+    console.warn(
+      `[visitor ${agentId}] refused: global daily budget exhausted (cap $${config.dailyBudgetUsd}).`,
+    );
+    return { ran: false, reason: "budget" };
   }
 
   await appendVisitorLine(sessionId, text);

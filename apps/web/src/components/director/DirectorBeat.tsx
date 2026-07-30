@@ -18,8 +18,8 @@ import { NPC_CONFIGS } from '@/game/data/npc-configs';
 // ignored, forward-compat with beats the backend may ship before the frontend
 // learns to draw them). `screen-flourish` covers card/confetti/tag via its
 // `style` param rather than being three separate beats — the catalog stays
-// small on purpose; per-agent variety comes from presets (server-side), not
-// from more beats here.
+// small on purpose (an agent-saved-presets escape hatch was tried server-side
+// and removed 2026-07-30 for zero measured usage).
 
 const AUTO_DISMISS_MS = 8_000;
 // The emote drifts up and fades over its own lifetime — shorter than a card.
@@ -48,7 +48,7 @@ interface ActiveBeat {
 // backend can roll out a beat ahead of the renderer without a console of noise.
 // `screen-flourish` covers three visual TREATMENTS via `params.style` (card,
 // confetti, tag) — one beat, several renderers, same pattern as the backend
-// catalog collapse (mechanics stay few; variety lives in params/presets).
+// catalog collapse (mechanics stay few; variety lives in params).
 const RENDERABLE = new Set(['screen-flourish', 'emote']);
 
 interface DirectorBeatProps {
