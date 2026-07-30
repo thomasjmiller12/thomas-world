@@ -181,10 +181,6 @@ export interface CreateObjectInput {
   affordances?: string[];
 }
 
-// Pick a renderer placement point inside a zone's bounds: bottom-center-ish
-// with a deterministic-per-id horizontal scatter so several objects placed in
-// one zone don't stack pixel-perfectly. Zones without bounds → null (the
-// renderer falls back to the zone/room anchor).
 // Minimum horizontal gap between two objects sharing a zone. Sprites are drawn
 // on a 16px tile grid, so anything closer than this visually overlaps — and an
 // overlapped object can end up unclickable, which for a mounted interactive
