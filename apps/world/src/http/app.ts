@@ -23,6 +23,7 @@ import {
   PatchVisitorRequest,
   CreateChatResponse,
   GetChatResponse,
+  ChatHistoryResponse,
   InteractRequest,
   AboutResponse,
   ProofsResponse,
@@ -94,6 +95,7 @@ import { hasLlm } from "../runtime/client.js";
 import { flushTracing } from "../runtime/tracing.js";
 import {
   createSession,
+  priorConversationWith,
   endSession,
   getSession,
   chatTokenValid,
@@ -754,6 +756,28 @@ export function createApp() {
   // location and emits a public `visitor.interacted`. (M3: agents perceive the
   // interaction through their world delta — co-located notice-push — on their next
   // turn; no operator-note routing into a live session anymore.)
+  // --- GET /visitors/:id/chat-history?agent= --------------------------------
+  // The visitor's recent messages with one facet, across all their past
+  // sessions, so the panel can show where they left off. Visitor-token gated
+  // (it's their own conversation, and only they may read it). See
+  // ChatHistoryResponse for why this exists.
+  app.get("/visitors/:id/chat-history", async (c) => {
+    const id = c.req.param("id");
+    const v = await getVisitor(id);
+    if (!v) return c.json({ error: "unknown visitor" }, 404);
+    const token = c.req.header("x-visitor-token");
+    if (!(await visitorTokenValid(id, token))) return c.json({ error: "unauthorized" }, 401);
+
+    const agent = c.req.query("agent");
+    if (!agent || !agentIds.includes(agent as AgentId)) {
+      return c.json({ error: "bad agent" }, 400);
+    }
+    const { messages, lastAt } = await priorConversationWith(agent as AgentId, id, {
+      excludeSessionId: c.req.query("exclude") ?? undefined,
+    });
+    return c.json(validated(ChatHistoryResponse, { agentId: agent as AgentId, messages, lastAt }));
+  });
+
   app.post("/visitors/:id/interact", async (c) => {
     const id = c.req.param("id");
     const v = await getVisitor(id);

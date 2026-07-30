@@ -70,6 +70,13 @@ export interface WorldEvents {
   'chat-opened': { npcId: ThomasId };
   // The overlay closed the panel (visitor-initiated); WorldClient tears down.
   'chat-closed': { npcId: ThomasId };
+  // The visitor's PRIOR conversation with this facet, across earlier sessions
+  // (GET /visitors/:id/chat-history). Emitted right after 'chat-opened' when
+  // there is history, so the panel can show where they left off instead of a
+  // blank slate — the agents were taught to remember visitors, but the panel
+  // still forgot, which made "you've talked 9 times before" land above an empty
+  // transcript. `lastAt` is the ISO timestamp of the last prior message.
+  'chat-history': { npcId: ThomasId; messages: ChatMessage[]; lastAt: string | null };
 
   // --- streamed chat output (WorldClient → React panel) --------------------
   // A new speaker turn began (multi-party attribution).

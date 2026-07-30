@@ -15,11 +15,12 @@
 // note. The frontend is unchanged (same /chats endpoints + ChatStreamFrame).
 
 import { randomUUID } from "node:crypto";
-import { eq, and, isNull, desc, asc } from "drizzle-orm";
+import { eq, and, or, isNull, desc, asc } from "drizzle-orm";
 import type { AgentId, GetChatResponse, ShareCard } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { getAgent } from "../engine/agents.js";
 import { appendEvent } from "../engine/events.js";
+import { identityIds } from "../engine/visitor-history.js";
 
 const { chatSessions, chatMessages } = schema;
 
@@ -244,5 +245,65 @@ export async function getChatTranscript(sessionId: string): Promise<GetChatRespo
     visitorId: session.visitorId,
     participants: [primary],
     messages,
+  };
+}
+
+// --- prior conversation (visible continuity) ---------------------------------
+// The agents were taught to remember visitors (engine/visitor-history.ts + the
+// episodic visit log), but the PANEL still forgot: a session's transcript is
+// reachable only with that session's in-memory token, so a reload — or simply
+// switching facets and coming back — showed a blank slate. The facet would open
+// with "you've talked 9 times before" above an empty transcript, which reads as
+// broken rather than warm.
+//
+// This returns the visitor's recent messages with ONE agent across ALL of their
+// past sessions, so the panel can show "here's where you left off". Identity is
+// folded with identityIds() — the same heuristic the acquaintance line uses — so
+// a visitor whose row forked across devices still sees their own history.
+export async function priorConversationWith(
+  agentId: AgentId,
+  visitorId: string,
+  opts: { excludeSessionId?: string; limit?: number } = {},
+): Promise<{ messages: GetChatResponse["messages"]; lastAt: string | null }> {
+  const limit = opts.limit ?? 20;
+  const aliasIds = await identityIds(visitorId);
+
+  const rows = await db
+    .select({
+      id: chatMessages.id,
+      sender: chatMessages.sender,
+      body: chatMessages.body,
+      ts: chatMessages.ts,
+      attachments: chatMessages.attachments,
+      sessionId: chatSessions.id,
+    })
+    .from(chatMessages)
+    .innerJoin(chatSessions, eq(chatMessages.sessionId, chatSessions.id))
+    .where(
+      and(
+        eq(chatSessions.agentId, agentId),
+        or(...aliasIds.map((id) => eq(chatSessions.visitorId, id))),
+      ),
+    )
+    // Newest-first so the LIMIT keeps the most recent exchange, then flipped
+    // below — taking the oldest N would show the wrong end of a long history.
+    .orderBy(desc(chatMessages.id))
+    .limit(limit + 40);
+
+  const messages = rows
+    .filter((r) => r.sessionId !== opts.excludeSessionId && r.sender !== "operator")
+    .slice(0, limit)
+    .reverse()
+    .map((r) => ({
+      id: String(r.id),
+      sender: (r.sender === "visitor" ? "visitor" : agentId) as "visitor" | AgentId,
+      body: r.body,
+      ts: r.ts.toISOString(),
+      attachments: (r.attachments ?? []) as ShareCard[],
+    }));
+
+  return {
+    messages,
+    lastAt: messages.length ? messages[messages.length - 1].ts : null,
   };
 }

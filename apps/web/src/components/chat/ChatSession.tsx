@@ -57,6 +57,9 @@ interface State {
   // True once a message was sent (a server session exists) — gates whether
   // close needs a network teardown.
   hadSession: boolean;
+  // Guard so an in-flight history fetch can't prepend the same lines twice
+  // (retarget → open → a late response from the previous target).
+  historyLoaded: boolean;
 }
 
 const INITIAL: State = {
@@ -65,11 +68,15 @@ const INITIAL: State = {
   lines: [],
   streamingSpeaker: null,
   hadSession: false,
+  historyLoaded: false,
 };
 
 type Action =
   | { t: 'target'; target: ChatTarget }
   | { t: 'visitor-line'; text: string }
+  // Prior conversation with this facet, from earlier sessions — prepended above
+  // whatever is already on screen.
+  | { t: 'history'; lines: ChatLine[] }
   | { t: 'turn-started'; speaker: ThomasId }
   | { t: 'delta'; speaker: ThomasId; text: string }
   | { t: 'memory'; speaker: ThomasId; label: string }
@@ -82,6 +89,21 @@ type Action =
   | { t: 'ended'; speaker: ThomasId; reason?: string | null }
   | { t: 'error'; reason: string }
   | { t: 'close' };
+
+// Human phrasing for when a prior conversation happened, for the "earlier —"
+// divider. Deliberately coarse: the point is "this was a while ago", not a
+// timestamp.
+function relativeDay(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return 'previously';
+  const days = Math.floor((Date.now() - then) / 86_400_000);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 14) return `${days} days ago`;
+  if (days < 60) return `about ${Math.floor(days / 7)} weeks ago`;
+  const months = Math.floor(days / 30);
+  return months <= 1 ? 'about a month ago' : `about ${months} months ago`;
+}
 
 let lineSeq = 0;
 const nextId = () => `cl-${Date.now()}-${lineSeq++}`;
@@ -99,6 +121,13 @@ function reducer(state: State, a: Action): State {
         hadSession: true,
               lines: [...state.lines, { id: nextId(), kind: 'visitor', speaker: 'visitor', text: a.text }],
       };
+
+    case 'history': {
+      // Prepend, never append: this is what came BEFORE. Arrives asynchronously,
+      // so the visitor may already have typed — their line must stay last.
+      if (state.historyLoaded || a.lines.length === 0) return state;
+      return { ...state, historyLoaded: true, lines: [...a.lines, ...state.lines] };
+    }
 
     case 'turn-started':
       return {
@@ -343,8 +372,40 @@ export function ChatSession({ onSend, onClose, suspended, currentLocation }: Cha
       dispatch({ t: 'room-line', speaker: p.npcId, text: p.message });
     };
 
+
+    // Prior conversation with this facet, fetched by WorldClient right after the
+    // session opens. Rendered above the live transcript behind an "earlier"
+    // divider so the visitor picks up where they left off — the agent already
+    // remembers them, and now the panel does too.
+    const onHistory = (p: {
+      npcId: ThomasId;
+      messages: { sender: 'visitor' | ThomasId; text: string; timestamp: number }[];
+      lastAt: string | null;
+    }) => {
+      const s = stateRef.current;
+      if (s.phase === 'closed' || s.target?.npcId !== p.npcId) return;
+      const lines: ChatLine[] = [
+        {
+          id: nextId(),
+          kind: 'system',
+          text: p.lastAt ? `earlier — ${relativeDay(p.lastAt)}` : 'earlier',
+          historical: true,
+        },
+        ...p.messages.map((m) => ({
+          id: nextId(),
+          kind: (m.sender === 'visitor' ? 'visitor' : 'agent') as ChatLine['kind'],
+          speaker: m.sender,
+          text: m.text,
+          historical: true,
+        })),
+        { id: nextId(), kind: 'system' as const, text: 'now', historical: true },
+      ];
+      dispatch({ t: 'history', lines });
+    };
+
     EventBus.on('npc-interaction', onInteraction);
     EventBus.on('npc-speech', onRoomSpeech);
+    EventBus.on('chat-history', onHistory);
     EventBus.on('chat-turn-started', onTurnStarted);
     EventBus.on('chat-delta', onDelta);
     EventBus.on('chat-memory-recalled', onMemory);
@@ -358,6 +419,7 @@ export function ChatSession({ onSend, onClose, suspended, currentLocation }: Cha
     return () => {
       EventBus.off('npc-interaction', onInteraction);
       EventBus.off('npc-speech', onRoomSpeech);
+      EventBus.off('chat-history', onHistory);
       EventBus.off('chat-turn-started', onTurnStarted);
       EventBus.off('chat-delta', onDelta);
       EventBus.off('chat-memory-recalled', onMemory);

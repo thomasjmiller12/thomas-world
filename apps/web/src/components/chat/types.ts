@@ -13,6 +13,13 @@ import type { ShareCard } from '@town/contract';
 //   action  — the agent acted mid-chat ("*walks to the workbench*"), centered.
 //   ended   — the agent ended the chat ("Builder headed back to work."), the
 //             goodbye system line that replaces the input row with a close button.
+//
+// `historical` marks a line replayed from an EARLIER session (GET
+// /visitors/:id/chat-history) rather than one that happened just now. The agents
+// were taught to remember visitors, but the panel used to open blank — so a facet
+// greeted you as someone it had talked to nine times above an empty transcript.
+// These lines are what close that gap; they render dimmed so "then" still reads
+// differently from "now".
 export interface ChatLine {
   id: string;
   kind: 'agent' | 'visitor' | 'system' | 'action' | 'ended' | 'share-card';
@@ -23,6 +30,8 @@ export interface ChatLine {
   memory?: string | null;
   // A share-card line carries the card (M2.2 — Part 4).
   card?: ShareCard;
+  // Replayed from a previous session (see the note above), not live.
+  historical?: boolean;
 }
 
 // The agent the visitor is chatting with. Carries the live activity line

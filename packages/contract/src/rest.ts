@@ -311,6 +311,24 @@ export const GetChatResponse = z.object({
 });
 export type GetChatResponse = z.infer<typeof GetChatResponse>;
 
+// --- GET /visitors/:visitorId/chat-history?agent= ----------------------------
+//
+// The visitor's recent messages with ONE agent across ALL their past sessions,
+// so the chat panel can show where they left off instead of a blank slate.
+//
+// Why this exists: the agents were taught to remember visitors, but a session
+// transcript is reachable only with that session's in-memory token — so a reload
+// (or switching facets and coming back) wiped the panel. The facet would open
+// with "you've talked 9 times before" above an empty transcript, which reads as
+// broken rather than warm. Visitor-token gated; identity-folded server-side.
+export const ChatHistoryResponse = z.object({
+  agentId: AgentId,
+  messages: z.array(ChatTranscriptMessage),
+  // ISO timestamp of the last prior message, or null when there is no history.
+  lastAt: z.string().nullable(),
+});
+export type ChatHistoryResponse = z.infer<typeof ChatHistoryResponse>;
+
 // --- POST /chats/:id/messages {text} ----------------------------------------
 //
 // Returns the agent's reply turn as a stream of `ChatStreamFrame`s. There is
