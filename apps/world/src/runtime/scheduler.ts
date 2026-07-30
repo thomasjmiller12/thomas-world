@@ -21,6 +21,7 @@ import { db, schema } from "../db/client.js";
 import { gt, sql } from "drizzle-orm";
 import { syncVault, pushAgentNotes } from "./vault.js";
 import { sweepStaleChats } from "./chat.js";
+import { runRetentionSweep } from "../engine/retention.js";
 
 // Fallback cadence used only when computing the next delay itself fails (e.g. a
 // transient DB error in the visitor-presence query). Keeps the agent rescheduling
@@ -281,6 +282,7 @@ async function emitPhaseIfChanged(): Promise<void> {
 let phaseTimer: NodeJS.Timeout | null = null;
 let vaultTimer: NodeJS.Timeout | null = null;
 let chatSweepTimer: NodeJS.Timeout | null = null;
+let retentionTimer: NodeJS.Timeout | null = null;
 
 export function startScheduler(): void {
   if (running) return;
@@ -328,6 +330,23 @@ export function startScheduler(): void {
     void doSync();
     vaultTimer = setInterval(() => void doSync(), 10 * 60_000);
   }
+
+  // Retention sweep (housekeeping, 2026-07-30 — engine/retention.ts): llm_usage
+  // and thread_summaries grow without bound and nothing else prunes them.
+  // `runRetentionSweep` never throws (each half is independently try/caught),
+  // but the .catch here is defense in depth — a timer callback that somehow
+  // threw synchronously would otherwise crash the process. Once a day is
+  // plenty (it only touches rows already well past their retention window);
+  // fire once shortly after boot too, so a long-lived deploy doesn't wait a
+  // full day for its first sweep.
+  void runRetentionSweep().catch((err) =>
+    console.warn("[scheduler] retention sweep failed:", (err as Error).message),
+  );
+  retentionTimer = setInterval(() => {
+    void runRetentionSweep().catch((err) =>
+      console.warn("[scheduler] retention sweep failed:", (err as Error).message),
+    );
+  }, 24 * 60 * 60_000);
 }
 
 export function stopScheduler(): void {
@@ -338,4 +357,5 @@ export function stopScheduler(): void {
   if (phaseTimer) clearInterval(phaseTimer);
   if (vaultTimer) clearInterval(vaultTimer);
   if (chatSweepTimer) clearInterval(chatSweepTimer);
+  if (retentionTimer) clearInterval(retentionTimer);
 }

@@ -31,6 +31,29 @@ export const config = {
   // (and any localhost) in production. See apps/world/README.md.
   corsOrigins: env("CORS_ORIGINS"),
 
+  // Retention windows for the two tables nothing else ever prunes (housekeeping,
+  // 2026-07-30 — engine/retention.ts, swept daily by runtime/scheduler.ts). Row
+  // counts at the time this was added: llm_usage 7,207 rows, thread_summaries
+  // 118 rows, both growing without bound. `world_events` and `artifact_state`
+  // are deliberately NOT configurable here — see retention.ts's header for why
+  // each is left alone (world_events is irreplaceable town history;
+  // artifact_state is live app state bounded by per-key caps, not by time).
+  retention: {
+    // llm_usage is the spend ledger read before every tick and chat turn
+    // (spendTodayUsd/spendTodayForAgent) — rows older than this are rolled up
+    // into a daily (day×agent×model) summary and then deleted. 30 days is
+    // generous for the "did last week's spend look right" question while
+    // keeping the hot-path table small; today's rows are never at risk
+    // regardless of this value (see llmUsageCutoff).
+    llmUsageDays: Number(env("LLM_USAGE_RETENTION_DAYS") ?? "30"),
+    // thread_summaries is a lazily-regenerated Haiku cache keyed by calendar
+    // day (chronicle.ts) — a cache miss just recomputes it on the next
+    // Chronicle read, so this window can be generous without cost: 45 days
+    // comfortably covers any day a portfolio visitor would realistically page
+    // back to.
+    threadSummaryDays: Number(env("THREAD_SUMMARY_RETENTION_DAYS") ?? "45"),
+  },
+
   anthropicApiKey: anthropicKey,
   openaiApiKey: openaiKey,
   hindsightUrl,
