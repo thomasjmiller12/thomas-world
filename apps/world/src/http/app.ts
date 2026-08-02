@@ -86,6 +86,7 @@ import { appendEvent } from "../engine/events.js";
 import { boostAgent } from "../runtime/scheduler.js";
 import { subscribe } from "../engine/bus.js";
 import { spendTodayUsd, isBudgetExhausted } from "../engine/usage.js";
+import { openCapabilityRequests } from "../engine/outside.js";
 import { renderDebugPage } from "./debug.js";
 import { runTick } from "../runtime/loop.js";
 import { circuitBroken } from "../runtime/failures.js";
@@ -1040,13 +1041,22 @@ export function createApp() {
 
   // --- GET /debug — dead-simple server-rendered status page ---------------
   app.get("/debug", async (c) => {
-    const [snapshot, agents, spend] = await Promise.all([
+    const [snapshot, agents, spend, capabilities] = await Promise.all([
       buildSnapshot(),
       allAgents(),
       spendTodayUsd(),
+      openCapabilityRequests(),
     ]);
     const feed = await getFeed(undefined, undefined, 60);
-    return c.html(renderDebugPage({ snapshot, agents, spendTodayUsd: spend, feed: feed.items }));
+    return c.html(
+      renderDebugPage({
+        snapshot,
+        agents,
+        spendTodayUsd: spend,
+        feed: feed.items,
+        openCapabilityRequests: capabilities,
+      }),
+    );
   });
 
   return app;

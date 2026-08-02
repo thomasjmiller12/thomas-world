@@ -25,6 +25,10 @@ export interface DebugData {
   }[];
   spendTodayUsd: number;
   feed: FeedRow[];
+  // Capability requests awaiting a decision. Until 2026-08-02 these went into a
+  // table nothing ever read, so nine of them piled up unseen — this is the read
+  // surface that makes the backlog real (they now email out too).
+  openCapabilityRequests: { id: string; agentId: string; summary: string; ts: Date }[];
 }
 
 export function renderDebugPage(d: DebugData): string {
@@ -42,6 +46,13 @@ export function renderDebugPage(d: DebugData): string {
 
   const feedRows = d.feed
     .map((f) => `<li><span class="ts">${esc(f.ts)}</span> ${esc(f.line)}</li>`)
+    .join("");
+
+  const capRows = d.openCapabilityRequests
+    .map(
+      (r) => `<li><span class="ts">${esc(r.ts.toISOString().slice(0, 10))}</span>
+        <strong>${esc(r.agentId)}</strong> ${esc(r.summary.slice(0, 240))}</li>`,
+    )
     .join("");
 
   return `<!doctype html>
@@ -74,6 +85,9 @@ export function renderDebugPage(d: DebugData): string {
   <tr><th>agent</th><th>location</th><th>status</th><th>activity</th><th>last tick</th></tr>
   ${agentRows}
 </table>
+
+<h2>Open capability requests (${d.openCapabilityRequests.length})</h2>
+<ul>${capRows || "<li>none open</li>"}</ul>
 
 <h2>Recent feed</h2>
 <ul>${feedRows || "<li>nothing yet</li>"}</ul>

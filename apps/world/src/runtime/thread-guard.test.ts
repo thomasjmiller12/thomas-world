@@ -98,7 +98,11 @@ describe("stripForPersist — thinking-block collapse", () => {
     expect((out[2].content as { signature?: string }[])[0].signature).toBe("s2");
   });
 
-  it("still strips cache_control and ephemeral code-exec blocks", () => {
+  it("strips cache_control, and replaces ephemeral blocks with a text trace", () => {
+    // The ephemeral block must not survive as itself (it references a sandbox
+    // container that is gone by the next turn) — but it does leave a plain-text
+    // memory behind, so the agent remembers the action. See the code-execution
+    // amnesia note above summarizeEphemeralBlock in turn.ts.
     const msgs: ThreadMessage[] = [
       {
         role: "user",
@@ -109,9 +113,90 @@ describe("stripForPersist — thinking-block collapse", () => {
       } as unknown as ThreadMessage,
     ];
     const [msg] = stripForPersist(msgs);
-    const blocks = msg.content as { type: string; cache_control?: unknown }[];
-    expect(blocks).toHaveLength(1);
-    expect(blocks[0].type).toBe("text");
+    const blocks = msg.content as { type: string; text?: string; cache_control?: unknown }[];
+    expect(blocks.map((b) => b.type)).toEqual(["text", "text"]);
     expect(blocks[0].cache_control).toBeUndefined();
+    expect(blocks[1].text).toContain("dataset");
+    // Nothing that could be replayed against the dead container survives.
+    expect(JSON.stringify(blocks)).not.toContain("f1");
+  });
+});
+
+// Replacing (rather than deleting) the ephemeral blocks changes which messages
+// survive, so the shape of the persisted thread needs its own guarantees.
+describe("stripForPersist — code-execution traces", () => {
+  it("keeps a code run and its output in the thread as plain text", () => {
+    const msgs: ThreadMessage[] = [
+      {
+        role: "assistant",
+        content: [
+          { type: "server_tool_use", name: "code_execution", input: { code: "print(6*7)" } },
+          { type: "code_execution_tool_result", content: { stdout: "42\n" } },
+          { type: "text", text: "42, as expected." },
+        ],
+      } as unknown as ThreadMessage,
+    ];
+    const [msg] = stripForPersist(msgs);
+    const text = (msg.content as { text?: string }[]).map((b) => b.text).join("\n");
+    expect(text).toContain("print(6*7)");
+    expect(text).toContain("42");
+    expect((msg.content as { type: string }[]).every((b) => b.type === "text")).toBe(true);
+  });
+
+  it("folds a trace-only message into the previous same-role message", () => {
+    // Such a message used to be dropped entirely. Appending it to the preceding
+    // assistant message keeps the trace without introducing two consecutive
+    // assistant messages where the thread previously had one.
+    const msgs: ThreadMessage[] = [
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "let me compute that" }],
+      } as unknown as ThreadMessage,
+      {
+        role: "assistant",
+        content: [
+          { type: "server_tool_use", name: "code_execution", input: { code: "1+1" } },
+        ],
+      } as unknown as ThreadMessage,
+    ];
+    const out = stripForPersist(msgs);
+    expect(out).toHaveLength(1);
+    expect((out[0].content as { text?: string }[]).map((b) => b.text).join("\n")).toContain("1+1");
+  });
+
+  it("folding into a thinking-bearing message can't reconstruct the poisoned shape", () => {
+    // collapseThinking runs AFTER the fold precisely so a merge can never
+    // rebuild the two-consecutive-thinking shape that bricked Researcher for 27
+    // days. (A trace-only message carries no thinking block of its own, so this
+    // is belt-and-braces — but the ordering is load-bearing if that ever
+    // changes, and the invariant is cheap to pin.)
+    const msgs: ThreadMessage[] = [
+      {
+        role: "assistant",
+        content: [
+          { type: "thinking", thinking: "a", signature: "s1" },
+          { type: "text", text: "one moment" },
+        ],
+      } as unknown as ThreadMessage,
+      {
+        role: "assistant",
+        content: [{ type: "code_execution_tool_result", content: { stdout: "ok" } }],
+      } as unknown as ThreadMessage,
+    ];
+    const out = stripForPersist(msgs);
+    expect(out).toHaveLength(1);
+    const blocks = out[0].content as { type: string; text?: string }[];
+    expect(blocks.filter((b) => b.type === "thinking")).toHaveLength(1);
+    expect(blocks.map((b) => b.text).join("\n")).toContain("ok");
+  });
+
+  it("leaves two real consecutive assistant messages unmerged", () => {
+    // The fold is scoped to messages that would otherwise have VANISHED. It must
+    // not start rewriting the shape of threads that have real content.
+    const msgs: ThreadMessage[] = [
+      { role: "assistant", content: [{ type: "text", text: "one" }] } as unknown as ThreadMessage,
+      { role: "assistant", content: [{ type: "text", text: "two" }] } as unknown as ThreadMessage,
+    ];
+    expect(stripForPersist(msgs)).toHaveLength(2);
   });
 });
