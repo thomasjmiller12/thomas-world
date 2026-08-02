@@ -583,17 +583,69 @@ async function approachAddressee(
   await moveAgent(speakerId, location, zone);
 }
 
-// Pure: which co-located facets does `text` address by name? Whole-word, case-
-// insensitive match on the facet's label. `here` must already exclude the
-// speaker. Exported for unit testing the matcher independent of throttle/enqueue.
+// Pure: which co-located facets does `text` ADDRESS by name? `here` must already
+// exclude the speaker. Exported for unit testing the matcher independent of
+// throttle/enqueue.
+//
+// ADDRESSING, NOT MENTIONING (2026-08-02). This used to be a bare whole-word
+// match on the label, so merely talking ABOUT a facet summoned it. On the
+// evening of 2026-08-02 Hobby told a visitor "I've got Career and Writer both
+// feeding me sideline commentary"; Career woke 4s later, Writer 22s later, and
+// Career then ticked FOUR times in two minutes to produce lines like "Nothing
+// new — day's wrapped up nicely." Each push is a full LLM turn, so third-person
+// mentions were both the largest source of park noise and a real slice of the
+// daily spend.
+//
+// A miss here is cheap and a false positive is not: the facet is CO-LOCATED, so
+// the speech reaches it in its next natural tick delta regardless — the push
+// only buys immediacy. So we require the name to sit in a vocative slot.
 export function addressedFacets(here: { id: string }[], text: string): AgentId[] {
-  const lower = text.toLowerCase();
   const out: AgentId[] = [];
   for (const other of here) {
-    const label = (AGENT_LABELS[other.id as AgentId] ?? other.id).toLowerCase();
-    if (new RegExp(`\\b${escapeRegExp(label)}\\b`).test(lower)) out.push(other.id as AgentId);
+    const label = AGENT_LABELS[other.id as AgentId] ?? other.id;
+    if (isAddressedByName(text, label)) out.push(other.id as AgentId);
   }
   return out;
+}
+
+// Greeting tokens that can precede a vocative ("hey Writer", "yo builder").
+// Deliberately narrow: discourse markers like "so"/"no"/"yes" also sit at the
+// start of a sentence but usually introduce a MENTION ("so Builder was saying…"),
+// which is the exact false positive this matcher exists to kill.
+const VOCATIVE_LEAD = String.raw`(?:hey|yo|hi|hello|ok|okay|sup|@)`;
+// The connective tissue of a coordinated vocative list ("Writer and Builder, …").
+const VOCATIVE_JOIN = String.raw`(?:\s*(?:,|&|and)\s*)`;
+
+// Is `label` used as a form of address (rather than talked about) anywhere in
+// `text`? Evaluated per sentence, since a line can mention one facet and address
+// another. Pure; case-insensitive.
+function isAddressedByName(text: string, label: string): boolean {
+  const name = escapeRegExp(label);
+  // Any name, so a coordinated list can be recognised as a unit.
+  const anyName = `(?:${Object.values(AGENT_LABELS).map(escapeRegExp).join("|")})`;
+  // A run of names/greetings that must CONTAIN ours.
+  const list = `(?:${anyName}${VOCATIVE_JOIN})*${name}(?:${VOCATIVE_JOIN}${anyName})*`;
+
+  const patterns = [
+    // Leading vocative, closed by punctuation: "Writer, what do you think?",
+    // "Writer and Builder, join us", "Builder — you seeing this?"
+    new RegExp(`^\\s*(?:${VOCATIVE_LEAD}\\s+)*${list}\\s*(?:[,:—–-]|\\?|!|$)`, "i"),
+    // After a greeting, no punctuation needed: "hey writer come over".
+    new RegExp(`^\\s*${VOCATIVE_LEAD}\\s+${list}\\b`, "i"),
+    // Trailing vocative: "what do you think, Writer?"
+    new RegExp(`[,—–]\\s*${list}\\s*[?!.]*\\s*$`, "i"),
+  ];
+  // Bare-name opener on a question: "Writer what do you think?" — common from
+  // visitors typing casually, who rarely punctuate a vocative comma.
+  const bareQuestionOpener = new RegExp(`^\\s*${list}\\b`, "i");
+
+  for (const sentence of text.split(/(?<=[.!?\n])\s+/)) {
+    const s = sentence.trim();
+    if (!s) continue;
+    if (patterns.some((p) => p.test(s))) return true;
+    if (s.includes("?") && bareQuestionOpener.test(s)) return true;
+  }
+  return false;
 }
 
 const AGENT_LABELS: Record<AgentId, string> = {

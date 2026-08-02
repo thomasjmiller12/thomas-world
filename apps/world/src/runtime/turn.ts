@@ -83,6 +83,66 @@ export interface TurnHandlers {
   onFrame: (frame: ChatStreamFrame) => void | Promise<void>;
 }
 
+// Tools that END the visitor's turn: the agent was told to say its piece IN THE
+// SAME MESSAGE as the call, so that round's text is SPEECH, not stage direction
+// (see classifyRoundText). Anything it writes afterwards is post-goodbye
+// housekeeping and is dropped.
+const TERMINAL_TOOLS = new Set(["leave_chat"]);
+
+export function callsTerminalTool(message: Anthropic.Beta.BetaMessage): boolean {
+  return message.content.some(
+    (b) => b.type === "tool_use" && TERMINAL_TOOLS.has((b as { name: string }).name),
+  );
+}
+
+// THE NARRATION GUARD, as a pure decision (2026-08-02). Pure so the rules below
+// are pinned by tests instead of only reachable through a live streaming call.
+//
+// The guard exists because the model often writes stage direction before a tool
+// call ("let me check my memory first…") — that's thinking, not speech to the
+// visitor. The original rule was "only emit the round that ends the turn", and
+// it was WRONG in two ways that cost real conversations:
+//
+//   1. `protocol.ts` and the visitor framing both instruct "say your goodbye and
+//      call leave_chat in the same message" — the exact shape the rule threw
+//      away. Researcher pitched P-Thomas two research directions in a
+//      text+leave_chat round on 2026-08-02; the visitor received only the
+//      "Catch you later" that came after the tool result. The agent's thread
+//      still holds the pitch, so it believed it had answered — and said so in
+//      the next session. Hobby lost a reply the same way the same evening.
+//   2. The max-rounds fallback kept only the LAST held buffer, so on a long turn
+//      an early real reply was overwritten by later housekeeping narration.
+//      Builder greeted a visitor warmly in round 1, then spent five rounds
+//      filing a capability request; the visitor got round 4's "Filed. Let me
+//      update memory and DM Researcher…" and never saw the greeting.
+//
+// So: a terminal tool makes its round speech, and everything after it is dropped.
+export type RoundDisposition = "emit" | "hold" | "drop";
+
+export function classifyRoundText(opts: {
+  hasText: boolean;
+  stopReason: string | null;
+  terminal: boolean;
+  closed: boolean;
+}): RoundDisposition {
+  if (!opts.hasText) return "drop";
+  // A terminal tool already fired this turn — the goodbye has been spoken and the
+  // session is closing. Anything further is the agent tidying up after itself.
+  if (opts.closed) return "drop";
+  if (opts.terminal) return "emit";
+  // Mid-turn text before a tool call: hold it. It's released only if the turn
+  // never produces real speech (see releaseHeld).
+  return opts.stopReason === "tool_use" ? "hold" : "emit";
+}
+
+// Every round ended in a tool call, so nothing was ever spoken. Release what the
+// agent wrote rather than leaving the visitor with silence — ALL of it, oldest
+// first: the substantive line usually comes first and the stage direction last,
+// which is precisely the ordering the old keep-the-last-buffer rule inverted.
+export function releaseHeld(held: string[]): string {
+  return held.join("\n\n");
+}
+
 export interface TurnOutcome {
   rounds: number;
   totalCost: number;
@@ -213,44 +273,58 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
   let accumulated: ThreadMessage[];
 
   if (stream) {
-    // Streaming path (visitor turns) with a NARRATION GUARD: the model often
-    // emits text BEFORE a tool call ("let me check my memory first… now let me DM
-    // Researcher") — that's internal stage-direction, NOT speech to the visitor.
-    // We buffer each round and only emit the text of the round that ENDS THE TURN
-    // (stop_reason !== tool_use); pre-tool narration is suppressed. Fallback: if
-    // the turn hit max rounds without a clean finish, emit the last buffer so the
-    // visitor never gets silence. (Without this guard the agent narrates its whole
-    // tool process at the visitor — the M3 cutover regression this restores.)
+    // Streaming path (visitor turns), governed by the narration guard — see
+    // classifyRoundText above for the rules and the two conversations that
+    // motivated them.
     const runner = anthropic.beta.messages.toolRunner({ ...params, stream: true });
-    let lastToolBuffer = "";
-    let emittedAny = false;
+    const held: string[] = [];
+    const spoken: string[] = [];
+    let closed = false;
     for await (const roundStream of runner) {
       let buf = "";
       roundStream.on("text", (delta) => {
         buf += delta;
       });
       const message = await roundStream.finalMessage();
-      if (message.stop_reason === "tool_use") {
-        if (buf.trim()) lastToolBuffer = buf; // internal narration — held back
-      } else if (buf.trim()) {
+      const terminal = callsTerminalTool(message);
+      const disposition = classifyRoundText({
+        hasText: buf.trim().length > 0,
+        stopReason: message.stop_reason,
+        terminal,
+        closed,
+      });
+      if (disposition === "emit") {
         await stream.onFrame({ type: "text", text: buf, agent: agentId });
-        emittedAny = true;
+        spoken.push(buf.trim());
+      } else if (disposition === "hold") {
+        held.push(buf.trim());
       }
+      // Only a terminal round that actually SPOKE closes the turn. An agent that
+      // calls leave_chat with no text alongside it hasn't said goodbye yet — its
+      // farewell legitimately arrives on the next round, and dropping that would
+      // trade one silence bug for another.
+      if (terminal && disposition === "emit") closed = true;
       await onRound(message);
       if (refused) {
         const note = "\n(— the agent declined to continue down that path.)";
         await stream.onFrame({ type: "text", text: note, agent: agentId });
-        finalText += note;
-        emittedAny = true;
+        spoken.push(note);
         break;
       }
     }
-    // Every round ended in a tool call (max_iterations, no clean reply) → surface
-    // the last thing it said rather than leaving the visitor hanging.
-    if (!emittedAny && lastToolBuffer.trim()) {
-      await stream.onFrame({ type: "text", text: lastToolBuffer, agent: agentId });
-      if (!finalText) finalText = lastToolBuffer;
+    // Nothing was ever spoken (every round ended in a tool call and hit
+    // max_iterations) → release what it wrote rather than leaving the visitor
+    // with silence.
+    if (spoken.length === 0 && held.length > 0) {
+      const text = releaseHeld(held);
+      await stream.onFrame({ type: "text", text, agent: agentId });
+      spoken.push(text);
     }
+    // finalText MUST be exactly what the visitor saw. It's what gets written to
+    // the chat transcript and re-emitted as the agent.spoke bubble, so any
+    // divergence means the panel, the room and the Chronicle tell different
+    // stories about the same moment.
+    finalText = spoken.join("\n\n");
     accumulated = runner.params.messages;
   } else {
     const runner = anthropic.beta.messages.toolRunner(params);
@@ -279,12 +353,11 @@ export function extractText(message: Anthropic.Beta.BetaMessage): string {
     .trim();
 }
 
-// Ephemeral block types we DROP before persisting a thread: the server-side
+// Ephemeral block types that must not be REPLAYED verbatim: the server-side
 // code-execution machinery + any dataset upload. They reference a sandbox
 // container that no longer exists on a later turn, and replaying them risks a
 // 400 that would poison (permanently break) the continuous thread — and they're
-// bulky. The agent's plain TEXT takeaways from the analysis are kept, so its
-// memory of "what I found" persists; only the raw tool plumbing is dropped.
+// bulky.
 const EPHEMERAL_BLOCK_TYPES = new Set([
   "server_tool_use",
   "code_execution_tool_use",
@@ -296,11 +369,75 @@ const EPHEMERAL_BLOCK_TYPES = new Set([
   "mcp_tool_result",
 ]);
 
+// …but DELETING them outright gave the agents code-execution amnesia (2026-08-02).
+//
+// Every turn carries CODE_EXEC_TOOL, so an agent can write and run Python. But
+// because the blocks were dropped before persist, an agent that ran code this
+// turn woke up next turn to a thread in which it never had. The habit could
+// never form, and the self-model that DOES persist says the opposite: Builder
+// told a visitor "half my building is me larping with write_artifact_state
+// pretending it's a backend" and filed a capability request for a Python
+// sandbox it has had all along — the second time it had asked for that exact
+// thing (2026-06-14 and again 2026-08-02), because nothing in its memory
+// disagreed.
+//
+// So we REPLACE rather than delete: a compact, past-tense, clamped text trace.
+// The container is never referenced, so there's nothing for a later turn to
+// replay; the agent just remembers that it ran something and what came back.
+const TRACE_MAX_CHARS = 600;
+
+function clip(s: string, max: number): string {
+  const t = s.trim();
+  return t.length <= max ? t : `${t.slice(0, max)}… (truncated)`;
+}
+
+// Render one ephemeral block as a durable one-line memory of the action.
+// Returns undefined for blocks with nothing worth remembering.
+export function summarizeEphemeralBlock(block: unknown): string | undefined {
+  const b = block as {
+    type: string;
+    name?: string;
+    input?: { code?: string } & Record<string, unknown>;
+    content?: unknown;
+  };
+  switch (b.type) {
+    case "server_tool_use":
+    case "code_execution_tool_use":
+    case "mcp_tool_use": {
+      const name = b.name ?? "a server-side tool";
+      const code = typeof b.input?.code === "string" ? b.input.code : undefined;
+      if (code) return `[you ran ${name}:\n${clip(code, TRACE_MAX_CHARS)}]`;
+      return `[you called ${name}: ${clip(JSON.stringify(b.input ?? {}), 200)}]`;
+    }
+    case "code_execution_tool_result":
+    case "bash_code_execution_tool_result":
+    case "text_editor_code_execution_tool_result":
+    case "mcp_tool_result": {
+      const rendered = renderToolResult(b.content);
+      return rendered ? `[it returned:\n${clip(rendered, TRACE_MAX_CHARS)}]` : undefined;
+    }
+    case "container_upload":
+      return "[a dataset file was handed to your sandbox for this turn]";
+    default:
+      return undefined;
+  }
+}
+
+function renderToolResult(content: unknown): string | undefined {
+  if (content == null) return undefined;
+  if (typeof content === "string") return content;
+  const c = content as { stdout?: string; stderr?: string; error_code?: string };
+  const parts = [c.stdout, c.stderr && `stderr: ${c.stderr}`, c.error_code && `error: ${c.error_code}`]
+    .filter((p): p is string => Boolean(p && p.trim()));
+  if (parts.length) return parts.join("\n");
+  return JSON.stringify(content);
+}
+
 // Prepare a thread for persistence: (1) drop cache_control from every block (we
 // add a fresh breakpoint per call; persisting them would exceed the API's
-// 4-breakpoint limit), (2) drop ephemeral code-exec/upload blocks (see above),
-// and (3) collapse multi-`thinking` assistant messages (see below).
-// A message left with empty content after filtering is dropped entirely.
+// 4-breakpoint limit), (2) replace ephemeral code-exec/upload blocks with a
+// durable text trace (see above), and (3) collapse multi-`thinking` assistant
+// messages (see below). A message left with empty content is dropped entirely.
 export function stripForPersist(messages: ThreadMessage[]): ThreadMessage[] {
   const out: ThreadMessage[] = [];
   for (const m of messages) {
@@ -308,16 +445,41 @@ export function stripForPersist(messages: ThreadMessage[]): ThreadMessage[] {
       out.push(m);
       continue;
     }
-    const content = collapseThinking(
-      m.content
-        .filter((b) => !EPHEMERAL_BLOCK_TYPES.has((b as { type: string }).type))
-        .map((b) =>
-          "cache_control" in b && b.cache_control != null ? { ...b, cache_control: undefined } : b,
-        ),
-    );
-    if (content.length > 0) out.push({ ...m, content });
+    const content: ThreadMessage["content"] = [];
+    // Did anything survive that ISN'T just a trace of a stripped block? Drives
+    // the merge below: a message that used to vanish entirely must not now
+    // appear as a brand-new message next to one of the same role.
+    let keptReal = false;
+    for (const b of m.content) {
+      if (EPHEMERAL_BLOCK_TYPES.has((b as { type: string }).type)) {
+        const trace = summarizeEphemeralBlock(b);
+        if (trace) content.push({ type: "text", text: trace } as (typeof content)[number]);
+        continue;
+      }
+      keptReal = true;
+      content.push(
+        "cache_control" in b && b.cache_control != null ? { ...b, cache_control: undefined } : b,
+      );
+    }
+    if (content.length === 0) continue;
+
+    // A message that is ONLY traces would previously have been dropped. Folding
+    // it into the preceding same-role message keeps the trace without changing
+    // the thread's message shape — no consecutive same-role messages appear that
+    // weren't there before.
+    const prev = out[out.length - 1];
+    if (!keptReal && prev && prev.role === m.role && Array.isArray(prev.content)) {
+      prev.content = [...prev.content, ...content];
+      continue;
+    }
+    out.push({ ...m, content });
   }
-  return out;
+  // collapseThinking runs LAST, after any merge above — merging two assistant
+  // messages that each carried a thinking block would otherwise reconstruct the
+  // exact multi-thinking shape that bricked Researcher for 27 days.
+  return out.map((m) =>
+    Array.isArray(m.content) ? { ...m, content: collapseThinking(m.content) } : m,
+  );
 }
 
 // How many trailing compaction checkpoints to retain. 1 would be provably

@@ -29,7 +29,12 @@ import {
   recentArtifactsBy,
   listArtifacts,
 } from "../engine/artifacts.js";
-import { recordCapabilityRequest, sendEmailToThomas } from "../engine/outside.js";
+import {
+  formatCapabilityReceipt,
+  openCapabilityRequests,
+  recordCapabilityRequest,
+  sendEmailToThomas,
+} from "../engine/outside.js";
 import { readInboundMail, unreadInboundFor } from "../engine/inbound-mail.js";
 import {
   memView,
@@ -1033,8 +1038,14 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     run: async ({ description, rationale }) => {
       const gate = checkGate("request_capability", ctx.location);
       if (!gate.allowed) return gate.reason!;
-      await recordCapabilityRequest(ctx.agentId, description, rationale);
-      return `Logged your capability request: "${description}". Thomas will see it.`;
+      // Anything already open from this agent, captured BEFORE we add the new
+      // one — agents were re-filing asks they'd already made (Builder asked for
+      // a Python sandbox twice, seven weeks apart) because nothing ever told
+      // them a request had landed. Naming the backlog back to them is the
+      // cheapest correction available.
+      const alreadyOpen = await openCapabilityRequests(ctx.agentId).catch(() => []);
+      const { id, emailed } = await recordCapabilityRequest(ctx.agentId, description, rationale);
+      return formatCapabilityReceipt({ id, description, emailed, alreadyOpen });
     },
   });
 
@@ -1177,7 +1188,12 @@ function buildLeaveChat(ctx: AgentContext): RunnableTool {
         return "You can only leave a conversation while you're in one with a visitor.";
       }
       ctx.endRequested = reason ?? "wound down";
-      return "Alright — wrap up warmly in this message; the conversation will close once you've said it.";
+      // Deliberately worded to work either way round. Text written ALONGSIDE
+      // this call is now delivered as the goodbye (see turn.ts callsTerminalTool),
+      // and the old "wrap up warmly in this message" phrasing invited a second,
+      // emptier farewell after the tool result — which, under the pre-2026-08-02
+      // narration guard, was the ONLY line the visitor ever received.
+      return "Noted — the conversation closes at the end of this turn. If you already said your goodbye in this message, it's on its way and you don't need to repeat it; if you haven't, say it now.";
     },
   }) as RunnableTool;
 }
