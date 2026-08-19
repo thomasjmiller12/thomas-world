@@ -3,6 +3,7 @@ import { config } from "../../config.js";
 import type { TownTool } from "./tool.js";
 import type { LlmProvider } from "./types.js";
 import { anthropicProvider } from "./anthropic/provider.js";
+import { openaiProvider } from "./openai/provider.js";
 
 export interface ProviderCredentials {
   anthropicApiKey?: string;
@@ -29,7 +30,7 @@ export function providerConfiguration(
 
 export function getLlmProvider(provider: LlmProviderName): LlmProvider<TownTool> {
   if (provider === "anthropic") return anthropicProvider;
-  throw new Error("OpenAI provider adapter is not installed yet");
+  return openaiProvider;
 }
 
 export function getActiveLlmProvider(): LlmProvider<TownTool> {
