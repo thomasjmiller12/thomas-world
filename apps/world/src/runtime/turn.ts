@@ -4,8 +4,7 @@
 
 import type { AgentId, ChatStreamFrame } from "@town/contract";
 import { loadThread, persistThread, buildSeedContext } from "../engine/thread.js";
-import { recordUsage } from "../engine/usage.js";
-import { estimateCostUsd } from "./pricing.js";
+import { recordNormalizedUsage } from "../engine/usage.js";
 import { startTrace } from "./tracing.js";
 import { getLlmProvider } from "./llm/provider.js";
 import { buildSystemPrompt } from "./llm/system.js";
@@ -74,24 +73,13 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
     attachments: opts.attachments,
     onFrame: opts.stream?.onFrame,
     onUsage: async (usage) => {
-      const tokens = {
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-        cacheReadTokens: usage.cacheReadTokens,
-        cacheWriteTokens: usage.cacheWriteTokens,
-      };
-      const cost = estimateCostUsd(usage.provider, usage.model, tokens);
+      const cost = await recordNormalizedUsage({
+        agentId: opts.agentId,
+        tickId: opts.tickId,
+        usage,
+      });
       totalCost += cost;
       totalCacheRead += usage.cacheReadTokens;
-      await recordUsage({
-        agentId: opts.agentId,
-        provider: usage.provider,
-        model: usage.model,
-        endpoint: usage.endpoint,
-        tickId: opts.tickId,
-        ...tokens,
-        estCostUsd: cost,
-      });
       opts.trace.event("round", {
         round: usage.round,
         stop_reason: usage.stopReason,

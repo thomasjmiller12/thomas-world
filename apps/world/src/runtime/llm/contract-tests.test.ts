@@ -26,7 +26,12 @@ vi.mock("../../engine/thread.js", () => ({
   buildSeedContext: mocks.buildSeedContext,
 }));
 
-vi.mock("../../engine/usage.js", () => ({ recordUsage: mocks.recordUsage }));
+vi.mock("../../engine/usage.js", () => ({
+  recordNormalizedUsage: vi.fn(async (input) => {
+    await mocks.recordUsage(input);
+    return 0.01;
+  }),
+}));
 
 vi.mock("../pricing.js", () => ({
   estimateCostUsd: vi.fn(() => 0.01),

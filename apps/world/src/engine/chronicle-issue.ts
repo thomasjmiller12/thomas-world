@@ -23,18 +23,15 @@ import type {
   ChronicleCitationKind,
   ChronicleIssueSection,
 } from "@town/contract";
-import type Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "../db/client.js";
-import { anthropic, hasLlm } from "../runtime/client.js";
-import { recordUsage } from "./usage.js";
-import { estimateCostUsd } from "../runtime/pricing.js";
-import { normalizeAnthropicUsage } from "../runtime/llm/anthropic/usage.js";
+import { config } from "../config.js";
+import { getLlmProvider, hasLlm } from "../runtime/llm/provider.js";
+import { resolveSystemModel } from "../runtime/llm/models.js";
+import type { ModelRef, NormalizedUsage } from "../runtime/llm/types.js";
+import { recordNormalizedUsage } from "./usage.js";
 
 const { chronicleIssues, artifacts } = schema;
 
-// The model the Town Crier writes on. Sonnet for voice quality — generation is
-// lazy/nightly, so latency isn't the constraint (plan §"Target model").
-const CRIER_MODEL = "claude-sonnet-5";
 // Bump when the prompt/schema changes so stale cached issues can be told apart.
 export const PROMPT_VERSION = "crier-2026-06-20";
 
@@ -244,7 +241,7 @@ function markersIn(text: string): string[] {
 
 // --- LLM generation ---------------------------------------------------------
 
-const GeneratedIssue = z.object({
+export const GeneratedIssue = z.object({
   title: z.string().min(1).max(90),
   subtitle: z.string().max(180).nullable(),
   lead: z.object({ bodyMd: z.string().min(1), citationIds: z.array(z.string()) }),
@@ -252,7 +249,7 @@ const GeneratedIssue = z.object({
     .array(z.object({ id: z.string(), title: z.string(), bodyMd: z.string(), citationIds: z.array(z.string()) }))
     .max(6),
 });
-type GeneratedIssue = z.infer<typeof GeneratedIssue>;
+export type GeneratedIssue = z.infer<typeof GeneratedIssue>;
 
 const SYSTEM = `You are The Town Crier for Thomas's Town — a small, slightly whimsical AI village where five facets of one person (Career, Researcher, Builder, Writer, Hobby) live, work, talk, and make things on their own.
 
@@ -280,31 +277,28 @@ function renderPacket(packet: ChronicleSourcePacket): string {
   );
 }
 
-// One generation attempt. Returns the parsed+citation-validated issue, or throws
-// with feedback describing the invalid citation ids (so the retry can fix them).
 async function generateOnce(
   packet: ChronicleSourcePacket,
   feedback: string | null,
-): Promise<GeneratedIssue> {
-  const valid = new Set(packet.sourceIds);
-  const messages: Anthropic.Messages.MessageParam[] = [
-    { role: "user", content: renderPacket(packet) },
-  ];
-  if (feedback) messages.push({ role: "user", content: feedback });
-
-  const res = await anthropic.messages.create({
-    model: CRIER_MODEL,
-    max_tokens: 1600,
-    system: SYSTEM,
-    messages,
+  model: ModelRef,
+): Promise<string> {
+  const provider = getLlmProvider(model.provider);
+  return provider.generateText({
+    model,
+    systemPrompt: SYSTEM,
+    inputText: feedback
+      ? `${renderPacket(packet)}\n\nCorrection required:\n${feedback}`
+      : renderPacket(packet),
+    maxOutputTokens: 1600,
+    onUsage: (usage) => recordCrierUsage(packet.day, usage),
   });
-  await recordCrierUsage(packet.day, res.usage);
+}
 
-  const text = res.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("")
-    .trim();
+export function parseGeneratedIssueText(
+  text: string,
+  sourceIds: readonly string[],
+): GeneratedIssue {
+  const valid = new Set(sourceIds);
   const json = extractJson(text);
   const parsed = GeneratedIssue.parse(json);
 
@@ -321,7 +315,21 @@ async function generateOnce(
   return parsed;
 }
 
-function extractJson(text: string): unknown {
+export async function generateWithCitationRepair(
+  packet: ChronicleSourcePacket,
+  generate: (feedback: string | null) => Promise<string>,
+): Promise<GeneratedIssue> {
+  try {
+    return parseGeneratedIssueText(await generate(null), packet.sourceIds);
+  } catch (firstErr) {
+    const feedback =
+      `Your previous attempt had a problem: ${(firstErr as Error).message}. ` +
+      "Only cite source ids that appear in the Sources list. Return corrected JSON.";
+    return parseGeneratedIssueText(await generate(feedback), packet.sourceIds);
+  }
+}
+
+export function extractJson(text: string): unknown {
   // Tolerate a code fence or stray prose around the object.
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   const raw = fence ? fence[1] : text;
@@ -542,17 +550,12 @@ export async function attachIssue(
     }
 
     try {
-      let gen: GeneratedIssue;
-      try {
-        gen = await generateOnce(packet, null);
-      } catch (firstErr) {
-        gen = await generateOnce(
-          packet,
-          `Your previous attempt had a problem: ${(firstErr as Error).message}. Only cite source ids that appear in the Sources list. Return corrected JSON.`,
-        );
-      }
+      const model = resolveSystemModel("townCrier", config.llmProvider);
+      const gen = await generateWithCitationRepair(packet, (feedback) =>
+        generateOnce(packet, feedback, model),
+      );
       const issue = composeIssue(day, gen, packet);
-      await persistIssue(issue, packet, CRIER_MODEL);
+      await persistIssue(issue, packet, model.model);
       return issue;
     } catch (err) {
       console.warn(`[crier] generation failed for ${day}:`, (err as Error).message);
@@ -577,27 +580,13 @@ export async function regenerateIssue(day: string, items: ChronicleItem[], today
 
 async function recordCrierUsage(
   day: string,
-  usage: Parameters<typeof normalizeAnthropicUsage>[1],
+  usage: NormalizedUsage,
 ): Promise<void> {
   try {
-    const normalized = normalizeAnthropicUsage(CRIER_MODEL, usage, "generate");
-    const t = {
-      inputTokens: normalized.inputTokens,
-      outputTokens: normalized.outputTokens,
-      cacheReadTokens: normalized.cacheReadTokens,
-      cacheWriteTokens: normalized.cacheWriteTokens,
-    };
-    await recordUsage({
+    await recordNormalizedUsage({
       agentId: null,
-      provider: "anthropic",
-      model: CRIER_MODEL,
-      endpoint: "generate",
       tickId: `crier-${day}`,
-      inputTokens: t.inputTokens,
-      outputTokens: t.outputTokens,
-      cacheReadTokens: t.cacheReadTokens,
-      cacheWriteTokens: t.cacheWriteTokens,
-      estCostUsd: estimateCostUsd("anthropic", CRIER_MODEL, t),
+      usage,
     });
   } catch (err) {
     console.warn(`[crier] usage record failed (${day}):`, (err as Error).message);
