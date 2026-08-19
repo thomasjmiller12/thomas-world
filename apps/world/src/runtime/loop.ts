@@ -225,7 +225,7 @@ async function runTickInput(agentId: AgentId, note?: string): Promise<TickResult
   try {
     outcome = await runTurn({
       agentId,
-      model: profile.role.tickModel.model,
+      model: profile.role.tickModel,
       maxTokens: 4096,
       inputText,
       tools,
@@ -378,7 +378,7 @@ async function runVisitorInput(
   try {
     outcome = await runTurn({
       agentId,
-      model: profile(agentId).chatModel.model,
+      model: profile(agentId).chatModel,
       maxTokens: 2048,
       inputText,
       tools,
@@ -462,7 +462,7 @@ async function runDeliveryInput(
   try {
     outcome = await runTurn({
       agentId,
-      model: profile(agentId).chatModel.model,
+      model: profile(agentId).chatModel,
       maxTokens: 8192,
       inputText: input.prompt,
       tools,

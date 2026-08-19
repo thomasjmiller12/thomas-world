@@ -33,6 +33,8 @@ export interface NormalizedUsage {
   outputTokens: number;
   cacheReadTokens: number;
   cacheWriteTokens: number;
+  round?: number;
+  stopReason?: string | null;
 }
 
 export interface ProviderAttachment {
@@ -51,6 +53,9 @@ export interface ProviderTurnRequest<TTool = unknown> {
   maxTurns: number;
   maxOutputTokens: number;
   attachment?: ProviderAttachment;
+  // Compatibility path for provider-native one-turn attachments. Task 10
+  // replaces this with ProviderAttachment end-to-end.
+  attachments?: unknown[];
   onFrame?: (frame: ChatStreamFrame) => void | Promise<void>;
   onUsage: (usage: NormalizedUsage) => Promise<void>;
 }
@@ -82,6 +87,7 @@ export interface ProviderError {
 export interface LlmProvider<TTool = unknown> {
   readonly name: LlmProviderName;
   isConfigured(): boolean;
+  prepareThread(thread: NativeThreadState): NativeThreadState;
   runTurn(request: ProviderTurnRequest<TTool>): Promise<ProviderTurnResult>;
   generateText(request: ProviderGenerateRequest): Promise<string>;
   classifyError(error: unknown): ProviderError;

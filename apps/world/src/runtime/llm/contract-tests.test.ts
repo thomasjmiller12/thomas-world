@@ -14,9 +14,9 @@ const mocks = vi.hoisted(() => ({
   recordUsage: vi.fn(),
 }));
 
-vi.mock("../client.js", () => ({
+vi.mock("./anthropic/client.js", () => ({
   anthropic: { beta: { messages: { toolRunner: mocks.toolRunner } } },
-  systemBlocks: vi.fn(() => [{ type: "text", text: "system" }]),
+  anthropicSystemBlocks: vi.fn(() => [{ type: "text", text: "system" }]),
   TICK_BETAS: [],
 }));
 
@@ -42,7 +42,7 @@ import { MAX_TURN_ROUNDS, runTurn } from "../turn.js";
 
 const baseOptions = () => ({
   agentId: "builder" as const,
-  model: "claude-sonnet-5",
+  model: { provider: "anthropic" as const, model: "claude-sonnet-5" },
   maxTokens: 1_000,
   inputText: "What should I do next?",
   tools: [],
