@@ -10,7 +10,6 @@
 // triggering input simply retries.
 
 import type Anthropic from "@anthropic-ai/sdk";
-import type { BetaRunnableTool } from "@anthropic-ai/sdk/lib/tools/BetaRunnableTool.mjs";
 import type { AgentId, ChatStreamFrame } from "@town/contract";
 import { anthropic, systemBlocks, TICK_BETAS } from "./client.js";
 import { recordUsage } from "../engine/usage.js";
@@ -22,6 +21,8 @@ import {
   buildSeedContext,
   type ThreadMessage,
 } from "../engine/thread.js";
+import type { TownTool } from "./llm/tool.js";
+import { toAnthropicTools } from "./llm/anthropic/tools.js";
 
 // How many tool rounds a single turn may take before we force a stop.
 export const MAX_TURN_ROUNDS = 6;
@@ -160,7 +161,7 @@ export interface RunTurnOptions {
   // The input appended to the thread as a user turn (a world delta, the visitor's
   // words, the reflection prompt …).
   inputText: string;
-  tools: BetaRunnableTool<unknown>[];
+  tools: TownTool[];
   // World-event high-water id this turn perceived, stored as the thread's input
   // cursor. Omit to preserve the existing cursor (a turn that perceived nothing).
   advanceCursorTo?: number | null;
@@ -233,7 +234,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
     messages,
     // The user tools (runner dispatches their run()) plus the server-side
     // code-execution tool (API runs it inline; no run() needed).
-    tools: [...tools, CODE_EXEC_TOOL] as typeof tools,
+    tools: [...toAnthropicTools(tools), CODE_EXEC_TOOL],
     max_iterations: MAX_TURN_ROUNDS,
     betas: [...LOOP_BETAS],
     context_management: COMPACTION,

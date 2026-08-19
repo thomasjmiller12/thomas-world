@@ -15,23 +15,14 @@
 import type { AgentId } from "@town/contract";
 import { hasLlm } from "./client.js";
 import { getProfile, soulGitHash } from "./roles.js";
-import { betaMemoryTool } from "@anthropic-ai/sdk/helpers/beta/memory";
-import {
-  memView,
-  memCreate,
-  memStrReplace,
-  memInsert,
-  memDelete,
-  memRename,
-  coreMemorySnapshot,
-} from "../engine/memory.js";
+import { coreMemorySnapshot } from "../engine/memory.js";
 import { createArtifact, recentArtifactsBy } from "../engine/artifacts.js";
 import { reflect as hindsightReflect } from "./hindsight.js";
 import { startTrace } from "./tracing.js";
 import { runTurn } from "./turn.js";
 import { recordTurnFailure } from "./failure-handler.js";
 import { randomUUID } from "node:crypto";
-import type { BetaRunnableTool } from "@anthropic-ai/sdk/lib/tools/BetaRunnableTool.mjs";
+import { buildCoreMemoryTool } from "./tools.js";
 
 const REFLECTION_PROMPT = `It's the end of the day in the town — your quiet hour.
 
@@ -84,14 +75,7 @@ async function runReflectionTurn(agentId: AgentId): Promise<{ ran: boolean }> {
     core,
   ].join("\n");
 
-  const memory = betaMemoryTool({
-    view: (c) => memView(agentId, c.path),
-    create: (c) => memCreate(agentId, c.path, c.file_text),
-    str_replace: (c) => memStrReplace(agentId, c.path, c.old_str, c.new_str),
-    insert: (c) => memInsert(agentId, c.path, c.insert_line, c.insert_text),
-    delete: (c) => memDelete(agentId, c.path),
-    rename: (c) => memRename(agentId, c.old_path, c.new_path),
-  }) as unknown as BetaRunnableTool<unknown>;
+  const memory = buildCoreMemoryTool(agentId);
 
   let diaryText = "";
   try {
