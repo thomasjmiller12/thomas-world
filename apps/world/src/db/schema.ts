@@ -141,11 +141,9 @@ export const agents = pgTable("agents", {
 });
 
 // --- agent_threads (M3: continuity) -----------------------------------------
-// Each agent's provider-native continuous thread. During the provider migration,
-// the legacy agent_id primary key remains in place for rolling-deploy safety;
-// the additive (agent_id, provider) unique key becomes the eventual primary key
-// after the old runtime has drained. `inputCursor` is the high-water world-event id
-// already folded into the thread as notice-push (the delta cursor). Like
+// Each agent's provider-native continuous thread, keyed independently by
+// (agent_id, provider). `inputCursor` is the high-water world-event id already
+// folded into the thread as notice-push (the delta cursor). Like
 // agent.locationId, **seed must NEVER reset this** — it's living state.
 //
 // `content` is intentionally loosely typed (`unknown[]`): provider adapters
@@ -154,7 +152,7 @@ export const agents = pgTable("agents", {
 export const agentThreads = pgTable(
   "agent_threads",
   {
-    agentId: text("agent_id", { enum: agentEnum }).primaryKey(),
+    agentId: text("agent_id", { enum: agentEnum }).notNull(),
     provider: text("provider").notNull().default("anthropic"),
     content: jsonb("content").$type<unknown[]>().notNull().default([]),
     inputCursor: bigint("input_cursor", { mode: "number" }),
@@ -162,7 +160,12 @@ export const agentThreads = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [uniqueIndex("agent_threads_agent_provider_uidx").on(t.agentId, t.provider)],
+  (t) => [
+    primaryKey({
+      name: "agent_threads_agent_id_provider_pk",
+      columns: [t.agentId, t.provider],
+    }),
+  ],
 );
 
 // --- locations --------------------------------------------------------------
@@ -586,13 +589,10 @@ export const llmUsageDaily = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    primaryKey({ columns: [t.day, t.agentId, t.model] }),
-    uniqueIndex("llm_usage_daily_day_agent_provider_model_uidx").on(
-      t.day,
-      t.agentId,
-      t.provider,
-      t.model,
-    ),
+    primaryKey({
+      name: "llm_usage_daily_day_agent_id_provider_model_pk",
+      columns: [t.day, t.agentId, t.provider, t.model],
+    }),
   ],
 );
 
