@@ -100,7 +100,7 @@ async function runReflectionTurn(agentId: AgentId): Promise<{ ran: boolean }> {
     // perception cursor is preserved (reflection perceives nothing new).
     const outcome = await runTurn({
       agentId,
-      model: profile.role.tickModel,
+      model: profile.role.tickModel.model,
       maxTokens: 2048,
       inputText,
       tools: [memory],

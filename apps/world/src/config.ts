@@ -2,6 +2,8 @@
 // Reads process.env once, derives a `features` object from key presence so
 // every integration can degrade gracefully (brief "env-gating pattern").
 
+import { parseLlmProvider } from "./runtime/llm/types.js";
+
 function env(name: string): string | undefined {
   const v = process.env[name];
   return v && v.length > 0 ? v : undefined;
@@ -26,6 +28,9 @@ export const config = {
     env("DATABASE_URL") ?? "postgresql://town:town@localhost:5433/town",
   dailyBudgetUsd: Number(env("DAILY_BUDGET_USD") ?? "15"),
   adminToken: env("ADMIN_TOKEN"),
+  // The world-model provider is selected once at boot. OPENAI_API_KEY remains
+  // independently useful to Hindsight even when Anthropic is selected.
+  llmProvider: parseLlmProvider(env("LLM_PROVIDER")),
   // Comma-separated CORS allowlist (design doc §7). Absent → the HTTP layer
   // applies its localhost dev default. Set to the Vercel prod + preview origins
   // (and any localhost) in production. See apps/world/README.md.
@@ -92,7 +97,7 @@ export type Config = typeof config;
 export function featureSummary(): string {
   const f = config.features;
   const on = (b: boolean) => (b ? "on" : "off");
-  return `features: { hindsight: ${on(f.hindsight)}, langfuse: ${on(
+  return `llm: { provider: ${config.llmProvider} }; features: { hindsight: ${on(f.hindsight)}, langfuse: ${on(
     f.langfuse,
   )}, resend: ${on(f.resend)}, vault: ${on(f.vault)}, github: ${on(f.github)} }`;
 }
