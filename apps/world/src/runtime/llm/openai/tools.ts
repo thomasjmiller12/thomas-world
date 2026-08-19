@@ -21,7 +21,9 @@ export const openAIMemoryCommandSchema = z
   .object({
     command: z.enum(["view", "create", "str_replace", "insert", "delete", "rename"]),
     path: z.string().nullable(),
-    view_range: z.tuple([z.number().int(), z.number().int()]).nullable(),
+    // Responses strict schemas do not accept Draft 7 tuple-form `items` arrays.
+    // A fixed-length homogeneous array preserves the [start, end] wire shape.
+    view_range: z.array(z.number().int()).length(2).nullable(),
     file_text: z.string().nullable(),
     old_str: z.string().nullable(),
     new_str: z.string().nullable(),
@@ -49,7 +51,9 @@ async function runMemoryCommand(
       result = await handlers.view({
         command: "view",
         path: required(command.path, "path", command.command),
-        ...(command.view_range ? { view_range: command.view_range } : {}),
+        ...(command.view_range
+          ? { view_range: [command.view_range[0], command.view_range[1]] }
+          : {}),
       });
       break;
     case "create":

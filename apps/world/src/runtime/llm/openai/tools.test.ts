@@ -18,6 +18,18 @@ function nullMemoryFields() {
   };
 }
 
+function expectNoTupleItems(value: unknown): void {
+  if (Array.isArray(value)) {
+    for (const item of value) expectNoTupleItems(item);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  for (const [key, child] of Object.entries(value)) {
+    if (key === "items") expect(Array.isArray(child)).toBe(false);
+    expectNoTupleItems(child);
+  }
+}
+
 describe("OpenAI strict tool adapter", () => {
   it("emits a strict object schema with no additional properties", () => {
     const run = vi.fn(() => "ok");
@@ -47,6 +59,7 @@ describe("OpenAI strict tool adapter", () => {
     const playBeat = converted.find((item) => item.name === "play_beat");
 
     expect(converted).toHaveLength(townTools.length);
+    for (const item of converted) expectNoTupleItems(item.parameters);
     expect(playBeat).toBeDefined();
     expect(playBeat?.parameters).toMatchObject({
       type: "object",
@@ -78,6 +91,17 @@ describe("OpenAI strict tool adapter", () => {
     };
     const memory = toOpenAITool(defineTownMemoryTool(handlers));
     const invoke = (input: object) => memory.invoke({} as never, JSON.stringify(input));
+
+    expect(memory.parameters).toMatchObject({
+      properties: {
+        view_range: {
+          anyOf: [
+            { type: "array", items: { type: "integer" }, minItems: 2, maxItems: 2 },
+            { type: "null" },
+          ],
+        },
+      },
+    });
 
     await expect(
       invoke({ ...nullMemoryFields(), command: "view", path: "/core.md", view_range: [1, 5] }),
