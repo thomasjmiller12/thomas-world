@@ -192,6 +192,46 @@ describe("OpenAI gpt-5.4 provider", () => {
     );
   });
 
+  it("attaches an OpenAI-owned file to Code Interpreter and strips its dead handle before restart", async () => {
+    const codeItem = {
+      type: "hosted_tool_call" as const,
+      id: "ci-delivery",
+      name: "code_interpreter_call",
+      status: "completed",
+      providerData: {
+        type: "code_interpreter_call",
+        code: "import pandas as pd",
+        outputs: [{ type: "logs", logs: "3 rows" }],
+        container_id: "container-temporary",
+      },
+    };
+    const responses = [modelResponse([codeItem, assistant("Three rows." )])];
+    mocks.run.mockImplementation(async (_agent, _input, options) => {
+      await persistFakeRunItems(options, responses);
+      return fakeRunResult(responses);
+    });
+
+    const result = await openaiProvider.runTurn(
+      baseRequest({
+        attachment: {
+          provider: "openai",
+          fileId: "file-openai-dataset",
+          filename: "data.csv",
+        },
+      }),
+    );
+
+    const agent = mocks.run.mock.calls[0][0];
+    const codeTool = agent.tools.find((candidate: { name?: string }) =>
+      candidate.name === "code_interpreter",
+    );
+    expect(codeTool.providerData.container.file_ids).toEqual(["file-openai-dataset"]);
+    expect(JSON.stringify(result.thread.items)).toContain("you used Code Interpreter");
+    expect(JSON.stringify(result.thread.items)).not.toContain("container-temporary");
+    expect(JSON.stringify(result.thread.items)).not.toContain("file-openai-dataset");
+    expect(() => openaiProvider.prepareThread(result.thread)).not.toThrow();
+  });
+
   it("emits only complete response-boundary speech and keeps finalText identical", async () => {
     const responses = [
       modelResponse([assistant("I will check."), functionCall("look_around")]),

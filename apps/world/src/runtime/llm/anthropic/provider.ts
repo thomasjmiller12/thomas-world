@@ -69,6 +69,11 @@ async function runAnthropicTurn(
   if (request.model.provider !== "anthropic" || request.thread.provider !== "anthropic") {
     throw new Error("Anthropic adapter received non-Anthropic model or thread state");
   }
+  if (request.attachment && request.attachment.provider !== "anthropic") {
+    throw new Error(
+      `Anthropic adapter cannot use a ${request.attachment.provider} attachment`,
+    );
+  }
 
   const messages = pruneCompactedHistory(
     stripForPersist(request.thread.items as AnthropicThreadMessage[]),
@@ -81,7 +86,14 @@ async function runAnthropicTurn(
         text: request.inputText,
         cache_control: { type: "ephemeral", ttl: "1h" },
       },
-      ...((request.attachments ?? []) as Anthropic.Beta.BetaContentBlockParam[]),
+      ...(request.attachment
+        ? ([
+            {
+              type: "container_upload",
+              file_id: request.attachment.fileId,
+            },
+          ] as Anthropic.Beta.BetaContentBlockParam[])
+        : []),
     ],
   });
 

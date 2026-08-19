@@ -53,9 +53,6 @@ export interface ProviderTurnRequest<TTool = unknown> {
   maxTurns: number;
   maxOutputTokens: number;
   attachment?: ProviderAttachment;
-  // Compatibility path for provider-native one-turn attachments. Task 10
-  // replaces this with ProviderAttachment end-to-end.
-  attachments?: unknown[];
   onFrame?: (frame: ChatStreamFrame) => void | Promise<void>;
   onUsage: (usage: NormalizedUsage) => Promise<void>;
 }

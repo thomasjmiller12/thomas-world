@@ -115,6 +115,7 @@ import {
   IN_FICTION_429,
   sessionTurnDecision,
 } from "./rate-limit.js";
+import { parseProviderAttachment } from "./delivery.js";
 
 const agentSet = new Set<string>(agentIds);
 const locationSet = new Set<string>(locationIds);
@@ -995,9 +996,8 @@ export function createApp() {
     return c.json(result);
   });
 
-  // --- POST /admin/deliver {agent, fileId, prompt} ------------------------
-  // Hand an agent a dataset (a Files-API file_id) attached to a turn, with a
-  // prompt to analyze it via the code-execution sandbox. One-time handoff.
+  // --- POST /admin/deliver {agent, attachment, prompt} --------------------
+  // Hand an agent a provider-owned dataset attached to one code-execution turn.
   app.post("/admin/deliver", async (c) => {
     if (config.adminToken) {
       if (c.req.header("x-admin-token") !== config.adminToken) {
@@ -1007,11 +1007,18 @@ export function createApp() {
       return c.json({ error: "forbidden" }, 403);
     }
     const body = await c.req.json().catch(() => ({}));
-    const { agent, fileId, prompt } = body ?? {};
+    const { agent, attachment: attachmentInput, prompt } = body ?? {};
     if (!isAgentId(agent)) return c.json({ error: "unknown agent" }, 404);
-    if (typeof fileId !== "string" || !fileId) return c.json({ error: "fileId required" }, 400);
     if (typeof prompt !== "string" || !prompt) return c.json({ error: "prompt required" }, 400);
-    const result = await enqueue(agent, { kind: "delivery", fileId, prompt });
+    const parsedAttachment = parseProviderAttachment(attachmentInput, config.llmProvider);
+    if (!parsedAttachment.ok) {
+      return c.json({ error: parsedAttachment.error }, parsedAttachment.status);
+    }
+    const result = await enqueue(agent, {
+      kind: "delivery",
+      attachment: parsedAttachment.attachment,
+      prompt,
+    });
     await flushTracing();
     return c.json(result);
   });

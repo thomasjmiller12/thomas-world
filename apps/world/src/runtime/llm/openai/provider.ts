@@ -88,13 +88,23 @@ function responseSpeech(responses: ModelResponse[]): {
 }
 
 function createTurnAgent(request: ProviderTurnRequest<TownTool>): Agent {
+  if (request.attachment && request.attachment.provider !== "openai") {
+    throw new Error(`OpenAI adapter cannot use a ${request.attachment.provider} attachment`);
+  }
+  const fileIds = request.attachment ? [request.attachment.fileId] : [];
   return new Agent({
     name: `${request.agentId}-thomas`,
     instructions: request.systemPrompt,
     model: request.model.model,
     tools: [
       ...toOpenAITools(request.tools),
-      codeInterpreterTool({ includeOutputs: true, container: { type: "auto" } }),
+      codeInterpreterTool({
+        includeOutputs: true,
+        container: {
+          type: "auto",
+          ...(fileIds.length > 0 ? { file_ids: fileIds } : {}),
+        },
+      }),
     ],
     modelSettings: {
       maxTokens: request.maxOutputTokens,
@@ -150,12 +160,6 @@ async function runOpenAITurn(
   if (request.model.provider !== "openai" || request.thread.provider !== "openai") {
     throw new Error("OpenAI adapter received a non-OpenAI model or thread state");
   }
-  if ((request.attachments?.length ?? 0) > 0) {
-    throw new Error(
-      "OpenAI provider-native attachments are not wired yet; use ProviderAttachment after Task 10",
-    );
-  }
-
   const initialItems = prepareOpenAIHistory(request.thread.items);
   const session = createOpenAISession(initialItems, request.model.model);
   const result = await finishRun(request, session);

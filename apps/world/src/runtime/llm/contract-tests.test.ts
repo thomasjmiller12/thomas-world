@@ -104,6 +104,25 @@ describe("runTurn provider contract", () => {
     expect(JSON.stringify(persisted)).not.toContain("cache_control");
   });
 
+  it("translates an Anthropic-owned attachment inside the Anthropic adapter", async () => {
+    const rounds = [anthropicMessage({ text: "analyzed", stopReason: "end_turn" })];
+    mocks.toolRunner.mockImplementation((params) => nonStreamingRunner(params, rounds));
+
+    await runTurn({
+      ...baseOptions(),
+      attachment: {
+        provider: "anthropic",
+        fileId: "file-anthropic-dataset",
+        filename: "data.csv",
+      },
+    });
+
+    const params = mocks.toolRunner.mock.calls[0][0] as { messages: unknown[] };
+    expect(JSON.stringify(params.messages)).toContain(
+      '"type":"container_upload","file_id":"file-anthropic-dataset"',
+    );
+  });
+
   it("surfaces refusal explicitly and stops consuming later rounds", async () => {
     const rounds = [
       anthropicMessage({ text: "no", stopReason: "refusal" }),

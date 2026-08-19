@@ -433,12 +433,10 @@ async function runVisitorInput(
 
 // --- dataset delivery (one-time handoff into the code-exec sandbox) ---------
 
-// Hand an agent a dataset (Files-API file_id) attached to a turn as a
-// container_upload, with a prompt to analyze it. The agent uses the
-// code-execution tool (always available now) to read + crunch the file in the
-// sandbox — the data never enters its context, only its analysis does. Runs on
-// the chat model (stronger), more tokens. The container_upload + code-exec blocks
-// are stripped before persist; the agent's written takeaways stay in its thread.
+// Hand an agent a provider-owned dataset with a prompt to analyze it. The
+// selected adapter translates the attachment into its code-execution surface;
+// provider container/file handles never enter shared orchestration or persisted
+// portable state. Runs on the chat model (stronger), with more tokens.
 async function runDeliveryInput(
   agentId: AgentId,
   input: Extract<AgentInput, { kind: "delivery" }>,
@@ -466,7 +464,7 @@ async function runDeliveryInput(
       maxTokens: 8192,
       inputText: input.prompt,
       tools,
-      attachments: [{ type: "container_upload", file_id: input.fileId }],
+      attachment: input.attachment,
       tickId,
       trace,
     });

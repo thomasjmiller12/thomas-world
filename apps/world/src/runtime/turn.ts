@@ -8,7 +8,7 @@ import { recordNormalizedUsage } from "../engine/usage.js";
 import { startTrace } from "./tracing.js";
 import { getLlmProvider } from "./llm/provider.js";
 import { buildSystemPrompt } from "./llm/system.js";
-import type { ModelRef } from "./llm/types.js";
+import type { ModelRef, ProviderAttachment } from "./llm/types.js";
 import type { TownTool } from "./llm/tool.js";
 
 export { classifyRoundText, releaseHeld } from "./llm/speech.js";
@@ -42,7 +42,7 @@ export interface RunTurnOptions {
   tickId: string;
   trace: ReturnType<typeof startTrace>;
   stream?: TurnHandlers;
-  attachments?: unknown[];
+  attachment?: ProviderAttachment;
 }
 
 export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
@@ -70,7 +70,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
     tools: opts.tools,
     maxTurns: MAX_TURN_ROUNDS,
     maxOutputTokens: opts.maxTokens,
-    attachments: opts.attachments,
+    attachment: opts.attachment,
     onFrame: opts.stream?.onFrame,
     onUsage: async (usage) => {
       const cost = await recordNormalizedUsage({
