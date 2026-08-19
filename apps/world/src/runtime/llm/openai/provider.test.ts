@@ -37,7 +37,7 @@ vi.mock("./client.js", () => ({
   OPENAI_CONTEXT_MANAGEMENT: [{ type: "compaction", compactThreshold: 50_000 }],
 }));
 
-import { openaiProvider } from "./provider.js";
+import { classifyOpenAIError, openaiProvider } from "./provider.js";
 
 function assistant(text: string) {
   return {
@@ -301,5 +301,53 @@ describe("OpenAI gpt-5.4 provider", () => {
         cacheReadTokens: 20,
       }),
     );
+  });
+});
+
+describe("OpenAI provider error normalization", () => {
+  function apiError(status: number, message: string): Error {
+    return Object.assign(new Error(message), { status });
+  }
+
+  it.each([
+    [401, "invalid API key", "authentication", false],
+    [429, "rate limit reached", "rate_limit", true],
+    [500, "internal server error", "provider", true],
+    [503, "temporarily unavailable", "provider", true],
+    [404, "model not found", "model_access", false],
+  ] as const)("normalizes HTTP %i", (status, message, kind, retryable) => {
+    expect(classifyOpenAIError(apiError(status, message))).toMatchObject({
+      provider: "openai",
+      kind,
+      retryable,
+      threadCorrupt: false,
+      status,
+    });
+  });
+
+  it("recognizes only explicit malformed native-history errors as thread corruption", () => {
+    expect(
+      classifyOpenAIError(
+        apiError(400, "No matching function_call found for function_call_output with call_id call_1"),
+      ),
+    ).toMatchObject({ kind: "thread_corrupt", retryable: false, threadCorrupt: true });
+    expect(classifyOpenAIError(apiError(400, "invalid request parameter"))).toMatchObject({
+      kind: "request",
+      retryable: false,
+      threadCorrupt: false,
+    });
+  });
+
+  it("distinguishes timeouts and refusals without erasing history", () => {
+    expect(
+      classifyOpenAIError(
+        Object.assign(new Error("request timed out"), { name: "APIConnectionTimeoutError" }),
+      ),
+    ).toMatchObject({ kind: "timeout", retryable: true, threadCorrupt: false });
+    expect(classifyOpenAIError(apiError(400, "request was refused"))).toMatchObject({
+      kind: "refusal",
+      retryable: false,
+      threadCorrupt: false,
+    });
   });
 });

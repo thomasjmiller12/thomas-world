@@ -29,6 +29,15 @@ export interface DebugData {
   // table nothing ever read, so nine of them piled up unseen — this is the read
   // surface that makes the backlog real (they now email out too).
   openCapabilityRequests: { id: string; agentId: string; summary: string; ts: Date }[];
+  llm: {
+    provider: "anthropic" | "openai";
+    configured: boolean;
+    models: {
+      agents: { agent: string; tick: string; chat: string }[];
+      chronicle: string;
+      townCrier: string;
+    };
+  };
 }
 
 export function renderDebugPage(d: DebugData): string {
@@ -76,6 +85,15 @@ export function renderDebugPage(d: DebugData): string {
 </head><body>
 <h1>Thomas's Town — world server</h1>
 <p class="sub">${esc(featureSummary())}</p>
+
+<h2>Model provider</h2>
+<p>${esc(d.llm.provider)} — ${d.llm.configured ? "configured" : "missing selected provider key"}</p>
+<ul>
+  ${d.llm.models.agents
+    .map((model) => `<li>${esc(model.agent)}: tick=${esc(model.tick)}, chat=${esc(model.chat)}</li>`)
+    .join("")}
+  <li>chronicle=${esc(d.llm.models.chronicle)}, town-crier=${esc(d.llm.models.townCrier)}</li>
+</ul>
 
 <h2>Spend today</h2>
 <p class="spend">$${d.spendTodayUsd.toFixed(2)}</p>

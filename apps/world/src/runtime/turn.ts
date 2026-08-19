@@ -12,11 +12,6 @@ import type { ModelRef, ProviderAttachment } from "./llm/types.js";
 import type { TownTool } from "./llm/tool.js";
 
 export { classifyRoundText, releaseHeld } from "./llm/speech.js";
-export {
-  pruneCompactedHistory,
-  stripForPersist,
-  summarizeEphemeralBlock,
-} from "./llm/anthropic/history.js";
 
 export const MAX_TURN_ROUNDS = 6;
 
@@ -81,6 +76,10 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
       totalCost += cost;
       totalCacheRead += usage.cacheReadTokens;
       opts.trace.event("round", {
+        provider: usage.provider,
+        model: usage.model,
+        endpoint: usage.endpoint,
+        thread_provider: opts.model.provider,
         round: usage.round,
         stop_reason: usage.stopReason,
         cache_read_input_tokens: usage.cacheReadTokens,

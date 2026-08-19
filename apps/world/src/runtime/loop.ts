@@ -16,7 +16,7 @@ import { randomUUID } from "node:crypto";
 import type { AgentId, LocationId } from "@town/contract";
 import { agentIds } from "@town/contract";
 import { config } from "../config.js";
-import { hasLlm } from "./client.js";
+import { hasLlm } from "./llm/provider.js";
 import { getProfile, soulGitHash } from "./roles.js";
 import { buildTools, type AgentContext } from "./tools.js";
 import { buildDelta, writeCursor } from "./observation.js";
@@ -211,7 +211,14 @@ async function runTickInput(agentId: AgentId, note?: string): Promise<TickResult
   const trace = startTrace("tick", {
     userId: agentId,
     sessionId: utcDay(),
-    metadata: { soulVersion: agent.soulVersion, soulGitHash: soulGitHash(agentId) },
+    metadata: {
+      soulVersion: agent.soulVersion,
+      soulGitHash: soulGitHash(agentId),
+      provider: profile.role.tickModel.provider,
+      model: profile.role.tickModel.model,
+      endpoint: "turn",
+      thread_provider: profile.role.tickModel.provider,
+    },
   });
 
   // The world delta (pure SQL, push/pull): standing state + notice-push since the
@@ -328,7 +335,13 @@ async function runVisitorInput(
   const trace = startTrace("visitor", {
     userId: agentId,
     sessionId,
-    metadata: { soulGitHash: soulGitHash(agentId) },
+    metadata: {
+      soulGitHash: soulGitHash(agentId),
+      provider: profile(agentId).chatModel.provider,
+      model: profile(agentId).chatModel.model,
+      endpoint: "turn",
+      thread_provider: profile(agentId).chatModel.provider,
+    },
   });
 
   // WHO IS THIS (the person tier, 2026-07-30). Before this, a visitor turn told
@@ -450,7 +463,13 @@ async function runDeliveryInput(
   const trace = startTrace("delivery", {
     userId: agentId,
     sessionId: utcDay(),
-    metadata: { soulGitHash: soulGitHash(agentId) },
+    metadata: {
+      soulGitHash: soulGitHash(agentId),
+      provider: profile(agentId).chatModel.provider,
+      model: profile(agentId).chatModel.model,
+      endpoint: "turn",
+      thread_provider: profile(agentId).chatModel.provider,
+    },
   });
 
   const ctx: AgentContext = { agentId, location };
@@ -469,7 +488,7 @@ async function runDeliveryInput(
       trace,
     });
   } catch (err) {
-    console.warn(`[delivery ${agentId}] error:`, (err as Error).message);
+    await recordTurnFailure(agentId, err, "delivery");
     trace.end({ error: (err as Error).message });
     return { ran: false, reason: "error", traceId: trace.traceId };
   }

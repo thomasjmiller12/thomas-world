@@ -37,6 +37,13 @@ export function getActiveLlmProvider(): LlmProvider<TownTool> {
   return getLlmProvider(config.llmProvider);
 }
 
+export function activeProviderConfiguration(): ProviderConfiguration {
+  return providerConfiguration(config.llmProvider, {
+    anthropicApiKey: config.anthropicApiKey,
+    openaiApiKey: config.openaiApiKey,
+  });
+}
+
 export function hasLlm(): boolean {
-  return getActiveLlmProvider().isConfigured();
+  return activeProviderConfiguration().configured;
 }

@@ -209,21 +209,50 @@ async function generateOpenAIText(request: ProviderGenerateRequest): Promise<str
   return response.output_text.trim();
 }
 
-function classifyOpenAIError(error: unknown): ProviderError {
+const OPENAI_THREAD_CORRUPTION = [
+  /function_call(?:_output)?.*(?:missing|without|no matching).*(?:call|output)/i,
+  /(?:missing|no matching).*function_call(?:_output)?/i,
+  /reasoning item.*(?:invalid|missing|required|cannot)/i,
+  /compaction item.*(?:invalid|missing|required|cannot)/i,
+  /invalid.*(?:input|history) item/i,
+];
+
+export function classifyOpenAIError(error: unknown): ProviderError {
   const candidate = error as {
     status?: number;
     statusCode?: number;
     code?: string;
+    name?: string;
     message?: string;
   };
   const status = candidate.status ?? candidate.statusCode;
   const message = candidate.message ?? String(error);
+  const timeout =
+    candidate.name === "APIConnectionTimeoutError" ||
+    candidate.code === "ETIMEDOUT" ||
+    /timed? out|timeout/i.test(message);
   const threadCorrupt =
-    status === 400 && /input item|compaction|function_call|reasoning item/i.test(message);
+    status === 400 && OPENAI_THREAD_CORRUPTION.some((pattern) => pattern.test(message));
+  const retryable = timeout || status === 429 || (status != null && status >= 500);
+  const kind = threadCorrupt
+    ? "thread_corrupt"
+    : timeout
+      ? "timeout"
+      : status === 401 || status === 403
+        ? "authentication"
+        : status === 429
+          ? "rate_limit"
+          : status != null && status >= 500
+            ? "provider"
+            : status === 404
+              ? "model_access"
+              : /refus(?:al|ed)/i.test(message)
+                ? "refusal"
+                : "request";
   return {
     provider: "openai",
-    kind: status === 429 ? "rate_limit" : status && status >= 500 ? "provider" : "request",
-    retryable: status === 429 || (status != null && status >= 500),
+    kind,
+    retryable,
     threadCorrupt,
     status,
     message,

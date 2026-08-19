@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { classifyRoundText, releaseHeld, summarizeEphemeralBlock } from "./turn.js";
+import { classifyRoundText, releaseHeld } from "./turn.js";
+import { summarizeEphemeralBlock } from "./llm/anthropic/history.js";
 
 // The narration guard decides, per round, whether the agent's plain text is
 // SPEECH to the visitor or internal stage direction. Getting this wrong is not
@@ -67,7 +68,7 @@ describe("releaseHeld (max-rounds fallback)", () => {
 
 // Code-execution blocks can't be replayed (they reference a dead sandbox
 // container), but DELETING them left agents unable to remember they'd ever run
-// code — see the comment above summarizeEphemeralBlock. We keep a bounded,
+// code — see the Anthropic history adapter's summarizeEphemeralBlock comment. We keep a bounded,
 // past-tense trace instead.
 describe("summarizeEphemeralBlock (code-execution memory)", () => {
   it("records the code an agent ran", () => {

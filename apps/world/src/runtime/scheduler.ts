@@ -10,7 +10,7 @@
 
 import { agentIds, type AgentId } from "@town/contract";
 import { config } from "../config.js";
-import { hasLlm } from "./client.js";
+import { activeProviderConfiguration } from "./llm/provider.js";
 import { getProfile } from "./roles.js";
 import { enqueue } from "./queue.js";
 import { circuitBroken } from "./failures.js";
@@ -286,8 +286,11 @@ let retentionTimer: NodeJS.Timeout | null = null;
 
 export function startScheduler(): void {
   if (running) return;
-  if (!hasLlm()) {
-    console.warn("[scheduler] ANTHROPIC_API_KEY absent — scheduler NOT started (no idle ticks).");
+  const providerState = activeProviderConfiguration();
+  if (!providerState.configured) {
+    console.warn(
+      `[scheduler] ${providerState.missingEnv} absent for selected provider ${config.llmProvider} — scheduler NOT started (no idle ticks).`,
+    );
     return;
   }
   running = true;

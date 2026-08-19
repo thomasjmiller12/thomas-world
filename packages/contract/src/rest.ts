@@ -124,6 +124,19 @@ export const HealthResponse = z.object({
   ok: z.boolean(),
   ts: z.string(), // ISO 8601
   llm: z.boolean(),
+  provider: z.enum(["anthropic", "openai"]),
+  providerConfigured: z.boolean(),
+  models: z.object({
+    agents: z.array(
+      z.object({
+        agent: AgentId,
+        tick: z.string(),
+        chat: z.string(),
+      }),
+    ),
+    chronicle: z.string(),
+    townCrier: z.string(),
+  }),
   budgetExhausted: z.boolean(),
   // True when autonomous ticking is intentionally paused (outside waking hours),
   // so a monitor can tell "deliberately quiet" from "broken".

@@ -219,16 +219,49 @@ async function generateAnthropicText(request: ProviderGenerateRequest): Promise<
     .trim();
 }
 
-function classifyAnthropicError(error: unknown): ProviderError {
-  const candidate = error as { status?: number; message?: string };
+const ANTHROPIC_THREAD_CORRUPTION = [
+  /`?thinking`? or `?redacted_thinking`? blocks/i,
+  /blocks in the latest assistant message cannot be modified/i,
+  /`?tool_use`? ids were found without `?tool_result`?/i,
+  /`?compaction`? blocks require/i,
+  /unexpected `?tool_use_id`? found/i,
+];
+
+export function classifyAnthropicError(error: unknown): ProviderError {
+  const candidate = error as { status?: number; code?: string; name?: string; message?: string };
   const status = candidate.status;
+  const message = candidate.message ?? String(error);
+  const timeout =
+    candidate.name === "APIConnectionTimeoutError" ||
+    candidate.code === "ETIMEDOUT" ||
+    /timed? out|timeout/i.test(message);
+  const threadCorrupt =
+    status === 400 && ANTHROPIC_THREAD_CORRUPTION.some((pattern) => pattern.test(message));
+  const retryable = timeout || status === 429 || status === 529 || (status != null && status >= 500);
+  const kind = threadCorrupt
+    ? "thread_corrupt"
+    : timeout
+      ? "timeout"
+      : status === 401 || status === 403
+        ? "authentication"
+        : status === 429
+          ? "rate_limit"
+          : status === 529 || (status != null && status >= 500)
+            ? "provider"
+            : /credit balance is too low/i.test(message)
+              ? "credits"
+              : status === 404
+                ? "model_access"
+                : /refus(?:al|ed)/i.test(message)
+                  ? "refusal"
+                  : "request";
   return {
     provider: "anthropic",
-    kind: status === 429 ? "rate_limit" : status && status >= 500 ? "provider" : "request",
-    retryable: status === 429 || (status != null && status >= 500),
-    threadCorrupt: false,
+    kind,
+    retryable,
+    threadCorrupt,
     status,
-    message: candidate.message ?? String(error),
+    message,
   };
 }
 

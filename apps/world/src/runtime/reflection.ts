@@ -13,7 +13,7 @@
 // queue already serializes it — no separate lock/engagement guard needed.
 
 import type { AgentId } from "@town/contract";
-import { hasLlm } from "./client.js";
+import { hasLlm } from "./llm/provider.js";
 import { getProfile, soulGitHash } from "./roles.js";
 import { coreMemorySnapshot } from "../engine/memory.js";
 import { createArtifact, recentArtifactsBy } from "../engine/artifacts.js";
@@ -61,7 +61,13 @@ async function runReflectionTurn(agentId: AgentId): Promise<{ ran: boolean }> {
   const trace = startTrace("reflection", {
     userId: agentId,
     sessionId: utcDay(),
-    metadata: { soulGitHash: soulGitHash(agentId) },
+    metadata: {
+      soulGitHash: soulGitHash(agentId),
+      provider: profile.role.tickModel.provider,
+      model: profile.role.tickModel.model,
+      endpoint: "turn",
+      thread_provider: profile.role.tickModel.provider,
+    },
   });
 
   // The reflection input. The day itself is ALREADY in the thread (M3) — we only

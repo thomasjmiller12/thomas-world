@@ -97,7 +97,9 @@ export type Config = typeof config;
 export function featureSummary(): string {
   const f = config.features;
   const on = (b: boolean) => (b ? "on" : "off");
-  return `llm: { provider: ${config.llmProvider} }; features: { hindsight: ${on(f.hindsight)}, langfuse: ${on(
+  const providerConfigured =
+    config.llmProvider === "anthropic" ? Boolean(config.anthropicApiKey) : Boolean(config.openaiApiKey);
+  return `llm: { provider: ${config.llmProvider}, configured: ${on(providerConfigured)} }; features: { hindsight: ${on(f.hindsight)}, langfuse: ${on(
     f.langfuse,
   )}, resend: ${on(f.resend)}, vault: ${on(f.vault)}, github: ${on(f.github)} }`;
 }
