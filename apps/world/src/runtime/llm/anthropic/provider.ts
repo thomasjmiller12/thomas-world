@@ -1,6 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { config } from "../../../config.js";
-import type { ThreadMessage } from "../../../engine/thread.js";
 import type { TownTool } from "../tool.js";
 import type {
   LlmProvider,
@@ -11,7 +10,11 @@ import type {
 } from "../types.js";
 import { classifyRoundText, releaseHeld } from "../speech.js";
 import { anthropic, anthropicSystemBlocks, TICK_BETAS } from "./client.js";
-import { pruneCompactedHistory, stripForPersist } from "./history.js";
+import {
+  pruneCompactedHistory,
+  stripForPersist,
+  type AnthropicThreadMessage,
+} from "./history.js";
 import { toAnthropicTools } from "./tools.js";
 import { normalizeAnthropicUsage } from "./usage.js";
 
@@ -68,7 +71,7 @@ async function runAnthropicTurn(
   }
 
   const messages = pruneCompactedHistory(
-    stripForPersist(request.thread.items as ThreadMessage[]),
+    stripForPersist(request.thread.items as AnthropicThreadMessage[]),
   );
   messages.push({
     role: "user",
@@ -117,7 +120,7 @@ async function runAnthropicTurn(
     if (text && message.stop_reason === "end_turn") finalText = text;
   };
 
-  let accumulated: ThreadMessage[];
+  let accumulated: AnthropicThreadMessage[];
   if (request.onFrame) {
     const runner = anthropic.beta.messages.toolRunner({ ...params, stream: true });
     const held: string[] = [];
@@ -222,7 +225,7 @@ export const anthropicProvider: LlmProvider<TownTool> = {
   isConfigured: () => Boolean(config.anthropicApiKey),
   prepareThread: (thread) => ({
     provider: "anthropic",
-    items: pruneCompactedHistory(stripForPersist(thread.items as ThreadMessage[])),
+    items: pruneCompactedHistory(stripForPersist(thread.items as AnthropicThreadMessage[])),
   }),
   runTurn: runAnthropicTurn,
   generateText: generateAnthropicText,

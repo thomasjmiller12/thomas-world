@@ -29,12 +29,6 @@ vi.mock("../../engine/thread.js", () => ({
 vi.mock("../../engine/usage.js", () => ({ recordUsage: mocks.recordUsage }));
 
 vi.mock("../pricing.js", () => ({
-  tokensFromUsage: vi.fn(() => ({
-    inputTokens: 10,
-    outputTokens: 2,
-    cacheReadTokens: 3,
-    cacheWriteTokens: 4,
-  })),
   estimateCostUsd: vi.fn(() => 0.01),
 }));
 
@@ -54,7 +48,7 @@ describe("runTurn provider contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.loadThread.mockResolvedValue({
-      messages: [{ role: "user", content: [{ type: "text", text: "existing" }] }],
+      items: [{ role: "user", content: [{ type: "text", text: "existing" }] }],
       inputCursor: 41,
     });
     mocks.persistThread.mockResolvedValue(undefined);
@@ -97,7 +91,8 @@ describe("runTurn provider contract", () => {
     await runTurn(baseOptions());
 
     expect(mocks.persistThread).toHaveBeenCalledOnce();
-    const persisted = mocks.persistThread.mock.calls[0][1] as unknown[];
+    expect(mocks.persistThread.mock.calls[0].slice(0, 2)).toEqual(["builder", "anthropic"]);
+    const persisted = mocks.persistThread.mock.calls[0][2] as unknown[];
     expect(JSON.stringify(persisted)).toContain("What should I do next?");
     expect(JSON.stringify(persisted)).toContain("checking");
     expect(JSON.stringify(persisted)).toContain("done");

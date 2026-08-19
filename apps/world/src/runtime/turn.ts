@@ -3,7 +3,7 @@
 // history hygiene, tool wrapping, compaction, and streaming event decoding.
 
 import type { AgentId, ChatStreamFrame } from "@town/contract";
-import { loadThread, persistThread, buildSeedContext, type ThreadMessage } from "../engine/thread.js";
+import { loadThread, persistThread, buildSeedContext } from "../engine/thread.js";
 import { recordUsage } from "../engine/usage.js";
 import { estimateCostUsd } from "./pricing.js";
 import { startTrace } from "./tracing.js";
@@ -48,10 +48,10 @@ export interface RunTurnOptions {
 
 export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
   const provider = getLlmProvider(opts.model.provider);
-  const loaded = await loadThread(opts.agentId);
+  const loaded = await loadThread(opts.agentId, opts.model.provider);
   const prepared = provider.prepareThread({
     provider: opts.model.provider,
-    items: loaded.messages,
+    items: loaded.items,
   });
 
   let inputText = opts.inputText;
@@ -80,12 +80,14 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
         cacheReadTokens: usage.cacheReadTokens,
         cacheWriteTokens: usage.cacheWriteTokens,
       };
-      const cost = estimateCostUsd(usage.model, tokens);
+      const cost = estimateCostUsd(usage.provider, usage.model, tokens);
       totalCost += cost;
       totalCacheRead += usage.cacheReadTokens;
       await recordUsage({
         agentId: opts.agentId,
+        provider: usage.provider,
         model: usage.model,
+        endpoint: usage.endpoint,
         tickId: opts.tickId,
         ...tokens,
         estCostUsd: cost,
@@ -101,7 +103,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
 
   const cursor =
     opts.advanceCursorTo === undefined ? loaded.inputCursor : opts.advanceCursorTo;
-  await persistThread(opts.agentId, result.thread.items as ThreadMessage[], cursor);
+  await persistThread(opts.agentId, opts.model.provider, result.thread.items, cursor);
 
   return {
     rounds: result.rounds,

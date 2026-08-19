@@ -1,4 +1,6 @@
-import type { ThreadMessage } from "../../../engine/thread.js";
+import type Anthropic from "@anthropic-ai/sdk";
+
+export type AnthropicThreadMessage = Anthropic.Beta.BetaMessageParam;
 
 const EPHEMERAL_BLOCK_TYPES = new Set([
   "server_tool_use",
@@ -58,14 +60,14 @@ function renderToolResult(content: unknown): string | undefined {
   return JSON.stringify(content);
 }
 
-export function stripForPersist(messages: ThreadMessage[]): ThreadMessage[] {
-  const out: ThreadMessage[] = [];
+export function stripForPersist(messages: AnthropicThreadMessage[]): AnthropicThreadMessage[] {
+  const out: AnthropicThreadMessage[] = [];
   for (const m of messages) {
     if (typeof m.content === "string") {
       out.push(m);
       continue;
     }
-    const content: ThreadMessage["content"] = [];
+    const content: AnthropicThreadMessage["content"] = [];
     let keptReal = false;
     for (const b of m.content) {
       if (EPHEMERAL_BLOCK_TYPES.has((b as { type: string }).type)) {
@@ -95,9 +97,9 @@ export function stripForPersist(messages: ThreadMessage[]): ThreadMessage[] {
 const KEEP_COMPACTIONS = 2;
 
 export function pruneCompactedHistory(
-  messages: ThreadMessage[],
+  messages: AnthropicThreadMessage[],
   keepCompactions = KEEP_COMPACTIONS,
-): ThreadMessage[] {
+): AnthropicThreadMessage[] {
   const compactionAt: number[] = [];
   for (let i = 0; i < messages.length; i++) {
     const content = messages[i].content;
@@ -119,7 +121,9 @@ export function pruneCompactedHistory(
   return kept;
 }
 
-function collapseThinking(blocks: ThreadMessage["content"]): ThreadMessage["content"] {
+function collapseThinking(
+  blocks: AnthropicThreadMessage["content"],
+): AnthropicThreadMessage["content"] {
   if (typeof blocks === "string") return blocks;
   let seenThinking = false;
   const kept = blocks.filter((block) => {

@@ -1,8 +1,7 @@
 // The persistent per-agent thread (M3 continuity). Each agent has ONE
-// continuous conversation — the BetaMessageParam[] that is its consciousness
-// across ticks and chats. The tool runner loads it to resume, accumulates the
-// turn (incl. server-side compaction blocks, which round-trip verbatim — Phase
-// 0), and we re-persist after every SUCCESSFUL turn. A crash mid-turn leaves
+// continuous conversation, stored in the provider's native item format. The
+// provider adapter loads it to resume, accumulates the turn, and we re-persist
+// after every SUCCESSFUL turn. A crash mid-turn leaves
 // the prior thread intact; the triggering input simply retries.
 //
 // Storage is a JSONB blob (verified to round-trip cleanly). The thread holds
@@ -10,35 +9,36 @@
 // (added at call time), and core memory is folded into each turn's delta, so
 // neither lives here.
 
-import type Anthropic from "@anthropic-ai/sdk";
 import type { AgentId } from "@town/contract";
 import { db, schema } from "../db/client.js";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import type { LlmProviderName } from "../runtime/llm/types.js";
 import { coreMemorySnapshot } from "./memory.js";
 import { listArtifacts } from "./artifacts.js";
 
 const { agentThreads } = schema;
 
-export type ThreadMessage = Anthropic.Beta.BetaMessageParam;
-
 export interface LoadedThread {
   // The persisted message history. Empty array = a fresh (or just-reseeded)
   // thread; the loop orients it with buildSeedContext() on its first turn.
-  messages: ThreadMessage[];
+  items: unknown[];
   // High-water world-event id already folded in as notice-push. null = nothing
   // perceived yet (a fresh thread perceives from "now" on its first turn).
   inputCursor: number | null;
 }
 
 // Load an agent's thread. Returns an empty thread if none exists yet.
-export async function loadThread(agentId: AgentId): Promise<LoadedThread> {
+export async function loadThread(
+  agentId: AgentId,
+  provider: LlmProviderName,
+): Promise<LoadedThread> {
   const [row] = await db
     .select()
     .from(agentThreads)
-    .where(eq(agentThreads.agentId, agentId));
-  if (!row) return { messages: [], inputCursor: null };
+    .where(and(eq(agentThreads.agentId, agentId), eq(agentThreads.provider, provider)));
+  if (!row) return { items: [], inputCursor: null };
   return {
-    messages: (row.content as ThreadMessage[]) ?? [],
+    items: row.content ?? [],
     inputCursor: row.inputCursor ?? null,
   };
 }
@@ -47,23 +47,27 @@ export async function loadThread(agentId: AgentId): Promise<LoadedThread> {
 // a crashed turn leaves the prior state intact.
 export async function persistThread(
   agentId: AgentId,
-  messages: ThreadMessage[],
+  provider: LlmProviderName,
+  items: unknown[],
   inputCursor: number | null,
 ): Promise<void> {
   await db
     .insert(agentThreads)
-    .values({ agentId, content: messages, inputCursor, updatedAt: new Date() })
+    .values({ agentId, provider, content: items, inputCursor, updatedAt: new Date() })
     .onConflictDoUpdate({
-      target: agentThreads.agentId,
-      set: { content: messages, inputCursor, updatedAt: new Date() },
+      target: [agentThreads.agentId, agentThreads.provider],
+      set: { content: items, inputCursor, updatedAt: new Date() },
     });
 }
 
 // Reset a thread to empty — the corruption-recovery action and the clean-start
 // action. The next turn re-orients via buildSeedContext(). Keeps the row (cursor
 // cleared) so a fresh thread perceives from "now", not the whole backlog.
-export async function reseedThread(agentId: AgentId): Promise<void> {
-  await persistThread(agentId, [], null);
+export async function reseedThread(
+  agentId: AgentId,
+  provider: LlmProviderName,
+): Promise<void> {
+  await persistThread(agentId, provider, [], null);
 }
 
 // Orientation for a fresh/reseeded thread's FIRST turn: the agent's durable

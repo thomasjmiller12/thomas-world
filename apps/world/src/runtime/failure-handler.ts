@@ -8,6 +8,7 @@
 // silently swallow an agent's death again.
 
 import type { AgentId } from "@town/contract";
+import { config } from "../config.js";
 import { markTurnFailed, clearFailures, setStatus } from "../engine/agents.js";
 import { reseedThread } from "../engine/thread.js";
 import { classifyFailure, isCircuitBroken, RESEED_AFTER } from "./failures.js";
@@ -47,7 +48,7 @@ export async function recordTurnFailure(
     failure.threadPoisoned || (failure.kind === "permanent" && n >= RESEED_AFTER);
   if (shouldReseed) {
     try {
-      await reseedThread(agentId);
+      await reseedThread(agentId, config.llmProvider);
       // Clear the streak so the repaired agent gets a clean run rather than
       // tripping the breaker on failures that predate the repair.
       await clearFailures(agentId);

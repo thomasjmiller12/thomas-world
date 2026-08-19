@@ -1,23 +1,27 @@
-import type Anthropic from "@anthropic-ai/sdk";
-import { tokensFromUsage } from "../../pricing.js";
 import type { LlmEndpoint, NormalizedUsage } from "../types.js";
+
+export interface AnthropicUsageLike {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_read_input_tokens?: number | null;
+  cache_creation_input_tokens?: number | null;
+}
 
 export function normalizeAnthropicUsage(
   model: string,
-  usage: Anthropic.Beta.BetaUsage,
+  usage: AnthropicUsageLike,
   endpoint: LlmEndpoint,
   round?: number,
   stopReason?: string | null,
 ): NormalizedUsage {
-  const tokens = tokensFromUsage(usage);
   return {
     provider: "anthropic",
     model,
     endpoint,
-    inputTokens: tokens.inputTokens,
-    outputTokens: tokens.outputTokens,
-    cacheReadTokens: tokens.cacheReadTokens,
-    cacheWriteTokens: tokens.cacheWriteTokens,
+    inputTokens: usage.input_tokens ?? 0,
+    outputTokens: usage.output_tokens ?? 0,
+    cacheReadTokens: usage.cache_read_input_tokens ?? 0,
+    cacheWriteTokens: usage.cache_creation_input_tokens ?? 0,
     round,
     stopReason,
   };

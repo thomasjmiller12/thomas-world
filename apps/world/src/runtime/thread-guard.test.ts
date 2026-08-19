@@ -14,7 +14,7 @@
 
 import { describe, it, expect } from "vitest";
 import { stripForPersist } from "./turn.js";
-import type { ThreadMessage } from "../engine/thread.js";
+import type { AnthropicThreadMessage as ThreadMessage } from "./llm/anthropic/history.js";
 
 // Shaped exactly like the real msgs[1066] that killed Researcher.
 const poisoned: ThreadMessage[] = [

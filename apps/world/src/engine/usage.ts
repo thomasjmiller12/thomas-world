@@ -6,12 +6,15 @@ import { and, gte, sql, eq } from "drizzle-orm";
 import type { AgentId } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { config } from "../config.js";
+import type { LlmEndpoint, LlmProviderName } from "../runtime/llm/types.js";
 
 const { llmUsage } = schema;
 
 export interface RecordUsageInput {
   agentId?: AgentId | null;
+  provider: LlmProviderName;
   model: string;
+  endpoint: LlmEndpoint;
   tickId?: string | null;
   inputTokens?: number;
   outputTokens?: number;
@@ -23,7 +26,9 @@ export interface RecordUsageInput {
 export async function recordUsage(u: RecordUsageInput): Promise<void> {
   await db.insert(llmUsage).values({
     agentId: u.agentId ?? null,
+    provider: u.provider,
     model: u.model,
+    endpoint: u.endpoint,
     tickId: u.tickId ?? null,
     inputTokens: u.inputTokens ?? 0,
     outputTokens: u.outputTokens ?? 0,

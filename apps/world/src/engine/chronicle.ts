@@ -25,7 +25,8 @@ import { db, schema } from "../db/client.js";
 import { renderLine } from "./feed.js";
 import { anthropic, hasLlm } from "../runtime/client.js";
 import { recordUsage } from "./usage.js";
-import { estimateCostUsd, tokensFromUsage } from "../runtime/pricing.js";
+import { estimateCostUsd } from "../runtime/pricing.js";
+import { normalizeAnthropicUsage } from "../runtime/llm/anthropic/usage.js";
 import { attachIssue, regenerateIssue } from "./chronicle-issue.js";
 
 const { worldEvents, artifacts, threadSummaries } = schema;
@@ -510,19 +511,27 @@ async function summarizeThread(thread: ChronicleThread, dayUtc: string): Promise
 async function recordChronicleUsage(
   agentId: AgentId | null,
   dayUtc: string,
-  usage: Parameters<typeof tokensFromUsage>[0],
+  usage: Parameters<typeof normalizeAnthropicUsage>[1],
 ): Promise<void> {
   try {
-    const t = tokensFromUsage(usage);
+    const normalized = normalizeAnthropicUsage(SUMMARY_MODEL, usage, "generate");
+    const t = {
+      inputTokens: normalized.inputTokens,
+      outputTokens: normalized.outputTokens,
+      cacheReadTokens: normalized.cacheReadTokens,
+      cacheWriteTokens: normalized.cacheWriteTokens,
+    };
     await recordUsage({
       agentId,
+      provider: "anthropic",
       model: SUMMARY_MODEL,
+      endpoint: "generate",
       tickId: `chronicle-${dayUtc}`,
       inputTokens: t.inputTokens,
       outputTokens: t.outputTokens,
       cacheReadTokens: t.cacheReadTokens,
       cacheWriteTokens: t.cacheWriteTokens,
-      estCostUsd: estimateCostUsd(SUMMARY_MODEL, t),
+      estCostUsd: estimateCostUsd("anthropic", SUMMARY_MODEL, t),
     });
   } catch (err) {
     console.warn(`[chronicle] usage record failed (${dayUtc}):`, (err as Error).message);

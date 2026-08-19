@@ -27,7 +27,8 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "../db/client.js";
 import { anthropic, hasLlm } from "../runtime/client.js";
 import { recordUsage } from "./usage.js";
-import { estimateCostUsd, tokensFromUsage } from "../runtime/pricing.js";
+import { estimateCostUsd } from "../runtime/pricing.js";
+import { normalizeAnthropicUsage } from "../runtime/llm/anthropic/usage.js";
 
 const { chronicleIssues, artifacts } = schema;
 
@@ -576,19 +577,27 @@ export async function regenerateIssue(day: string, items: ChronicleItem[], today
 
 async function recordCrierUsage(
   day: string,
-  usage: Parameters<typeof tokensFromUsage>[0],
+  usage: Parameters<typeof normalizeAnthropicUsage>[1],
 ): Promise<void> {
   try {
-    const t = tokensFromUsage(usage);
+    const normalized = normalizeAnthropicUsage(CRIER_MODEL, usage, "generate");
+    const t = {
+      inputTokens: normalized.inputTokens,
+      outputTokens: normalized.outputTokens,
+      cacheReadTokens: normalized.cacheReadTokens,
+      cacheWriteTokens: normalized.cacheWriteTokens,
+    };
     await recordUsage({
       agentId: null,
+      provider: "anthropic",
       model: CRIER_MODEL,
+      endpoint: "generate",
       tickId: `crier-${day}`,
       inputTokens: t.inputTokens,
       outputTokens: t.outputTokens,
       cacheReadTokens: t.cacheReadTokens,
       cacheWriteTokens: t.cacheWriteTokens,
-      estCostUsd: estimateCostUsd(CRIER_MODEL, t),
+      estCostUsd: estimateCostUsd("anthropic", CRIER_MODEL, t),
     });
   } catch (err) {
     console.warn(`[crier] usage record failed (${day}):`, (err as Error).message);

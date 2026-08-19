@@ -16,7 +16,7 @@
 //    can ever cause a "today" row to be deleted — today's spend stays
 //    byte-for-byte exact by construction, not by a guard someone has to
 //    remember at the call site. Before a row is deleted it is folded into
-//    `llm_usage_daily` (day × agent × model), so "what did last quarter cost"
+//    `llm_usage_daily` (day × agent × provider × model), so "what did last quarter cost"
 //    survives after the raw per-call rows are gone. Default window: 30 days.
 //
 //  - world_events is the canonical, queryable record of the world's history —
@@ -43,13 +43,14 @@
 import { lt, sql } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { config } from "../config.js";
+import type { LlmProviderName } from "../runtime/llm/types.js";
 
 const { llmUsage, llmUsageDaily, threadSummaries } = schema;
 
 // llm_usage rows recorded with no agentId (Town Crier / Chronicle-summary
 // calls — see chronicle.ts / chronicle-issue.ts's `recordUsage({agentId: null,
-// ...})`) roll up under this sentinel so (day, agent_id, model) can be a real,
-// NOT-NULL composite primary key: Postgres NULLs never collide under
+// ...})`) roll up under this sentinel so the daily composite keys stay NOT NULL:
+// Postgres NULLs never collide under
 // `ON CONFLICT`, which would silently turn the upsert into an ever-growing set
 // of duplicate "null" rows instead of one accumulating bucket.
 export const SYSTEM_AGENT_KEY = "_system";
@@ -82,6 +83,7 @@ export function threadSummaryCutoffDay(now: Date, retentionDays: number): string
 export interface UsageRow {
   day: string; // YYYY-MM-DD, derived from the row's `ts`
   agentId: string | null;
+  provider: LlmProviderName;
   model: string;
   inputTokens: number;
   outputTokens: number;
@@ -93,6 +95,7 @@ export interface UsageRow {
 export interface UsageBucket {
   day: string;
   agentId: string; // SYSTEM_AGENT_KEY substituted for a null agentId
+  provider: LlmProviderName;
   model: string;
   calls: number;
   inputTokens: number;
@@ -102,15 +105,16 @@ export interface UsageBucket {
   estCostUsd: number;
 }
 
-// Pure aggregation: fold a batch of expired llm_usage rows into day×agent×model
-// buckets. Exported (and unit-tested without a database) so the grouping and
-// boundary behavior is verifiable on its own — the DB-touching half
+// Pure aggregation: fold a batch of expired llm_usage rows into
+// day×agent×provider×model buckets. Exported (and unit-tested without a
+// database) so the grouping and boundary behavior is verifiable on its own —
+// the DB-touching half
 // (`rollupAndPruneLlmUsage` below) is a thin transactional shell around it.
 export function aggregateUsageRows(rows: UsageRow[]): UsageBucket[] {
   const buckets = new Map<string, UsageBucket>();
   for (const r of rows) {
     const agentId = r.agentId ?? SYSTEM_AGENT_KEY;
-    const key = `${r.day}\u0000${agentId}\u0000${r.model}`;
+    const key = `${r.day}\u0000${agentId}\u0000${r.provider}\u0000${r.model}`;
     const existing = buckets.get(key);
     if (existing) {
       existing.calls += 1;
@@ -123,6 +127,7 @@ export function aggregateUsageRows(rows: UsageRow[]): UsageBucket[] {
       buckets.set(key, {
         day: r.day,
         agentId,
+        provider: r.provider,
         model: r.model,
         calls: 1,
         inputTokens: r.inputTokens,
@@ -154,6 +159,7 @@ export async function rollupAndPruneLlmUsage(now: Date = new Date()): Promise<Ro
       .select({
         ts: llmUsage.ts,
         agentId: llmUsage.agentId,
+        provider: llmUsage.provider,
         model: llmUsage.model,
         inputTokens: llmUsage.inputTokens,
         outputTokens: llmUsage.outputTokens,
@@ -165,13 +171,20 @@ export async function rollupAndPruneLlmUsage(now: Date = new Date()): Promise<Ro
       .where(lt(llmUsage.ts, cutoff));
     if (expired.length === 0) return { rowsDeleted: 0, bucketsWritten: 0 };
 
-    const buckets = aggregateUsageRows(expired.map((r) => ({ ...r, day: dayStringUtc(r.ts) })));
+    const buckets = aggregateUsageRows(
+      expired.map((r) => ({
+        ...r,
+        provider: r.provider as LlmProviderName,
+        day: dayStringUtc(r.ts),
+      })),
+    );
     for (const b of buckets) {
       await tx
         .insert(llmUsageDaily)
         .values({
           day: b.day,
           agentId: b.agentId,
+          provider: b.provider,
           model: b.model,
           calls: b.calls,
           inputTokens: b.inputTokens,
@@ -181,7 +194,12 @@ export async function rollupAndPruneLlmUsage(now: Date = new Date()): Promise<Ro
           estCostUsd: b.estCostUsd,
         })
         .onConflictDoUpdate({
-          target: [llmUsageDaily.day, llmUsageDaily.agentId, llmUsageDaily.model],
+          target: [
+            llmUsageDaily.day,
+            llmUsageDaily.agentId,
+            llmUsageDaily.provider,
+            llmUsageDaily.model,
+          ],
           set: {
             calls: sql`${llmUsageDaily.calls} + ${b.calls}`,
             inputTokens: sql`${llmUsageDaily.inputTokens} + ${b.inputTokens}`,
