@@ -187,8 +187,14 @@ processes during deploys. Migration `0017_quiet_flatman.sql` is the additive Rel
 backfills `provider='anthropic'`, adds `endpoint`, and adds composite unique indexes while
 retaining legacy primary keys. **Do not enable OpenAI in a database that has only Release A.**
 The old `agent_threads(agent_id)` primary key still prevents Anthropic and OpenAI rows for the
-same agent. Release B (`0018`, intentionally not created until the checkpoint) may run only
-after Release A code is live everywhere and the old process has drained.
+same agent. Migration `0018_llm_provider_keys.sql` is Release B: after Release A is live and
+the old process has drained, it promotes the existing composite indexes to primary keys without
+rebuilding them.
+
+Both releases are live in production as of 2026-08-19. The Railway `world` service is currently
+configured with `LLM_PROVIDER=openai` and `OPENAI_AGENT_MODEL=gpt-5.4`; production health and a
+two-turn Builder thread-resume smoke test passed. The five preserved Anthropic thread rows remain
+untouched for rollback.
 
 Release A verification:
 

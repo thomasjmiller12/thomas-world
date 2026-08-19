@@ -30,8 +30,9 @@ Agents never see the frontend (no screenshots/pixels) — only the world delta t
 
 - The pnpm monorepo is live: `apps/web` is the Next.js/Phaser surface on Vercel, `apps/world` is the Railway world server, and `packages/contract` is their shared Zod contract.
 - Each facet has one serialized, continuous thread driven by ticks, visitor inputs, reflection, and delivery. `runtime/turn.ts` is provider-neutral; SDK-specific dispatch/history/tools/usage live only under `runtime/llm/anthropic/` or `runtime/llm/openai/`.
-- The provider-abstraction implementation is on `thomas/model-provider-abstraction`. Tasks 1–5 and 7–12 are implemented locally; `gpt-5.4` passes the live OpenAI tool-call/resume smoke test. Migration `0017_quiet_flatman.sql` is additive Release A. Release B key contraction and any production provider switch remain gated on deploying Release A with Anthropic, draining the old process, and verifying the database. See [[Thomas's Town — OpenAI-Anthropic Provider Abstraction Implementation Plan]].
+- The provider abstraction is deployed on Railway production from `thomas/model-provider-abstraction`. Migrations `0017_quiet_flatman.sql` and `0018_llm_provider_keys.sql` are live, production selects `LLM_PROVIDER=openai` with `gpt-5.4`, and a two-turn Builder smoke proved native-thread persistence/resume. The five Anthropic thread rows remain intact for rollback. See [[Thomas's Town — OpenAI-Anthropic Provider Abstraction Implementation Plan]].
 - Provider-native histories are opaque and separate by `(agent_id, provider)`. Never translate, merge, or delete the inactive provider's thread. Shared continuity lives in soul/core memory/Hindsight/diaries/artifacts/world state. Only explicit adapter-classified native-history corruption may reseed the selected provider row.
+- OpenAI strict tool schemas must be closed and tuple-free: do not use an open `z.record(...)` or `z.tuple(...)` in the OpenAI function-tool wire shape. `runtime/llm/openai/tools.test.ts` converts the complete production tool surface and rejects tuple-form `items`; keep that regression test current when tools change.
 
 ## Stack decisions (full rationale in the plan §2)
 
