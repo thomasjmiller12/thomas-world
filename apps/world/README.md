@@ -169,6 +169,13 @@ OPENAI_LIVE_TEST=1 node --env-file=.env node_modules/vitest/vitest.mjs run \
   src/runtime/llm/openai/provider.live.test.ts
 ```
 
+The equivalent Anthropic smoke uses the same harmless tool→resume shape:
+
+```bash
+ANTHROPIC_LIVE_TEST=1 node --env-file=.env node_modules/vitest/vitest.mjs run \
+  src/runtime/llm/anthropic/provider.live.test.ts
+```
+
 For an end-to-end Anthropic or OpenAI smoke test, start a disposable database/server with
 the desired `LLM_PROVIDER`, then call `POST /admin/tick/builder`. Do not use the production
 agent database for provider evaluation.
