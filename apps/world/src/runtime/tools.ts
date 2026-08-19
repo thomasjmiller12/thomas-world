@@ -169,6 +169,21 @@ const artifactKindEnum = z.enum(artifactKinds as unknown as [string, ...string[]
 // can reference the same enum.
 const shareableKindEnum = z.enum(["artifact", "portfolio_proof", "external_reference"]);
 
+// `play_beat` accepts the union of the catalog's parameter names, then the
+// director validates the selected beat against its own narrower schema. Keep
+// this as a closed object instead of an open `z.record`: OpenAI strict function
+// schemas forbid arbitrary additional properties, while Anthropic can use the
+// same provider-neutral shape unchanged. Deriving it from the catalog preserves
+// the data-driven "add a beat, not a tool" design.
+const beatParamShape: Record<string, z.ZodTypeAny> = {};
+for (const beat of listBeats()) {
+  if (!(beat.params instanceof z.ZodObject)) continue;
+  for (const [key, schema] of Object.entries(beat.params.shape)) {
+    beatParamShape[key] = (schema as z.ZodTypeAny).optional();
+  }
+}
+const beatParamsInputSchema = z.object(beatParamShape).strict();
+
 // Search the 648-template object library by name / tag / category. Pure, so
 // it's unit-testable; returns names best-first with footprint hints.
 export function searchObjectTemplates(query: string, limit = 20): string[] {
@@ -489,7 +504,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     inputSchema: z.object({
       beat: z.string(),
       object: z.string().max(60).optional(),
-      params: z.record(z.string(), z.unknown()).optional(),
+      params: beatParamsInputSchema.optional(),
     }),
     run: async (a) => playBeat(ctx, { beat: a.beat, object: a.object, params: a.params ?? {} }),
   });

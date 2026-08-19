@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import * as z from "zod/v4";
 import { defineTownMemoryTool, defineTownTool } from "../tool.js";
-import { toOpenAITool } from "./tools.js";
+import { buildTools } from "../../tools.js";
+import { toOpenAITool, toOpenAITools } from "./tools.js";
 
 function nullMemoryFields() {
   return {
@@ -19,11 +20,12 @@ function nullMemoryFields() {
 
 describe("OpenAI strict tool adapter", () => {
   it("emits a strict object schema with no additional properties", () => {
+    const run = vi.fn(() => "ok");
     const townTool = defineTownTool({
       name: "sample",
       description: "A strict sample tool",
       inputSchema: z.object({ required: z.string(), optional: z.string().optional() }).strict(),
-      run: () => "ok",
+      run,
     });
 
     const converted = toOpenAITool(townTool);
@@ -37,6 +39,32 @@ describe("OpenAI strict tool adapter", () => {
       "required",
       "optional",
     ]);
+  });
+
+  it("converts the complete production tool surface to OpenAI strict schemas", () => {
+    const townTools = buildTools({ agentId: "builder", location: "workshop" });
+    const converted = toOpenAITools(townTools);
+    const playBeat = converted.find((item) => item.name === "play_beat");
+
+    expect(converted).toHaveLength(townTools.length);
+    expect(playBeat).toBeDefined();
+    expect(playBeat?.parameters).toMatchObject({
+      type: "object",
+      additionalProperties: false,
+      required: ["beat", "object", "params"],
+      properties: {
+        params: {
+          anyOf: [
+            {
+              type: "object",
+              additionalProperties: false,
+              required: ["effect", "style", "title", "body", "text", "cta", "tone", "emoji"],
+            },
+            { type: "null" },
+          ],
+        },
+      },
+    });
   });
 
   it("preserves every memory command's semantics through one strict function tool", async () => {
