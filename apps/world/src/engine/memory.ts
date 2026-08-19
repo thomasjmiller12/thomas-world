@@ -1,7 +1,8 @@
-// Core-memory store backing the Anthropic memory tool (plan §4.2). Each agent
+// Core-memory store shared by both provider adapters (plan §4.2). Each agent
 // owns a set of files under a virtual /memories root, persisted as rows in the
-// memory_files table. Claude is post-trained on the view/create/str_replace/
-// insert/delete/rename command semantics — we implement STORAGE only.
+// memory_files table. We preserve view/create/str_replace/insert/delete/rename:
+// Anthropic exposes its native memory tool while OpenAI uses a strict function
+// tool over the same storage handlers.
 //
 // Hard char caps keep core memory small enough to live below the cache
 // breakpoint without blowing the budget (plan §4.3 "hard char caps").
@@ -39,7 +40,7 @@ export interface MemoryFile {
   content: string;
 }
 
-// Normalize a model-supplied path into our virtual namespace. Claude addresses
+// Normalize a model-supplied path into our virtual namespace. Models address
 // files like "/memories/notes.md"; we store the path as-is but strip a leading
 // slash duplication and reject traversal.
 function normalizePath(raw: string): string {

@@ -21,22 +21,23 @@ Vault convention: notes use `[[wiki-links]]`; the `_Scratch/` folder anywhere in
 Three layers; the middle one is canonical:
 
 - **Surfaces** — the Phaser town (this repo, on Vercel), the activity feed, the blog. Hold zero authoritative state; they *materialize* the world for humans.
-- **World server** (to be built) — the embodiment layer and source of truth: locations, agent positions/status, co-presence, an append-only `world_events` log, artifacts, messages. Agents touch reality **only** through tools.
-- **Agent minds** — five tick loops (soul file + core memory + episodic memory + Obsidian reference layer + Codex API).
+- **World server** (`apps/world`, live) — the embodiment layer and source of truth: locations, agent positions/status, co-presence, an append-only `world_events` log, artifacts, messages. Agents touch reality **only** through tools.
+- **Agent minds** — five continuous input-driven loops (soul file + core memory + provider-native living thread + episodic memory + Obsidian reference layer), run through the boot-selected Anthropic or OpenAI adapter.
 
-Agents never see the frontend (no screenshots/pixels) — only the observation packet the world server hands them each tick. The frontend's existing `EventBus` is the seam: a new `WorldClient` will replace the scripted `AgentSimulator`/`simulation-scripts.ts` as the *source* of the same events the UI already consumes.
+Agents never see the frontend (no screenshots/pixels) — only the world delta the server gives their continuous thread and the tools they call. The frontend's `WorldClient` materializes snapshots and SSE events without owning authoritative state.
 
 ## Current state
 
-- **V1 (this repo): frontend only.** Next.js 15 + Phaser 3 + TypeScript, React overlay for UI, static-exported to Vercel. Town + 4 interiors, player movement, door transitions, NPC chat — all behavior is **scripted simulation** (`src/game/systems/AgentSimulator.ts`, `src/game/data/simulation-scripts.ts`). No backend, DB, or LLM yet.
-- **Design**: hi-fi mockups for the chat and activity-feed surfaces are in `design/town-concepts-handoff/` (open `project/Town Concepts.html` and the `screens/*.jsx`; `00 Design Approach.html` has the design system — palette, type, agent colors). These drive Milestone 2's UI.
-- **Next step: Milestone 1** ("the town lives offline") — stand up the world server + 5 agents, soak for 48h, judge the activity log. Pre-reqs: account setup (§10 of the plan, in progress) + the monorepo restructure + soul-file skeletons. Start there.
+- The pnpm monorepo is live: `apps/web` is the Next.js/Phaser surface on Vercel, `apps/world` is the Railway world server, and `packages/contract` is their shared Zod contract.
+- Each facet has one serialized, continuous thread driven by ticks, visitor inputs, reflection, and delivery. `runtime/turn.ts` is provider-neutral; SDK-specific dispatch/history/tools/usage live only under `runtime/llm/anthropic/` or `runtime/llm/openai/`.
+- The provider-abstraction implementation is on `thomas/model-provider-abstraction`. Tasks 1–5 and 7–12 are implemented locally; `gpt-5.4` passes the live OpenAI tool-call/resume smoke test. Migration `0017_quiet_flatman.sql` is additive Release A. Release B key contraction and any production provider switch remain gated on deploying Release A with Anthropic, draining the old process, and verifying the database. See [[Thomas's Town — OpenAI-Anthropic Provider Abstraction Implementation Plan]].
+- Provider-native histories are opaque and separate by `(agent_id, provider)`. Never translate, merge, or delete the inactive provider's thread. Shared continuity lives in soul/core memory/Hindsight/diaries/artifacts/world state. Only explicit adapter-classified native-history corruption may reseed the selected provider row.
 
 ## Stack decisions (full rationale in the plan §2)
 
-TypeScript pnpm monorepo (`apps/web` = this frontend, `apps/world` = new server, `packages/contract` = shared zod schemas) · Railway monolith + Postgres/pgvector, frontend stays on Vercel · SSE for realtime · **Anthropic SDK's built-in tool runner** (`client.beta.messages.toolRunner()` + `betaZodTool`) for the agent loop — we own the world/scheduler/prompt, never hand-roll the dispatch loop · Haiku 4.5 idle ticks / Opus 4.8 visitor chat · memory = per-agent core files (`betaMemoryTool`) + **Hindsight** (self-hosted, verbatim mode) for episodic · Obsidian vault synced via obsidian-git → private repo · Resend (in + out) · Langfuse (v4 OTel) · OpenAI embeddings only.
+TypeScript pnpm monorepo (`apps/web`, `apps/world`, `packages/contract`) · Railway monolith + Postgres/pgvector · Vercel frontend · SSE · boot-time `LLM_PROVIDER=anthropic|openai` · Anthropic SDK tool runner or OpenAI Agents SDK/Responses behind one provider interface · provider-specific native compaction/history · provider-neutral town tools · `claude-sonnet-5` or `gpt-5.4` for agent tick/chat roles · core-memory command semantics shared across adapters · Hindsight episodic memory (OpenAI embeddings) · Obsidian vault sync · Resend · Langfuse OTel.
 
-**Anthropic/Codex work**: the `Codex-api` skill is the authority on model IDs, the tool runner, caching, streaming, structured outputs — consult it, don't answer from memory. Current models: Opus 4.8 (`Codex-opus-4-8`), Haiku 4.5 (`Codex-haiku-4-5`), Sonnet 4.6 (`Codex-sonnet-4-6`).
+For model/API behavior, check current official provider documentation and the pinned SDK types/fixtures; do not answer from remembered model IDs or wire formats. The selected provider must never silently fall back to the other provider.
 
 ## Git conventions (from Thomas's global rules)
 

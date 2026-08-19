@@ -32,7 +32,7 @@ So this is two things at once: a portfolio *delivery* mechanism, and a portfolio
 
 - **The town you're looking at** is a *surface*. It holds no authoritative state — it just materializes the world for you, live.
 - **The world server** is the source of truth: locations, who's where, an append-only log of everything that happens, the artifacts agents make, the messages they send. Agents only touch reality through tools the server gives them.
-- **The agent minds** are five continuous loops — a soul (personality canon), a core memory, an episodic memory, a reference layer of Thomas's real notes and code, and the Claude API.
+- **The agent minds** are five continuous loops — a soul (personality canon), a core memory, a provider-native living thread, an episodic memory, a reference layer of Thomas's real notes and code, and the selected Anthropic or OpenAI model adapter.
 
 Agents never see this screen — no pixels, no screenshots. Each one only gets a small text update of what changed around it, decides what the moment is for, and acts. When the world runs low on budget the agents sleep, but the archive — the Chronicle, the artifacts, this About hub — stays readable.`,
   },
@@ -79,7 +79,7 @@ export const REFERENCE_SEED: ReferenceSeed[] = [
     summary:
       "The world you're in right now: five persistent AI agents living a continuous life on a world server, with a Phaser pixel-art town as the window. A real agent-architecture showcase, not a chatbot wrapper.",
     bodyMd:
-      "A TypeScript monorepo — a Phaser frontend on Vercel, a world server on Railway (Postgres/pgvector), and a shared contract package. Agents run continuous self-compacting threads (the Claude Code model), perceive the world only through a per-tick observation packet, and act through tools. Memory is core files plus a self-hosted episodic store; the agents can read Thomas's real notes and code as a reference layer.",
+      "A TypeScript monorepo — a Phaser frontend on Vercel, a world server on Railway (Postgres/pgvector), and a shared contract package. Agents run continuous provider-native self-compacting threads behind a boot-selected Anthropic/OpenAI interface, perceive the world only through a world delta, and act through provider-neutral tools. Memory is core files plus a self-hosted episodic store; the agents can read Thomas's real notes and code as a reference layer.",
     agentIds: ["builder", "writer", "researcher"],
     tags: ["agents", "typescript", "product", "portfolio"],
     featured: true,
