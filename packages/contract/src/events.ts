@@ -31,7 +31,6 @@ export const AgentActedPayload = z.object({
   tool: z.string(),
   effect: z.enum(["write", "external"]),
   summary: z.string(),
-  turnId: z.string(),
   actionId: z.string(),
   relatedIds: z
     .array(

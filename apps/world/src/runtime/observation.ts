@@ -298,6 +298,8 @@ export function renderEvents(events: WorldEvent[], location: LocationId, viewer:
             : `- ${p.agent} moved to ${p.to}`;
         case "agent.activity":
           return `- ${p.agent} is now ${p.activity}`;
+        case "agent.acted":
+          return `- ${p.agent} ${p.summary}`;
         case "agent.spoke": {
           if (!p.text) return `- ${p.agent} said something (elsewhere)`;
           if (p.to === viewer) return `- ${p.agent} said (to you): "${p.text}"`;
@@ -362,7 +364,8 @@ export function renderEvents(events: WorldEvent[], location: LocationId, viewer:
         case "object.attached":
           return `- ${p.agent} put "${p.title}" on the ${p.objectId}`;
         default:
-          // All event types are handled above; `e` narrows to never here.
+          // Older event kinds remain readable even when they have no dedicated
+          // agent-facing prose yet.
           return `- something happened (${(e as WorldEvent).type})`;
       }
     })

@@ -9,7 +9,6 @@ CREATE TABLE "agent_action_journal" (
 	"status" text DEFAULT 'started' NOT NULL,
 	"result" jsonb,
 	"error" text,
-	"related_event_ids" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"completed_at" timestamp with time zone
 );

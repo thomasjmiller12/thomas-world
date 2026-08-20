@@ -110,6 +110,10 @@ export interface AgentContext {
   onShare?: (card: ShareCard) => void | Promise<void>;
 }
 
+function markApplied(invocation: unknown): void {
+  (invocation as TownToolInvocationContext | undefined)?.markApplied?.();
+}
+
 // Tools the idle tick gets. The chat subset (plan §4.1) is a filtered view.
 export type RunnableTool = TownTool;
 
@@ -255,7 +259,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       toObject: z.string().max(60).optional(),
       toZone: z.string().max(60).optional(),
     }),
-    run: async ({ location, toObject, toZone }) => {
+    run: async ({ location, toObject, toZone }, invocation) => {
       const to = location as LocationId;
       const wantsSpot = Boolean(toObject || toZone);
       if (to === ctx.location && !wantsSpot) return `You're already at the ${to}.`;
@@ -267,6 +271,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         // Pure within-room reposition — no location change to emit otherwise.
         await moveAgent(ctx.agentId, to, targetZone);
         if (!targetZone) return `There's no "${spotLabel}" here to walk to — you stay put.`;
+        markApplied(invocation);
         await ctx.onAction?.("move_to", `walks over to the ${spotLabel}`);
         return `You walk over to the ${spotLabel}.`;
       }
@@ -282,6 +287,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       }
       await moveAgent(ctx.agentId, to, targetZone);
       ctx.location = to; // gated tools later this tick see the new place
+      markApplied(invocation);
       const loc = await getLocation(to);
       const name = loc?.name ?? to;
       await ctx.onAction?.(
@@ -306,7 +312,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       toObject: z.string().max(60).optional(),
       toZone: z.string().max(60).optional(),
     }),
-    run: async ({ location, toObject, toZone }) => {
+    run: async ({ location, toObject, toZone }, invocation) => {
       if (!ctx.chatSessionId) {
         return "You can only bring someone along while you're talking with them.";
       }
@@ -336,6 +342,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       }
 
       await escortVisitorTo(session.visitorId, ctx.agentId, to, targetZone);
+      markApplied(invocation);
 
       const loc = await getLocation(to);
       const name = loc?.name ?? to;
@@ -351,8 +358,9 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     description:
       "Set your current activity line — what you're visibly doing right now (e.g. 'drafting a post on eval design', 'reading a paper'). Others and visitors can see this.",
     inputSchema: z.object({ text: z.string().min(1).max(140) }),
-    run: async ({ text }) => {
+    run: async ({ text }, invocation) => {
       await setActivity(ctx.agentId, text);
+      markApplied(invocation);
       await ctx.onAction?.("set_activity", `is now ${text}`);
       return `Your activity is now: ${text}`;
     },
@@ -455,7 +463,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       zone: z.string().max(60).optional(),
       text: z.string().min(1).max(280),
     }),
-    run: async ({ object, zone, text }) => {
+    run: async ({ object, zone, text }, invocation) => {
       if (!object && !zone) return "Leave the note on something — name an object here or a zone.";
       let objectId: string | null = null;
       let resolvedZone: string | undefined = zone;
@@ -475,6 +483,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       }
       const res = await appendNote({ objectId, zone: resolvedZone }, ctx.agentId, ctx.location, text);
       if (!res.ok) return "You can't leave a note there from here.";
+      markApplied(invocation);
       await ctx.onAction?.("leave_note", "jots a note");
       return objectId
         ? `You leave a note on the ${object}. It'll be there when you come back.`
@@ -515,7 +524,13 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       object: z.string().max(60).optional(),
       params: beatParamsInputSchema.optional(),
     }),
-    run: async (a) => playBeat(ctx, { beat: a.beat, object: a.object, params: a.params ?? {} }),
+    run: async (a, invocation) => {
+      return playBeat(
+        ctx,
+        { beat: a.beat, object: a.object, params: a.params ?? {} },
+        () => markApplied(invocation),
+      );
+    },
   });
 
   // --- Social ----------------------------------------------------------------
@@ -531,10 +546,11 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       agent: z.enum(agentIds as unknown as [string, ...string[]]),
       text: z.string().min(1).max(1000),
     }),
-    run: async ({ agent, text }) => {
+    run: async ({ agent, text }, invocation) => {
       const to = agent as AgentId;
       if (to === ctx.agentId) return "You don't need to DM yourself.";
       await sendMessage(ctx.agentId, to, text);
+      markApplied(invocation);
       return `DM sent to ${to}. They'll see it next time they wake.`;
     },
   });
@@ -545,8 +561,9 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     description:
       "Send a message to all the other facets at once, delivered to each of their next ticks. For news everyone should know.",
     inputSchema: z.object({ text: z.string().min(1).max(1000) }),
-    run: async ({ text }) => {
+    run: async ({ text }, invocation) => {
       await sendMessage(ctx.agentId, null, text);
+      markApplied(invocation);
       return `Broadcast sent to everyone.`;
     },
   });
@@ -562,7 +579,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       title: z.string().min(1).max(160),
       body: z.string().min(1).max(20_000),
     }),
-    run: async ({ kind, title, body }) => {
+    run: async ({ kind, title, body }, invocation) => {
       if (kind === "bulletin") return "Use post_bulletin for bulletins (it's gated to the town notice board).";
       if (kind === "daily_digest") return "The daily digest is written by the town itself, not by a facet.";
       // Making discipline (in-fiction): a flood of new artifacts reads as spam,
@@ -588,6 +605,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         title,
         body,
       });
+      markApplied(invocation);
       await ctx.onAction?.("create_artifact", `writes "${title}"`);
       return `Created ${kind} "${title}" (id ${row.id}).`;
     },
@@ -606,11 +624,12 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       title: z.string().max(160).optional(),
       body: z.string().max(20_000).optional(),
     }),
-    run: async ({ id, title, body }) => {
+    run: async ({ id, title, body }, invocation) => {
       const existing = await getArtifact(id);
       if (!existing) return `No artifact with id ${id}.`;
       if (existing.agentId !== ctx.agentId) return "That's not yours to edit.";
       await updateArtifact(id, { title, body });
+      markApplied(invocation);
       await ctx.onAction?.("edit_artifact", `revises "${title ?? existing.title}"`);
       return `Updated "${title ?? existing.title}".`;
     },
@@ -696,7 +715,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       title: z.string().min(1).max(160),
       body: z.string().min(1).max(4_000),
     }),
-    run: async ({ title, body }) => {
+    run: async ({ title, body }, invocation) => {
       const gate = checkGate("post_bulletin", ctx.location);
       if (!gate.allowed) return gate.reason!;
       await createArtifact({
@@ -707,6 +726,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         location: "town",
         fixture: "notice board",
       });
+      markApplied(invocation);
       return `Pinned "${title}" to the notice board.`;
     },
   });
@@ -717,13 +737,14 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     description:
       "Publish one of your blog_post artifacts — make it public via the cafe press. You must be at the cafe. Pass the artifact id. Only blog posts have this extra step — every other kind (project logs, research notes, fun lists, diary entries) is already visible to visitors the moment create_artifact makes it; there's no general publish_artifact.",
     inputSchema: z.object({ artifact_id: z.string().min(1) }),
-    run: async ({ artifact_id }) => {
+    run: async ({ artifact_id }, invocation) => {
       const gate = checkGate("publish_blog_post", ctx.location);
       if (!gate.allowed) return gate.reason!;
       const art = await getArtifact(artifact_id);
       if (!art) return `No artifact with id ${artifact_id}.`;
       if (art.kind !== "blog_post") return "Only blog posts get published at the press.";
       await updateArtifact(artifact_id, { published: true });
+      markApplied(invocation);
       return `Published "${art.title}" — it's public now.`;
     },
   });
@@ -738,7 +759,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       title: z.string().min(1).max(160),
       html: z.string().min(1).max(100_000),
     }),
-    run: async ({ title, html }) => {
+    run: async ({ title, html }, invocation) => {
       // Building discipline: an app is a big swing — two a day is plenty. Revise
       // with edit_artifact instead of stamping out variants.
       const todaysApps = await recentArtifactsBy(ctx.agentId, 24, "interactive" as never);
@@ -756,6 +777,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         title,
         body: html,
       });
+      markApplied(invocation);
       await ctx.onAction?.("build_interactive", `builds "${title}"`);
       return (
         `Built "${title}" (id ${row.id}). It's live — anyone opening it gets your app in a sandboxed frame. ` +
@@ -779,13 +801,14 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       artifact_id: z.string().min(1),
       object: z.string().min(1).max(80),
     }),
-    run: async ({ artifact_id, object }) => {
+    run: async ({ artifact_id, object }, invocation) => {
       const obj = await findObjectAtLocation(ctx.location, object);
       if (!obj) return `Nothing got mounted — there's no "${object}" here in ${ctx.location}. look_around to see what's actually in the room.`;
       const art = await getArtifact(artifact_id);
       if (!art) return `Nothing got mounted — no artifact with id ${artifact_id}.`;
       const r = await attachArtifact(obj.id, artifact_id, ctx.agentId);
       if (!r.ok) return `Nothing got mounted — couldn't attach it (${r.reason}).`;
+      markApplied(invocation);
       await ctx.onAction?.("mount_artifact", `mounts "${art.title}" on the ${obj.displayName}`);
       return (
         `Mounted. "${art.title}" is live on the ${obj.displayName} right now — a visitor clicking it (or its ✦ marker) opens it, ` +
@@ -817,7 +840,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       zone: z.string().max(60).optional(),
       description: z.string().max(300).optional(),
     }),
-    run: async ({ template, name, zone, description }) => {
+    run: async ({ template, name, zone, description }, invocation) => {
       if (!OBJECT_TEMPLATES[template]) {
         const near = searchObjectTemplates(template, 5);
         return near.length
@@ -850,6 +873,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       if (!row) {
         return `Nothing was placed — ${targetZone ?? `${ctx.location}.center`} is full. Choose another zone or move one of your existing objects first.`;
       }
+      markApplied(invocation);
       await ctx.onAction?.("place_object", `sets up ${name}`);
       return (
         `Placed "${name}" (${describeTemplate(template)}) ${targetZone ? `in ${targetZone}` : "here"} — object id ${row.id}. ` +
@@ -867,9 +891,12 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       object_id: z.string().min(1),
       zone: z.string().min(1).max(80),
     }),
-    run: async ({ object_id, zone }) => {
+    run: async ({ object_id, zone }, invocation) => {
       const result = await moveObject(object_id, ctx.agentId, ctx.location, zone);
-      if (result.ok) return `Moved ${object_id} to ${zone}.`;
+      if (result.ok) {
+        markApplied(invocation);
+        return `Moved ${object_id} to ${zone}.`;
+      }
       if (result.reason === "zone-full") return `Nothing moved — ${zone} is full. Pick another zone.`;
       if (result.reason === "zone-not-here") return `Nothing moved — ${zone} is not a zone here.`;
       if (result.reason === "not-owner") return "Nothing moved — you can only move objects you placed yourself.";
@@ -883,9 +910,12 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     description:
       "Remove one of your own placed objects from this room. This cannot remove seeded fixtures or another facet's object, and it refuses while artifacts are mounted so made work is never orphaned by accident.",
     inputSchema: z.object({ object_id: z.string().min(1) }),
-    run: async ({ object_id }) => {
+    run: async ({ object_id }, invocation) => {
       const result = await removeObject(object_id, ctx.agentId, ctx.location);
-      if (result.ok) return `Removed ${object_id} from the room.`;
+      if (result.ok) {
+        markApplied(invocation);
+        return `Removed ${object_id} from the room.`;
+      }
       if (result.reason === "artifacts-attached") {
         return "Nothing was removed — it still has artifacts mounted. Move it instead so visitors do not lose access to that work.";
       }
@@ -930,7 +960,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       key: z.string().min(1).max(64),
       value: z.string().max(30_000),
     }),
-    run: async ({ artifact_id, key, value }) => {
+    run: async ({ artifact_id, key, value }, invocation) => {
       const art = await getArtifact(artifact_id);
       if (!art) return `No artifact with id ${artifact_id}.`;
       let parsed: unknown = value;
@@ -956,6 +986,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         if (r.reason === "too-many-keys") return `"${art.title}" already has the maximum number of state keys — clean up old ones (write 'null') first.`;
         return `Couldn't write it (${r.reason}).`;
       }
+      markApplied(invocation);
       return parsed === null ? `Deleted "${key}" from "${art.title}".` : `Wrote "${key}" in "${art.title}". Anyone with the app open sees it live.`;
     },
   });
@@ -995,8 +1026,9 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       content: z.string().min(1).max(4_000),
       kind: z.string().min(1).max(40),
     }),
-    run: async ({ content, kind }) => {
+    run: async ({ content, kind }, invocation) => {
       const r = await hindsight.remember(ctx.agentId, content, kind);
+      if (r.ok) markApplied(invocation);
       return r.text;
     },
   });
@@ -1054,7 +1086,11 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       path: z.string().min(1).max(200),
       content: z.string().min(1).max(20_000),
     }),
-    run: async ({ path, content }) => (await vault.writeAgentNote(ctx.agentId, path, content)).text,
+    run: async ({ path, content }, invocation) => {
+      const result = await vault.writeAgentNote(ctx.agentId, path, content);
+      if (result.ok) markApplied(invocation);
+      return result.text;
+    },
   });
 
   // --- Code repositories (Thomas's actual GitHub, read-only) ----------------
@@ -1123,6 +1159,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         body,
         (invocation as TownToolInvocationContext | undefined)?.idempotencyKey,
       );
+      markApplied(invocation);
       return r.sent
         ? `Sent to Thomas: "${subject}".`
         : `Queued for Thomas: "${subject}" — it's in the outbox and will go out when the line's open.`;
@@ -1153,6 +1190,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         rationale,
         (invocation as TownToolInvocationContext | undefined)?.idempotencyKey,
       );
+      markApplied(invocation);
       return formatCapabilityReceipt({ id, description, emailed, alreadyOpen });
     },
   });
@@ -1177,9 +1215,10 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     description:
       "Open one outside letter addressed to you by id. This marks it read. Use check_mailbox first if you need the ids.",
     inputSchema: z.object({ id: z.string().min(1) }),
-    run: async ({ id }) => {
+    run: async ({ id }, invocation) => {
       const row = await readInboundMail(ctx.agentId, id);
       if (!row) return `No unread or addressed-to-you outside mail exists with id ${id}.`;
+      markApplied(invocation);
       const body = row.text.trim() || "(No plain-text body was included.)";
       return clampText(
         `From: ${row.fromAddress}\nTo: ${row.toAddress}\nReceived: ${row.receivedAt.toISOString()}\nSubject: ${row.subject}\n\n${body}`,
@@ -1266,6 +1305,10 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   // idle-tick tool surface byte-stable (cache hygiene) — idle ticks never
   // carry a session, visitor turns always do.
   if (ctx.chatSessionId) {
+    // A facet cannot walk away mid-sentence and keep replying through a private
+    // panel. In chat, embodied travel is invite_visitor or no travel at all.
+    const moveIndex = tools.findIndex((tool) => toolName(tool) === "move_to");
+    if (moveIndex >= 0) tools.splice(moveIndex, 1);
     tools.push(buildLeaveChat(ctx));
     tools.push(invite_visitor as RunnableTool);
     for (const t of buildShareTools(ctx)) tools.push(t);

@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const appendEvent = vi.hoisted(() => vi.fn().mockResolvedValue({ id: "event-1" }));
+const getAgent = vi.hoisted(() => vi.fn().mockResolvedValue({ locationId: "workshop" }));
 vi.mock("../engine/events.js", () => ({ appendEvent }));
+vi.mock("../engine/agents.js", () => ({ getAgent }));
 
 import { actionSummary, emitAgentActed, relatedActionIds } from "./action-event.js";
 
@@ -45,7 +47,6 @@ describe("semantic agent actions", () => {
   it("emits a public agent.acted event without serializing the raw result", async () => {
     await emitAgentActed({
       actionId: "action-1",
-      turnId: "turn-1",
       agentId: "builder",
       tool: "send_dm",
       effect: "write",
@@ -56,13 +57,13 @@ describe("semantic agent actions", () => {
     expect(appendEvent).toHaveBeenCalledWith({
       type: "agent.acted",
       agentId: "builder",
+      locationId: "workshop",
       visibility: "public",
       payload: {
         agent: "builder",
         tool: "send_dm",
         effect: "write",
         summary: "sent a private note to another facet",
-        turnId: "turn-1",
         actionId: "action-1",
         relatedIds: [{ kind: "agent", id: "writer" }],
       },

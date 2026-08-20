@@ -385,16 +385,22 @@ async function buildChronicle(dayUtc: string): Promise<CacheEntry> {
     .filter((event): event is Extract<WorldEvent, { type: "agent.acted" }> => event.type === "agent.acted")
     .filter(
       (event) =>
-        !["create_artifact", "edit_artifact", "post_bulletin"].includes(event.payload.tool),
+        ![
+          "create_artifact",
+          "edit_artifact",
+          "build_interactive",
+          "publish_blog_post",
+          "post_bulletin",
+        ].includes(event.payload.tool),
     )
     .map((event) => ({
       kind: "action" as const,
       id: `act-${event.id}`,
       ts: event.ts,
       agent: event.payload.agent,
+      locationId: (event.locationId ?? null) as LocationId | null,
       tool: event.payload.tool,
       summary: event.payload.summary,
-      turnId: event.payload.turnId,
       actionId: event.payload.actionId,
       relatedIds: event.payload.relatedIds,
     }));

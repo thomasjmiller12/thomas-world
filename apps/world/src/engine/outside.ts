@@ -42,7 +42,7 @@ export type CapabilityResolutionStatus = "approved" | "declined" | "fulfilled";
 export async function resolveCapabilityRequest(
   id: string,
   status: CapabilityResolutionStatus,
-  note?: string,
+  publicNote?: string,
 ): Promise<{ id: string; agentId: AgentId; summary: string; status: CapabilityResolutionStatus } | undefined> {
   const [request] = await db.select().from(capabilityRequests).where(eq(capabilityRequests.id, id));
   if (!request) return undefined;
@@ -50,14 +50,17 @@ export async function resolveCapabilityRequest(
     await db.update(capabilityRequests).set({ status }).where(eq(capabilityRequests.id, id));
     await appendEvent({
       type: "capability.resolved",
-      agentId: request.agentId as AgentId,
+      // P-Thomas resolved this; payload.agent is the target. Leaving envelope
+      // agentId null keeps the event in the target's notice push instead of
+      // filtering it as one of their own actions.
+      agentId: null,
       visibility: "public",
       payload: {
         requestId: id,
         agent: request.agentId,
         summary: request.summary,
         status,
-        ...(note?.trim() ? { note: note.trim().slice(0, 500) } : {}),
+        ...(publicNote?.trim() ? { note: publicNote.trim().slice(0, 500) } : {}),
       },
     });
   }

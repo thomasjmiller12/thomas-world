@@ -69,13 +69,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "related_event_ids": {
-          "name": "related_event_ids",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
         "started_at": {
           "name": "started_at",
           "type": "timestamp with time zone",

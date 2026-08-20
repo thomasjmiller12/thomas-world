@@ -261,9 +261,9 @@ describe("REST shapes round-trip", () => {
           id: "act1",
           ts: "2026-06-12T14:01:00.000Z",
           agent: "builder",
+          locationId: "workshop",
           tool: "mount_artifact",
           summary: "mounted an artifact in the world",
-          turnId: "chat-s1-message-1",
           actionId: "action-1",
           relatedIds: [{ kind: "artifact", id: "art1" }],
         },
@@ -629,7 +629,6 @@ describe("programmable-world schemas (D1–D4)", () => {
         tool: "write_artifact_state",
         effect: "write",
         summary: "updated an interactive",
-        turnId: "chat-s1-message-4",
         actionId: "action-1",
         relatedIds: [{ kind: "artifact", id: "art-1" }],
       },
@@ -645,7 +644,7 @@ describe("programmable-world schemas (D1–D4)", () => {
     const ev = WorldEvent.parse({
       id: "evt_capability_1",
       ts: "2026-08-20T10:01:00.000Z",
-      agentId: "builder",
+      agentId: null,
       visibility: "public",
       type: "capability.resolved",
       payload: {

@@ -384,31 +384,64 @@ export async function attachArtifact(
   artifactId: string,
   agent: AgentId,
 ): Promise<{ ok: boolean; reason?: string }> {
-  const obj = await getObject(objectId);
-  if (!obj) return { ok: false, reason: "object-missing" };
-  const [art] = await db.select().from(artifacts).where(eq(artifacts.id, artifactId));
-  if (!art) return { ok: false, reason: "artifact-missing" };
+  const attached = await db.transaction(async (tx) => {
+    // Lock the artifact first, then every affected object in stable id order.
+    // Concurrent default anchoring on one fixture can no longer lose an id via
+    // read-modify-write, and moving a mount removes its old back-reference.
+    await tx.execute(sql`select id from artifacts where id = ${artifactId} for update`);
+    const [art] = await tx.select().from(artifacts).where(eq(artifacts.id, artifactId));
+    if (!art) return { ok: false as const, reason: "artifact-missing" };
 
-  const ids = ((obj.attachedArtifactIds ?? []) as string[]).filter((id) => id !== artifactId);
-  ids.push(artifactId);
-  await db
-    .update(worldObjects)
-    .set({ attachedArtifactIds: ids, updatedAt: new Date() })
-    .where(eq(worldObjects.id, objectId));
-  await db.update(artifacts).set({ objectId }).where(eq(artifacts.id, artifactId));
+    const objectIds = [objectId, art.objectId].filter(
+      (id): id is string => Boolean(id),
+    ).sort();
+    await tx.execute(
+      sql`select id from world_objects where id in (${sql.join(
+        objectIds.map((id) => sql`${id}`),
+        sql`, `,
+      )}) order by id for update`,
+    );
+    const [obj] = await tx.select().from(worldObjects).where(eq(worldObjects.id, objectId));
+    if (!obj) return { ok: false as const, reason: "object-missing" };
+
+    if (art.objectId && art.objectId !== objectId) {
+      const [old] = await tx.select().from(worldObjects).where(eq(worldObjects.id, art.objectId));
+      if (old) {
+        await tx
+          .update(worldObjects)
+          .set({
+            attachedArtifactIds: ((old.attachedArtifactIds ?? []) as string[]).filter(
+              (id) => id !== artifactId,
+            ),
+            updatedAt: new Date(),
+          })
+          .where(eq(worldObjects.id, old.id));
+      }
+    }
+
+    const ids = ((obj.attachedArtifactIds ?? []) as string[]).filter((id) => id !== artifactId);
+    ids.push(artifactId);
+    await tx
+      .update(worldObjects)
+      .set({ attachedArtifactIds: ids, updatedAt: new Date() })
+      .where(eq(worldObjects.id, objectId));
+    await tx.update(artifacts).set({ objectId }).where(eq(artifacts.id, artifactId));
+    return { ok: true as const, obj, art };
+  });
+  if (!attached.ok) return attached;
 
   await appendEvent({
     type: "object.attached",
     agentId: agent,
-    locationId: obj.locationId as LocationId,
+    locationId: attached.obj.locationId as LocationId,
     visibility: "public",
     payload: {
       objectId,
       artifactId,
       agent,
-      location: obj.locationId,
-      kind: art.kind,
-      title: art.title,
+      location: attached.obj.locationId,
+      kind: attached.art.kind,
+      title: attached.art.title,
     },
   });
   return { ok: true };

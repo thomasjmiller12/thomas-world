@@ -895,9 +895,8 @@ export function createApp() {
     if (!(await visitorTokenValid(visitorId, visitorToken))) {
       return c.json({ error: "unauthorized" }, 401);
     }
-    // M3: a session is just a routing record — there's no "engaged"/"mid-thought"
-    // gate. The visitor's first message becomes an interrupt input the agent
-    // handles on its next turn (queue-serialized).
+    // The visitor's first message becomes an interrupt input the agent handles
+    // on its next turn. A facet may have only one open visitor session.
     const res = await createSession(agentId, visitorId).catch((err) => {
       if (err instanceof ChatPresenceError) return "not-co-located" as const;
       if (err instanceof ChatEngagedError) return "engaged" as const;
@@ -1013,7 +1012,11 @@ export function createApp() {
   // Token-gated.
   app.post("/chats/:id/close", async (c) => {
     const sessionId = c.req.param("id");
-    const token = c.req.header("x-session-token") ?? undefined;
+    const headerToken = c.req.header("x-session-token") ?? undefined;
+    const body = headerToken ? undefined : await c.req.json().catch(() => ({}));
+    const token =
+      headerToken ??
+      (typeof body?.sessionToken === "string" ? body.sessionToken : undefined);
     if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
     await endSession(sessionId);
     return c.json({ ok: true });
@@ -1033,8 +1036,10 @@ export function createApp() {
     if (!(["approved", "declined", "fulfilled"] as const).includes(status)) {
       return c.json({ error: "bad status", message: "status must be approved, declined, or fulfilled" }, 400);
     }
-    const note = typeof body?.note === "string" ? body.note : undefined;
-    const resolved = await resolveCapabilityRequest(c.req.param("id"), status, note);
+    // This value is intentionally public in SSE + Chronicle. Internal operator
+    // detail must stay out of this endpoint.
+    const publicNote = typeof body?.publicNote === "string" ? body.publicNote : undefined;
+    const resolved = await resolveCapabilityRequest(c.req.param("id"), status, publicNote);
     if (!resolved) return c.json({ error: "unknown capability request" }, 404);
     // Wake the owning facet so the public resolution reaches its continuous
     // thread now instead of waiting for the next passive cadence.

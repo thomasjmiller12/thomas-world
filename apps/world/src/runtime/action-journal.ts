@@ -86,18 +86,21 @@ async function runJournaledAction(options: {
   }
 
   try {
+    let applied = false;
     const result = await options.tool.run(options.args, {
       ...options.context,
       idempotencyKey: id,
+      markApplied: () => {
+        applied = true;
+      },
     } satisfies TownToolInvocationContext);
     await db
       .update(agentActionJournal)
       .set({ status: "completed", result, completedAt: new Date() })
       .where(eq(agentActionJournal.id, id));
-    if (options.tool.effect !== "read" && options.emitSemantic !== false) {
+    if (applied && options.tool.effect !== "read" && options.emitSemantic !== false) {
       await emitAgentActed({
         actionId: id,
-        turnId: options.turnId,
         agentId: options.agentId,
         tool: options.tool.name,
         effect: options.tool.effect,

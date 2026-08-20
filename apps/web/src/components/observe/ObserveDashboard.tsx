@@ -67,9 +67,12 @@ export function ObserveDashboard() {
       setPhase(w.phase);
       setAwake(w.awake);
     };
+    const onWorldPhase = (w: { phase: DayPhase }) => setPhase(w.phase);
     EventBus.on('world-state', onWorldState);
+    EventBus.on('world-phase', onWorldPhase);
     return () => {
       EventBus.off('world-state', onWorldState);
+      EventBus.off('world-phase', onWorldPhase);
       world.stop();
     };
   }, []);

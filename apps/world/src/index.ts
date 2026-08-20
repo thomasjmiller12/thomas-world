@@ -17,13 +17,12 @@
 //      the DB pool, then exit.
 
 import { serve } from "@hono/node-server";
-import { eq, isNull, sql } from "drizzle-orm";
-import type { AgentId } from "@town/contract";
+import { isNull, sql } from "drizzle-orm";
 import { config, featureSummary } from "./config.js";
 import { db, pool, schema } from "./db/client.js";
 import { createApp } from "./http/app.js";
-import { appendEvent } from "./engine/events.js";
 import { startScheduler, stopScheduler } from "./runtime/scheduler.js";
+import { endSession } from "./runtime/chat.js";
 import { initTracing, shutdownTracing } from "./runtime/tracing.js";
 import { reconcileBudgets } from "./runtime/roles.js";
 
@@ -55,25 +54,12 @@ async function migrationsCheck(): Promise<void> {
 // forever on an end that the crashed process never sent. Runs after
 // migrations, before seed + scheduler.
 async function clearStaleChats(): Promise<void> {
-  const now = new Date();
-
-  // Open chat sessions → close + emit chat.ended.
   const openChats = await db
     .select()
     .from(schema.chatSessions)
     .where(isNull(schema.chatSessions.endedAt));
   for (const s of openChats) {
-    await db
-      .update(schema.chatSessions)
-      .set({ endedAt: now })
-      .where(eq(schema.chatSessions.id, s.id));
-    await appendEvent({
-      type: "chat.ended",
-      agentId: s.agentId as AgentId,
-      visibility: "public",
-      // Presence only — no sessionId on the public stream (matches endChat).
-      payload: { agent: s.agentId, visitorId: s.visitorId },
-    });
+    await endSession(s.id);
   }
 
   if (openChats.length) {

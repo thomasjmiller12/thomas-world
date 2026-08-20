@@ -163,6 +163,11 @@ export function ChronicleRow({ item, last, onOpenArtifact }: {
           <div style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--ink)' }}>
             {item.summary}
           </div>
+          {item.locationId && (
+            <div style={{ marginTop: 3, font: '500 10px var(--mono)', color: 'var(--ink-3)' }}>
+              at {locationLabel(item.locationId)}
+            </div>
+          )}
           {artifactId && <ReadLink color={THOMAS_COLORS[agent]} onClick={() => onOpenArtifact(artifactId)} />}
         </ScaffoldRow>
       );

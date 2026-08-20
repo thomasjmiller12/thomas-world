@@ -68,10 +68,9 @@ export async function chatParticipantsCoLocated(agentId: AgentId, visitorId: str
   return sameChatLocation(visitor?.locationId, agent?.locationId);
 }
 
-// Open a session: a routing record + token. In M3 there is no "engaged" / "mid-
-// thought" gate — a visitor can always start; their message becomes an interrupt
-// input the agent handles on its next turn (queue-serialized). Returns null if
-// the agent doesn't exist.
+// Open a session: a routing record + token. One visitor may hold an agent's open
+// session at a time; the partial unique index below the check closes the race.
+// Returns null if the agent or visitor does not exist.
 export async function createSession(
   agentId: AgentId,
   visitorId: string,
@@ -169,12 +168,14 @@ export function registerSessionEndedHook(fn: SessionEndedHook): void {
 }
 
 export async function endSession(sessionId: string): Promise<void> {
-  const [session] = await db.select().from(chatSessions).where(eq(chatSessions.id, sessionId));
+  // Atomically claim closure. leave_chat, the sweep, pagehide, and an explicit
+  // close can race; only the winner emits presence and writes episodic memory.
+  const [session] = await db
+    .update(chatSessions)
+    .set({ endedAt: new Date() })
+    .where(and(eq(chatSessions.id, sessionId), isNull(chatSessions.endedAt)))
+    .returning();
   if (!session) return;
-  // Idempotency: leave_chat, the sweep, and POST /chats/:id/close can race.
-  // This guard is also what keeps the hook below to exactly one call per session.
-  if (session.endedAt) return;
-  await db.update(chatSessions).set({ endedAt: new Date() }).where(eq(chatSessions.id, sessionId));
   await appendEvent({
     type: "chat.ended",
     agentId: session.agentId as AgentId,

@@ -264,8 +264,6 @@ function endedLine(speaker: ThomasId, reason?: string | null): string {
 }
 
 function errorLine(reason: string): string {
-  if (reason === 'mid-thought')
-    return 'Deep in thought right now — give it a few seconds and try again.';
   if (reason === 'engaged') return "They're with another visitor right now. Try again in a bit.";
   if (reason === 'not-connected') return 'The town is still waking up. Try again in a moment.';
   if (reason === 'not-co-located') return 'You stepped away. Walk back to them to continue talking.';

@@ -226,6 +226,30 @@ describe("renderEvents — agent.spoke addressing", () => {
   });
 });
 
+describe("renderEvents — semantic actions", () => {
+  it("shows the safe action summary instead of an unknown-event fallback", () => {
+    const acted = {
+      id: "acted-1",
+      type: "agent.acted",
+      ts: new Date().toISOString(),
+      agentId: "builder",
+      locationId: "workshop",
+      visibility: "public",
+      payload: {
+        agent: "builder",
+        tool: "place_object",
+        effect: "write",
+        summary: "placed an object in the world",
+        actionId: "action-1",
+      },
+    } satisfies WorldEvent;
+
+    expect(renderEvents([acted], "workshop", "writer")).toBe(
+      "- builder placed an object in the world",
+    );
+  });
+});
+
 describe("noticePushEvents — bounded town-wide awareness", () => {
   const event = (
     type: WorldEvent["type"],
@@ -261,5 +285,10 @@ describe("noticePushEvents — bounded town-wide awareness", () => {
         "library",
       ),
     ).toEqual([]);
+  });
+
+  it("delivers a P-Thomas capability resolution to its target facet", () => {
+    const resolution = event("capability.resolved", null, "public", null);
+    expect(noticePushEvents([resolution], "researcher", "library")).toEqual([resolution]);
   });
 });

@@ -160,9 +160,13 @@ const EFFECT_STATE_PATCH: Record<string, Record<string, unknown>> = {
   ring: { ringing: true },
 };
 
-export async function playBeat(ctx: AgentContext, args: PlayBeatArgs): Promise<string> {
+export async function playBeat(
+  ctx: AgentContext,
+  args: PlayBeatArgs,
+  onApplied?: () => void,
+): Promise<string> {
   const beatDef = getBeat(args.beat);
-  if (beatDef) return runBeat(ctx, beatDef, args.object, args.params ?? {});
+  if (beatDef) return runBeat(ctx, beatDef, args.object, args.params ?? {}, onApplied);
 
   const names = listBeats()
     .map((b) => b.id)
@@ -175,6 +179,7 @@ async function runBeat(
   beatDef: BeatDef,
   object: string | undefined,
   rawParams: Record<string, unknown>,
+  onApplied?: () => void,
 ): Promise<string> {
   // Validate params against the beat's own schema (in-fiction error on failure).
   const parsed = beatDef.params.safeParse(rawParams);
@@ -192,9 +197,9 @@ async function runBeat(
   }
 
   if (beatDef.surface === "object") {
-    return runObjectBeat(ctx, beatDef, object, params);
+    return runObjectBeat(ctx, beatDef, object, params, onApplied);
   }
-  return runScreenBeat(ctx, beatDef, params);
+  return runScreenBeat(ctx, beatDef, params, onApplied);
 }
 
 async function runObjectBeat(
@@ -202,6 +207,7 @@ async function runObjectBeat(
   beatDef: BeatDef,
   objectRef: string | undefined,
   params: Record<string, unknown>,
+  onApplied?: () => void,
 ): Promise<string> {
   const effect = (params.effect as string | undefined) ?? "effect";
   const here = await objectsAtLocation(ctx.location).catch(() => []);
@@ -238,6 +244,7 @@ async function runObjectBeat(
     recordPendingCall(obj.id, ctx.agentId);
   }
 
+  onApplied?.();
   await ctx.onAction?.("play_beat", `runs the ${beatDef.label.toLowerCase()}`);
   return `You run the bit — the ${obj.displayName} ${effect}s. Anyone here notices.`;
 }
@@ -246,6 +253,7 @@ async function runScreenBeat(
   ctx: AgentContext,
   beatDef: BeatDef,
   params: Record<string, unknown>,
+  onApplied?: () => void,
 ): Promise<string> {
   // audience:"room" screen beats (e.g. emote) render to everyone → visitorId null.
   // audience:"visitor" beats resolve a specific target (chat visitor / recent
@@ -278,6 +286,7 @@ async function runScreenBeat(
     },
   });
 
+  onApplied?.();
   await ctx.onAction?.("play_beat", `runs the ${beatDef.label.toLowerCase()}`);
   return beatDef.audience === "room"
     ? `You run the bit — everyone here sees it.`

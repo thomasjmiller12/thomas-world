@@ -523,9 +523,9 @@ export const ChronicleItem = z.discriminatedUnion("kind", [
     id: z.string(),
     ts: z.string(),
     agent: AgentId,
+    locationId: LocationId.nullable(),
     tool: z.string(),
     summary: z.string(),
-    turnId: z.string(),
     actionId: z.string(),
     relatedIds: z
       .array(

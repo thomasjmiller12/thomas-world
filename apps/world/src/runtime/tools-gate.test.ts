@@ -16,7 +16,7 @@ function toolByName(ctx: AgentContext, name: string) {
   if (!t) throw new Error(`tool ${name} not found`);
   return t as unknown as {
     name: string;
-    run: (args: unknown) => Promise<string | unknown[]>;
+    run: (args: unknown, context?: unknown) => Promise<string | unknown[]>;
   };
 }
 
@@ -35,8 +35,13 @@ describe("tool location gates (plan §3.3, enforced server-side)", () => {
   it("email_thomas from the cafe returns the office-outbox in-fiction error", async () => {
     const ctx: AgentContext = { agentId: "writer", location: "cafe" };
     const tool = toolByName(ctx, "email_thomas");
-    const out = await tool.run({ subject: "hi", body: "there" });
+    let applied = false;
+    const out = await tool.run(
+      { subject: "hi", body: "there" },
+      { markApplied: () => { applied = true; } },
+    );
     expect(out as string).toMatch(/office outbox/i);
+    expect(applied).toBe(false);
   });
 
   it("request_capability from the library redirects to the office outbox", async () => {
@@ -120,6 +125,7 @@ describe("invite_visitor — offered only within a visitor turn (Phase C.5)", ()
   it("appears when a chat session is set, absent otherwise", () => {
     const inChat: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
     expect(names(inChat)).toContain("invite_visitor");
+    expect(names(inChat)).not.toContain("move_to");
     const idle: AgentContext = { agentId: "builder", location: "workshop" };
     expect(names(idle)).not.toContain("invite_visitor");
   });

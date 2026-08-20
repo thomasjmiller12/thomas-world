@@ -10,6 +10,9 @@ export interface TownToolInvocationContext {
   // Stable across provider retries for the same logical action. External tool
   // handlers pass this through to providers such as Resend.
   idempotencyKey?: string;
+  // Effectful tools call this only after canonical state/external delivery has
+  // actually changed. Resolved refusal strings deliberately leave it unset.
+  markApplied?: () => void;
   raw?: unknown;
 }
 

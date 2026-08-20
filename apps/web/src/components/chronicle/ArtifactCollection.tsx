@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Artifact, type Artifact as ArtifactType } from '@town/contract';
+import { useEffect, useRef, useState } from 'react';
+import { ArtifactResponse, type Artifact as ArtifactType } from '@town/contract';
+import { EventBus } from '@/game/EventBus';
 import { resolveWorldBaseUrl } from '@/lib/world/mapping';
 import { artifactKindLabel } from './chroniclePresentation';
 
@@ -12,21 +13,41 @@ interface Props {
 
 export function ArtifactCollection({ objectName, artifactIds, onClose, onOpen }: Props) {
   const [artifacts, setArtifacts] = useState<ArtifactType[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    EventBus.emit('dialog-opened');
+    dialogRef.current?.focus();
+    return () => {
+      EventBus.emit('dialog-closed');
+      previousFocus?.focus();
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
     const base = resolveWorldBaseUrl(process.env.NEXT_PUBLIC_WORLD_URL);
-    void Promise.all(
+    setLoaded(false);
+    void Promise.allSettled(
       artifactIds.map(async (id) => {
         const response = await fetch(`${base}/artifacts/${encodeURIComponent(id)}`, {
           signal: controller.signal,
         });
         if (!response.ok) return null;
-        return Artifact.parse(await response.json());
+        return ArtifactResponse.parse(await response.json()).artifact;
       }),
     )
-      .then((rows) => setArtifacts(rows.filter((row): row is ArtifactType => row !== null)))
-      .catch(() => undefined);
+      .then((results) => {
+        if (controller.signal.aborted) return;
+        setArtifacts(
+          results.flatMap((result) =>
+            result.status === 'fulfilled' && result.value ? [result.value] : [],
+          ),
+        );
+        setLoaded(true);
+      });
     const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
     return () => {
@@ -41,6 +62,8 @@ export function ArtifactCollection({ objectName, artifactIds, onClose, onOpen }:
       role="dialog"
       aria-modal="true"
       aria-label={`Things on ${objectName}`}
+      tabIndex={-1}
+      ref={dialogRef}
       style={{
         position: 'absolute',
         inset: 0,
@@ -93,8 +116,12 @@ export function ArtifactCollection({ objectName, artifactIds, onClose, onOpen }:
             ×
           </button>
         </div>
-        {artifacts.length === 0 ? (
+        {!loaded ? (
           <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Reading the shelf…</div>
+        ) : artifacts.length === 0 ? (
+          <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>
+            Nothing readable is available here right now.
+          </div>
         ) : (
           <div style={{ display: 'grid', gap: 8 }}>
             {artifacts.map((artifact) => (

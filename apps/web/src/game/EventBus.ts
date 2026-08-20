@@ -57,9 +57,11 @@ export interface WorldEvents {
     activity: string | null;
   };
 
-  // --- world-level state (snapshot + world.time) ---------------------------
+  // --- world-level state ----------------------------------------------------
   // phase drives the day/night tint; `awake` false => sleeping/dream mode.
   'world-state': { phase: DayPhase; visitorsPresent: number; awake: boolean };
+  // Phase-only live event. Snapshot truth remains authoritative for awake.
+  'world-phase': { phase: DayPhase };
   // The snapshot is authoritative for whether the town is awake. Transport
   // recovery is a separate state: losing SSE must never make a healthy town
   // appear asleep. Dream mode is reserved for an authoritative budget sleep or

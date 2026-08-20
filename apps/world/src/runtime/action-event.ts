@@ -1,5 +1,6 @@
 import type { AgentId } from "@town/contract";
 import { appendEvent } from "../engine/events.js";
+import { getAgent } from "../engine/agents.js";
 import type { ToolEffect, ToolResult } from "./llm/tool.js";
 
 export interface RelatedActionId {
@@ -111,7 +112,6 @@ export function relatedActionIds(tool: string, args: unknown): RelatedActionId[]
 
 export async function emitAgentActed(input: {
   actionId: string;
-  turnId: string;
   agentId: AgentId;
   tool: string;
   effect: Exclude<ToolEffect, "read">;
@@ -122,16 +122,17 @@ export async function emitAgentActed(input: {
   // but intentionally never serialized; it may contain private prose.
   void input.result;
   const relatedIds = relatedActionIds(input.tool, input.args);
+  const agent = await getAgent(input.agentId).catch(() => undefined);
   await appendEvent({
     type: "agent.acted",
     agentId: input.agentId,
+    locationId: agent?.locationId ?? null,
     visibility: "public",
     payload: {
       agent: input.agentId,
       tool: input.tool,
       effect: input.effect,
       summary: actionSummary(input.tool, input.args),
-      turnId: input.turnId,
       actionId: input.actionId,
       ...(relatedIds.length ? { relatedIds } : {}),
     },

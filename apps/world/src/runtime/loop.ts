@@ -50,6 +50,8 @@ import {
   appendAgentLine,
   sanitizeVisitorText,
   endSession,
+  getSession,
+  chatParticipantsCoLocated,
   registerSessionEndedHook,
 } from "./chat.js";
 
@@ -291,6 +293,24 @@ async function runVisitorInput(
   const text = sanitizeVisitorText(input.text);
   const agent = await getAgent(agentId);
   if (!agent) return { ran: false, reason: "error" };
+
+  // The request may have waited behind an autonomous turn. Re-check the body
+  // at execution time so a closed session or a facet that walked away cannot
+  // produce a disembodied reply after the visitor has left.
+  const liveSession = await getSession(sessionId);
+  const stillTogether =
+    liveSession?.agentId === agentId &&
+    liveSession.visitorId === input.visitorId &&
+    (await chatParticipantsCoLocated(agentId, input.visitorId));
+  if (!stillTogether) {
+    await handlers.onFrame({
+      type: "chat_ended",
+      agent: agentId,
+      reason: "you are no longer in the same place",
+    });
+    if (liveSession) await endSession(sessionId);
+    return { ran: false, reason: "not-co-located" };
+  }
 
   if (!hasLlm()) {
     const note = "The town's a little quiet right now — the agents can't chat yet.";

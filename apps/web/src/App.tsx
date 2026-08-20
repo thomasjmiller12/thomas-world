@@ -164,6 +164,15 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
     EventBus.emit('travel-to-location', { locationId });
   }, []);
 
+  const handleCloseArtifactCollection = useCallback(() => {
+    setArtifactCollection(null);
+  }, []);
+
+  const handleOpenCollectionArtifact = useCallback((artifactId: string) => {
+    setArtifactCollection(null);
+    setChronicle({ tab: 'today', day: null, artifactId });
+  }, []);
+
   useEffect(() => {
     const world = new WorldClient(visitorName, { observe });
     const dream = new DreamMode();
@@ -312,6 +321,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
     EventBus.on('npc-proximity-enter', onProximityEnter);
     EventBus.on('npc-proximity-exit', onProximityExit);
     EventBus.on('world-state', onWorldState);
+    EventBus.on('world-phase', onWorldState);
     EventBus.on('world-availability', onWorldAvailability);
 
     return () => {
@@ -331,6 +341,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
       EventBus.off('npc-proximity-enter', onProximityEnter);
       EventBus.off('npc-proximity-exit', onProximityExit);
       EventBus.off('world-state', onWorldState);
+      EventBus.off('world-phase', onWorldState);
       EventBus.off('world-availability', onWorldAvailability);
       EventBus.off('visitor-interact', onVisitorInteract);
     };
@@ -451,11 +462,8 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
             <ArtifactCollection
               objectName={artifactCollection.objectName}
               artifactIds={artifactCollection.artifactIds}
-              onClose={() => setArtifactCollection(null)}
-              onOpen={(artifactId) => {
-                setArtifactCollection(null);
-                setChronicle({ tab: 'today', day: null, artifactId });
-              }}
+              onClose={handleCloseArtifactCollection}
+              onOpen={handleOpenCollectionArtifact}
             />
           )}
 

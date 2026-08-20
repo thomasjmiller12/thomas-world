@@ -100,7 +100,6 @@ describe("renderLine — new M2 event types (verification fix)", () => {
           tool: "write_artifact_state",
           effect: "write",
           summary: "updated an interactive",
-          turnId: "turn-1",
           actionId: "action-1",
           relatedIds: [{ kind: "artifact", id: "art-1" }],
         },

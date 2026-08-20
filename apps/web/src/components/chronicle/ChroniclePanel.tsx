@@ -37,6 +37,8 @@ const CHRONICLE_LIVE_TYPES = new Set<string>([
   'message.sent',
   'bulletin.posted',
   'capability.requested',
+  'capability.resolved',
+  'agent.acted',
 ]);
 
 const TABS: { id: Tab; label: string }[] = [

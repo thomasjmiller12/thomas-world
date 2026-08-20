@@ -22,6 +22,7 @@ import {
 } from '@/lib/world/mapping';
 import { SseParser, isHeartbeat } from '@/lib/world/sse';
 import { PendingChatMessages } from '@/lib/world/pending-chat-messages';
+import { availabilityForTransport } from '@/lib/world/availability';
 
 // Momentary events — animations, popups, bubbles — that must NOT replay when a
 // visitor joins (they'd fire stale: a phone ringing / a bit popping for an event
@@ -138,8 +139,12 @@ export class WorldClient {
   // Slow authoritative re-sync timer + in-flight guard (see RESYNC_INTERVAL_MS).
   private resyncTimer: ReturnType<typeof setInterval> | null = null;
   private resyncing = false;
+  // Only a live snapshot can establish budget availability. Stream traffic is
+  // transport evidence, not proof that the hard daily budget is available.
+  private authoritativeAwake: boolean | null = null;
 
   private currentLocation: LocationId | null = null;
+  private desiredLocation: LocationId | null = null;
   private locationPatch: Promise<void> = Promise.resolve();
   private activeChat: ActiveChat | null = null;
   private stopped = false;
@@ -263,6 +268,7 @@ export class WorldClient {
         this.visitorId = visitor.visitorId;
         this.visitorToken = storedToken;
         this.currentLocation = visitor.locationId ?? null;
+        this.desiredLocation = this.currentLocation;
         // Gate name differs from the stored one → PATCH the rename.
         if (this.visitorName && this.visitorName !== (storedName ?? visitor.name)) {
           await this.patchVisitor({ name: this.visitorName });
@@ -305,7 +311,8 @@ export class WorldClient {
       headers,
       body: JSON.stringify(body),
     });
-    if (res.ok && body.name) {
+    if (!res.ok) throw new Error(`visitor update failed: ${res.status}`);
+    if (body.name) {
       this.writeStored(STORAGE_KEYS.name, body.name);
       this.visitorName = body.name;
     }
@@ -358,6 +365,7 @@ export class WorldClient {
     // Remember it so a later scene transition can resyncScene() the new manager
     // off this state without re-hitting the network.
     this.lastSnapshot = snapshot;
+    this.authoritativeAwake = cached ? null : snapshot.world.awake;
 
     // Initial per-agent state (positions/status/engagement). On a re-sync this
     // is the whole point: npc-status flows to every NPCManager and reconciles
@@ -638,7 +646,7 @@ export class WorldClient {
 
     es.onopen = () => {
       this.reconnectAttempt = 0;
-      this.setAvailability(this.lastSnapshot ? 'live' : 'reconnecting');
+      this.setTransportAvailability(true);
       // A re-open after the first connection is a reconnect (our backoff path OR
       // EventSource's own silent auto-reconnect after a Railway edge recycle).
       // The backlog replay only covers a bounded window, so re-hydrate the
@@ -663,7 +671,7 @@ export class WorldClient {
     es.onmessage = onFrame;
 
     es.onerror = () => {
-      this.setAvailability('reconnecting');
+      this.setTransportAvailability(false);
       // Close even while EventSource says CONNECTING. A 429 response otherwise
       // invokes its opaque automatic retry loop, bypassing our backoff entirely.
       es.close();
@@ -688,8 +696,6 @@ export class WorldClient {
   }
 
   private dispatchWorldEvent(ev: WorldEvent, broadcast = true): void {
-    // A live tick means the town is awake — clear any sleeping flag.
-    this.setAvailability('live');
     this.patchSnapshot(ev);
     EventBus.emit('world-event', ev);
     for (const { name, payload } of mapWorldEvent(ev)) {
@@ -719,13 +725,15 @@ export class WorldClient {
     } else if (ev.type === 'agent.activity') {
       const agent = snapshot.agents.find((a) => a.id === ev.payload.agent);
       if (agent) agent.activity = ev.payload.activity;
+    } else if (ev.type === 'world.time') {
+      snapshot.world.phase = ev.payload.phase;
     }
   }
 
   private scheduleReconnect(): void {
     this.closeStream();
     if (this.stopped || !this.streamOwner || !this.isVisible()) return;
-    this.setAvailability('reconnecting');
+    this.setTransportAvailability(false);
     const delay = reconnectDelayMs(this.reconnectAttempt++);
     this.reconnectTimer = setTimeout(() => this.openStream(), delay);
   }
@@ -755,16 +763,26 @@ export class WorldClient {
     }
   }
 
+  private setTransportAvailability(connected: boolean): void {
+    this.setAvailability(availabilityForTransport(this.authoritativeAwake, connected));
+  }
+
   // --- location reporting (PATCH on scene change) ---------------------------
 
   // Called by App on `scene-changed`. Reports the visitor's logical location so
   // co-located agents perceive the arrival (design doc §2).
   reportLocation(locationId: LocationId): void {
     if (this.observe) return;
-    if (locationId === this.currentLocation) return;
-    this.currentLocation = locationId;
-    this.locationPatch = this.patchVisitor({ locationId }).catch(() => {
-      /* best-effort; a missed location report isn't fatal */
+    if (locationId === this.desiredLocation && locationId === this.currentLocation) return;
+    this.desiredLocation = locationId;
+    this.locationPatch = this.locationPatch.then(async () => {
+      try {
+        await this.patchVisitor({ locationId });
+        this.currentLocation = locationId;
+      } catch {
+        // Keep canonical and desired state distinct. The next report or chat
+        // open retries instead of suppressing a location the server never saw.
+      }
     });
   }
 
@@ -822,10 +840,7 @@ export class WorldClient {
   }
 
   // Create a session for an agent (POST /chats). Closes any prior session first
-  // (one body, one conversation). `mid-thought` 409s are transient (the agent's
-  // tick is mid-flight — common right after a visitor arrives, since presence
-  // boosts tick rates), so retry a few times before surfacing; `engaged` (a real
-  // chat) surfaces immediately. Returns true iff a session is now active.
+  // (one body, one conversation). Returns true iff a session is now active.
   private async openSession(agentId: ThomasId): Promise<boolean> {
     if (!this.visitorId) {
       EventBus.emit('chat-error', { npcId: agentId, reason: 'not-connected' });
@@ -834,40 +849,38 @@ export class WorldClient {
     // A region transition and an immediate SPACE press can otherwise race: the
     // chat POST reaches the server before the visitor's canonical location.
     await this.locationPatch;
+    if (this.desiredLocation && this.currentLocation !== this.desiredLocation) {
+      try {
+        await this.patchVisitor({ locationId: this.desiredLocation });
+        this.currentLocation = this.desiredLocation;
+      } catch {
+        EventBus.emit('chat-error', { npcId: agentId, reason: 'not-connected' });
+        return false;
+      }
+    }
     this.closeActiveChat({ clearPending: false });
 
-    const MID_THOUGHT_RETRIES = 3;
-    const MID_THOUGHT_DELAY_MS = 4_000;
-    let res: Response | null = null;
-    for (let attempt = 0; ; attempt++) {
-      try {
-        res = await fetch(`${this.baseUrl}/chats`, {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            ...(this.visitorToken ? { 'x-visitor-token': this.visitorToken } : {}),
-          },
-          body: JSON.stringify({ agentId, visitorId: this.visitorId }),
-        });
-      } catch {
-        EventBus.emit('chat-error', { npcId: agentId, reason: 'server-down' });
-        return false;
-      }
-      if (res.status !== 409) break;
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}/chats`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(this.visitorToken ? { 'x-visitor-token': this.visitorToken } : {}),
+        },
+        body: JSON.stringify({ agentId, visitorId: this.visitorId }),
+      });
+    } catch {
+      EventBus.emit('chat-error', { npcId: agentId, reason: 'server-down' });
+      return false;
+    }
+    if (res.status === 409) {
       const body = (await res.json().catch(() => ({}))) as { reason?: string };
-      if (body.reason === 'not-co-located') {
-        EventBus.emit('chat-error', { npcId: agentId, reason: 'not-co-located' });
-        return false;
-      }
-      if (body.reason !== 'mid-thought') {
-        EventBus.emit('chat-error', { npcId: agentId, reason: 'engaged' });
-        return false;
-      }
-      if (attempt >= MID_THOUGHT_RETRIES) {
-        EventBus.emit('chat-error', { npcId: agentId, reason: 'mid-thought' });
-        return false;
-      }
-      await new Promise((r) => setTimeout(r, MID_THOUGHT_DELAY_MS));
+      EventBus.emit('chat-error', {
+        npcId: agentId,
+        reason: body.reason === 'not-co-located' ? 'not-co-located' : 'engaged',
+      });
+      return false;
     }
     if (!res.ok) {
       EventBus.emit('chat-error', { npcId: agentId, reason: `error-${res.status}` });

@@ -622,7 +622,6 @@ export const agentActionJournal = pgTable(
     status: text("status").notNull().default("started"),
     result: jsonb("result"),
     error: text("error"),
-    relatedEventIds: jsonb("related_event_ids").$type<string[]>().notNull().default([]),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
