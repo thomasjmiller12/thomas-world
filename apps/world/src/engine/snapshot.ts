@@ -3,7 +3,7 @@ import { sql, gt } from "drizzle-orm";
 import type { SnapshotResponse, AgentStatus, AgentId, LocationId } from "@town/contract";
 import { db } from "../db/client.js";
 import { visitors } from "../db/schema.js";
-import { currentPhase, isOvernight } from "../runtime/clock.js";
+import { currentPhase } from "../runtime/clock.js";
 import { allAgents } from "./agents.js";
 import { recentEvents } from "./events.js";
 import { isBudgetExhausted } from "./usage.js";
@@ -19,6 +19,13 @@ async function visitorsPresent(): Promise<number> {
     .from(visitors)
     .where(gt(visitors.lastSeenAt, cutoff));
   return Number(row?.n ?? 0);
+}
+
+// Passive agents sleep on the scheduler's overnight clock, but visitor chat is
+// interrupt-driven and remains available at every phase. `awake` therefore
+// means "interactive requests can run", not "autonomous ticks are running".
+export function interactiveAvailability(budgetExhausted: boolean): boolean {
+  return !budgetExhausted;
 }
 
 export async function buildSnapshot(): Promise<SnapshotResponse> {
@@ -39,13 +46,13 @@ export async function buildSnapshot(): Promise<SnapshotResponse> {
     lastTickAt: a.lastTickAt ? a.lastTickAt.toISOString() : null,
   }));
 
-  // `awake` is false when the town is asleep (overnight) OR the daily budget is
-  // exhausted (design doc §7 — the frontend renders "dream mode" either way;
-  // reads stay live). The clock alone drove this before the budget signal wired.
+  // Night still drives the tint and pauses passive ticks, but it must not put an
+  // active visitor chat into dream mode. Only the hard budget gate removes
+  // interactive availability.
   const world = {
     phase: currentPhase(),
     visitorsPresent: present,
-    awake: !isOvernight() && !budgetExhausted,
+    awake: interactiveAvailability(budgetExhausted),
   };
 
   return {

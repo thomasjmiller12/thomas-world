@@ -60,6 +60,9 @@ interface State {
   // Guard so an in-flight history fetch can't prepend the same lines twice
   // (retarget → open → a late response from the previous target).
   historyLoaded: boolean;
+  // Number of optimistic visitor lines that have not reached a terminal frame.
+  // Rapid sends are allowed, but retargeting would abort/orphan those replies.
+  pendingReplies: number;
 }
 
 const INITIAL: State = {
@@ -69,6 +72,7 @@ const INITIAL: State = {
   streamingSpeaker: null,
   hadSession: false,
   historyLoaded: false,
+  pendingReplies: 0,
 };
 
 type Action =
@@ -119,7 +123,8 @@ function reducer(state: State, a: Action): State {
         ...state,
         phase: state.phase === 'idle' ? 'live' : state.phase,
         hadSession: true,
-              lines: [...state.lines, { id: nextId(), kind: 'visitor', speaker: 'visitor', text: a.text }],
+        pendingReplies: state.pendingReplies + 1,
+        lines: [...state.lines, { id: nextId(), kind: 'visitor', speaker: 'visitor', text: a.text }],
       };
 
     case 'history': {
@@ -170,10 +175,21 @@ function reducer(state: State, a: Action): State {
 
     case 'turn-done': {
       const idx = lastStreamingIdx(state.lines, a.speaker);
-      if (idx === -1) return { ...state, streamingSpeaker: null };
+      if (idx === -1) {
+        return {
+          ...state,
+          streamingSpeaker: null,
+          pendingReplies: Math.max(0, state.pendingReplies - 1),
+        };
+      }
       const lines = state.lines.slice();
       lines[idx] = { ...lines[idx], streaming: false };
-      return { ...state, streamingSpeaker: null, lines };
+      return {
+        ...state,
+        streamingSpeaker: null,
+        pendingReplies: Math.max(0, state.pendingReplies - 1),
+        lines,
+      };
     }
 
     case 'room-line':
@@ -214,7 +230,8 @@ function reducer(state: State, a: Action): State {
         ...state,
         phase: 'ended',
         streamingSpeaker: null,
-              lines: [
+        pendingReplies: 0,
+        lines: [
           ...state.lines,
           { id: nextId(), kind: 'ended', text: endedLine(a.speaker, a.reason) },
         ],
@@ -223,6 +240,7 @@ function reducer(state: State, a: Action): State {
     case 'error':
       return {
         ...state,
+        pendingReplies: Math.max(0, state.pendingReplies - 1),
         lines: [...state.lines, { id: nextId(), kind: 'system', text: errorLine(a.reason) }],
       };
 
@@ -298,6 +316,10 @@ export function ChatSession({ onSend, onClose, suspended, currentLocation }: Cha
         bumpFocus();
         return;
       }
+      // Switching facets tears down the browser stream, while the model turn
+      // continues server-side. Wait for every queued reply so none becomes an
+      // orphaned response after its session is closed.
+      if (s.pendingReplies > 0) return;
       // A different agent: while idle this is a free retarget; while live/ended
       // close the current session (network if it had one) then open the new one.
       if (s.phase === 'live' || s.phase === 'ended') {
@@ -569,6 +591,7 @@ export function ChatSession({ onSend, onClose, suspended, currentLocation }: Cha
       focusNonce={focusNonceRef.current}
       present={present}
       onAddress={handleAddress}
+      pendingReplies={state.pendingReplies}
     />
   );
 }
