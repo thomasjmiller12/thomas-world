@@ -2,6 +2,16 @@ import * as z from "zod/v4";
 
 export type ToolResult = string | unknown[];
 export type Promisable<T> = T | Promise<T>;
+export type ToolEffect = "read" | "write" | "external";
+
+export interface TownToolInvocationContext {
+  provider?: "anthropic" | "openai";
+  toolCallId?: string;
+  // Stable across provider retries for the same logical action. External tool
+  // handlers pass this through to providers such as Resend.
+  idempotencyKey?: string;
+  raw?: unknown;
+}
 
 export interface TownFunctionTool<InputSchema extends z.ZodType = z.ZodType> {
   kind: "function";
@@ -9,6 +19,7 @@ export interface TownFunctionTool<InputSchema extends z.ZodType = z.ZodType> {
   description: string;
   inputSchema: InputSchema;
   strict: boolean;
+  effect: ToolEffect;
   run: (args: z.infer<InputSchema>, context?: unknown) => Promisable<ToolResult>;
   close?: () => Promisable<void>;
   terminalSpeech?: boolean;
@@ -50,6 +61,7 @@ export interface TownMemoryTool {
   name: "memory";
   description: string;
   strict: true;
+  effect: "write";
   handlers: MemoryToolHandlers;
 }
 
@@ -63,10 +75,12 @@ export function defineTownTool<InputSchema extends z.ZodType>(options: {
   close?: () => Promisable<void>;
   strict?: boolean;
   terminalSpeech?: boolean;
+  effect?: ToolEffect;
 }): TownFunctionTool<InputSchema> {
   return {
     kind: "function",
     strict: options.strict ?? true,
+    effect: options.effect ?? "read",
     ...options,
   };
 }
@@ -77,6 +91,7 @@ export function defineTownMemoryTool(handlers: MemoryToolHandlers): TownMemoryTo
     name: "memory",
     description: "View and edit your durable core-memory files.",
     strict: true,
+    effect: "write",
     handlers,
   };
 }

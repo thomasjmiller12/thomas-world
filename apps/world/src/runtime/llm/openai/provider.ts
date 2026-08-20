@@ -1,5 +1,6 @@
 import {
   Agent,
+  MaxTurnsExceededError,
   codeInterpreterTool,
   type AgentOutputItem,
   type ModelResponse,
@@ -27,6 +28,14 @@ import { toOpenAITools } from "./tools.js";
 import { normalizeOpenAIResponseUsage, normalizeOpenAIRunUsage } from "./usage.js";
 
 const TERMINAL_TOOLS = new Set(["leave_chat"]);
+const CONTINUATION_TURNS = 4;
+const CONTINUATION_INPUT =
+  "[operator continuation] You reached the bounded tool-round limit after completing real work. " +
+  "The completed tool calls above are authoritative and must not be repeated. Finish the current task now, " +
+  "state the result clearly in a complete final response, and stop using tools unless one is strictly necessary.";
+const BOUNDED_STOP_TEXT =
+  "I made progress on that, but the task ran longer than I could finish safely in one pass. " +
+  "What I completed is saved; ask me to continue and I’ll pick up from there.";
 
 interface OpenAIRunResultLike {
   finalOutput?: unknown;
@@ -162,7 +171,62 @@ async function runOpenAITurn(
   }
   const initialItems = prepareOpenAIHistory(request.thread.items);
   const session = createOpenAISession(initialItems, request.model.model);
-  const result = await finishRun(request, session);
+  let result: OpenAIRunResultLike;
+  let partialRounds = 0;
+  try {
+    result = await finishRun(request, session);
+  } catch (error) {
+    if (!(error instanceof MaxTurnsExceededError)) throw error;
+
+    // The Agents SDK session already contains every completed model item and
+    // tool result from the bounded run. Account for that work, then continue on
+    // the SAME session so the model sees—and does not repeat—its body actions.
+    const partialUsage = error.state?.usage;
+    if (partialUsage) {
+      const normalized = normalizeOpenAIRunUsage(
+        request.model.model,
+        partialUsage as unknown as Parameters<typeof normalizeOpenAIRunUsage>[1],
+        "turn",
+      );
+      partialRounds = normalized.filter((usage) => usage.endpoint === "turn").length;
+      for (const usage of normalized) await request.onUsage(usage);
+    } else {
+      partialRounds = request.maxTurns;
+    }
+
+    try {
+      result = await finishRun(
+        {
+          ...request,
+          inputText: CONTINUATION_INPUT,
+          maxTurns: CONTINUATION_TURNS,
+        },
+        session,
+      );
+    } catch (continuationError) {
+      if (!(continuationError instanceof MaxTurnsExceededError)) throw continuationError;
+      const continuationUsage = continuationError.state?.usage;
+      if (continuationUsage) {
+        for (const usage of normalizeOpenAIRunUsage(
+          request.model.model,
+          continuationUsage as unknown as Parameters<typeof normalizeOpenAIRunUsage>[1],
+          "turn",
+        )) {
+          await request.onUsage(usage);
+        }
+      }
+      const items = prepareOpenAIHistory(await session.getItems());
+      if (request.onFrame) {
+        await request.onFrame({ type: "text", text: BOUNDED_STOP_TEXT, agent: request.agentId });
+      }
+      return {
+        thread: { provider: "openai", items },
+        rounds: partialRounds + CONTINUATION_TURNS,
+        finalText: BOUNDED_STOP_TEXT,
+        refused: false,
+      };
+    }
+  }
 
   for (const usage of normalizeOpenAIRunUsage(
     request.model.model,
@@ -184,7 +248,7 @@ async function runOpenAITurn(
   const items = prepareOpenAIHistory(await session.getItems());
   return {
     thread: { provider: "openai", items },
-    rounds: result.rawResponses.length,
+    rounds: partialRounds + result.rawResponses.length,
     finalText,
     refused: speech.refused,
   };

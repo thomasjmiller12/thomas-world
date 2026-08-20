@@ -10,10 +10,15 @@ import { getLlmProvider } from "./llm/provider.js";
 import { buildSystemPrompt } from "./llm/system.js";
 import type { ModelRef, ProviderAttachment } from "./llm/types.js";
 import type { TownTool } from "./llm/tool.js";
+import { journalMutatingTools } from "./action-journal.js";
 
 export { classifyRoundText, releaseHeld } from "./llm/speech.js";
 
-export const MAX_TURN_ROUNDS = 6;
+// Six rounds was routinely exhausted by a normal visitor turn that checked
+// state, used two tools, and then answered. Eight keeps the bound tight while
+// leaving enough room for a complete response; the OpenAI adapter also performs
+// one explicit continuation on MaxTurnsExceededError and persists partial work.
+export const MAX_TURN_ROUNDS = 8;
 
 export interface TurnHandlers {
   onFrame: (frame: ChatStreamFrame) => void | Promise<void>;
@@ -38,6 +43,10 @@ export interface RunTurnOptions {
   trace: ReturnType<typeof startTrace>;
   stream?: TurnHandlers;
   attachment?: ProviderAttachment;
+  // Stable logical input identity used to dedupe mutating tools across provider
+  // retries/process recovery. Defaults to tickId when the caller has no better
+  // source identity.
+  actionScope?: string;
 }
 
 export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
@@ -62,7 +71,10 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
     systemPrompt: buildSystemPrompt(opts.agentId),
     inputText,
     thread: prepared,
-    tools: opts.tools,
+    tools: journalMutatingTools(opts.tools, {
+      turnId: opts.actionScope ?? opts.tickId,
+      agentId: opts.agentId,
+    }),
     maxTurns: MAX_TURN_ROUNDS,
     maxOutputTokens: opts.maxTokens,
     attachment: opts.attachment,

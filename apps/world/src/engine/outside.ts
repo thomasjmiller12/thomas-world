@@ -106,22 +106,34 @@ export async function recordCapabilityRequest(
   agentId: AgentId,
   summary: string,
   rationale: string,
+  idempotencyKey?: string,
 ): Promise<{ id: string; emailed: boolean }> {
-  const id = randomUUID();
-  await db.insert(capabilityRequests).values({ id, agentId, summary, rationale });
-  // capability.requested is public — it's the meta-layer flex surface (plan §5).
-  await appendEvent({
-    type: "capability.requested",
-    agentId,
-    visibility: "public",
-    payload: { agent: agentId, summary },
-  });
+  const id = idempotencyKey ? `cap-${idempotencyKey}` : randomUUID();
+  const [inserted] = await db
+    .insert(capabilityRequests)
+    .values({ id, agentId, summary, rationale })
+    .onConflictDoNothing()
+    .returning({ id: capabilityRequests.id });
+  if (inserted) {
+    // capability.requested is public — it's the meta-layer flex surface (plan §5).
+    await appendEvent({
+      type: "capability.requested",
+      agentId,
+      visibility: "public",
+      payload: { agent: agentId, summary },
+    });
+  }
 
   let emailed = false;
   try {
     const subject = `Capability request: ${summary.split("\n")[0].slice(0, 120)}`;
     const body = `${agentNames[agentId]} filed a capability request from the office outbox.\n\nWHAT THEY WANT\n${summary}\n\nWHY\n${rationale}\n\n— request id ${id}`;
-    const r = await sendEmailToThomas(agentId, subject, body);
+    const r = await sendEmailToThomas(
+      agentId,
+      subject,
+      body,
+      idempotencyKey ? `capability-${idempotencyKey}` : undefined,
+    );
     emailed = r.sent;
   } catch (err) {
     console.warn(
@@ -140,9 +152,21 @@ export async function sendEmailToThomas(
   agentId: AgentId,
   subject: string,
   body: string,
+  idempotencyKey?: string,
 ): Promise<{ id: string; sent: boolean; messageId?: string }> {
-  const id = randomUUID();
-  await db.insert(outbox).values({ id, agentId, subject, body, status: "queued" });
+  const id = idempotencyKey ? `mail-${idempotencyKey}` : randomUUID();
+  const [inserted] = await db
+    .insert(outbox)
+    .values({ id, agentId, subject, body, status: "queued" })
+    .onConflictDoNothing()
+    .returning({ id: outbox.id });
+  if (!inserted) {
+    const [existing] = await db
+      .select({ status: outbox.status })
+      .from(outbox)
+      .where(eqId(id));
+    if (existing?.status === "sent") return { id, sent: true };
+  }
 
   if (!config.features.resend) {
     return { id, sent: false };
@@ -160,6 +184,7 @@ export async function sendEmailToThomas(
       headers: {
         Authorization: `Bearer ${config.resendApiKey}`,
         "Content-Type": "application/json",
+        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
       },
       body: JSON.stringify({
         from: senderFor(agentId),

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChatStreamFrame } from "@town/contract";
 import { defineTownTool } from "../tool.js";
 import * as z from "zod/v4";
+import { MaxTurnsExceededError } from "@openai/agents";
 
 const mocks = vi.hoisted(() => {
   const state = {
@@ -268,6 +269,39 @@ describe("OpenAI gpt-5.4 provider", () => {
       "provider exploded",
     );
     expect(onUsage).not.toHaveBeenCalled();
+  });
+
+  it("continues a max-turn run on the same session without repeating completed work", async () => {
+    const partial = [modelResponse([functionCall("look_around")])];
+    const completed = [modelResponse([assistant("The workshop is ready, and I saved the result.")])];
+    mocks.run
+      .mockImplementationOnce(async (_agent, _input, options) => {
+        await persistFakeRunItems(options, partial);
+        const error = new MaxTurnsExceededError("Max turns (6) exceeded");
+        Object.defineProperty(error, "state", {
+          value: {
+            usage: {
+              requestUsageEntries: [
+                { inputTokens: 100, outputTokens: 10, inputTokensDetails: {}, endpoint: "responses.create" },
+              ],
+            },
+          },
+        });
+        throw error;
+      })
+      .mockImplementationOnce(async (_agent, input, options) => {
+        expect(input).toContain("operator continuation");
+        await options.session.addItems(completed.flatMap((response: ReturnType<typeof modelResponse>) => response.output));
+        return fakeRunResult(completed);
+      });
+
+    const result = await openaiProvider.runTurn(baseRequest());
+
+    expect(mocks.run).toHaveBeenCalledTimes(2);
+    expect(mocks.run.mock.calls[0][2].session).toBe(mocks.run.mock.calls[1][2].session);
+    expect(result.finalText).toBe("The workshop is ready, and I saved the result.");
+    expect(JSON.stringify(result.thread.items)).toContain("look_around");
+    expect(result.rounds).toBe(2);
   });
 
   it("routes stateless generation through Responses and records its usage", async () => {

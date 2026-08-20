@@ -6,6 +6,7 @@ import type {
   TownFunctionTool,
   TownMemoryTool,
   TownTool,
+  TownToolInvocationContext,
 } from "../tool.js";
 
 export type OpenAIFunctionTool = FunctionTool<unknown, any, any>;
@@ -115,7 +116,15 @@ export function toOpenAITool(townTool: TownTool): OpenAIFunctionTool {
     description: fn.description,
     parameters: fn.inputSchema as z.ZodObject<any>,
     strict: true,
-    execute: async (args, context) => renderToolResult(await fn.run(args, context)),
+    execute: async (args, context, details) => {
+      const toolCall = details?.toolCall as { callId?: string; call_id?: string; id?: string } | undefined;
+      const invocation: TownToolInvocationContext = {
+        provider: "openai",
+        toolCallId: toolCall?.callId ?? toolCall?.call_id ?? toolCall?.id,
+        raw: context,
+      };
+      return renderToolResult(await fn.run(args, invocation));
+    },
   }) as OpenAIFunctionTool;
 }
 

@@ -235,8 +235,12 @@ export async function sweepStaleChats(staleMs = 3 * 60_000): Promise<void> {
 }
 
 // Persist the visitor's line (the loop sanitizes before calling).
-export async function appendVisitorLine(sessionId: string, text: string): Promise<void> {
-  await db.insert(chatMessages).values({ sessionId, sender: "visitor", body: text });
+export async function appendVisitorLine(sessionId: string, text: string): Promise<string> {
+  const [row] = await db
+    .insert(chatMessages)
+    .values({ sessionId, sender: "visitor", body: text })
+    .returning({ id: chatMessages.id });
+  return String(row.id);
 }
 
 // Persist the agent's spoken reply and return the REAL row id (for the `done`

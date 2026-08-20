@@ -15,6 +15,7 @@ import * as z from "zod/v4";
 import {
   defineTownMemoryTool,
   defineTownTool,
+  type TownToolInvocationContext,
   type TownTool,
 } from "./llm/tool.js";
 import { agentIds, locationIds, artifactKinds, listBeats, type AgentId, type LocationId, type ShareCard } from "@town/contract";
@@ -243,6 +244,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   // --- World -----------------------------------------------------------------
   const move_to = defineTownTool({
     name: "move_to",
+    effect: "write",
     description:
       "Walk to another location: town, office, library, workshop, cafe, park. If it's across town you'll cut through the town square on the way. Optionally stand somewhere SPECIFIC once you're there — name an object (toObject, e.g. 'bench') or a zone (toZone, e.g. 'park.bench-area'); an unrecognized one just leaves you in the room, never an error. Works even if you're already in that room (a pure reposition). Updates where you are for the rest of this tick.",
     inputSchema: z.object({
@@ -293,6 +295,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   // chat-only and deliberate, not a casual add-on to every room change.
   const invite_visitor = defineTownTool({
     name: "invite_visitor",
+    effect: "write",
     description:
       "Ask the visitor you're talking with to come along — you both walk to the place (and, optionally, a specific spot there, via toObject/toZone — same as move_to). Their character walks the whole way with you, automatically; this is for a real invite ('come see the workshop'), not idle movement. Only works while you're in a conversation with them.",
     inputSchema: z.object({
@@ -341,6 +344,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
 
   const set_activity = defineTownTool({
     name: "set_activity",
+    effect: "write",
     description:
       "Set your current activity line — what you're visibly doing right now (e.g. 'drafting a post on eval design', 'reading a paper'). Others and visitors can see this.",
     inputSchema: z.object({ text: z.string().min(1).max(140) }),
@@ -440,6 +444,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   // fidget; the note persists and is re-read next time. One of object|zone required.
   const leave_note = defineTownTool({
     name: "leave_note",
+    effect: "write",
     description:
       "Jot a short note on something where you are — a line on the workbench, a card by the sign, a thought left in a corner. It stays put and you'll see it again later. Name an object (e.g. 'workbench') OR a zone here. Like jotting on a real desk, not filing paperwork — only when you actually have something to leave (there's no way to erase or edit a note once it's down, so it's genuinely permanent).",
     inputSchema: z.object({
@@ -492,6 +497,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   // against the catalog only.
   const play_beat = defineTownTool({
     name: "play_beat",
+    effect: "write",
     description: [
       "Run a bit: a small, pre-built effect — change something here in the world, or pop something onto the visitor's screen — by name. It's seasoning, not a tic; a bit that lands once beats five that don't (shares your effect budget). The bits you can run:",
       ...listBeats().map((b) => {
@@ -515,6 +521,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   // (loop.ts emitUtterance turns it into agent.spoke / agent.thought).
   const send_dm = defineTownTool({
     name: "send_dm",
+    effect: "write",
     description:
       "Send a private note to another facet, delivered to their next tick's inbox. Works from anywhere — it's async, like leaving a message.",
     inputSchema: z.object({
@@ -531,6 +538,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
 
   const broadcast = defineTownTool({
     name: "broadcast",
+    effect: "write",
     description:
       "Send a message to all the other facets at once, delivered to each of their next ticks. For news everyone should know.",
     inputSchema: z.object({ text: z.string().min(1).max(1000) }),
@@ -543,6 +551,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   // --- Making ----------------------------------------------------------------
   const create_artifact = defineTownTool({
     name: "create_artifact",
+    effect: "write",
     description:
       "Make a durable thing that persists in the world and that visitors can find — this is the one tool for making something new, whether you'd call that saving, writing, or making it. Kinds: blog_post, project_log, research_note, fun_list, diary_entry. (Bulletins use post_bulletin; daily_digest is the world's job.) It's anchored to your facet's home fixture automatically.",
     inputSchema: z.object({
@@ -586,6 +595,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   // renamed toward the verb they already reached for (2026-07-30 tool-diet pass).
   const edit_artifact = defineTownTool({
     name: "edit_artifact",
+    effect: "write",
     description:
       "Revise one of your existing artifacts by its id — change the title, body, or both. This is the one editing verb, whatever you'd call it (edit/revise/update) — there's no separate write_artifact.",
     inputSchema: z.object({
@@ -656,6 +666,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
 
   const post_bulletin = defineTownTool({
     name: "post_bulletin",
+    effect: "write",
     description:
       "Pin a bulletin to the town square notice board for everyone — facets and visitors — to read. You must be in town to do this.",
     inputSchema: z.object({
@@ -679,6 +690,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
 
   const publish_blog_post = defineTownTool({
     name: "publish_blog_post",
+    effect: "write",
     description:
       "Publish one of your blog_post artifacts — make it public via the cafe press. You must be at the cafe. Pass the artifact id. Only blog posts have this extra step — every other kind (project logs, research notes, fun lists, diary entries) is already visible to visitors the moment create_artifact makes it; there's no general publish_artifact.",
     inputSchema: z.object({ artifact_id: z.string().min(1) }),
@@ -696,6 +708,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   // --- The workshop (programmable world: build, mount, place) ----------------
   const build_interactive = defineTownTool({
     name: "build_interactive",
+    effect: "write",
     description:
       "Build a real, usable web app as a single self-contained HTML file — a playable game, a generative art piece, a tiny tool, a guestbook — and make it a durable artifact visitors can open and USE. Rules of the medium: ONE file (inline <style> and <script>, no external scripts/stylesheets/fetch — the frame is sandboxed offline; images only as data: URIs or https <img>). Your app gets a free persistent store via the injected `window.town` bridge: `town.artifactId`; `town.visitor` ({id,name} or null); `await town.getState()` → the whole keyed state object; `await town.setState(key, value)` (JSON value; null deletes); `town.onChange(cb)` → cb(freshState) whenever anyone changes state. That store is SHARED with you — you read/write the same keys via read_artifact_state / write_artifact_state, so you can play turn-based games against visitors (you'll be nudged when someone interacts). After building, mount_artifact it on an object so people can find it in the world.",
     inputSchema: z.object({
@@ -736,6 +749,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   // list_my_artifacts to check the REAL state rather than trusting a memory note.
   const mount_artifact = defineTownTool({
     name: "mount_artifact",
+    effect: "write",
     description:
       "Mount an artifact (yours or another facet's — an app, a page, a note) onto a physical object HERE in the room you're in, so visitors can click the object and open it. Name the object the way you see it (e.g. 'monitor', 'the dumb sign', or something you placed). This call is the ONLY thing that actually mounts it — describing the mount in a note or your memory doesn't make it true; list_my_artifacts shows you what's really attached.",
     inputSchema: z.object({
@@ -771,6 +785,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
 
   const place_object = defineTownTool({
     name: "place_object",
+    effect: "write",
     description:
       "Place a new physical object from the library into the room you're in — it appears on screen for everyone, permanently, with your name on it. Pass the exact library template name (from search_object_library), what to call it, and optionally which zone of the room to put it in (look_around shows zones). Place things with intent: an arcade cabinet to mount your game on, a shelf for your zines, one good lamp — not clutter.",
     inputSchema: z.object({
@@ -850,6 +865,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
 
   const write_artifact_state = defineTownTool({
     name: "write_artifact_state",
+    effect: "write",
     description:
       "Write one key of an interactive artifact's state store — your hands inside the apps. This is how you make your move in a game a visitor is playing against you, reply in a guestbook, update a scoreboard. `value` is parsed as JSON when it looks like JSON, else stored as a plain string; pass the literal string 'null' to delete the key.",
     inputSchema: z.object({
@@ -915,6 +931,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
 
   const remember = defineTownTool({
     name: "remember",
+    effect: "write",
     description:
       "Commit something to your long-term episodic memory, in your own words, so you can recall it on later days. Use a short kind tag (e.g. 'decision', 'observation', 'conversation').",
     inputSchema: z.object({
@@ -973,6 +990,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
 
   const write_agent_note = defineTownTool({
     name: "write_agent_note",
+    effect: "write",
     description:
       "Write a note into your own Agents folder in the vault — your private workspace that syncs back. Give a relative path like 'ideas/eval-harness.md'.",
     inputSchema: z.object({
@@ -1032,16 +1050,22 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   // --- Outside world (gated to the office outbox) ---------------------------
   const email_thomas = defineTownTool({
     name: "email_thomas",
+    effect: "external",
     description:
       "Send an email to Thomas (the real person). The only line to the outside world — you must be at the office outbox. Use for things genuinely worth his attention.",
     inputSchema: z.object({
       subject: z.string().min(1).max(200),
       body: z.string().min(1).max(8_000),
     }),
-    run: async ({ subject, body }) => {
+    run: async ({ subject, body }, invocation) => {
       const gate = checkGate("email_thomas", ctx.location);
       if (!gate.allowed) return gate.reason!;
-      const r = await sendEmailToThomas(ctx.agentId, subject, body);
+      const r = await sendEmailToThomas(
+        ctx.agentId,
+        subject,
+        body,
+        (invocation as TownToolInvocationContext | undefined)?.idempotencyKey,
+      );
       return r.sent
         ? `Sent to Thomas: "${subject}".`
         : `Queued for Thomas: "${subject}" — it's in the outbox and will go out when the line's open.`;
@@ -1050,13 +1074,14 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
 
   const request_capability = defineTownTool({
     name: "request_capability",
+    effect: "external",
     description:
       "Ask Thomas to give the town a new capability you wish you had (a new tool, place, integration — anything). You must be at the office outbox. Give a clear description and a real rationale.",
     inputSchema: z.object({
       description: z.string().min(1).max(1_000),
       rationale: z.string().min(1).max(2_000),
     }),
-    run: async ({ description, rationale }) => {
+    run: async ({ description, rationale }, invocation) => {
       const gate = checkGate("request_capability", ctx.location);
       if (!gate.allowed) return gate.reason!;
       // Anything already open from this agent, captured BEFORE we add the new
@@ -1065,7 +1090,12 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       // them a request had landed. Naming the backlog back to them is the
       // cheapest correction available.
       const alreadyOpen = await openCapabilityRequests(ctx.agentId).catch(() => []);
-      const { id, emailed } = await recordCapabilityRequest(ctx.agentId, description, rationale);
+      const { id, emailed } = await recordCapabilityRequest(
+        ctx.agentId,
+        description,
+        rationale,
+        (invocation as TownToolInvocationContext | undefined)?.idempotencyKey,
+      );
       return formatCapabilityReceipt({ id, description, emailed, alreadyOpen });
     },
   });
@@ -1086,6 +1116,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
 
   const read_mail = defineTownTool({
     name: "read_mail",
+    effect: "write",
     description:
       "Open one outside letter addressed to you by id. This marks it read. Use check_mailbox first if you need the ids.",
     inputSchema: z.object({ id: z.string().min(1) }),

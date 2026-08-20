@@ -329,9 +329,9 @@ async function runVisitorInput(
     return { ran: false, reason: "budget" };
   }
 
-  await appendVisitorLine(sessionId, text);
+  const visitorMessageId = await appendVisitorLine(sessionId, text);
 
-  const tickId = `chat-${sessionId}`;
+  const tickId = `chat-${sessionId}-message-${visitorMessageId}`;
   const trace = startTrace("visitor", {
     userId: agentId,
     sessionId,
@@ -397,6 +397,7 @@ async function runVisitorInput(
       tools,
       advanceCursorTo: Number(obs.highWaterEventId),
       tickId,
+      actionScope: tickId,
       trace,
       stream: handlers,
     });

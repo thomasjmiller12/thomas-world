@@ -1,7 +1,7 @@
 import { betaMemoryTool } from "@anthropic-ai/sdk/helpers/beta/memory";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { BetaRunnableTool } from "@anthropic-ai/sdk/lib/tools/BetaRunnableTool.mjs";
-import type { TownFunctionTool, TownTool } from "../tool.js";
+import type { TownFunctionTool, TownTool, TownToolInvocationContext } from "../tool.js";
 
 export type AnthropicRunnableTool = BetaRunnableTool<unknown>;
 
@@ -17,8 +17,14 @@ export function toAnthropicTool(tool: TownTool): AnthropicRunnableTool {
     name: fn.name,
     description: fn.description,
     inputSchema: fn.inputSchema,
-    run: (args, context) =>
-      fn.run(args, context) as ReturnType<AnthropicRunnableTool["run"]>,
+    run: (args, context) => {
+      const invocation: TownToolInvocationContext = {
+        provider: "anthropic",
+        toolCallId: context?.toolUse.id,
+        raw: context,
+      };
+      return fn.run(args, invocation) as ReturnType<AnthropicRunnableTool["run"]>;
+    },
     ...(fn.close ? { close: fn.close } : {}),
   }) as AnthropicRunnableTool;
 }

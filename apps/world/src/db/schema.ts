@@ -596,6 +596,35 @@ export const llmUsageDaily = pgTable(
   ],
 );
 
+// --- agent_action_journal --------------------------------------------------
+// Durable idempotency/result spine for mutating agent tools. A provider retry
+// may generate a new call id, so the dedupe identity is the stable logical turn
+// scope + tool name + canonical input hash; provider call id is retained for
+// debugging. A row is written BEFORE the body acts and completed afterward.
+export const agentActionJournal = pgTable(
+  "agent_action_journal",
+  {
+    id: text("id").primaryKey(),
+    turnId: text("turn_id").notNull(),
+    toolCallId: text("tool_call_id"),
+    agentId: text("agent_id", { enum: agentEnum }).notNull(),
+    toolName: text("tool_name").notNull(),
+    inputHash: text("input_hash").notNull(),
+    effect: text("effect").notNull(),
+    // started | completed | failed
+    status: text("status").notNull().default("started"),
+    result: jsonb("result"),
+    error: text("error"),
+    relatedEventIds: jsonb("related_event_ids").$type<string[]>().notNull().default([]),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("agent_action_turn_tool_input_idx").on(t.turnId, t.toolName, t.inputHash),
+    index("agent_action_agent_started_idx").on(t.agentId, t.startedAt),
+  ],
+);
+
 // --- outbox (queued outbound email when Resend is absent, brief) ------------
 export const outbox = pgTable("outbox", {
   id: text("id").primaryKey(),
