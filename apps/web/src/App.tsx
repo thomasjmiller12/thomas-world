@@ -13,6 +13,7 @@ import { WelcomeCard } from './components/WelcomeCard';
 import { DirectorBeat } from './components/director/DirectorBeat';
 import { SleepOverlay } from './components/SleepOverlay';
 import { ChroniclePanel } from './components/chronicle/ChroniclePanel';
+import { ArtifactCollection } from './components/chronicle/ArtifactCollection';
 import { AboutPanel, type AboutTab } from './components/portfolio/AboutPanel';
 import { useViewport } from './lib/useViewport';
 import { locationForScene } from './game/data/location-anchors';
@@ -76,6 +77,10 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
   // opening it does NOT tear the chat down. `chronicle` null => closed; non-null
   // carries any initial scoping (a tab + day from "see their day →").
   const [chronicle, setChronicle] = useState<{ tab: 'today' | 'conversations'; day: string | null; artifactId?: string | null } | null>(null);
+  const [artifactCollection, setArtifactCollection] = useState<{
+    objectName: string;
+    artifactIds: string[];
+  } | null>(null);
   // The About / Portfolio hub (M2.2 — Part 3). Coexists with chat (z 60). Null =>
   // closed; non-null carries the initial tab + any deep-link target.
   const [about, setAbout] = useState<{ tab: AboutTab; referenceId?: string | null; proofId?: string | null } | null>(
@@ -288,10 +293,14 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
       else if (kind === 'reference') setAbout({ tab: 'projects', referenceId: id });
       else if (kind === 'proof') setAbout({ tab: 'proof', proofId: id });
     };
+    const onOpenArtifactCollection = (data: { objectName: string; artifactIds: string[] }) => {
+      setArtifactCollection(data);
+    };
 
     EventBus.on('current-scene-ready', onSceneReady);
     EventBus.on('visitor-interact', onVisitorInteract);
     EventBus.on('open-card-target', onOpenCardTarget);
+    EventBus.on('open-artifact-collection', onOpenArtifactCollection);
     EventBus.on('npc-interaction', onNpcInteraction);
     EventBus.on('scene-changed', onSceneChanged);
     EventBus.on('npc-thought', onNpcThought);
@@ -310,6 +319,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
       world.stop();
       EventBus.off('current-scene-ready', onSceneReady);
       EventBus.off('open-card-target', onOpenCardTarget);
+      EventBus.off('open-artifact-collection', onOpenArtifactCollection);
       EventBus.off('npc-interaction', onNpcInteraction);
       EventBus.off('scene-changed', onSceneChanged);
       EventBus.off('npc-thought', onNpcThought);
@@ -414,7 +424,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
             <ChatSession
               onSend={handleChatSend}
               onClose={handleChatSessionClose}
-              suspended={chronicle != null || about != null}
+              suspended={chronicle != null || about != null || artifactCollection != null}
               currentLocation={currentLocation}
             />
           )}
@@ -434,6 +444,18 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
               initialTab={chronicle.tab}
               initialDay={chronicle.day}
               initialArtifactId={chronicle.artifactId ?? null}
+            />
+          )}
+
+          {artifactCollection && (
+            <ArtifactCollection
+              objectName={artifactCollection.objectName}
+              artifactIds={artifactCollection.artifactIds}
+              onClose={() => setArtifactCollection(null)}
+              onOpen={(artifactId) => {
+                setArtifactCollection(null);
+                setChronicle({ tab: 'today', day: null, artifactId });
+              }}
             />
           )}
 

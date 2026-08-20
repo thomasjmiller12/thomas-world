@@ -107,6 +107,7 @@ export interface WorldEvents {
   // overlay (artifact reader, reference reader, proof). `href` is a route token
   // like "artifact:<id>" / "reference:<id>" / "proof:<id>" / "thread:<id>".
   'open-card-target': { href: string };
+  'open-artifact-collection': { objectName: string; artifactIds: string[] };
   // WorldClient surfaces an error / 409 the panel should render in-fiction.
   'chat-error': { npcId?: ThomasId; reason: string };
   // The chat input gained/lost focus. The player freezes movement ONLY while

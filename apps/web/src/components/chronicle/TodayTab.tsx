@@ -146,6 +146,27 @@ export function ChronicleRow({ item, last, onOpenArtifact }: {
         </ScaffoldRow>
       );
     }
+    case 'action': {
+      const agent = item.agent as ThomasId;
+      const artifactId = item.relatedIds?.find((related) => related.kind === 'artifact')?.id;
+      return (
+        <ScaffoldRow ts={item.ts} agent={agent} last={last}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
+            <span style={{ font: '700 13px var(--sans)', color: THOMAS_COLORS[agent] }}>
+              {agentShortName(agent)}
+            </span>
+            <Badge color={THOMAS_COLORS[agent]}>DID</Badge>
+            <span style={{ font: '400 9px var(--mono)', color: 'var(--ink-3)', letterSpacing: '.04em' }}>
+              {item.tool.replaceAll('_', ' ').toUpperCase()}
+            </span>
+          </div>
+          <div style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--ink)' }}>
+            {item.summary}
+          </div>
+          {artifactId && <ReadLink color={THOMAS_COLORS[agent]} onClick={() => onOpenArtifact(artifactId)} />}
+        </ScaffoldRow>
+      );
+    }
     default: {
       // Exhaustiveness guard: a new ChronicleItem kind forces a compile error.
       const _never: never = item;

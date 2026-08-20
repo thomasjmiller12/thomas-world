@@ -12,7 +12,7 @@ import { agentShortName } from '@/components/chat/primitives';
 // both surface as their proper names).
 const LOCATION_LABELS: Record<LocationId, string> = {
   town: 'Town Square',
-  park: 'The Park',
+  park: 'Park',
   office: 'Office',
   library: 'Library',
   workshop: 'Workshop',

@@ -114,7 +114,7 @@ export default function Home() {
             {/* Observer mode: everything visible, nothing interactive — the
                 agents never know you're there. */}
             <button
-              onClick={() => router.push('/observe')}
+              onClick={() => router.push('/town?observe=1')}
               className="w-full text-sm py-2.5 rounded-xl transition-colors"
               style={{
                 background: 'transparent',
@@ -124,7 +124,19 @@ export default function Home() {
                 border: '1px solid var(--line-2)',
               }}
             >
-              Just observe — watch without being seen
+              Watch the town unseen
+            </button>
+            <button
+              onClick={() => router.push('/observe')}
+              className="w-full text-xs py-1 transition-opacity hover:opacity-80"
+              style={{
+                background: 'transparent',
+                color: 'var(--ink-3)',
+                fontFamily: 'var(--sans)',
+                border: 'none',
+              }}
+            >
+              Prefer the live dashboard and Chronicle? Open observer view →
             </button>
 
             {/* Read-only by construction: learning about the project must never

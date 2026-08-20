@@ -15,6 +15,7 @@ import { NPC_CONFIGS } from '@/game/data/npc-configs';
 import { useAgentStatuses } from '@/lib/useAgentStatuses';
 import { fetchChronicle } from '@/components/chronicle/chronicleClient';
 import { relativeDayLabel } from '@/components/chronicle/chroniclePresentation';
+import { isStoryFeedItem } from './liveFeedPresentation';
 import { TodayTab } from '@/components/chronicle/TodayTab';
 import { ConversationsTab } from '@/components/chronicle/ConversationsTab';
 import { MadeTab } from '@/components/chronicle/MadeTab';
@@ -293,8 +294,6 @@ function DayArrow({ dir, disabled, onClick }: { dir: string; disabled: boolean; 
 // ── Live feed: the rendered world feed, refreshed when live events stream in ──
 
 const FEED_LIMIT = 60;
-// Visitor churn stays out of the observer's live view — agent life is the point.
-const HIDDEN_TYPES = new Set(['visitor.arrived', 'visitor.left', 'visitor.moved']);
 
 function LiveFeed() {
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
@@ -307,7 +306,7 @@ function LiveFeed() {
       const res = await fetch(`${base}/feed?limit=${FEED_LIMIT}`);
       if (!res.ok) throw new Error(String(res.status));
       const parsed = FeedResponse.parse(await res.json());
-      setFeedItems(parsed.items.filter((it) => !HIDDEN_TYPES.has(it.type ?? '')));
+      setFeedItems(parsed.items.filter(isStoryFeedItem));
       setError(false);
     } catch {
       setError(true);

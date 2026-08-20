@@ -450,8 +450,12 @@ export function ChatPanel({
           </button>
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 8, padding: '10px 12px 14px', borderTop: '1px solid var(--line)' }}>
-          <input
+        <div style={{ padding: '8px 12px 14px', borderTop: '1px solid var(--line)' }}>
+          <div style={{ font: '500 9px var(--mono)', color: 'var(--ink-3)', margin: '0 1px 7px', lineHeight: 1.35 }}>
+            OPEN ROOM · your typed words stay private; spoken replies may be overheard here and archived in the Chronicle.
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -473,8 +477,8 @@ export function ChatPanel({
               outline: 'none',
               fontFamily: 'var(--sans)',
             }}
-          />
-          <button
+            />
+            <button
             onClick={() => handleSend(input)}
             style={{
               padding: '0 15px',
@@ -487,7 +491,8 @@ export function ChatPanel({
             }}
           >
             Send
-          </button>
+            </button>
+          </div>
         </div>
       )}
     </div>

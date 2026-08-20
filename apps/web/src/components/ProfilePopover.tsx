@@ -108,7 +108,7 @@ export function ProfilePopover({ npcId, anchorTop, onClose, onFindThem, onSeeThe
           Right now
         </p>
         <p style={{ fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.45, margin: '0 0 12px' }}>
-          {statusLine(live)}
+          {live ? statusLine(live) : `At ${locationLabel(locationId)} · live activity loading…`}
         </p>
         <p style={{ font: '700 9px var(--mono)', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--ink-3)', margin: '0 0 4px' }}>
           About
