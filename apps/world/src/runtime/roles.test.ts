@@ -63,4 +63,13 @@ describe("reconcileBudgets", () => {
       expect(role.chatModels.openai).toBe("gpt-5.4");
     }
   });
+
+  it("gives the facets distinct behavioral rhythms", () => {
+    const profiles = loadProfiles();
+    const cadences = agentIds.map((id) => profiles.get(id)!.role.tickCadenceMinutes);
+    expect(new Set(cadences).size).toBe(agentIds.length);
+    expect(profiles.get("builder")!.role.tickCadenceMinutes).toBeLessThan(
+      profiles.get("writer")!.role.tickCadenceMinutes,
+    );
+  });
 });

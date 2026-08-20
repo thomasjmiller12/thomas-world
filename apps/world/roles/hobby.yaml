@@ -8,7 +8,7 @@
 #   env var is a hard ceiling across all agents combined.
 
 # Hobby runs at a relaxed pace — not rushing anywhere, which is kind of the point
-tick_cadence_minutes: 45
+tick_cadence_minutes: 65
 tick_models:
   anthropic: claude-sonnet-5
   openai: gpt-5.4

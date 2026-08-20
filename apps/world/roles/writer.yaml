@@ -9,7 +9,7 @@
 
 # Writer runs slower — deliberate ticks with more output per cycle. The soul file
 # explicitly notes that Writer uses the time. Fewer ticks, richer actions.
-tick_cadence_minutes: 45
+tick_cadence_minutes: 70
 tick_models:
   anthropic: claude-sonnet-5
   openai: gpt-5.4

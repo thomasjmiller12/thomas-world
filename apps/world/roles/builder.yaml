@@ -8,7 +8,7 @@
 #   env var is a hard ceiling across all agents combined.
 
 # Builder runs slightly faster than average — active workshop energy, more ticks per day
-tick_cadence_minutes: 45
+tick_cadence_minutes: 35
 tick_models:
   anthropic: claude-sonnet-5
   openai: gpt-5.4
