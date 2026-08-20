@@ -59,7 +59,7 @@ describe("reconcileBudgets", () => {
       const role = profiles.get(id)!.role;
       expect(role.tickModels.anthropic).toBe("claude-sonnet-5");
       expect(role.chatModels.anthropic).toBe("claude-sonnet-5");
-      expect(role.tickModels.openai).toBe("gpt-5.4");
+      expect(role.tickModels.openai).toBe("gpt-5.4-mini");
       expect(role.chatModels.openai).toBe("gpt-5.4");
     }
   });

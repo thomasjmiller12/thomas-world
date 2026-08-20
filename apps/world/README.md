@@ -144,7 +144,8 @@ issues. The current role maps are:
 
 | Workload | Anthropic | OpenAI |
 |---|---|---|
-| Per-agent tick/chat (`roles/*.yaml`) | `claude-sonnet-5` | `gpt-5.4` |
+| Per-agent autonomous tick/reflection (`roles/*.yaml`) | `claude-sonnet-5` | `gpt-5.4-mini` |
+| Per-agent visitor chat/delivery (`roles/*.yaml`) | `claude-sonnet-5` | `gpt-5.4` |
 | Chronicle | `claude-haiku-4-5` | `gpt-5.4` |
 | Town Crier | `claude-sonnet-5` | `gpt-5.4` |
 
@@ -222,7 +223,7 @@ GROUP BY day, agent_id, provider, model HAVING count(*) > 1;
 After Release B promotes the composite primary keys, switch with one variable:
 
 1. Snapshot Anthropic continuity: `SELECT agent_id, md5(content::text), updated_at FROM agent_threads WHERE provider='anthropic' ORDER BY agent_id;`.
-2. Confirm `/health` reports `provider: "openai"`, `providerConfigured: true`, and the expected `gpt-5.4` model map in a staging/disposable environment.
+2. Confirm `/health` reports `provider: "openai"`, `providerConfigured: true`, and the expected `gpt-5.4-mini` tick / `gpt-5.4` chat model map in a staging/disposable environment.
 3. Set `LLM_PROVIDER=openai`, redeploy, force one Builder tick, inspect its trace/usage/thread, then allow the scheduler to proceed.
 4. Watch provider/model/endpoint spend, failures, compaction, thread size, latency, and visitor-visible transcript parity.
 
@@ -239,7 +240,7 @@ Expected provider fields in `/health` (other health fields omitted):
   "provider": "openai",
   "providerConfigured": true,
   "models": {
-    "agents": [{ "agent": "builder", "tick": "gpt-5.4", "chat": "gpt-5.4" }],
+    "agents": [{ "agent": "builder", "tick": "gpt-5.4-mini", "chat": "gpt-5.4" }],
     "chronicle": "gpt-5.4",
     "townCrier": "gpt-5.4"
   }
@@ -251,7 +252,7 @@ Expected provider fields in `/health` (other health fields omitted):
 Every integration is env-gated — the server boots and ticks with any subset absent. As of
 Milestone 1 these three are wired and proven end-to-end against the real services:
 
-- **OpenAI provider adapter** → `gpt-5.4` Responses/Agents SDK turns with strict town
+- **OpenAI provider adapter** → `gpt-5.4-mini` autonomous turns and `gpt-5.4` visitor turns through the Responses/Agents SDK, with strict town
   tools, Code Interpreter, provider-native compaction/history, cached-input accounting,
   and an opt-in live tool→resume smoke test.
 - **OpenAI** + **Hindsight** container → real episodic memory (verbatim mode). The

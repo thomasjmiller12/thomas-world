@@ -479,7 +479,7 @@ describe("M2 REST shapes round-trip", () => {
       providerConfigured: true,
       models: {
         agents: [
-          { agent: "builder", tick: "gpt-5.4", chat: "gpt-5.4" },
+          { agent: "builder", tick: "gpt-5.4-mini", chat: "gpt-5.4" },
         ],
         chronicle: "gpt-5.4",
         townCrier: "gpt-5.4",

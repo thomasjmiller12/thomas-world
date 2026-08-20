@@ -43,6 +43,7 @@ const PRICES: Record<LlmProviderName, Record<string, ModelPrice>> = {
   },
   openai: {
     "gpt-5.4": { inputPerM: 2.5, outputPerM: 15, cacheReadPerM: 0.25, cacheWritePerM: 0 },
+    "gpt-5.4-mini": { inputPerM: 0.75, outputPerM: 4.5, cacheReadPerM: 0.075, cacheWritePerM: 0 },
   },
 };
 
