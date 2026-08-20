@@ -351,6 +351,12 @@ export class NPCManager {
     return this.sprites.get(id);
   }
 
+  // Canonical semantic location for a rendered sprite. Town and park share a
+  // scene, so callers must not infer this from the Phaser scene key.
+  locationOf(id: ThomasId): LocationId | undefined {
+    return this.agentLocations.get(id);
+  }
+
   // The NPC at/near a world point — for tap-an-agent (minimal touch). Returns
   // the nearest rendered, non-walking agent within `radius` px, else null.
   npcAt(worldX: number, worldY: number, radius = 14): NPC | null {

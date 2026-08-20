@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isChatStale, sanitizeVisitorText } from "./chat.js";
+import { isChatStale, sameChatLocation, sanitizeVisitorText } from "./chat.js";
 
 // M3: chat.ts is now a thin session/transcript layer — the conversation lives in
 // the agent's continuous thread (loop.ts), not in this module. The old pure
@@ -75,5 +75,17 @@ describe("isChatStale — liveness-aware sweep (design doc §3.4)", () => {
     expect(
       isChatStale({ startedAt: new Date(now - 1_000), lastPingAt: null, lastMessageAt: null }, now, STALE),
     ).toBe(false);
+  });
+});
+
+describe("sameChatLocation — corporeal chat boundary", () => {
+  it("requires exact logical co-location", () => {
+    expect(sameChatLocation("park", "park")).toBe(true);
+    expect(sameChatLocation("town", "park")).toBe(false);
+  });
+
+  it("never treats an unknown body as present", () => {
+    expect(sameChatLocation(null, "park")).toBe(false);
+    expect(sameChatLocation("park", undefined)).toBe(false);
   });
 });

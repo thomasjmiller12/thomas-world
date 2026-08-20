@@ -104,6 +104,8 @@ import {
   pingChat,
   getChatTranscript,
   visitorTurnCount,
+  chatParticipantsCoLocated,
+  ChatPresenceError,
 } from "../runtime/chat.js";
 import { enqueue } from "../runtime/queue.js";
 import { consumePendingCall } from "../runtime/director.js";
@@ -888,10 +890,20 @@ export function createApp() {
     if (typeof visitorId !== "string" || !visitorId) {
       return c.json({ error: "visitorId required" }, 400);
     }
+    const visitorToken = c.req.header("x-visitor-token") ?? undefined;
+    if (!(await visitorTokenValid(visitorId, visitorToken))) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
     // M3: a session is just a routing record — there's no "engaged"/"mid-thought"
     // gate. The visitor's first message becomes an interrupt input the agent
     // handles on its next turn (queue-serialized).
-    const res = await createSession(agentId, visitorId);
+    const res = await createSession(agentId, visitorId).catch((err) => {
+      if (err instanceof ChatPresenceError) return "not-co-located" as const;
+      throw err;
+    });
+    if (res === "not-co-located") {
+      return c.json({ error: "not co-located", reason: "not-co-located" }, 409);
+    }
     if (!res) return c.json({ error: "unknown agent" }, 404);
     return c.json(
       validated(CreateChatResponse, {
@@ -944,6 +956,9 @@ export function createApp() {
 
     const session = await getSession(sessionId);
     if (!session) return c.json({ error: "unknown session" }, 404);
+    if (!(await chatParticipantsCoLocated(session.agentId, session.visitorId))) {
+      return c.json({ error: "not co-located", reason: "not-co-located" }, 409);
+    }
 
     // Per-visitor chat limits + 40-turn session cap (design doc §7). The session
     // token already authenticated the caller, so the visitorId is trusted.

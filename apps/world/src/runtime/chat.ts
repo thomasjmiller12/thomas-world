@@ -19,6 +19,7 @@ import { eq, and, or, isNull, desc, asc } from "drizzle-orm";
 import type { AgentId, GetChatResponse, ShareCard } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { getAgent } from "../engine/agents.js";
+import { getVisitor } from "../engine/visitors.js";
 import { appendEvent } from "../engine/events.js";
 import { identityIds } from "../engine/visitor-history.js";
 
@@ -47,6 +48,22 @@ export interface CreatedSession {
   sessionToken: string;
 }
 
+export class ChatPresenceError extends Error {
+  readonly reason = "not-co-located" as const;
+}
+
+export function sameChatLocation(
+  visitorLocation: string | null | undefined,
+  agentLocation: string | null | undefined,
+): boolean {
+  return Boolean(visitorLocation && agentLocation && visitorLocation === agentLocation);
+}
+
+export async function chatParticipantsCoLocated(agentId: AgentId, visitorId: string): Promise<boolean> {
+  const [agent, visitor] = await Promise.all([getAgent(agentId), getVisitor(visitorId)]);
+  return sameChatLocation(visitor?.locationId, agent?.locationId);
+}
+
 // Open a session: a routing record + token. In M3 there is no "engaged" / "mid-
 // thought" gate — a visitor can always start; their message becomes an interrupt
 // input the agent handles on its next turn (queue-serialized). Returns null if
@@ -57,6 +74,38 @@ export async function createSession(
 ): Promise<CreatedSession | null> {
   const agent = await getAgent(agentId);
   if (!agent) return null;
+  const visitor = await getVisitor(visitorId);
+  if (!visitor) return null;
+  if (!sameChatLocation(visitor.locationId, agent.locationId)) throw new ChatPresenceError();
+
+  // Reconnect/reopen is idempotent for one embodied pair. A dropped close or a
+  // second tab no longer creates several simultaneous social bodies for the
+  // same continuous mind.
+  const [existing] = await db
+    .select()
+    .from(chatSessions)
+    .where(
+      and(
+        eq(chatSessions.agentId, agentId),
+        eq(chatSessions.visitorId, visitorId),
+        isNull(chatSessions.endedAt),
+      ),
+    )
+    .orderBy(desc(chatSessions.startedAt))
+    .limit(1);
+  if (existing) {
+    const sessionToken = existing.sessionToken ?? randomUUID();
+    if (!existing.sessionToken) {
+      await db.update(chatSessions).set({ sessionToken }).where(eq(chatSessions.id, existing.id));
+    }
+    return {
+      sessionId: existing.id,
+      agentId,
+      visitorId,
+      participants: [agentId],
+      sessionToken,
+    };
+  }
   const sessionId = randomUUID();
   const sessionToken = randomUUID();
   await db.insert(chatSessions).values({ id: sessionId, agentId, visitorId, sessionToken });

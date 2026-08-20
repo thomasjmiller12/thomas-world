@@ -116,6 +116,7 @@ export class WorldClient {
   private resyncing = false;
 
   private currentLocation: LocationId | null = null;
+  private locationPatch: Promise<void> = Promise.resolve();
   private activeChat: ActiveChat | null = null;
   private stopped = false;
   // start() is idempotent: scene transitions re-emit `current-scene-ready`, but
@@ -575,7 +576,7 @@ export class WorldClient {
     if (this.observe) return;
     if (locationId === this.currentLocation) return;
     this.currentLocation = locationId;
-    void this.patchVisitor({ locationId }).catch(() => {
+    this.locationPatch = this.patchVisitor({ locationId }).catch(() => {
       /* best-effort; a missed location report isn't fatal */
     });
   }
@@ -643,6 +644,9 @@ export class WorldClient {
       EventBus.emit('chat-error', { npcId: agentId, reason: 'not-connected' });
       return false;
     }
+    // A region transition and an immediate SPACE press can otherwise race: the
+    // chat POST reaches the server before the visitor's canonical location.
+    await this.locationPatch;
     this.closeActiveChat({ clearPending: false });
 
     const MID_THOUGHT_RETRIES = 3;
@@ -652,7 +656,10 @@ export class WorldClient {
       try {
         res = await fetch(`${this.baseUrl}/chats`, {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          headers: {
+            'content-type': 'application/json',
+            ...(this.visitorToken ? { 'x-visitor-token': this.visitorToken } : {}),
+          },
           body: JSON.stringify({ agentId, visitorId: this.visitorId }),
         });
       } catch {
@@ -661,6 +668,10 @@ export class WorldClient {
       }
       if (res.status !== 409) break;
       const body = (await res.json().catch(() => ({}))) as { reason?: string };
+      if (body.reason === 'not-co-located') {
+        EventBus.emit('chat-error', { npcId: agentId, reason: 'not-co-located' });
+        return false;
+      }
       if (body.reason !== 'mid-thought') {
         EventBus.emit('chat-error', { npcId: agentId, reason: 'engaged' });
         return false;
@@ -724,7 +735,11 @@ export class WorldClient {
 
     if (!res.ok || !res.body) {
       if (this.activeChat === chat && chat.abort === abort) chat.abort = null;
-      EventBus.emit('chat-error', { npcId: chat.primaryAgent, reason: `error-${res.status}` });
+      const errorBody = (await res.json().catch(() => ({}))) as { reason?: string };
+      EventBus.emit('chat-error', {
+        npcId: chat.primaryAgent,
+        reason: errorBody.reason === 'not-co-located' ? 'not-co-located' : `error-${res.status}`,
+      });
       return;
     }
 

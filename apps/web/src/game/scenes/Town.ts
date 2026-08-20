@@ -18,6 +18,7 @@ import { findPath } from '../systems/pathfinding';
 import { resolveEscortPoint, sceneKeyFor, doorTo, locationInScene, type EscortPayload } from '../systems/escort';
 import { getMyVisitorId } from '@/lib/visitor-id';
 import type { LocationId } from '@town/contract';
+import { locationForTownPosition } from '../data/location-anchors';
 /* END-USER-IMPORTS */
 
 export default class Town extends Phaser.Scene {
@@ -279,6 +280,7 @@ export default class Town extends Phaser.Scene {
 	private nearestNPC: NPC | null = null;
 	private nearestDoor: DoorConfig | null = null;
 	private isTransitioning: boolean = false;
+	private logicalLocation: 'town' | 'park' = 'town';
 	private doorPrompts: Map<string, Phaser.GameObjects.Graphics> = new Map();
 	// Scoped handler ref so we remove ONLY this scene's player-interact listener
 	// on transition (never a bare removeAllListeners that wipes other scenes').
@@ -408,6 +410,9 @@ export default class Town extends Phaser.Scene {
 			if (this.isTransitioning) return;
 
 			if (this.nearestNPC) {
+				this.setLogicalLocation(
+					this.npcManager.locationOf(this.nearestNPC.npcId) === 'park' ? 'park' : 'town',
+				);
 				// Face the player on first press (the free gate), but do NOT freeze
 				// movement — `chat-opened` (the input-freeze signal) is emitted by
 				// ChatSession only when the chat actually engages, so the visitor can
@@ -477,7 +482,8 @@ export default class Town extends Phaser.Scene {
 			this.panTo(pendingCenter.x, pendingCenter.y);
 		}
 
-		EventBus.emit('scene-changed', { scene: SCENE_KEYS.TOWN, locationName: "Thomas's Town", locationId: 'town' });
+		this.logicalLocation = locationForTownPosition(this.player.x, this.player.y);
+		this.emitLogicalLocation();
 		EventBus.emit('current-scene-ready', this);
 
 		// A cross-interior travel hops through town — pick up the pending target
@@ -531,12 +537,27 @@ export default class Town extends Phaser.Scene {
 		// Tap an agent → open Tier-1 dialog (minimal touch). Otherwise tap-to-move.
 		const tapped = this.npcManager.npcAt(pointer.worldX, pointer.worldY);
 		if (tapped) {
+			this.setLogicalLocation(this.npcManager.locationOf(tapped.npcId) === 'park' ? 'park' : 'town');
 			tapped.enterEngaged(this.player.x, this.player.y);
 			EventBus.emit('npc-interaction', { npcId: tapped.npcId, npcName: tapped.displayName });
 			EventBus.emit('chat-opened', { npcId: tapped.npcId });
 			return;
 		}
 		EventBus.emit('tap-move', { worldX: pointer.worldX, worldY: pointer.worldY });
+	}
+
+	private setLogicalLocation(location: 'town' | 'park') {
+		if (location === this.logicalLocation) return;
+		this.logicalLocation = location;
+		this.emitLogicalLocation();
+	}
+
+	private emitLogicalLocation() {
+		EventBus.emit('scene-changed', {
+			scene: SCENE_KEYS.TOWN,
+			locationName: this.logicalLocation === 'park' ? 'The Park' : "Thomas's Town",
+			locationId: this.logicalLocation,
+		});
 	}
 
 	// A travel target stashed in the registry by a prior scene (door-path
@@ -577,6 +598,7 @@ export default class Town extends Phaser.Scene {
 		if (this.isTransitioning) return;
 
 		this.player.update();
+		this.setLogicalLocation(locationForTownPosition(this.player.x, this.player.y));
 
 		// Manager updates every rendered NPC and returns the nearest interactable.
 		this.nearestNPC = this.npcManager.update();

@@ -199,7 +199,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
     };
     const onSceneChanged = (data: { scene: string; locationName: string; locationId?: LocationId }) => {
       setLocationName(data.locationName);
-      const loc = locationForScene(data.scene);
+      const loc = data.locationId ?? locationForScene(data.scene);
       currentLocationRef.current = loc;
       setCurrentLocation(loc);
       // Bubbles from the room we just left don't belong here.

@@ -4,7 +4,6 @@ import { EventBus } from '@/game/EventBus';
 import type { ThomasId } from '@/lib/types';
 import { useAgentStatuses, statusLine } from '@/lib/useAgentStatuses';
 import { locationLabel } from '@/components/chronicle/chroniclePresentation';
-import { sameScene } from '@/game/data/location-anchors';
 import { NPC_CONFIGS } from '@/game/data/npc-configs';
 import { agentColor, agentShortName } from './primitives';
 import { ChatPanel } from './ChatPanel';
@@ -269,6 +268,7 @@ function errorLine(reason: string): string {
     return 'Deep in thought right now — give it a few seconds and try again.';
   if (reason === 'engaged') return "They're with another visitor right now. Try again in a bit.";
   if (reason === 'not-connected') return 'The town is still waking up. Try again in a moment.';
+  if (reason === 'not-co-located') return 'You stepped away. Walk back to them to continue talking.';
   if (reason === 'sleeping')
     return "They're asleep right now — read the Chronicle to see today, and come back when the town wakes.";
   return 'The town is quiet right now. Try again shortly.';
@@ -380,7 +380,7 @@ export function ChatSession({ onSend, onClose, suspended, currentLocation }: Cha
       const s = stateRef.current;
       if (s.phase === 'closed' || !s.target) return;
       const here = currentLocationRef.current;
-      if (!here || !p.location || !sameScene(p.location, here)) return;
+      if (!here || !p.location || p.location !== here) return;
       // The target talks to us via the chat stream — its agent.spoke echo would
       // double. So would a just-streamed reply from a former target (retarget
       // edge), so also skip any agent that streamed within the echo window.
@@ -474,10 +474,10 @@ export function ChatSession({ onSend, onClose, suspended, currentLocation }: Cha
     }
     const present = (Object.keys(statuses) as ThomasId[]).filter((id) => {
       const st = statuses[id];
-      return !!st && sameScene(st.locationId, currentLocation);
+      return !!st && st.locationId === currentLocation;
     });
     const roomChanged =
-      presenceSceneRef.current == null || !sameScene(presenceSceneRef.current, currentLocation);
+      presenceSceneRef.current == null || presenceSceneRef.current !== currentLocation;
     if (!presenceInitRef.current || roomChanged) {
       // First read for this session, or the visitor moved rooms — adopt the room
       // as-is, don't announce.
@@ -508,7 +508,7 @@ export function ChatSession({ onSend, onClose, suspended, currentLocation }: Cha
     if (!target || !currentLocation) return [] as ThomasId[];
     return (Object.keys(statuses) as ThomasId[]).filter((id) => {
       const st = statuses[id];
-      return id !== target && !!st && sameScene(st.locationId, currentLocation);
+      return id !== target && !!st && st.locationId === currentLocation;
     });
   }, [statuses, currentLocation, state.target?.npcId]);
 
