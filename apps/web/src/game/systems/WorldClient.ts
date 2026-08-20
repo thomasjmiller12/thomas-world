@@ -65,6 +65,17 @@ const PING_INTERVAL_MS = 60_000;
 // the snapshot is the source of truth for positions, so this self-heals the
 // "agents don't move until I refresh" staleness without waiting on the stream.
 const RESYNC_INTERVAL_MS = 90_000;
+const STREAM_LEASE_MS = 12_000;
+const STREAM_LEASE_RENEW_MS = 4_000;
+
+type StreamChannelMessage =
+  | { kind: 'event'; sender: string; event: unknown }
+  | {
+      kind: 'availability';
+      sender: string;
+      state: 'live' | 'reconnecting' | 'budget-asleep' | 'unavailable';
+    }
+  | { kind: 'released'; sender: string };
 
 // Per-open chat session bookkeeping (one visitor↔agent(s) session at a time).
 interface ActiveChat {
@@ -107,6 +118,19 @@ export class WorldClient {
   private lastEventId: string | null = null;
   private reconnectAttempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  // Cross-tab SSE ownership. One visible tab per browser identity owns the
+  // network stream; siblings receive its public frames over BroadcastChannel.
+  // This prevents the per-IP cap from turning ordinary tab churn into a 429
+  // reconnect storm while preserving a fully authoritative resync on focus.
+  private readonly tabId =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  private streamChannel: BroadcastChannel | null = null;
+  private streamLeaseKey: string | null = null;
+  private streamOwner = false;
+  private streamLeaseTimer: ReturnType<typeof setInterval> | null = null;
+  private streamClaimTimer: ReturnType<typeof setTimeout> | null = null;
   // True once the SSE stream has opened at least once. A subsequent `onopen` is
   // a reconnect — we re-hydrate the snapshot so authoritative positions are
   // corrected even if the gap exceeded the server's backlog replay window.
@@ -172,7 +196,6 @@ export class WorldClient {
 
     try {
       await this.hydrateSnapshotWithRetry();
-      this.openStream();
     } catch {
       // Server unreachable: replay the last cached snapshot so the dreaming town
       // is populated (sprites + roster + a starting point for the feed), then
@@ -181,12 +204,13 @@ export class WorldClient {
       this.replayCachedSnapshot();
       this.setAvailability('unavailable');
     }
+    this.startStreamCoordination();
   }
 
   stop(): void {
     this.stopped = true;
     this.started = false;
-    this.closeStream();
+    this.stopStreamCoordination();
     this.closeActiveChat();
     this.unwirePageHide();
     this.unwireVisibility();
@@ -409,11 +433,15 @@ export class WorldClient {
   }
 
   private onVisibility = () => {
-    if (typeof document === 'undefined' || document.visibilityState !== 'visible') return;
+    if (typeof document === 'undefined') return;
+    if (document.visibilityState !== 'visible') {
+      this.releaseStreamLease();
+      return;
+    }
     // Tab refocused: EventSource may have been throttled/suspended while hidden.
-    // Re-sync authoritative state, and reopen the stream if it died meanwhile.
+    // Re-sync authoritative state, then compete for the one browser-owned stream.
     void this.resync();
-    if (!this.eventSource && !this.reconnectTimer) this.openStream();
+    this.tryClaimStream();
   };
 
   private wireVisibility(): void {
@@ -447,10 +475,154 @@ export class WorldClient {
     }
   }
 
+  // --- cross-tab stream ownership -----------------------------------------
+
+  private startStreamCoordination(): void {
+    if (typeof window === 'undefined') return;
+    const identity = this.visitorId ?? 'observer';
+    this.streamLeaseKey = `town.worldStreamLease.${identity}`;
+    if ('BroadcastChannel' in window) {
+      this.streamChannel = new BroadcastChannel(`town.worldStream.${identity}`);
+      this.streamChannel.onmessage = (message: MessageEvent<StreamChannelMessage>) => {
+        const data = message.data;
+        if (!data || data.sender === this.tabId) return;
+        if (data.kind === 'event') {
+          const parsed = WorldEvent.safeParse(data.event);
+          if (parsed.success) this.dispatchWorldEvent(parsed.data, false);
+        } else if (data.kind === 'availability') {
+          // A sibling's stream proves transport health, not that this tab has a
+          // complete snapshot. Heal first if our own boot hydration failed.
+          if (data.state === 'live' && !this.lastSnapshot) void this.resync();
+          else this.setAvailability(data.state, false);
+        } else if (data.kind === 'released' && this.isVisible()) {
+          this.scheduleStreamClaim(50);
+        }
+      };
+    }
+    if (this.isVisible()) this.tryClaimStream();
+  }
+
+  private stopStreamCoordination(): void {
+    this.releaseStreamLease();
+    if (this.streamClaimTimer) {
+      clearTimeout(this.streamClaimTimer);
+      this.streamClaimTimer = null;
+    }
+    if (this.streamChannel) {
+      this.streamChannel.close();
+      this.streamChannel = null;
+    }
+  }
+
+  private isVisible(): boolean {
+    return typeof document === 'undefined' || document.visibilityState === 'visible';
+  }
+
+  private tryClaimStream(): void {
+    if (this.stopped || !this.isVisible() || !this.streamLeaseKey) return;
+    // BroadcastChannel-less browsers retain the hidden-tab protection and use
+    // their own stream; modern browsers take the shared-lease path below.
+    if (!this.streamChannel) {
+      this.streamOwner = true;
+      if (!this.eventSource && !this.reconnectTimer) this.openStream();
+      return;
+    }
+    const now = Date.now();
+    let lease: { owner?: string; expires?: number } | null = null;
+    try {
+      lease = JSON.parse(localStorage.getItem(this.streamLeaseKey) ?? 'null');
+    } catch {
+      lease = null;
+    }
+    if (lease?.owner && lease.owner !== this.tabId && (lease.expires ?? 0) > now) {
+      this.streamOwner = false;
+      this.closeStream();
+      this.scheduleStreamClaim(Math.max(500, Math.min(5_000, (lease.expires ?? now) - now + 50)));
+      return;
+    }
+    try {
+      localStorage.setItem(
+        this.streamLeaseKey,
+        JSON.stringify({ owner: this.tabId, expires: now + STREAM_LEASE_MS }),
+      );
+      const verified = JSON.parse(localStorage.getItem(this.streamLeaseKey) ?? 'null') as {
+        owner?: string;
+      } | null;
+      if (verified?.owner !== this.tabId) {
+        this.scheduleStreamClaim(1_000);
+        return;
+      }
+    } catch {
+      // Storage unavailable: still keep exactly one stream within this tab.
+    }
+    this.streamOwner = true;
+    if (!this.streamLeaseTimer) {
+      this.streamLeaseTimer = setInterval(() => this.renewStreamLease(), STREAM_LEASE_RENEW_MS);
+    }
+    if (!this.eventSource && !this.reconnectTimer) this.openStream();
+  }
+
+  private renewStreamLease(): void {
+    if (!this.streamOwner || !this.streamLeaseKey || !this.isVisible()) {
+      this.releaseStreamLease();
+      return;
+    }
+    try {
+      const lease = JSON.parse(localStorage.getItem(this.streamLeaseKey) ?? 'null') as {
+        owner?: string;
+      } | null;
+      if (lease?.owner && lease.owner !== this.tabId) {
+        this.streamOwner = false;
+        this.closeStream();
+        this.scheduleStreamClaim(STREAM_LEASE_RENEW_MS);
+        return;
+      }
+      localStorage.setItem(
+        this.streamLeaseKey,
+        JSON.stringify({ owner: this.tabId, expires: Date.now() + STREAM_LEASE_MS }),
+      );
+    } catch {
+      /* storage is best-effort; this tab remains its own owner */
+    }
+  }
+
+  private releaseStreamLease(): void {
+    this.closeStream();
+    if (this.streamLeaseTimer) {
+      clearInterval(this.streamLeaseTimer);
+      this.streamLeaseTimer = null;
+    }
+    if (this.streamClaimTimer) {
+      clearTimeout(this.streamClaimTimer);
+      this.streamClaimTimer = null;
+    }
+    if (this.streamOwner && this.streamLeaseKey) {
+      try {
+        const lease = JSON.parse(localStorage.getItem(this.streamLeaseKey) ?? 'null') as {
+          owner?: string;
+        } | null;
+        if (lease?.owner === this.tabId) localStorage.removeItem(this.streamLeaseKey);
+      } catch {
+        /* best-effort */
+      }
+      this.streamChannel?.postMessage({ kind: 'released', sender: this.tabId } satisfies StreamChannelMessage);
+    }
+    this.streamOwner = false;
+  }
+
+  private scheduleStreamClaim(delay: number): void {
+    if (this.streamClaimTimer || this.stopped) return;
+    this.streamClaimTimer = setTimeout(() => {
+      this.streamClaimTimer = null;
+      this.tryClaimStream();
+    }, delay);
+  }
+
   // --- SSE firehose (GET /events/stream, EventSource) -----------------------
 
   private openStream(): void {
     if (this.stopped || typeof window === 'undefined' || !('EventSource' in window)) return;
+    if (this.streamChannel && !this.streamOwner) return;
     // Defense in depth: never leak a prior connection (reconnect paths / any
     // double-invoke). closeStream() also clears a pending reconnect timer.
     this.closeStream();
@@ -466,7 +638,7 @@ export class WorldClient {
 
     es.onopen = () => {
       this.reconnectAttempt = 0;
-      this.setAvailability('live');
+      this.setAvailability(this.lastSnapshot ? 'live' : 'reconnecting');
       // A re-open after the first connection is a reconnect (our backoff path OR
       // EventSource's own silent auto-reconnect after a Railway edge recycle).
       // The backlog replay only covers a bounded window, so re-hydrate the
@@ -492,11 +664,11 @@ export class WorldClient {
 
     es.onerror = () => {
       this.setAvailability('reconnecting');
-      // EventSource auto-reconnects, but a closed connection (server down) needs
-      // our own backoff + sleeping fallback so we don't hammer a dead server.
-      if (es.readyState === EventSource.CLOSED) {
-        this.scheduleReconnect();
-      }
+      // Close even while EventSource says CONNECTING. A 429 response otherwise
+      // invokes its opaque automatic retry loop, bypassing our backoff entirely.
+      es.close();
+      if (this.eventSource === es) this.eventSource = null;
+      this.scheduleReconnect();
     };
   }
 
@@ -515,13 +687,20 @@ export class WorldClient {
     this.dispatchWorldEvent(result.data);
   }
 
-  private dispatchWorldEvent(ev: WorldEvent): void {
+  private dispatchWorldEvent(ev: WorldEvent, broadcast = true): void {
     // A live tick means the town is awake — clear any sleeping flag.
     this.setAvailability('live');
     this.patchSnapshot(ev);
     EventBus.emit('world-event', ev);
     for (const { name, payload } of mapWorldEvent(ev)) {
       EventBus.emit(name, payload);
+    }
+    if (broadcast && this.streamOwner) {
+      this.streamChannel?.postMessage({
+        kind: 'event',
+        sender: this.tabId,
+        event: ev,
+      } satisfies StreamChannelMessage);
     }
   }
 
@@ -545,7 +724,7 @@ export class WorldClient {
 
   private scheduleReconnect(): void {
     this.closeStream();
-    if (this.stopped) return;
+    if (this.stopped || !this.streamOwner || !this.isVisible()) return;
     this.setAvailability('reconnecting');
     const delay = reconnectDelayMs(this.reconnectAttempt++);
     this.reconnectTimer = setTimeout(() => this.openStream(), delay);
@@ -564,8 +743,16 @@ export class WorldClient {
 
   private setAvailability(
     state: 'live' | 'reconnecting' | 'budget-asleep' | 'unavailable',
+    broadcast = true,
   ): void {
     EventBus.emit('world-availability', { state });
+    if (broadcast && this.streamOwner) {
+      this.streamChannel?.postMessage({
+        kind: 'availability',
+        sender: this.tabId,
+        state,
+      } satisfies StreamChannelMessage);
+    }
   }
 
   // --- location reporting (PATCH on scene change) ---------------------------
@@ -1021,6 +1208,7 @@ export class WorldClient {
   // --- pagehide: best-effort close via sendBeacon ---------------------------
 
   private onPageHide = () => {
+    this.releaseStreamLease();
     const chat = this.activeChat;
     if (!chat || typeof navigator === 'undefined' || !navigator.sendBeacon) return;
     // sendBeacon can't set headers; the close route accepts the token in the
