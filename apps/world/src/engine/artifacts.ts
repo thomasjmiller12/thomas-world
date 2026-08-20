@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import type { AgentId, ArtifactKind, LocationId } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { appendEvent } from "./events.js";
+import { attachArtifact, findObjectAtLocation } from "./objects.js";
 
 const { artifacts } = schema;
 export type ArtifactRow = typeof artifacts.$inferSelect;
@@ -79,6 +80,17 @@ export async function createArtifact(input: CreateArtifactInput): Promise<Artifa
         fixture,
       },
     });
+  }
+
+  // A fixture anchor is physical world state, not just descriptive metadata.
+  // Resolve the seeded/canonical object behind the free-string fixture name and
+  // use the normal attachment path so both sides of the relationship and the
+  // renderer's object.attached cue stay in sync. Some callers intentionally
+  // create unanchored artifacts, and a custom fixture may not exist, so absence
+  // is a graceful metadata-only fallback.
+  if (location && fixture) {
+    const object = await findObjectAtLocation(location, fixture);
+    if (object) await attachArtifact(object.id, id, input.agentId);
   }
   return row;
 }

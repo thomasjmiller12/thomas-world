@@ -24,9 +24,13 @@ export async function renderLine(e: WorldEvent): Promise<string> {
   const who = async (a: unknown) => displayName(a as string);
   switch (e.type) {
     case "agent.moved":
-      return `${await who(p.agent)} walked from ${p.from} to ${p.to}.`;
+      return p.from === p.to
+        ? `${await who(p.agent)} crossed ${p.to}${p.targetZone ? ` toward ${String(p.targetZone).split(".").at(-1)?.replace(/-/g, " ")}` : ""}.`
+        : `${await who(p.agent)} walked from ${p.from} to ${p.to}.`;
     case "agent.activity":
       return `${await who(p.agent)} is ${p.activity}.`;
+    case "agent.acted":
+      return `${await who(p.agent)} ${p.summary}.`;
     case "agent.thought":
       return `${await who(p.agent)} thought: "${p.text}"`;
     case "agent.spoke":
@@ -59,6 +63,8 @@ export async function renderLine(e: WorldEvent): Promise<string> {
       return `${await who(p.agent)} posted a bulletin: "${p.title}".`;
     case "capability.requested":
       return `${await who(p.agent)} requested a new capability: ${p.summary}`;
+    case "capability.resolved":
+      return `P-Thomas marked ${await who(p.agent)}'s capability request ${p.status}: ${p.summary}${p.note ? ` — ${p.note}` : ""}`;
     case "visitor.arrived":
       return `${p.name} arrived in town.`;
     case "visitor.left":

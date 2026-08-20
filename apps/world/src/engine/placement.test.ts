@@ -63,13 +63,9 @@ describe("placementForZone", () => {
     expect(new Set(occupied.map((o) => o.x)).size).toBe(ids.length);
   });
 
-  it("still places something when the zone is genuinely full", () => {
-    // Better a crowded zone than refusing to place — the agent asked for this.
+  it("refuses placement when the zone is genuinely full", () => {
     const full = [146, 160, 174].map((x) => ({ x, y: 118 }));
-    const p = placementForZone(LOC, ZONE, "workshop.one-too-many", full);
-    expect(p).not.toBeNull();
-    expect(p!.x).toBeGreaterThanOrEqual(146);
-    expect(p!.x).toBeLessThanOrEqual(174);
+    expect(placementForZone(LOC, ZONE, "workshop.one-too-many", full)).toBeNull();
   });
 
   it("ignores occupants far enough away", () => {

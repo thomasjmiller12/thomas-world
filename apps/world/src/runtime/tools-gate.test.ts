@@ -77,6 +77,9 @@ describe("tool location gates (plan §3.3, enforced server-side)", () => {
       "read_note",
       "search_notes",
       "write_agent_note",
+      "move_object",
+      "remove_object",
+      "read_town_log",
       "email_thomas",
       "request_capability",
     ]) {
@@ -85,9 +88,10 @@ describe("tool location gates (plan §3.3, enforced server-side)", () => {
     // M3 speech unification: `say` is gone (plain text is speech). The paced-scene
     // tools and group-chat invite are gone too.
     //
-    // Tool-diet pass (2026-07-30): forget/move_object/remove_object/
-    // share_to_screen were deleted (zero measured calls across the town's full
-    // recorded history); update_artifact was renamed to edit_artifact (agents
+    // Tool-diet pass (2026-07-30): forget/share_to_screen were deleted; the
+    // correction verbs move_object/remove_object have since been restored so
+    // a mistaken placement is not permanent. update_artifact was renamed to
+    // edit_artifact (agents
     // were observed inventing that exact name and getting a not-found error);
     // share_artifact/share_reference/share_proof (also zero calls) were merged
     // into one share_card tool — see the "only in a visitor turn" describe
@@ -99,8 +103,6 @@ describe("tool location gates (plan §3.3, enforced server-side)", () => {
       "end_conversation",
       "invite_to_chat",
       "forget",
-      "move_object",
-      "remove_object",
       "share_to_screen",
       "update_artifact",
       "share_artifact",

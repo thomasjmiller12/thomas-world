@@ -86,7 +86,7 @@ import { appendEvent } from "../engine/events.js";
 import { boostAgent } from "../runtime/scheduler.js";
 import { subscribe } from "../engine/bus.js";
 import { spendTodayUsd, isBudgetExhausted } from "../engine/usage.js";
-import { openCapabilityRequests } from "../engine/outside.js";
+import { openCapabilityRequests, resolveCapabilityRequest } from "../engine/outside.js";
 import { renderDebugPage } from "./debug.js";
 import { runTick } from "../runtime/loop.js";
 import { circuitBroken } from "../runtime/failures.js";
@@ -106,6 +106,7 @@ import {
   visitorTurnCount,
   chatParticipantsCoLocated,
   ChatPresenceError,
+  ChatEngagedError,
 } from "../runtime/chat.js";
 import { enqueue } from "../runtime/queue.js";
 import { consumePendingCall } from "../runtime/director.js";
@@ -899,10 +900,14 @@ export function createApp() {
     // handles on its next turn (queue-serialized).
     const res = await createSession(agentId, visitorId).catch((err) => {
       if (err instanceof ChatPresenceError) return "not-co-located" as const;
+      if (err instanceof ChatEngagedError) return "engaged" as const;
       throw err;
     });
     if (res === "not-co-located") {
       return c.json({ error: "not co-located", reason: "not-co-located" }, 409);
+    }
+    if (res === "engaged") {
+      return c.json({ error: "agent is with another visitor", reason: "engaged" }, 409);
     }
     if (!res) return c.json({ error: "unknown agent" }, 404);
     return c.json(
@@ -1015,6 +1020,30 @@ export function createApp() {
   });
 
   // --- POST /admin/tick/:agentId — force one tick (smoke tests) -----------
+  app.post("/admin/capabilities/:id/resolve", async (c) => {
+    if (config.adminToken) {
+      if (c.req.header("x-admin-token") !== config.adminToken) {
+        return c.json({ error: "forbidden" }, 403);
+      }
+    } else if (config.nodeEnv === "production") {
+      return c.json({ error: "forbidden" }, 403);
+    }
+    const body = await c.req.json().catch(() => ({}));
+    const status = body?.status;
+    if (!(["approved", "declined", "fulfilled"] as const).includes(status)) {
+      return c.json({ error: "bad status", message: "status must be approved, declined, or fulfilled" }, 400);
+    }
+    const note = typeof body?.note === "string" ? body.note : undefined;
+    const resolved = await resolveCapabilityRequest(c.req.param("id"), status, note);
+    if (!resolved) return c.json({ error: "unknown capability request" }, 404);
+    // Wake the owning facet so the public resolution reaches its continuous
+    // thread now instead of waiting for the next passive cadence.
+    void enqueue(resolved.agentId, { kind: "tick", interrupt: true }).catch((error) =>
+      console.warn(`[http] capability resolution wake failed:`, (error as Error).message),
+    );
+    return c.json({ ok: true, request: resolved });
+  });
+
   app.post("/admin/tick/:agentId", async (c) => {
     // Guard: ADMIN_TOKEN when set, otherwise allowed off-production (brief).
     if (config.adminToken) {

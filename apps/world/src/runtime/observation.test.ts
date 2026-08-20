@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import type { WorldEvent } from "@town/contract";
-import { renderVisitorsSection, renderEvents, renderPlace, renderOthersLine } from "./observation.js";
+import {
+  noticePushEvents,
+  renderVisitorsSection,
+  renderEvents,
+  renderPlace,
+  renderOthersLine,
+} from "./observation.js";
 
 // renderPlace: the inhabited "Where you are" object rendering. The load-bearing
 // safety guarantee is that a CLEAN room (all-default state, no notes, no pins)
@@ -217,5 +223,43 @@ describe("renderEvents — agent.spoke addressing", () => {
     } as WorldEvent;
     const out = renderEvents([turn], "workshop", "writer");
     expect(out).toBe(`- builder (in conversation): "prototyping it"`);
+  });
+});
+
+describe("noticePushEvents — bounded town-wide awareness", () => {
+  const event = (
+    type: WorldEvent["type"],
+    locationId: WorldEvent["locationId"],
+    visibility: WorldEvent["visibility"],
+    agentId: WorldEvent["agentId"] = "builder",
+  ) =>
+    ({
+      id: "1",
+      ts: "2026-08-20T00:00:00.000Z",
+      type,
+      agentId,
+      locationId,
+      visitorId: null,
+      visibility,
+      payload: {},
+    }) as WorldEvent;
+
+  it("keeps full co-located events and bounded public headlines elsewhere", () => {
+    const hereSpeech = event("agent.spoke", "library", "location");
+    const remoteArtifact = event("artifact.created", "workshop", "public");
+    const remoteSpeech = event("agent.spoke", "workshop", "public");
+    expect(
+      noticePushEvents([hereSpeech, remoteArtifact, remoteSpeech], "researcher", "library"),
+    ).toEqual([hereSpeech, remoteArtifact]);
+  });
+
+  it("never replays the viewer's own action as news", () => {
+    expect(
+      noticePushEvents(
+        [event("artifact.created", "workshop", "public", "researcher")],
+        "researcher",
+        "library",
+      ),
+    ).toEqual([]);
   });
 });

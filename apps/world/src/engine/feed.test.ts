@@ -1,5 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { WorldEvent } from "@town/contract";
+
+vi.mock("../db/client.js", () => ({
+  db: {
+    select: vi.fn(() => ({
+      from: vi.fn().mockResolvedValue([{ id: "builder", displayName: "Builder Thomas" }]),
+    })),
+  },
+  schema: { worldEvents: {}, agents: {} },
+}));
+
 import { enrichFeedRow, renderLine } from "./feed.js";
 
 function evt(partial: Partial<WorldEvent>): WorldEvent {
@@ -78,5 +88,38 @@ describe("renderLine — new M2 event types (verification fix)", () => {
       evt({ type: "conversation.converted", agentId: null, payload: { conversationId: "c" } }),
     );
     expect(line).not.toBe("(unknown event)");
+  });
+
+  it("renders agent.acted as a semantic action instead of an unknown event", async () => {
+    const line = await renderLine(
+      evt({
+        type: "agent.acted",
+        agentId: "builder",
+        payload: {
+          agent: "builder",
+          tool: "write_artifact_state",
+          effect: "write",
+          summary: "updated an interactive",
+          turnId: "turn-1",
+          actionId: "action-1",
+          relatedIds: [{ kind: "artifact", id: "art-1" }],
+        },
+      }),
+    );
+    expect(line).toBe("Builder Thomas updated an interactive.");
+    expect(line).not.toBe("(unknown event)");
+  });
+
+  it("renders same-location zone movement without claiming park-to-park travel", async () => {
+    const line = await renderLine(
+      evt({
+        type: "agent.moved",
+        agentId: "builder",
+        locationId: "park",
+        payload: { agent: "builder", from: "park", to: "park", targetZone: "park.bench-area" },
+      }),
+    );
+    expect(line).toBe("Builder Thomas crossed park toward bench area.");
+    expect(line).not.toContain("from park to park");
   });
 });

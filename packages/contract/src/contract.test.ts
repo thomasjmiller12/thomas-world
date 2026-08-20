@@ -256,6 +256,17 @@ describe("REST shapes round-trip", () => {
           agent: "researcher",
           line: "Researcher settled into the library.",
         },
+        {
+          kind: "action",
+          id: "act1",
+          ts: "2026-06-12T14:01:00.000Z",
+          agent: "builder",
+          tool: "mount_artifact",
+          summary: "mounted an artifact in the world",
+          turnId: "chat-s1-message-1",
+          actionId: "action-1",
+          relatedIds: [{ kind: "artifact", id: "art1" }],
+        },
       ],
     });
     expect(res.day).toBe("2026-06-12");
@@ -604,6 +615,48 @@ describe("programmable-world schemas (D1–D4)", () => {
       expect(ev.payload.keys).toEqual(["board"]);
       expect(ev.payload.visitorId).toBe("v1");
     }
+  });
+
+  it("round-trips a semantic agent.acted event with typed related ids", () => {
+    const ev = WorldEvent.parse({
+      id: "evt_action_1",
+      ts: "2026-08-20T10:00:00.000Z",
+      agentId: "builder",
+      visibility: "public",
+      type: "agent.acted",
+      payload: {
+        agent: "builder",
+        tool: "write_artifact_state",
+        effect: "write",
+        summary: "updated an interactive",
+        turnId: "chat-s1-message-4",
+        actionId: "action-1",
+        relatedIds: [{ kind: "artifact", id: "art-1" }],
+      },
+    });
+    expect(ev.type).toBe("agent.acted");
+    if (ev.type === "agent.acted") {
+      expect(ev.payload.actionId).toBe("action-1");
+      expect(ev.payload.relatedIds).toEqual([{ kind: "artifact", id: "art-1" }]);
+    }
+  });
+
+  it("round-trips a capability resolution", () => {
+    const ev = WorldEvent.parse({
+      id: "evt_capability_1",
+      ts: "2026-08-20T10:01:00.000Z",
+      agentId: "builder",
+      visibility: "public",
+      type: "capability.resolved",
+      payload: {
+        requestId: "req-1",
+        agent: "builder",
+        summary: "A code sandbox",
+        status: "fulfilled",
+        note: "The provider code tool is live.",
+      },
+    });
+    expect(ev.type).toBe("capability.resolved");
   });
 
   it("round-trips object.created with a placement hint and object.removed", () => {

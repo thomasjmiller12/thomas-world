@@ -19,6 +19,7 @@ import {
   primaryKey,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import type {
   AgentId,
   LocationId,
@@ -56,6 +57,7 @@ const artifactKindEnum = [
 const eventTypeEnum = [
   "agent.moved",
   "agent.activity",
+  "agent.acted",
   "agent.thought",
   "agent.spoke",
   "conversation.started",
@@ -66,6 +68,7 @@ const eventTypeEnum = [
   "artifact.updated",
   "bulletin.posted",
   "capability.requested",
+  "capability.resolved",
   "visitor.arrived",
   "visitor.left",
   "visitor.moved",
@@ -411,7 +414,11 @@ export const chatSessions = pgTable("chat_sessions", {
   // long-reading visitor is never cut off, but an abandoned tab frees the agent.
   lastPingAt: timestamp("last_ping_at", { withTimezone: true }),
   endedAt: timestamp("ended_at", { withTimezone: true }),
-});
+}, (t) => [
+  uniqueIndex("chat_sessions_one_open_per_agent_idx")
+    .on(t.agentId)
+    .where(sql`${t.endedAt} is null`),
+]);
 
 export const chatMessages = pgTable(
   "chat_messages",
@@ -534,7 +541,7 @@ export const capabilityRequests = pgTable("capability_requests", {
   agentId: text("agent_id", { enum: agentEnum }).notNull(),
   summary: text("summary").notNull(),
   rationale: text("rationale").notNull(),
-  // "open" | "approved" | "declined"
+  // "open" | "approved" | "declined" | "fulfilled"
   status: text("status").notNull().default("open"),
   ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
 });

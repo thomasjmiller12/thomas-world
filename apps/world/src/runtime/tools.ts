@@ -23,6 +23,7 @@ import { agentIds, locationIds, artifactKinds, listBeats, type AgentId, type Loc
 import { moveAgent, setActivity, getAgent } from "../engine/agents.js";
 import { checkGate, isAdjacent, getLocation, agentsAtLocation } from "../engine/locations.js";
 import { appendEvent } from "../engine/events.js";
+import { getFeed } from "../engine/feed.js";
 import { sendMessage } from "../engine/messages.js";
 import {
   createArtifact,
@@ -58,6 +59,8 @@ import {
   attachedArtifactsFor,
   recentObjectEvents,
   createObject,
+  moveObject,
+  removeObject,
   attachArtifact,
   objectsByOwner,
   getObject,
@@ -664,6 +667,26 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     },
   });
 
+  const read_town_log = defineTownTool({
+    name: "read_town_log",
+    description:
+      "Read the latest public Chronicle lines from across town. Use this when you want to catch up on what happened outside your current room; it is a bounded public log, not private messages or visitor text.",
+    inputSchema: z.object({ limit: z.number().int().min(1).max(30).optional() }),
+    run: async ({ limit }) => {
+      const feed = await getFeed(undefined, undefined, Math.max(10, limit ?? 20));
+      const lines = feed.items
+        .filter(
+          (item) =>
+            item.line !== "(unknown event)" &&
+            item.type !== "artifact.state_changed" &&
+            item.type !== "object.state_changed",
+        )
+        .slice(0, limit ?? 20)
+        .map((item) => `- ${item.ts}: ${item.line}`);
+      return lines.length ? lines.join("\n") : "The public town log is quiet right now.";
+    },
+  });
+
   const post_bulletin = defineTownTool({
     name: "post_bulletin",
     effect: "write",
@@ -805,7 +828,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       if (mine.length >= 30) {
         return (
           `You already have ${mine.length} placed objects around town — the place is starting to look like your storage unit. ` +
-          `Placed objects are permanent (there's no move/remove), so let this be a reason to place with more intent, not less.`
+          `Move or remove something you own before adding more.`
         );
       }
       const targetZone = zone && zoneExists(zone, ctx.location) ? zone : undefined;
@@ -824,6 +847,9 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
         kind: OBJECT_TEMPLATES[template].category,
         description: description ?? null,
       });
+      if (!row) {
+        return `Nothing was placed — ${targetZone ?? `${ctx.location}.center`} is full. Choose another zone or move one of your existing objects first.`;
+      }
       await ctx.onAction?.("place_object", `sets up ${name}`);
       return (
         `Placed "${name}" (${describeTemplate(template)}) ${targetZone ? `in ${targetZone}` : "here"} — object id ${row.id}. ` +
@@ -832,11 +858,42 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     },
   });
 
-  // NOTE: move_object and remove_object were deleted 2026-07-30 — zero calls
-  // across the town's full recorded history, and the engine functions behind
-  // them (engine/objects.ts moveObject/removeObject) went with them since
-  // nothing else called those either. Placed objects are permanent once set —
-  // place with intent (search_object_library / place_object already say so).
+  const move_object = defineTownTool({
+    name: "move_object",
+    effect: "write",
+    description:
+      "Move one of your own placed objects to another zone in this room. Seeded town fixtures and other facets' objects are protected. Use look_around for object ids and zone ids.",
+    inputSchema: z.object({
+      object_id: z.string().min(1),
+      zone: z.string().min(1).max(80),
+    }),
+    run: async ({ object_id, zone }) => {
+      const result = await moveObject(object_id, ctx.agentId, ctx.location, zone);
+      if (result.ok) return `Moved ${object_id} to ${zone}.`;
+      if (result.reason === "zone-full") return `Nothing moved — ${zone} is full. Pick another zone.`;
+      if (result.reason === "zone-not-here") return `Nothing moved — ${zone} is not a zone here.`;
+      if (result.reason === "not-owner") return "Nothing moved — you can only move objects you placed yourself.";
+      return `Nothing moved — ${object_id} is not here.`;
+    },
+  });
+
+  const remove_object = defineTownTool({
+    name: "remove_object",
+    effect: "write",
+    description:
+      "Remove one of your own placed objects from this room. This cannot remove seeded fixtures or another facet's object, and it refuses while artifacts are mounted so made work is never orphaned by accident.",
+    inputSchema: z.object({ object_id: z.string().min(1) }),
+    run: async ({ object_id }) => {
+      const result = await removeObject(object_id, ctx.agentId, ctx.location);
+      if (result.ok) return `Removed ${object_id} from the room.`;
+      if (result.reason === "artifacts-attached") {
+        return "Nothing was removed — it still has artifacts mounted. Move it instead so visitors do not lose access to that work.";
+      }
+      if (result.reason === "not-owner") return "Nothing was removed — you can only remove objects you placed yourself.";
+      return `Nothing was removed — ${object_id} is not here.`;
+    },
+  });
+
   const read_artifact_state = defineTownTool({
     name: "read_artifact_state",
     description:
@@ -1175,12 +1232,15 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     list_my_artifacts as RunnableTool,
     read_artifact as RunnableTool,
     read_board as RunnableTool,
+    read_town_log as RunnableTool,
     post_bulletin as RunnableTool,
     publish_blog_post as RunnableTool,
     build_interactive as RunnableTool,
     mount_artifact as RunnableTool,
     search_object_library as RunnableTool,
     place_object as RunnableTool,
+    move_object as RunnableTool,
+    remove_object as RunnableTool,
     read_artifact_state as RunnableTool,
     write_artifact_state as RunnableTool,
     read_web_page as RunnableTool,

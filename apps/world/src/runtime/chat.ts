@@ -18,7 +18,7 @@ import { randomUUID } from "node:crypto";
 import { eq, and, or, isNull, desc, asc } from "drizzle-orm";
 import type { AgentId, GetChatResponse, ShareCard } from "@town/contract";
 import { db, schema } from "../db/client.js";
-import { getAgent } from "../engine/agents.js";
+import { getAgent, setActivity, setStatus } from "../engine/agents.js";
 import { getVisitor } from "../engine/visitors.js";
 import { appendEvent } from "../engine/events.js";
 import { identityIds } from "../engine/visitor-history.js";
@@ -50,6 +50,10 @@ export interface CreatedSession {
 
 export class ChatPresenceError extends Error {
   readonly reason = "not-co-located" as const;
+}
+
+export class ChatEngagedError extends Error {
+  readonly reason = "engaged" as const;
 }
 
 export function sameChatLocation(
@@ -106,9 +110,22 @@ export async function createSession(
       sessionToken,
     };
   }
+  const [occupied] = await db
+    .select({ visitorId: chatSessions.visitorId })
+    .from(chatSessions)
+    .where(and(eq(chatSessions.agentId, agentId), isNull(chatSessions.endedAt)))
+    .limit(1);
+  if (occupied) throw new ChatEngagedError();
   const sessionId = randomUUID();
   const sessionToken = randomUUID();
-  await db.insert(chatSessions).values({ id: sessionId, agentId, visitorId, sessionToken });
+  try {
+    await db.insert(chatSessions).values({ id: sessionId, agentId, visitorId, sessionToken });
+  } catch (error) {
+    // The partial unique index closes the check→insert race between two
+    // visitors arriving at the same facet at once.
+    if ((error as { code?: string }).code === "23505") throw new ChatEngagedError();
+    throw error;
+  }
   // chat.started is PUBLIC presence only — no sessionId (chat content is the
   // agent's spoken replies, which surface as agent.spoke in the room).
   await appendEvent({
@@ -117,6 +134,8 @@ export async function createSession(
     visibility: "public",
     payload: { agent: agentId, visitorId },
   });
+  await setStatus(agentId, "with a visitor");
+  await setActivity(agentId, `talking with ${visitor.name}`);
   return { sessionId, agentId, visitorId, participants: [agentId], sessionToken };
 }
 
@@ -162,6 +181,10 @@ export async function endSession(sessionId: string): Promise<void> {
     visibility: "public",
     payload: { agent: session.agentId, visitorId: session.visitorId },
   });
+  await setStatus(session.agentId as AgentId, "awake").catch(() => undefined);
+  await setActivity(session.agentId as AgentId, "wrapping up a visitor conversation").catch(
+    () => undefined,
+  );
   if (onSessionEnded && session.visitorId) {
     // Awaited so the write lands before a sweep-triggered teardown finishes, but
     // never allowed to fail the close.

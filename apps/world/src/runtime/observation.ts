@@ -8,7 +8,9 @@
 // Push/pull (delta = push only; everything else is pulled via tools):
 //  - standing state: time, where I am + who's co-located, my anchors (core memory)
 //  - notice-push: my inbox (DMs/broadcasts) + co-located room events
-//  - EXCLUDED: my own events (already in my thread) + events elsewhere (pull)
+//  - global salience: a tiny public strip for arrivals, made things, board posts,
+//    and capability requests; richer elsewhere detail remains pull-only
+//  - EXCLUDED: my own events (already in my thread) + ordinary room noise elsewhere
 
 import { eq, gt, sql } from "drizzle-orm";
 import type { AgentId, LocationId, WorldEvent, ObjectNote } from "@town/contract";
@@ -291,7 +293,9 @@ export function renderEvents(events: WorldEvent[], location: LocationId, viewer:
       const p = e.payload as Record<string, unknown>;
       switch (e.type) {
         case "agent.moved":
-          return `- ${p.agent} moved to ${p.to}`;
+          return p.from === p.to
+            ? `- ${p.agent} repositioned within ${p.to}`
+            : `- ${p.agent} moved to ${p.to}`;
         case "agent.activity":
           return `- ${p.agent} is now ${p.activity}`;
         case "agent.spoke": {
@@ -318,6 +322,8 @@ export function renderEvents(events: WorldEvent[], location: LocationId, viewer:
           return `- ${p.agent} posted a bulletin: "${p.title}" (read_board to read it)`;
         case "capability.requested":
           return `- ${p.agent} requested a new capability: ${p.summary}`;
+        case "capability.resolved":
+          return `- P-Thomas marked ${p.agent === viewer ? "your" : `${p.agent}'s`} capability request ${p.status}: ${p.summary}${p.note ? ` — ${p.note}` : ""}`;
         case "visitor.arrived":
           return `- a visitor (${p.name}) arrived in town`;
         case "visitor.left":
@@ -361,6 +367,32 @@ export function renderEvents(events: WorldEvent[], location: LocationId, viewer:
       }
     })
     .join("\n");
+}
+
+const GLOBAL_SALIENCE_TYPES = new Set<WorldEvent["type"]>([
+  "visitor.arrived",
+  "visitor.left",
+  "artifact.created",
+  "artifact.updated",
+  "bulletin.posted",
+  "capability.requested",
+  "capability.resolved",
+]);
+
+// Preserve room-scale embodiment while letting agents notice the few public
+// facts that change the shared town. This deliberately excludes remote speech,
+// movement, and storage invalidations so the delta cannot become a firehose.
+export function noticePushEvents(
+  events: WorldEvent[],
+  agentId: AgentId,
+  location: LocationId,
+): WorldEvent[] {
+  return events.filter(
+    (event) =>
+      event.agentId !== agentId &&
+      (event.locationId === location ||
+        (event.visibility === "public" && GLOBAL_SALIENCE_TYPES.has(event.type))),
+  );
 }
 
 // Build the per-input WORLD DELTA (M3 push/pull model). Far leaner than the old
@@ -418,11 +450,7 @@ export async function buildDelta(
     ).catch(() => new Map()),
   ]);
 
-  // NOTICE-PUSH filter: co-located events I did not author. Self-events are
-  // already in the thread; elsewhere-headlines are pull, not push.
-  const noticePush = perceivedRes.events.filter(
-    (e) => e.locationId === location && e.agentId !== agentId,
-  );
+  const noticePush = noticePushEvents(perceivedRes.events, agentId, location);
 
   // Order the canonical objects to match the legacy fixtures order so a clean
   // room renders byte-identically to today's `Fixtures here:` line (the renderer

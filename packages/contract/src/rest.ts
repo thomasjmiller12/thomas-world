@@ -478,6 +478,7 @@ export type ChronicleTurn = z.infer<typeof ChronicleTurn>;
 //  - bulletin: a notice posted to the town board
 //  - effect:   a world effect (phone rang, lamp flickered)
 //  - presence: an agent presence beat (arrived, left, started something)
+//  - action:   a semantic, privacy-safe body action with causal ids
 export const ChronicleItem = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("thread"),
@@ -516,6 +517,24 @@ export const ChronicleItem = z.discriminatedUnion("kind", [
     ts: z.string(),
     agent: AgentId,
     line: z.string(),
+  }),
+  z.object({
+    kind: z.literal("action"),
+    id: z.string(),
+    ts: z.string(),
+    agent: AgentId,
+    tool: z.string(),
+    summary: z.string(),
+    turnId: z.string(),
+    actionId: z.string(),
+    relatedIds: z
+      .array(
+        z.object({
+          kind: z.enum(["agent", "artifact", "location", "message", "object", "request", "session", "visitor"]),
+          id: z.string(),
+        }),
+      )
+      .optional(),
   }),
 ]);
 export type ChronicleItem = z.infer<typeof ChronicleItem>;

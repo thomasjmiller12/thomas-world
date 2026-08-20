@@ -329,6 +329,14 @@ async function runVisitorInput(
     return { ran: false, reason: "budget" };
   }
 
+  // A per-role cap pauses autonomous ticks, not visitor conversation. If this
+  // interruption wakes a facet, make the canonical roster agree with the body
+  // that is about to answer instead of leaving a visibly "sleeping" NPC talking.
+  if (agent.status === SLEEPING_BUDGET) {
+    await setStatus(agentId, "awake");
+    await setActivity(agentId, `talking with ${visitorName || "a visitor"}`);
+  }
+
   const visitorMessageId = await appendVisitorLine(sessionId, text);
 
   const tickId = `chat-${sessionId}-message-${visitorMessageId}`;
@@ -538,21 +546,29 @@ async function emitUtterance(
     return;
   }
 
+  // Resolve the social target before the speech becomes world fact. If a
+  // co-located facet is directly addressed, close the physical gap first and
+  // persist the addressee structurally so perception/Chronicle do not have to
+  // rediscover intent with a regex later.
+  const addressed = addressedFacets(here, text);
+  const to = addressed[0] as AgentId | undefined;
+  if (to) {
+    await approachAddressee(agentId, location, to).catch((err) =>
+      console.warn(`[loop] approach ${agentId}->${to} failed:`, (err as Error).message),
+    );
+  }
+
   await appendEvent({
     type: "agent.spoke",
     agentId,
     locationId: location,
     visibility: "location",
-    payload: { agent: agentId, location, text },
+    payload: { agent: agentId, location, text, ...(to ? { to } : {}) },
   });
 
   // Push any co-located facet addressed by name an immediate turn. The addressed
-  // facet's delta will surface this speech (co-located notice-push). Also walk
-  // the SPEAKER toward the addressee's known spot (Phase C.5, approach-then-
-  // speak) — pure staging/body-language for a facet-to-facet address, the same
-  // class of mechanical move as the narration guard, not a discretionary
-  // "must attend to" decision, so it doesn't touch agent autonomy.
-  pushAddressedFacets(agentId, here, text, { agentId, location });
+  // facet's delta will surface this structured speech (co-located notice-push).
+  pushAddressedFacets(agentId, here, text);
 }
 
 // Scan `text` for the names of co-located facets and push each named one an
@@ -561,26 +577,16 @@ async function emitUtterance(
 // the window. Used for agent speech AND for a visitor's message (a visitor can
 // summon another facet into the chat by naming them, just like a facet can).
 // `here` must already exclude the speaker. Fire-and-forget; never throws.
-// `approach`, when given (agent speech only — a visitor has no agent body to
-// move), walks the speaker toward the addressee's stored zone alongside the
-// push; omitted for a visitor's address (the addressed facet perceives the
-// visitor's own zone via renderVisitorsSection and can choose to close the gap).
 function pushAddressedFacets(
   speakerKey: string,
   here: { id: string }[],
   text: string,
-  approach?: { agentId: AgentId; location: LocationId },
 ): void {
   for (const id of addressedFacets(here, text)) {
     const key = `${speakerKey}|${id}`;
     const now = Date.now();
     if (now - (lastAddressAt.get(key) ?? 0) < ADDRESS_THROTTLE_MS) continue;
     lastAddressAt.set(key, now);
-    if (approach) {
-      void approachAddressee(approach.agentId, approach.location, id as AgentId).catch((err) =>
-        console.warn(`[loop] approach ${approach.agentId}->${id} failed:`, (err as Error).message),
-      );
-    }
     void enqueue(id, { kind: "tick", interrupt: true }).catch((err) =>
       console.warn(`[loop] address-push ${id} failed:`, (err as Error).message),
     );

@@ -26,6 +26,23 @@ export const AgentActivityPayload = z.object({
   activity: z.string(), // "working on X", "reading Y"
 });
 
+export const AgentActedPayload = z.object({
+  agent: AgentId,
+  tool: z.string(),
+  effect: z.enum(["write", "external"]),
+  summary: z.string(),
+  turnId: z.string(),
+  actionId: z.string(),
+  relatedIds: z
+    .array(
+      z.object({
+        kind: z.enum(["agent", "artifact", "location", "message", "object", "request", "session", "visitor"]),
+        id: z.string(),
+      }),
+    )
+    .optional(),
+});
+
 export const AgentThoughtPayload = z.object({
   agent: AgentId,
   text: z.string(), // public-safe thoughts → bubbles
@@ -93,6 +110,14 @@ export const BulletinPostedPayload = z.object({
 export const CapabilityRequestedPayload = z.object({
   agent: AgentId,
   summary: z.string(), // the meta-layer flex surface
+});
+
+export const CapabilityResolvedPayload = z.object({
+  requestId: z.string(),
+  agent: AgentId,
+  summary: z.string(),
+  status: z.enum(["approved", "declined", "fulfilled"]),
+  note: z.string().optional(),
 });
 
 export const VisitorArrivedPayload = z.object({
@@ -297,6 +322,7 @@ const envelopeBase = {
 export const WorldEvent = z.discriminatedUnion("type", [
   z.object({ ...envelopeBase, type: z.literal("agent.moved"), payload: AgentMovedPayload }),
   z.object({ ...envelopeBase, type: z.literal("agent.activity"), payload: AgentActivityPayload }),
+  z.object({ ...envelopeBase, type: z.literal("agent.acted"), payload: AgentActedPayload }),
   z.object({ ...envelopeBase, type: z.literal("agent.thought"), payload: AgentThoughtPayload }),
   z.object({ ...envelopeBase, type: z.literal("agent.spoke"), payload: AgentSpokePayload }),
   z.object({ ...envelopeBase, type: z.literal("conversation.started"), payload: ConversationStartedPayload }),
@@ -307,6 +333,7 @@ export const WorldEvent = z.discriminatedUnion("type", [
   z.object({ ...envelopeBase, type: z.literal("artifact.updated"), payload: ArtifactUpdatedPayload }),
   z.object({ ...envelopeBase, type: z.literal("bulletin.posted"), payload: BulletinPostedPayload }),
   z.object({ ...envelopeBase, type: z.literal("capability.requested"), payload: CapabilityRequestedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("capability.resolved"), payload: CapabilityResolvedPayload }),
   z.object({ ...envelopeBase, type: z.literal("visitor.arrived"), payload: VisitorArrivedPayload }),
   z.object({ ...envelopeBase, type: z.literal("visitor.left"), payload: VisitorLeftPayload }),
   z.object({ ...envelopeBase, type: z.literal("visitor.moved"), payload: VisitorMovedPayload }),
@@ -333,6 +360,7 @@ export type WorldEvent = z.infer<typeof WorldEvent>;
 export const worldEventTypes = [
   "agent.moved",
   "agent.activity",
+  "agent.acted",
   "agent.thought",
   "agent.spoke",
   "conversation.started",
@@ -343,6 +371,7 @@ export const worldEventTypes = [
   "artifact.updated",
   "bulletin.posted",
   "capability.requested",
+  "capability.resolved",
   "visitor.arrived",
   "visitor.left",
   "visitor.moved",

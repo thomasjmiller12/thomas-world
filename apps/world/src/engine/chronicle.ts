@@ -44,10 +44,12 @@ const DAY_LOOKBACK = 30;
 // kept so pre-redesign rows still surface in the hub.
 const CHRONICLE_EVENT_TYPES = [
   "agent.spoke",
+  "agent.acted",
   "conversation.turn",
   "artifact.created",
   "artifact.updated",
   "bulletin.posted",
+  "capability.resolved",
   "world.effect",
   "chat.started",
   "chat.ended",
@@ -360,7 +362,9 @@ async function buildChronicle(dayUtc: string): Promise<CacheEntry> {
     });
 
   // World effects — reuse feed.ts renderLine phrasing for the flavor line.
-  const effectEvents = events.filter((e) => e.type === "world.effect");
+  const effectEvents = events.filter(
+    (e) => e.type === "world.effect" || e.type === "capability.resolved",
+  );
   const effectItems: ChronicleItem[] = await Promise.all(
     effectEvents.map(async (e) => ({
       kind: "effect" as const,
@@ -374,12 +378,34 @@ async function buildChronicle(dayUtc: string): Promise<CacheEntry> {
   // Presence beats from chat.started/.ended pairing.
   const presenceItems = pairPresence(events, displayName);
 
+  // Semantic body actions bridge runtime/tool detail into the public story.
+  // Artifact creation/editing and bulletins already have richer dedicated rows,
+  // so avoid duplicating those operations here.
+  const actionItems: ChronicleItem[] = events
+    .filter((event): event is Extract<WorldEvent, { type: "agent.acted" }> => event.type === "agent.acted")
+    .filter(
+      (event) =>
+        !["create_artifact", "edit_artifact", "post_bulletin"].includes(event.payload.tool),
+    )
+    .map((event) => ({
+      kind: "action" as const,
+      id: `act-${event.id}`,
+      ts: event.ts,
+      agent: event.payload.agent,
+      tool: event.payload.tool,
+      summary: event.payload.summary,
+      turnId: event.payload.turnId,
+      actionId: event.payload.actionId,
+      relatedIds: event.payload.relatedIds,
+    }));
+
   const items = [
     ...threadItems,
     ...artifactItems,
     ...bulletinItems,
     ...effectItems,
     ...presenceItems,
+    ...actionItems,
   ].sort((a, b) => tsMs(a.ts) - tsMs(b.ts));
 
   const days = await availableDays();

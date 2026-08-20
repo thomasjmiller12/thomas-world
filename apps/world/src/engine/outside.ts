@@ -37,6 +37,33 @@ export interface OpenCapabilityRequest {
   ts: Date;
 }
 
+export type CapabilityResolutionStatus = "approved" | "declined" | "fulfilled";
+
+export async function resolveCapabilityRequest(
+  id: string,
+  status: CapabilityResolutionStatus,
+  note?: string,
+): Promise<{ id: string; agentId: AgentId; summary: string; status: CapabilityResolutionStatus } | undefined> {
+  const [request] = await db.select().from(capabilityRequests).where(eq(capabilityRequests.id, id));
+  if (!request) return undefined;
+  if (request.status !== status) {
+    await db.update(capabilityRequests).set({ status }).where(eq(capabilityRequests.id, id));
+    await appendEvent({
+      type: "capability.resolved",
+      agentId: request.agentId as AgentId,
+      visibility: "public",
+      payload: {
+        requestId: id,
+        agent: request.agentId,
+        summary: request.summary,
+        status,
+        ...(note?.trim() ? { note: note.trim().slice(0, 500) } : {}),
+      },
+    });
+  }
+  return { id, agentId: request.agentId as AgentId, summary: request.summary, status };
+}
+
 // What the agent is told after filing. Pure, because this string is the entire
 // feedback loop: the old one asserted "Thomas will see it" when nothing emailed
 // and nothing read the table, and agents re-filed asks they'd already made

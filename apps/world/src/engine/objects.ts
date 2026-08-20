@@ -5,11 +5,8 @@
 // mount_artifact. Each write emits its object.* event; the renderer
 // materializes changes live.
 //
-// moveObject / removeObject (behind the move_object / remove_object tools)
-// were deleted 2026-07-30 — zero calls to either tool across the town's full
-// recorded history, so placed objects are permanent once set (place_object's
-// own copy says so). object.moved / object.removed stay in the contract event
-// taxonomy and observation.ts's renderer since historical rows still use them.
+// Agent-owned placed objects can be moved or removed again. Seeded fixtures are
+// ownerless/non-movable and remain protected.
 
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type {
@@ -200,8 +197,8 @@ export const MIN_OBJECT_SEPARATION_PX = 14;
 // Now the hash only chooses a STARTING slot, and we step deterministically
 // through the band for one that clears `occupied` by MIN_OBJECT_SEPARATION_PX.
 // Still pure (occupancy is passed in, not queried) so it stays unit-testable,
-// and still deterministic per id. Falls back to the raw hash position when the
-// zone is genuinely full — a crowded zone is better than refusing to place.
+// and still deterministic per id. A genuinely full zone returns null instead
+// of creating an overlapped, potentially unclickable object.
 export function placementForZone(
   location: LocationId,
   zoneId: string,
@@ -231,10 +228,10 @@ export function placementForZone(
       return { scene: b.scene, x, y };
     }
   }
-  return { scene: b.scene, x: hashed, y };
+  return null;
 }
 
-export async function createObject(input: CreateObjectInput): Promise<WorldObjectRow> {
+export async function createObject(input: CreateObjectInput): Promise<WorldObjectRow | undefined> {
   // Feed the placer what's already standing in this zone so a new object doesn't
   // land on top of one (see placementForZone's note on the real collision).
   const siblings = await db
@@ -246,6 +243,7 @@ export async function createObject(input: CreateObjectInput): Promise<WorldObjec
     .filter((p): p is ObjectPlacement => Boolean(p))
     .map((p) => ({ x: p.x, y: p.y }));
   const placement = placementForZone(input.location, input.zone, input.id, occupied);
+  if (!placement) return undefined;
   const [row] = await db
     .insert(worldObjects)
     .values({
@@ -278,6 +276,63 @@ export async function createObject(input: CreateObjectInput): Promise<WorldObjec
     },
   });
   return row;
+}
+
+export async function moveObject(
+  objectId: string,
+  agent: AgentId,
+  location: LocationId,
+  toZone: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const obj = await getObject(objectId);
+  if (!obj || obj.locationId !== location) return { ok: false, reason: "object-not-here" };
+  if (!obj.movable || obj.ownerAgentId !== agent) return { ok: false, reason: "not-owner" };
+  if (!zoneExists(toZone, location)) return { ok: false, reason: "zone-not-here" };
+  if (obj.zone === toZone) return { ok: true };
+
+  const siblings = await objectsInZone(location, toZone);
+  const occupied = siblings
+    .filter((row) => row.id !== objectId)
+    .map((row) => row.placement as ObjectPlacement | null)
+    .filter((placement): placement is ObjectPlacement => Boolean(placement))
+    .map((placement) => ({ x: placement.x, y: placement.y }));
+  const placement = placementForZone(location, toZone, objectId, occupied);
+  if (!placement) return { ok: false, reason: "zone-full" };
+
+  await db
+    .update(worldObjects)
+    .set({ zone: toZone, placement, updatedAt: new Date() })
+    .where(eq(worldObjects.id, objectId));
+  await appendEvent({
+    type: "object.moved",
+    agentId: agent,
+    locationId: location,
+    visibility: "public",
+    payload: { objectId, agent, location, fromZone: obj.zone, toZone },
+  });
+  return { ok: true };
+}
+
+export async function removeObject(
+  objectId: string,
+  agent: AgentId,
+  location: LocationId,
+): Promise<{ ok: boolean; reason?: string }> {
+  const obj = await getObject(objectId);
+  if (!obj || obj.locationId !== location) return { ok: false, reason: "object-not-here" };
+  if (!obj.movable || obj.ownerAgentId !== agent) return { ok: false, reason: "not-owner" };
+  if (((obj.attachedArtifactIds ?? []) as string[]).length > 0) {
+    return { ok: false, reason: "artifacts-attached" };
+  }
+  await db.delete(worldObjects).where(eq(worldObjects.id, objectId));
+  await appendEvent({
+    type: "object.removed",
+    agentId: agent,
+    locationId: location,
+    visibility: "public",
+    payload: { objectId, agent, location, displayName: obj.displayName },
+  });
+  return { ok: true };
 }
 
 // setObjectState: the Director/Effect object-surface write path. Loads the

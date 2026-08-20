@@ -8,6 +8,7 @@ import type {
   TownTool,
   TownToolInvocationContext,
 } from "./llm/tool.js";
+import { emitAgentActed } from "./action-event.js";
 
 const { agentActionJournal } = schema;
 
@@ -40,6 +41,7 @@ async function runJournaledAction(options: {
   tool: TownFunctionTool;
   args: unknown;
   context?: TownToolInvocationContext;
+  emitSemantic?: boolean;
 }): Promise<ToolResult> {
   const { id, inputHash } = actionIdentity({
     turnId: options.turnId,
@@ -92,6 +94,19 @@ async function runJournaledAction(options: {
       .update(agentActionJournal)
       .set({ status: "completed", result, completedAt: new Date() })
       .where(eq(agentActionJournal.id, id));
+    if (options.tool.effect !== "read" && options.emitSemantic !== false) {
+      await emitAgentActed({
+        actionId: id,
+        turnId: options.turnId,
+        agentId: options.agentId,
+        tool: options.tool.name,
+        effect: options.tool.effect,
+        args: options.args,
+        result,
+      }).catch((error) =>
+        console.warn(`[action-journal] semantic event failed for ${id}:`, (error as Error).message),
+      );
+    }
     return result;
   } catch (error) {
     await db
@@ -112,7 +127,34 @@ export function journalMutatingTools(
   context: { turnId: string; agentId: AgentId },
 ): TownTool[] {
   return tools.map((tool) => {
-    if (tool.kind !== "function" || tool.effect === "read") return tool;
+    if (tool.kind === "memory") {
+      const wrap = <T>(name: string, run: (input: T) => Promise<ToolResult> | ToolResult) =>
+        (args: T) =>
+          runJournaledAction({
+            ...context,
+            tool: {
+              name: `memory.${name}`,
+              effect: "write",
+              run: (input: unknown) => run(input as T),
+            } as TownFunctionTool,
+            args,
+            // Core-memory edits are durable interior cognition, not public body
+            // actions. Journal them for continuity without broadcasting them.
+            emitSemantic: false,
+          });
+      return {
+        ...tool,
+        handlers: {
+          view: tool.handlers.view,
+          create: wrap("create", tool.handlers.create),
+          str_replace: wrap("str_replace", tool.handlers.str_replace),
+          insert: wrap("insert", tool.handlers.insert),
+          delete: wrap("delete", tool.handlers.delete),
+          rename: wrap("rename", tool.handlers.rename),
+        },
+      };
+    }
+    if (tool.effect === "read") return tool;
     const source = tool as TownFunctionTool;
     return {
       ...source,
