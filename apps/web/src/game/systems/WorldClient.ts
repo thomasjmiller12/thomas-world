@@ -94,8 +94,8 @@ interface ActiveChat {
 // wire shapes are parsed through @town/contract zod schemas — drift throws here
 // instead of silently corrupting the UI.
 //
-// Network is best-effort: any failure degrades to dream mode (a `world-sleeping`
-// flag the UI reads); the town keeps running. The server is built in a parallel
+// Network is best-effort: snapshot truth and stream transport are reported
+// separately through `world-availability`; the town keeps running. The server is built in a parallel
 // track, so this is coded against the CONTRACT, not a live server.
 export class WorldClient {
   private readonly baseUrl: string;
@@ -163,13 +163,14 @@ export class WorldClient {
       try {
         await this.establishIdentity();
       } catch {
-        // Identity is needed for chat/location, but the town can still dream.
-        this.goToSleep('server-down');
+        // Identity is needed for chat/location, but a failed identity request
+        // says nothing about whether the public town itself is awake.
+        this.setAvailability('reconnecting');
       }
     }
 
     try {
-      await this.hydrateSnapshot();
+      await this.hydrateSnapshotWithRetry();
       this.openStream();
     } catch {
       // Server unreachable: replay the last cached snapshot so the dreaming town
@@ -177,7 +178,7 @@ export class WorldClient {
       // fall asleep. A first-time visitor with no cache still gets dream mode +
       // whatever the (independent) feed fetch can load.
       this.replayCachedSnapshot();
-      this.goToSleep('server-down');
+      this.setAvailability('unavailable');
     }
   }
 
@@ -299,6 +300,23 @@ export class WorldClient {
     this.applySnapshot(snapshot);
   }
 
+  private async hydrateSnapshotWithRetry(attempts = 3): Promise<void> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        await this.hydrateSnapshot();
+        return;
+      } catch (err) {
+        lastError = err;
+        if (attempt + 1 < attempts) {
+          this.setAvailability('reconnecting');
+          await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
+        }
+      }
+    }
+    throw lastError;
+  }
+
   // Emit the EventBus state for a snapshot (live or cached-replay). When
   // `cached`, the world reads as not-awake regardless — a cached snapshot is a
   // memory, the town is asleep until a live tick proves otherwise. `replayEvents`
@@ -327,9 +345,9 @@ export class WorldClient {
     // World-level state drives the tint + sleeping flag.
     EventBus.emit('world-state', snapshot.world);
     if (cached || !snapshot.world.awake) {
-      this.goToSleep(cached ? 'server-down' : 'budget');
+      this.setAvailability(cached ? 'unavailable' : 'budget-asleep');
     } else {
-      EventBus.emit('world-sleeping', { sleeping: false, reason: null });
+      this.setAvailability('live');
     }
 
     // Replay recent events so late joiners see the scene already in motion —
@@ -447,6 +465,7 @@ export class WorldClient {
 
     es.onopen = () => {
       this.reconnectAttempt = 0;
+      this.setAvailability('live');
       // A re-open after the first connection is a reconnect (our backoff path OR
       // EventSource's own silent auto-reconnect after a Railway edge recycle).
       // The backlog replay only covers a bounded window, so re-hydrate the
@@ -471,6 +490,7 @@ export class WorldClient {
     es.onmessage = onFrame;
 
     es.onerror = () => {
+      this.setAvailability('reconnecting');
       // EventSource auto-reconnects, but a closed connection (server down) needs
       // our own backoff + sleeping fallback so we don't hammer a dead server.
       if (es.readyState === EventSource.CLOSED) {
@@ -496,7 +516,7 @@ export class WorldClient {
 
   private dispatchWorldEvent(ev: WorldEvent): void {
     // A live tick means the town is awake — clear any sleeping flag.
-    EventBus.emit('world-sleeping', { sleeping: false, reason: null });
+    this.setAvailability('live');
     this.patchSnapshot(ev);
     EventBus.emit('world-event', ev);
     for (const { name, payload } of mapWorldEvent(ev)) {
@@ -525,7 +545,7 @@ export class WorldClient {
   private scheduleReconnect(): void {
     this.closeStream();
     if (this.stopped) return;
-    this.goToSleep('server-down');
+    this.setAvailability('reconnecting');
     const delay = reconnectDelayMs(this.reconnectAttempt++);
     this.reconnectTimer = setTimeout(() => this.openStream(), delay);
   }
@@ -541,8 +561,10 @@ export class WorldClient {
     }
   }
 
-  private goToSleep(reason: 'budget' | 'server-down'): void {
-    EventBus.emit('world-sleeping', { sleeping: true, reason });
+  private setAvailability(
+    state: 'live' | 'reconnecting' | 'budget-asleep' | 'unavailable',
+  ): void {
+    EventBus.emit('world-availability', { state });
   }
 
   // --- location reporting (PATCH on scene change) ---------------------------

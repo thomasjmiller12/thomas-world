@@ -60,9 +60,13 @@ export interface WorldEvents {
   // --- world-level state (snapshot + world.time) ---------------------------
   // phase drives the day/night tint; `awake` false => sleeping/dream mode.
   'world-state': { phase: DayPhase; visitorsPresent: number; awake: boolean };
-  // Degraded-mode flag the UI can read: true when the server is unreachable or
-  // budget-exhausted and the town is running on the free scripted dream layer.
-  'world-sleeping': { sleeping: boolean; reason: 'budget' | 'server-down' | null };
+  // The snapshot is authoritative for whether the town is awake. Transport
+  // recovery is a separate state: losing SSE must never make a healthy town
+  // appear asleep. Dream mode is reserved for an authoritative budget sleep or
+  // a confirmed inability to hydrate any live snapshot.
+  'world-availability': {
+    state: 'live' | 'reconnecting' | 'budget-asleep' | 'unavailable';
+  };
 
   // --- visitor-facing chat lifecycle (WorldClient ↔ React panel) -----------
   // WorldClient opened a session (POST /chats resolved). Canvas-only hook: the

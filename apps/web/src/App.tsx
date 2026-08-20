@@ -81,13 +81,17 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
   const [about, setAbout] = useState<{ tab: AboutTab; referenceId?: string | null; proofId?: string | null } | null>(
     openAbout ? { tab: 'overview' } : null,
   );
-  // Day-phase canvas tint + sleeping/dream fallback (design §7).
+  // Day-phase canvas tint + honest availability state. Snapshot truth and SSE
+  // transport health are deliberately separate: a reconnecting stream does not
+  // make an awake town "sleep".
   const [worldPhase, setWorldPhase] = useState<DayPhase>('afternoon');
-  const [sleeping, setSleeping] = useState(false);
-  const [sleepReason, setSleepReason] = useState<'budget' | 'server-down' | null>(null);
-  // Ref mirror so the sleeping-gated chat-open closure reads current state.
-  const sleepingRef = useRef(false);
-  sleepingRef.current = sleeping;
+  const [availability, setAvailability] = useState<
+    'live' | 'reconnecting' | 'budget-asleep' | 'unavailable'
+  >('reconnecting');
+  // Ref mirror so the send closure reads current state. Reconnecting is not a
+  // hard block: the chat HTTP path may still be healthy while SSE recovers.
+  const interactionBlockedRef = useRef(false);
+  interactionBlockedRef.current = availability === 'budget-asleep' || availability === 'unavailable';
   const viewport = useViewport();
   // The visitor's id (for the DirectorBeat directed-beat filter). WorldClient
   // persists it to localStorage during identity bootstrap; we seed from there
@@ -107,7 +111,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
   // the sleeping/budget gate lives HERE, at send-time — sending while the town
   // sleeps surfaces the cozy error line instead of a (dead) turn.
   const handleChatSend = useCallback((npcId: ThomasId, text: string) => {
-    if (sleepingRef.current) {
+    if (interactionBlockedRef.current) {
       EventBus.emit('chat-error', { npcId, reason: 'sleeping' });
       return;
     }
@@ -263,10 +267,11 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
     // Degraded mode: if WorldClient can't reach the server / budget is gone,
     // run the free scripted dream layer so the town reads asleep, not broken,
     // and surface the night tint + Z's + cozy copy (SleepOverlay).
-    const onWorldSleeping = (data: { sleeping: boolean; reason: 'budget' | 'server-down' | null }) => {
-      setSleeping(data.sleeping);
-      setSleepReason(data.reason);
-      if (data.sleeping) dream.start();
+    const onWorldAvailability = (data: {
+      state: 'live' | 'reconnecting' | 'budget-asleep' | 'unavailable';
+    }) => {
+      setAvailability(data.state);
+      if (data.state === 'budget-asleep' || data.state === 'unavailable') dream.start();
       else dream.stop();
     };
     // A clicked fixture (e.g. the park payphone) → POST /visitors/:id/interact.
@@ -298,7 +303,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
     EventBus.on('npc-proximity-enter', onProximityEnter);
     EventBus.on('npc-proximity-exit', onProximityExit);
     EventBus.on('world-state', onWorldState);
-    EventBus.on('world-sleeping', onWorldSleeping);
+    EventBus.on('world-availability', onWorldAvailability);
 
     return () => {
       dream.stop();
@@ -316,7 +321,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
       EventBus.off('npc-proximity-enter', onProximityEnter);
       EventBus.off('npc-proximity-exit', onProximityExit);
       EventBus.off('world-state', onWorldState);
-      EventBus.off('world-sleeping', onWorldSleeping);
+      EventBus.off('world-availability', onWorldAvailability);
       EventBus.off('visitor-interact', onVisitorInteract);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -342,7 +347,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
         <PhaserGame observe={observe} />
 
         {/* Day-phase tint + sleeping/dream fallback over the canvas. */}
-        <SleepOverlay phase={worldPhase} sleeping={sleeping} reason={sleepReason} />
+        <SleepOverlay phase={worldPhase} availability={availability} />
 
         <div className="absolute inset-0 pointer-events-none">
           <HUD
@@ -352,11 +357,11 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
             chronicleOpen={chronicle != null}
             onToggleAbout={handleToggleAbout}
             aboutOpen={about != null}
-            touch={viewport.touch}
+            touch={viewport.touch || viewport.narrow}
           />
 
           {/* One-time premise framing for first-time visitors. */}
-          {!observe && <WelcomeCard touch={viewport.touch} />}
+          {!observe && <WelcomeCard touch={viewport.touch || viewport.narrow} />}
 
           {/* Director/Effect protocol — screen beats (popped cards, emotes) an
               agent runs across the glass. Above chat (z-40), below the

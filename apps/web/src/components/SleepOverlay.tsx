@@ -14,9 +14,7 @@ import type { DayPhase } from '@town/contract';
 
 interface Props {
   phase: DayPhase;
-  sleeping: boolean;
-  // 'budget' → "dreaming" copy; 'server-down' → "resting" copy. Null when awake.
-  reason: 'budget' | 'server-down' | null;
+  availability: 'live' | 'reconnecting' | 'budget-asleep' | 'unavailable';
 }
 
 // Per-phase wash (rgba). Night/dawn carry a blue cast; dusk a warm one.
@@ -28,15 +26,32 @@ const PHASE_TINT: Record<DayPhase, string> = {
   night: 'rgba(20, 24, 60, 0.34)',
 };
 
-export function SleepOverlay({ phase, sleeping, reason }: Props) {
-  const tint = sleeping ? 'rgba(16, 18, 48, 0.46)' : PHASE_TINT[phase];
+export function SleepOverlay({ phase, availability }: Props) {
+  const dreaming = availability === 'budget-asleep' || availability === 'unavailable';
+  const tint = dreaming ? 'rgba(16, 18, 48, 0.46)' : PHASE_TINT[phase];
 
   return (
     <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20, overflow: 'hidden' }}>
       {/* tint wash */}
       <div className="absolute inset-0" style={{ background: tint, transition: 'background 1.2s ease' }} />
 
-      {sleeping && (
+      {availability === 'reconnecting' && (
+        <div
+          className="absolute left-1/2 top-3 rounded-full px-3 py-1"
+          style={{
+            transform: 'translateX(-50%)',
+            background: 'rgba(43,38,32,0.82)',
+            color: '#fff',
+            font: '600 10px var(--mono)',
+            letterSpacing: '0.06em',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+          }}
+        >
+          reconnecting live updates…
+        </div>
+      )}
+
+      {dreaming && (
         <>
           {/* drifting Z's */}
           {[0, 1, 2].map((i) => (
@@ -62,12 +77,12 @@ export function SleepOverlay({ phase, sleeping, reason }: Props) {
             style={{ transform: 'translateX(-50%)', textAlign: 'center', maxWidth: 360 }}
           >
             <div style={{ font: '600 15px var(--display)', color: 'rgba(247,241,230,0.92)' }}>
-              {reason === 'budget' ? 'The town is dreaming' : 'The town is resting'}
+              {availability === 'budget-asleep' ? 'The town is dreaming' : 'Live view unavailable'}
             </div>
             <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.7)', marginTop: 4, lineHeight: 1.45 }}>
-              {reason === 'budget'
+              {availability === 'budget-asleep'
                 ? 'The five are asleep for now — wander, and read what they got up to today.'
-                : "Can't reach the town right now. Here's the last we saw of it."}
+                : "Showing the last confirmed town state while the live connection recovers."}
             </div>
           </div>
         </>
