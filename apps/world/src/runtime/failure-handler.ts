@@ -1,25 +1,27 @@
-// What we DO about a failed turn: record it, self-heal a poisoned thread, and
+// What we DO about a failed turn: record it, self-heal corrupt native history, and
 // circuit-break an agent that is permanently broken.
 //
 // Kept separate from both `failures.ts` (pure classification, no DB — so its
 // tests need no mocks) and `loop.ts` (which imports reflection.ts, so reflection
 // importing the loop would be a cycle). Every turn-runner — ticks, visitor turns,
-// reflection — funnels its catch block through here so no failure path can
+// reflection, delivery — funnels its catch block through here so no failure path can
 // silently swallow an agent's death again.
 
 import type { AgentId } from "@town/contract";
+import { config } from "../config.js";
 import { markTurnFailed, clearFailures, setStatus } from "../engine/agents.js";
 import { reseedThread } from "../engine/thread.js";
-import { classifyFailure, isCircuitBroken, RESEED_AFTER } from "./failures.js";
+import { classifyFailure, isCircuitBroken } from "./failures.js";
+import { getLlmProvider } from "./llm/provider.js";
 
-export type TurnKind = "tick" | "visitor" | "reflection";
+export type TurnKind = "tick" | "visitor" | "reflection" | "delivery";
 
 /**
  * Record a failed turn and act on the streak.
  *
  * Two behaviours, both missing when Researcher Thomas died silently for 27 days:
  *
- *  1. SELF-HEAL a poisoned thread. The thread is replayed on every turn, so one
+ *  1. SELF-HEAL a provider-native corrupt thread. The thread is replayed on every turn, so one
  *     un-replayable message fails deterministically forever. `reseedThread`
  *     existed and was designed for exactly this, but nothing ever called it.
  *  2. CIRCUIT-BREAK. Past CIRCUIT_BREAK_AFTER the scheduler stops enqueuing for
@@ -33,27 +35,26 @@ export async function recordTurnFailure(
   err: unknown,
   kind: TurnKind,
 ): Promise<void> {
-  const failure = classifyFailure(err);
+  const failure = classifyFailure(getLlmProvider(config.llmProvider).classifyError(err));
   const n = await markTurnFailed(agentId, failure.message).catch(() => 0);
   console.warn(
-    `[${kind} ${agentId}] ${failure.kind} failure #${n}` +
+    `[${kind} ${agentId}] ${failure.provider}/${failure.errorKind} ${failure.kind} failure #${n}` +
       `${failure.status ? ` (http ${failure.status})` : ""}` +
-      `${failure.threadPoisoned ? " THREAD-POISONED" : ""}: ${failure.message.slice(0, 300)}`,
+      `${failure.threadCorrupt ? " THREAD-CORRUPT" : ""}: ${failure.message.slice(0, 300)}`,
   );
 
-  // A poisoned thread is the one permanent failure we can repair ourselves, and
-  // it never fixes itself, so don't wait for the streak.
-  const shouldReseed =
-    failure.threadPoisoned || (failure.kind === "permanent" && n >= RESEED_AFTER);
-  if (shouldReseed) {
+  // Corrupt native history is the one failure we can repair ourselves. Only an
+  // explicit adapter signal may trigger this destructive recovery; account,
+  // model-access, refusal, timeout, rate-limit, and outage errors retain history.
+  if (failure.threadCorrupt) {
     try {
-      await reseedThread(agentId);
+      await reseedThread(agentId, config.llmProvider);
       // Clear the streak so the repaired agent gets a clean run rather than
       // tripping the breaker on failures that predate the repair.
       await clearFailures(agentId);
       console.warn(
         `[${kind} ${agentId}] thread RESEEDED from core memory + last diary after ` +
-          `${failure.threadPoisoned ? "a poisoned-thread error" : `${n} permanent failures`}.`,
+          `an explicit ${failure.provider} native-thread corruption error.`,
       );
       return;
     } catch (reseedErr) {

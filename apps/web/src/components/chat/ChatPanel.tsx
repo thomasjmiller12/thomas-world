@@ -47,6 +47,7 @@ interface ChatPanelProps {
   // Tapping one re-focuses the conversation on them.
   present: ThomasId[];
   onAddress: (npcId: ThomasId) => void;
+  pendingReplies: number;
 }
 
 export function ChatPanel({
@@ -61,6 +62,7 @@ export function ChatPanel({
   focusNonce,
   present,
   onAddress,
+  pendingReplies,
 }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const [narrow, setNarrow] = useState(false);
@@ -127,7 +129,7 @@ export function ChatPanel({
   };
 
   const short = agentShortName(target.npcId);
-  const generating = !!streamingSpeaker && lines.some((l) => l.streaming);
+  const generating = pendingReplies > 0;
   // The context strip only reads while we haven't started talking.
   const showLately = phase === 'idle' && rows.length > 0;
 
@@ -267,7 +269,12 @@ export function ChatPanel({
               <button
                 key={id}
                 onClick={() => onAddress(id)}
-                title={`Talk to ${agentShortName(id)} Thomas`}
+                disabled={generating}
+                title={
+                  generating
+                    ? 'Wait for the pending replies before switching facets'
+                    : `Talk to ${agentShortName(id)} Thomas`
+                }
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -276,7 +283,8 @@ export function ChatPanel({
                   borderRadius: 999,
                   border: `1px solid ${c}33`,
                   background: `${c}12`,
-                  cursor: 'pointer',
+                  cursor: generating ? 'wait' : 'pointer',
+                  opacity: generating ? 0.5 : 1,
                   flexShrink: 0,
                 }}
               >

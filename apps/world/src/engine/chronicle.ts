@@ -19,13 +19,13 @@ import type {
   ChronicleTurn,
   ArtifactSummary,
 } from "@town/contract";
-import type Anthropic from "@anthropic-ai/sdk";
 import { eq } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { renderLine } from "./feed.js";
-import { anthropic, hasLlm } from "../runtime/client.js";
-import { recordUsage } from "./usage.js";
-import { estimateCostUsd, tokensFromUsage } from "../runtime/pricing.js";
+import { config } from "../config.js";
+import { getLlmProvider, hasLlm } from "../runtime/llm/provider.js";
+import { resolveSystemModel } from "../runtime/llm/models.js";
+import { recordNormalizedUsage } from "./usage.js";
 import { attachIssue, regenerateIssue } from "./chronicle-issue.js";
 
 const { worldEvents, artifacts, threadSummaries } = schema;
@@ -261,10 +261,6 @@ interface CacheEntry {
 }
 const cache = new Map<string, CacheEntry>();
 
-// The model thread summaries run on (cheap, one-line). Literal so the usage row
-// records the model actually billed (mirrors chat.ts's suggested-replies model).
-const SUMMARY_MODEL = "claude-haiku-4-5";
-
 // Cap the number of summary generations per /chronicle request so a day with a
 // large backlog of un-summarized threads doesn't fan out an unbounded batch of
 // Haiku calls. The rest return summary: null and fill on later requests.
@@ -467,25 +463,20 @@ export async function regenerateDayIssue(dayUtc: string): Promise<ChronicleRespo
 // suggested-replies call attributes spend). Returns null on an empty result.
 async function summarizeThread(thread: ChronicleThread, dayUtc: string): Promise<string | null> {
   const transcript = threadTranscript(thread);
-  const res = await anthropic.beta.messages.create({
-    model: SUMMARY_MODEL,
-    max_tokens: 64,
-    messages: [
-      {
-        role: "user",
-        content:
-          "In at most 12 words, what was this conversation about? Reply with just the phrase.\n\n" +
-          transcript,
-      },
-    ],
-  });
+  const model = resolveSystemModel("chronicle", config.llmProvider);
+  const provider = getLlmProvider(model.provider);
   const attribution = thread.participants[0] ?? null;
-  await recordChronicleUsage(attribution, dayUtc, res.usage);
-  const summary = res.content
-    .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("")
-    .trim();
+  const summary = (
+    await provider.generateText({
+      model,
+      systemPrompt: "Summarize town conversations with a single concrete phrase.",
+      inputText:
+        "In at most 12 words, what was this conversation about? Reply with just the phrase.\n\n" +
+        transcript,
+      maxOutputTokens: 64,
+      onUsage: (usage) => recordChronicleUsage(attribution, dayUtc, usage),
+    })
+  ).trim();
   if (!summary) return null;
   // Persist (the row is keyed on threadId; a concurrent request could race to
   // insert the same id, so we tolerate a conflict by doing nothing).
@@ -510,19 +501,13 @@ async function summarizeThread(thread: ChronicleThread, dayUtc: string): Promise
 async function recordChronicleUsage(
   agentId: AgentId | null,
   dayUtc: string,
-  usage: Parameters<typeof tokensFromUsage>[0],
+  usage: Parameters<typeof recordNormalizedUsage>[0]["usage"],
 ): Promise<void> {
   try {
-    const t = tokensFromUsage(usage);
-    await recordUsage({
+    await recordNormalizedUsage({
       agentId,
-      model: SUMMARY_MODEL,
       tickId: `chronicle-${dayUtc}`,
-      inputTokens: t.inputTokens,
-      outputTokens: t.outputTokens,
-      cacheReadTokens: t.cacheReadTokens,
-      cacheWriteTokens: t.cacheWriteTokens,
-      estCostUsd: estimateCostUsd(SUMMARY_MODEL, t),
+      usage,
     });
   } catch (err) {
     console.warn(`[chronicle] usage record failed (${dayUtc}):`, (err as Error).message);

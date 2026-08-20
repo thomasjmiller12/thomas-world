@@ -16,6 +16,7 @@
 
 import type { AgentId } from "@town/contract";
 import type { TurnHandlers } from "./turn.js";
+import type { ProviderAttachment } from "./llm/types.js";
 
 export type AgentInput =
   // `note` is an optional directive cue folded into the tick's perceived delta
@@ -32,10 +33,9 @@ export type AgentInput =
       text: string;
       handlers: TurnHandlers;
     }
-  // A one-time dataset handoff: a prompt + a Files-API file_id attached to the
-  // turn as a container_upload, so the agent can analyze it in the code-exec
-  // sandbox. Interrupt-tier (runs promptly).
-  | { kind: "delivery"; fileId: string; prompt: string };
+  // A one-time provider-owned dataset handoff. The adapter translates it into
+  // that provider's code-execution attachment shape. Interrupt-tier.
+  | { kind: "delivery"; attachment: ProviderAttachment; prompt: string };
 
 // The structured result an executor returns (superset of the loop's TickResult).
 export interface ExecResult {

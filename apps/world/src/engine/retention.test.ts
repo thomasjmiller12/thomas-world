@@ -77,6 +77,7 @@ describe("aggregateUsageRows", () => {
   const row = (over: Partial<UsageRow>): UsageRow => ({
     day: "2026-07-01",
     agentId: "hobby",
+    provider: "anthropic",
     model: "claude-sonnet-5",
     inputTokens: 100,
     outputTokens: 10,
@@ -90,13 +91,14 @@ describe("aggregateUsageRows", () => {
     expect(aggregateUsageRows([])).toEqual([]);
   });
 
-  it("sums calls, tokens, and cost within one (day, agent, model) bucket", () => {
+  it("sums calls, tokens, and cost within one (day, agent, provider, model) bucket", () => {
     const rows = [row({}), row({ inputTokens: 50, outputTokens: 5, estCostUsd: 0.005 }), row({})];
     const buckets = aggregateUsageRows(rows);
     expect(buckets).toHaveLength(1);
     expect(buckets[0]).toMatchObject({
       day: "2026-07-01",
       agentId: "hobby",
+      provider: "anthropic",
       model: "claude-sonnet-5",
       calls: 3,
       inputTokens: 250,
@@ -105,15 +107,16 @@ describe("aggregateUsageRows", () => {
     });
   });
 
-  it("keeps separate buckets per day, per agent, and per model", () => {
+  it("keeps separate buckets per day, per agent, per provider, and per model", () => {
     const rows = [
       row({ day: "2026-07-01", agentId: "hobby" }),
       row({ day: "2026-07-02", agentId: "hobby" }), // different day
       row({ day: "2026-07-01", agentId: "career" }), // different agent
+      row({ day: "2026-07-01", agentId: "hobby", provider: "openai" }), // different provider
       row({ day: "2026-07-01", agentId: "hobby", model: "claude-haiku-4-5" }), // different model
     ];
     const buckets = aggregateUsageRows(rows);
-    expect(buckets).toHaveLength(4);
+    expect(buckets).toHaveLength(5);
     for (const b of buckets) expect(b.calls).toBe(1);
   });
 

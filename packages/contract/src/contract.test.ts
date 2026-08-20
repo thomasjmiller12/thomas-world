@@ -455,9 +455,19 @@ describe("M2 REST shapes round-trip", () => {
       ok: true,
       ts: "2026-06-11T10:00:00.000Z",
       llm: true,
+      provider: "openai",
+      providerConfigured: true,
+      models: {
+        agents: [
+          { agent: "builder", tick: "gpt-5.4", chat: "gpt-5.4" },
+        ],
+        chronicle: "gpt-5.4",
+        townCrier: "gpt-5.4",
+      },
       budgetExhausted: false,
     });
     expect(h.budgetExhausted).toBe(false);
+    expect(h.provider).toBe("openai");
   });
 
   it("validates an AgentStatus", () => {

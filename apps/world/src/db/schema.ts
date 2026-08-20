@@ -17,6 +17,7 @@ import {
   doublePrecision,
   index,
   primaryKey,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import type {
   AgentId,
@@ -140,25 +141,32 @@ export const agents = pgTable("agents", {
 });
 
 // --- agent_threads (M3: continuity) -----------------------------------------
-// Each agent's CONTINUOUS thread — the persisted `BetaMessageParam[]` that is
-// the agent's consciousness across ticks and chats (incl. server-side
-// compaction blocks, which round-trip verbatim — verified Phase 0). One row per
-// agent; `content` is loaded into the tool runner to resume and re-persisted
-// after every successful turn. `inputCursor` is the high-water world-event id
-// already folded into the thread as notice-push (the delta cursor). Like
+// Each agent's provider-native continuous thread, keyed independently by
+// (agent_id, provider). `inputCursor` is the high-water world-event id already
+// folded into the thread as notice-push (the delta cursor). Like
 // agent.locationId, **seed must NEVER reset this** — it's living state.
 //
-// `content` is intentionally loosely typed (`unknown[]`): importing the SDK's
-// ESM BetaMessageParam type here would break drizzle-kit's CJS schema loader
-// (same reason the enums above are inlined). engine/thread.ts casts.
-export const agentThreads = pgTable("agent_threads", {
-  agentId: text("agent_id", { enum: agentEnum }).primaryKey(),
-  content: jsonb("content").$type<unknown[]>().notNull().default([]),
-  inputCursor: bigint("input_cursor", { mode: "number" }),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+// `content` is intentionally loosely typed (`unknown[]`): provider adapters
+// own their native history shape, while the shared persistence layer treats it
+// as opaque JSON.
+export const agentThreads = pgTable(
+  "agent_threads",
+  {
+    agentId: text("agent_id", { enum: agentEnum }).notNull(),
+    provider: text("provider").notNull().default("anthropic"),
+    content: jsonb("content").$type<unknown[]>().notNull().default([]),
+    inputCursor: bigint("input_cursor", { mode: "number" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({
+      name: "agent_threads_agent_id_provider_pk",
+      columns: [t.agentId, t.provider],
+    }),
+  ],
+);
 
 // --- locations --------------------------------------------------------------
 export const locations = pgTable("locations", {
@@ -537,7 +545,9 @@ export const llmUsage = pgTable(
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     agentId: text("agent_id", { enum: agentEnum }),
+    provider: text("provider").notNull().default("anthropic"),
     model: text("model").notNull(),
+    endpoint: text("endpoint").notNull().default("turn"),
     // The tick/chat id this call belonged to (free-form correlation key).
     tickId: text("tick_id"),
     inputTokens: integer("input_tokens").notNull().default(0),
@@ -551,7 +561,7 @@ export const llmUsage = pgTable(
 );
 
 // --- llm_usage_daily (retention rollup, 2026-07-30) -------------------------
-// A day × agent × model rollup of llm_usage, written by engine/retention.ts
+// A day × agent × provider × model rollup of llm_usage, written by engine/retention.ts
 // immediately before it deletes the raw per-call rows it summarizes — so
 // historical cost analysis ("what did last quarter cost") survives after the
 // raw ledger is pruned. `spendTodayUsd`/`spendTodayForAgent` (engine/usage.ts)
@@ -560,7 +570,7 @@ export const llmUsage = pgTable(
 // `agentId` uses the sentinel "_system" (engine/retention.ts SYSTEM_AGENT_KEY)
 // for llm_usage rows recorded with a null agentId (Town Crier / Chronicle
 // summary calls — see chronicle.ts/chronicle-issue.ts) instead of allowing
-// NULL here, so (day, agent_id, model) can be a real, NOT-NULL composite
+// NULL here, so the daily composite keys can stay NOT NULL
 // primary key with a clean `ON CONFLICT` upsert — Postgres NULLs never
 // collide under a unique constraint, which would silently break idempotency.
 export const llmUsageDaily = pgTable(
@@ -568,6 +578,7 @@ export const llmUsageDaily = pgTable(
   {
     day: text("day").notNull(), // YYYY-MM-DD, UTC
     agentId: text("agent_id").notNull(), // an AgentId, or SYSTEM_AGENT_KEY
+    provider: text("provider").notNull().default("anthropic"),
     model: text("model").notNull(),
     calls: integer("calls").notNull().default(0),
     inputTokens: integer("input_tokens").notNull().default(0),
@@ -577,7 +588,12 @@ export const llmUsageDaily = pgTable(
     estCostUsd: doublePrecision("est_cost_usd").notNull().default(0),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.day, t.agentId, t.model] })],
+  (t) => [
+    primaryKey({
+      name: "llm_usage_daily_day_agent_id_provider_model_pk",
+      columns: [t.day, t.agentId, t.provider, t.model],
+    }),
+  ],
 );
 
 // --- outbox (queued outbound email when Resend is absent, brief) ------------

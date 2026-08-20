@@ -21,11 +21,13 @@
     "@hono/node-server": "^1.13.7",
     "@langfuse/otel": "^5.4.1",
     "@langfuse/tracing": "^5.4.1",
+    "@openai/agents": "0.16.1",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/sdk-node": "^0.219.0",
     "@town/contract": "workspace:*",
     "drizzle-orm": "^0.38.3",
     "hono": "^4.6.14",
+    "openai": "7.5.0",
     "pg": "^8.13.1",
     "yaml": "^2.6.1",
     "zod": "^4.4.3"

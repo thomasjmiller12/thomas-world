@@ -21,6 +21,7 @@ import {
   reconnectDelayMs,
 } from '@/lib/world/mapping';
 import { SseParser, isHeartbeat } from '@/lib/world/sse';
+import { PendingChatMessages } from '@/lib/world/pending-chat-messages';
 
 // Momentary events — animations, popups, bubbles — that must NOT replay when a
 // visitor joins (they'd fire stale: a phone ringing / a bit popping for an event
@@ -125,10 +126,11 @@ export class WorldClient {
   // The last applied snapshot, kept so resyncScene() can re-emit per-agent
   // status to a freshly-created NPCManager WITHOUT re-opening streams.
   private lastSnapshot: SnapshotResponse | null = null;
-  // Single-slot queue: a visitor send that arrives while a turn is streaming is
-  // parked here and flushed when the current turn's stream finishes (one body,
-  // one turn at a time). Newer sends overwrite an older queued one.
-  private queuedMessage: string | null = null;
+  // Every optimistic visitor line is retained in FIFO order and one drain loop
+  // owns session creation + POST-SSE turns. This prevents rapid sends from
+  // overwriting each other or racing two session opens.
+  private readonly pendingMessages = new PendingChatMessages<ThomasId>();
+  private drainingMessages = false;
 
   // Observe mode (spectator): never registers a visitor, never reports
   // location, never interacts or chats — reads only (snapshot + SSE without a
@@ -572,33 +574,41 @@ export class WorldClient {
   // --- chat lifecycle -------------------------------------------------------
 
   // The single chat entry point (M2.1): the visitor speaks first — there is no
-  // greeting. If no session exists for this agent, POST /chats to create one
-  // (with the mid-thought 409 retry loop), then stream the visitor's line via
-  // POST /chats/:id/messages. A send that arrives while a turn is streaming is
-  // queued (single slot) and flushed when the current stream finishes.
+  // greeting. Sends are always enqueued, then one drain loop creates/reuses the
+  // correct session and streams every visitor line in FIFO order.
   async sendMessage(agentId: ThomasId, text: string): Promise<void> {
     if (this.observe) return;
     if (!text.trim()) return;
 
-    // A turn is already streaming for the active session → queue this send and
-    // let the streamTurn finally-block flush it (one body, one turn at a time).
-    if (this.activeChat && this.activeChat.abort) {
-      this.queuedMessage = text;
-      return;
-    }
+    this.pendingMessages.enqueue({ agentId, text });
+    await this.drainPendingMessages();
+  }
 
-    // No session (or a session for a different agent) → open one first.
-    if (!this.activeChat || this.activeChat.primaryAgent !== agentId) {
-      const opened = await this.openSession(agentId);
-      if (!opened) return; // openSession surfaced the error
-    }
+  private async drainPendingMessages(): Promise<void> {
+    if (this.drainingMessages) return;
+    this.drainingMessages = true;
+    try {
+      for (;;) {
+        const message = this.pendingMessages.dequeue();
+        if (!message) break;
 
-    const chat = this.activeChat;
-    if (!chat) return;
-    await this.streamTurn(
-      `${this.baseUrl}/chats/${encodeURIComponent(chat.sessionId)}/messages`,
-      { text }
-    );
+        // No session (or the queued line targets a different facet) → switch
+        // sessions only after the previous turn has fully settled.
+        if (!this.activeChat || this.activeChat.primaryAgent !== message.agentId) {
+          const opened = await this.openSession(message.agentId);
+          if (!opened) continue; // openSession surfaced the error
+        }
+
+        const chat = this.activeChat;
+        if (!chat || chat.primaryAgent !== message.agentId) continue;
+        await this.streamTurn(
+          `${this.baseUrl}/chats/${encodeURIComponent(chat.sessionId)}/messages`,
+          { text: message.text }
+        );
+      }
+    } finally {
+      this.drainingMessages = false;
+    }
   }
 
   // Create a session for an agent (POST /chats). Closes any prior session first
@@ -611,7 +621,7 @@ export class WorldClient {
       EventBus.emit('chat-error', { npcId: agentId, reason: 'not-connected' });
       return false;
     }
-    this.closeActiveChat();
+    this.closeActiveChat({ clearPending: false });
 
     const MID_THOUGHT_RETRIES = 3;
     const MID_THOUGHT_DELAY_MS = 4_000;
@@ -685,11 +695,13 @@ export class WorldClient {
         signal: abort.signal,
       });
     } catch {
+      if (this.activeChat === chat && chat.abort === abort) chat.abort = null;
       EventBus.emit('chat-error', { npcId: chat.primaryAgent, reason: 'stream-failed' });
       return;
     }
 
     if (!res.ok || !res.body) {
+      if (this.activeChat === chat && chat.abort === abort) chat.abort = null;
       EventBus.emit('chat-error', { npcId: chat.primaryAgent, reason: `error-${res.status}` });
       return;
     }
@@ -713,7 +725,7 @@ export class WorldClient {
     } finally {
       // Clear the abort only if it's still ours (a chat_ended frame may have
       // torn the session down mid-stream).
-      if (this.activeChat === chat) chat.abort = null;
+      if (this.activeChat === chat && chat.abort === abort) chat.abort = null;
     }
 
     // The stream ended without its terminal frame and wasn't aborted by us →
@@ -724,12 +736,6 @@ export class WorldClient {
       await this.recoverDroppedTurn(chat);
     }
 
-    // Flush a single queued send (a visitor line typed while this turn streamed).
-    if (this.queuedMessage && this.activeChat === chat) {
-      const text = this.queuedMessage;
-      this.queuedMessage = null;
-      await this.sendMessage(chat.primaryAgent, text);
-    }
   }
 
   private handleChatFrame(data: string): void {
@@ -953,9 +959,9 @@ export class WorldClient {
 
   // Visitor-initiated teardown: tells the server to close the session (POST
   // /close), aborts any in-flight stream, and clears local state.
-  private closeActiveChat(): void {
+  private closeActiveChat({ clearPending = true }: { clearPending?: boolean } = {}): void {
     const chat = this.activeChat;
-    if (!this.teardownActiveChat()) return;
+    if (!this.teardownActiveChat(clearPending)) return;
     void fetch(`${this.baseUrl}/chats/${encodeURIComponent(chat!.sessionId)}/close`, {
       method: 'POST',
       headers: { 'x-session-token': chat!.sessionToken },
@@ -965,8 +971,8 @@ export class WorldClient {
   // Local teardown WITHOUT a POST /close — used when the server already ended
   // the session (a chat_ended frame). Clears ping/abort/queue/activeChat.
   // Returns true iff there was an active chat to tear down.
-  private teardownActiveChat(): boolean {
-    this.queuedMessage = null;
+  private teardownActiveChat(clearPending = true): boolean {
+    if (clearPending) this.pendingMessages.clear();
     const chat = this.activeChat;
     if (!chat) return false;
     this.activeChat = null;

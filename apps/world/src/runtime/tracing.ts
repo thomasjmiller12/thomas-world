@@ -106,19 +106,16 @@ export function startTrace(
   if (!config.features.langfuse || !api) return noopTrace;
 
   try {
+    const metadata = { provider: config.llmProvider, ...opts.metadata };
     const { startObservation, LangfuseOtelSpanAttributes } = api;
-    const root = startObservation(name, { input: opts.metadata });
+    const root = startObservation(name, { input: metadata });
     const span = root.otelSpan;
     // Trace-level attributes (plan §4.1): name, userId, sessionId, metadata.
     span.setAttribute(LangfuseOtelSpanAttributes.TRACE_NAME, name);
     if (opts.userId) span.setAttribute(LangfuseOtelSpanAttributes.TRACE_USER_ID, opts.userId);
     if (opts.sessionId)
       span.setAttribute(LangfuseOtelSpanAttributes.TRACE_SESSION_ID, opts.sessionId);
-    if (opts.metadata)
-      span.setAttribute(
-        LangfuseOtelSpanAttributes.TRACE_METADATA,
-        JSON.stringify(opts.metadata),
-      );
+    span.setAttribute(LangfuseOtelSpanAttributes.TRACE_METADATA, JSON.stringify(metadata));
 
     const traceId = span.spanContext().traceId;
     return {

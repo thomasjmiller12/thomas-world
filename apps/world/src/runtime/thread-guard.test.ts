@@ -13,8 +13,8 @@
 // either one was verified against the live API to restore the thread to 200 OK.
 
 import { describe, it, expect } from "vitest";
-import { stripForPersist } from "./turn.js";
-import type { ThreadMessage } from "../engine/thread.js";
+import { stripForPersist } from "./llm/anthropic/history.js";
+import type { AnthropicThreadMessage as ThreadMessage } from "./llm/anthropic/history.js";
 
 // Shaped exactly like the real msgs[1066] that killed Researcher.
 const poisoned: ThreadMessage[] = [

@@ -9,6 +9,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { agentIds, type AgentId } from "@town/contract";
+import { config } from "../config.js";
+import type { LlmProviderName, ModelRef } from "./llm/types.js";
 
 // src/runtime → ../../ is the apps/world package root (where souls/ + roles/ live).
 const here = dirname(fileURLToPath(import.meta.url));
@@ -16,8 +18,10 @@ const PKG_ROOT = join(here, "..", "..");
 
 export interface RoleConfig {
   tickCadenceMinutes: number;
-  tickModel: string;
-  chatModel: string;
+  tickModels: Record<LlmProviderName, string>;
+  chatModels: Record<LlmProviderName, string>;
+  tickModel: ModelRef;
+  chatModel: ModelRef;
   dailyTokenBudgetUsd: number;
 }
 
@@ -61,12 +65,34 @@ export function baseSoul(): string {
   return baseSoulCache;
 }
 
+function requireModelMap(
+  raw: Record<string, unknown>,
+  key: "tick_models" | "chat_models",
+  id: AgentId,
+): Record<LlmProviderName, string> {
+  const value = raw[key];
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`roles/${id}.yaml must define ${key}.anthropic and ${key}.openai`);
+  }
+  const map = value as Record<string, unknown>;
+  const anthropic = typeof map.anthropic === "string" ? map.anthropic.trim() : "";
+  const openai = typeof map.openai === "string" ? map.openai.trim() : "";
+  if (!anthropic || !openai) {
+    throw new Error(`roles/${id}.yaml must define non-empty ${key}.anthropic and ${key}.openai`);
+  }
+  return { anthropic, openai };
+}
+
 function loadRole(id: AgentId): RoleConfig {
   const raw = parseYaml(loadText(join("roles", `${id}.yaml`))) as Record<string, unknown>;
+  const tickModels = requireModelMap(raw, "tick_models", id);
+  const chatModels = requireModelMap(raw, "chat_models", id);
   return {
     tickCadenceMinutes: Number(raw.tick_cadence_minutes ?? 12),
-    tickModel: String(raw.tick_model ?? "claude-haiku-4-5"),
-    chatModel: String(raw.chat_model ?? "claude-opus-4-8"),
+    tickModels,
+    chatModels,
+    tickModel: { provider: config.llmProvider, model: tickModels[config.llmProvider] },
+    chatModel: { provider: config.llmProvider, model: chatModels[config.llmProvider] },
     dailyTokenBudgetUsd: Number(raw.daily_token_budget ?? 1.5),
   };
 }

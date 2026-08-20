@@ -11,7 +11,8 @@
 //      / resend / vault on|off) so degraded integrations are obvious at a glance.
 //   3. Serve — start the Hono API + SSE.
 //   4. Scheduler — start the in-process agent scheduler (staggered idle ticks,
-//      dynamic rate, nightly reflection, vault sync). No-op without ANTHROPIC_API_KEY.
+//      dynamic rate, nightly reflection, vault sync). No-op without the selected
+//      provider's API key.
 //   5. Graceful shutdown — stop the scheduler, stop accepting connections, drain
 //      the DB pool, then exit.
 
@@ -82,6 +83,16 @@ async function clearStaleChats(): Promise<void> {
 
 // Warn loudly about misconfigurations that would silently break the soak.
 function bootConfigWarnings(): void {
+  const selectedKey =
+    config.llmProvider === "anthropic"
+      ? { name: "ANTHROPIC_API_KEY", present: Boolean(config.anthropicApiKey) }
+      : { name: "OPENAI_API_KEY", present: Boolean(config.openaiApiKey) };
+  if (!selectedKey.present) {
+    console.warn(
+      `[boot] ${selectedKey.name} is missing for selected provider ${config.llmProvider} — LLM workloads are disabled.`,
+    );
+  }
+
   // /admin/tick is unguarded when neither ADMIN_TOKEN nor NODE_ENV=production is
   // set — it would be publicly callable on a Railway public domain.
   if (!config.adminToken && config.nodeEnv !== "production") {

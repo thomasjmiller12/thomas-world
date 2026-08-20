@@ -92,7 +92,8 @@ import { runTick } from "../runtime/loop.js";
 import { circuitBroken } from "../runtime/failures.js";
 import { isActiveHours } from "../runtime/clock.js";
 import { getProfile } from "../runtime/roles.js";
-import { hasLlm } from "../runtime/client.js";
+import { activeProviderConfiguration, hasLlm } from "../runtime/llm/provider.js";
+import { resolveSystemModel } from "../runtime/llm/models.js";
 import { flushTracing } from "../runtime/tracing.js";
 import {
   createSession,
@@ -115,10 +116,22 @@ import {
   IN_FICTION_429,
   sessionTurnDecision,
 } from "./rate-limit.js";
+import { parseProviderAttachment } from "./delivery.js";
 
 const agentSet = new Set<string>(agentIds);
 const locationSet = new Set<string>(locationIds);
 const artifactKindSet = new Set<string>(artifactKinds);
+
+function selectedModelSummary() {
+  return {
+    agents: agentIds.map((agent) => {
+      const role = getProfile(agent).role;
+      return { agent, tick: role.tickModel.model, chat: role.chatModel.model };
+    }),
+    chronicle: resolveSystemModel("chronicle", config.llmProvider).model,
+    townCrier: resolveSystemModel("townCrier", config.llmProvider).model,
+  };
+}
 
 function isAgentId(v: unknown): v is AgentId {
   return typeof v === "string" && agentSet.has(v);
@@ -194,14 +207,16 @@ export function createApp() {
   const limits = createRateLimiters();
 
   // --- health -------------------------------------------------------------
-  // {ok, ts, llm, budgetExhausted} (design doc §5): llm = model provider
-  // configured; budgetExhausted = today's spend met the global daily ceiling.
+  // Provider-aware health (design doc §5): selected provider/key/model metadata
+  // is public, credentials never are. budgetExhausted = today's spend met the
+  // global daily ceiling.
   // Shared body for /health and /health/agents. The two differ ONLY in status
   // code — see the route comments below for why that split matters.
   async function healthBody() {
     const [budgetExhausted, agentRows] = await Promise.all([isBudgetExhausted(), allAgents()]);
     const now = Date.now();
     const dormant = !isActiveHours();
+    const providerState = activeProviderConfiguration();
 
     const agents = agentRows.map((a) => ({
       id: a.id,
@@ -228,13 +243,20 @@ export function createApp() {
     if (!dormant && !budgetExhausted && stale.length === agents.length && agents.length > 0) {
       reasons.push(`no agent has completed a turn in ${Math.round(staleThresholdSec / 60)}m`);
     }
-    if (!hasLlm()) reasons.push("no model provider configured");
+    if (!providerState.configured) {
+      reasons.push(
+        `${providerState.missingEnv} missing for selected provider ${config.llmProvider}`,
+      );
+    }
 
     const ok = reasons.length === 0;
     return validated(HealthResponse, {
       ok,
       ts: new Date().toISOString(),
-      llm: hasLlm(),
+      llm: providerState.configured,
+      provider: config.llmProvider,
+      providerConfigured: providerState.configured,
+      models: selectedModelSummary(),
       budgetExhausted,
       dormant,
       agents,
@@ -995,9 +1017,8 @@ export function createApp() {
     return c.json(result);
   });
 
-  // --- POST /admin/deliver {agent, fileId, prompt} ------------------------
-  // Hand an agent a dataset (a Files-API file_id) attached to a turn, with a
-  // prompt to analyze it via the code-execution sandbox. One-time handoff.
+  // --- POST /admin/deliver {agent, attachment, prompt} --------------------
+  // Hand an agent a provider-owned dataset attached to one code-execution turn.
   app.post("/admin/deliver", async (c) => {
     if (config.adminToken) {
       if (c.req.header("x-admin-token") !== config.adminToken) {
@@ -1007,11 +1028,18 @@ export function createApp() {
       return c.json({ error: "forbidden" }, 403);
     }
     const body = await c.req.json().catch(() => ({}));
-    const { agent, fileId, prompt } = body ?? {};
+    const { agent, attachment: attachmentInput, prompt } = body ?? {};
     if (!isAgentId(agent)) return c.json({ error: "unknown agent" }, 404);
-    if (typeof fileId !== "string" || !fileId) return c.json({ error: "fileId required" }, 400);
     if (typeof prompt !== "string" || !prompt) return c.json({ error: "prompt required" }, 400);
-    const result = await enqueue(agent, { kind: "delivery", fileId, prompt });
+    const parsedAttachment = parseProviderAttachment(attachmentInput, config.llmProvider);
+    if (!parsedAttachment.ok) {
+      return c.json({ error: parsedAttachment.error }, parsedAttachment.status);
+    }
+    const result = await enqueue(agent, {
+      kind: "delivery",
+      attachment: parsedAttachment.attachment,
+      prompt,
+    });
     await flushTracing();
     return c.json(result);
   });
@@ -1055,6 +1083,11 @@ export function createApp() {
         spendTodayUsd: spend,
         feed: feed.items,
         openCapabilityRequests: capabilities,
+        llm: {
+          provider: config.llmProvider,
+          configured: hasLlm(),
+          models: selectedModelSummary(),
+        },
       }),
     );
   });
