@@ -1,14 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const appendEvent = vi.hoisted(() => vi.fn().mockResolvedValue({ id: "event-1" }));
 const getAgent = vi.hoisted(() => vi.fn().mockResolvedValue({ locationId: "workshop" }));
-vi.mock("../engine/events.js", () => ({ appendEvent }));
 vi.mock("../engine/agents.js", () => ({ getAgent }));
 
-import { actionSummary, emitAgentActed, relatedActionIds } from "./action-event.js";
+import { actionSummary, buildAgentActedEvent, relatedActionIds } from "./action-event.js";
 
 describe("semantic agent actions", () => {
-  beforeEach(() => appendEvent.mockClear());
+  beforeEach(() => getAgent.mockClear());
 
   it("summarizes actions without exposing private tool prose", () => {
     const args = {
@@ -44,8 +42,8 @@ describe("semantic agent actions", () => {
     ]);
   });
 
-  it("emits a public agent.acted event without serializing the raw result", async () => {
-    await emitAgentActed({
+  it("builds a public agent.acted outbox event without serializing private data", async () => {
+    const event = await buildAgentActedEvent({
       actionId: "action-1",
       agentId: "builder",
       tool: "send_dm",
@@ -54,7 +52,7 @@ describe("semantic agent actions", () => {
       result: "private provider result",
     });
 
-    expect(appendEvent).toHaveBeenCalledWith({
+    expect(event).toEqual({
       type: "agent.acted",
       agentId: "builder",
       locationId: "workshop",
@@ -68,7 +66,7 @@ describe("semantic agent actions", () => {
         relatedIds: [{ kind: "agent", id: "writer" }],
       },
     });
-    expect(JSON.stringify(appendEvent.mock.calls[0][0])).not.toContain("private message");
-    expect(JSON.stringify(appendEvent.mock.calls[0][0])).not.toContain("private provider result");
+    expect(JSON.stringify(event)).not.toContain("private message");
+    expect(JSON.stringify(event)).not.toContain("private provider result");
   });
 });

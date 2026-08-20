@@ -25,6 +25,7 @@ import { startScheduler, stopScheduler } from "./runtime/scheduler.js";
 import { endSession } from "./runtime/chat.js";
 import { initTracing, shutdownTracing } from "./runtime/tracing.js";
 import { reconcileBudgets } from "./runtime/roles.js";
+import { flushPendingSemanticActions } from "./runtime/action-journal.js";
 
 // Confirm the DB is reachable and the schema has been migrated. We probe a core
 // table (`agents`) rather than auto-running migrations — applying migrations is
@@ -128,6 +129,12 @@ async function main(): Promise<void> {
   await initTracing();
 
   await migrationsCheck();
+  const semanticRepair = await flushPendingSemanticActions();
+  if (semanticRepair.found) {
+    console.log(
+      `[boot] semantic action outbox: ${semanticRepair.published}/${semanticRepair.found} published, ${semanticRepair.failed} failed.`,
+    );
+  }
   await clearStaleChats();
 
   // Boot summary — log feature flags up front, before the scheduler ticks.

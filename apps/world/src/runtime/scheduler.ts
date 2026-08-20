@@ -22,6 +22,7 @@ import { gt, sql } from "drizzle-orm";
 import { syncVault, pushAgentNotes } from "./vault.js";
 import { sweepStaleChats } from "./chat.js";
 import { runRetentionSweep } from "../engine/retention.js";
+import { flushPendingSemanticActions } from "./action-journal.js";
 
 // Fallback cadence used only when computing the next delay itself fails (e.g. a
 // transient DB error in the visitor-presence query). Keeps the agent rescheduling
@@ -283,9 +284,19 @@ let phaseTimer: NodeJS.Timeout | null = null;
 let vaultTimer: NodeJS.Timeout | null = null;
 let chatSweepTimer: NodeJS.Timeout | null = null;
 let retentionTimer: NodeJS.Timeout | null = null;
+let semanticOutboxTimer: NodeJS.Timeout | null = null;
 
 export function startScheduler(): void {
   if (running) return;
+  // Semantic story rows are a durable outbox concern, not an LLM concern.
+  // Keep repairing them even if the selected provider is temporarily absent.
+  if (!semanticOutboxTimer) {
+    semanticOutboxTimer = setInterval(() => {
+      void flushPendingSemanticActions().catch((err) =>
+        console.error("[scheduler] semantic outbox sweep failed:", (err as Error).message),
+      );
+    }, 60_000);
+  }
   const providerState = activeProviderConfiguration();
   if (!providerState.configured) {
     console.warn(
@@ -361,4 +372,6 @@ export function stopScheduler(): void {
   if (vaultTimer) clearInterval(vaultTimer);
   if (chatSweepTimer) clearInterval(chatSweepTimer);
   if (retentionTimer) clearInterval(retentionTimer);
+  if (semanticOutboxTimer) clearInterval(semanticOutboxTimer);
+  semanticOutboxTimer = null;
 }

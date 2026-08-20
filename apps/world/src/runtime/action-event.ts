@@ -1,12 +1,7 @@
-import type { AgentId } from "@town/contract";
-import { appendEvent } from "../engine/events.js";
+import type { AgentId, RelatedActionId } from "@town/contract";
+import type { AppendEventInput } from "../engine/events.js";
 import { getAgent } from "../engine/agents.js";
 import type { ToolEffect, ToolResult } from "./llm/tool.js";
-
-export interface RelatedActionId {
-  kind: "agent" | "artifact" | "location" | "message" | "object" | "request" | "session" | "visitor";
-  id: string;
-}
 
 function record(args: unknown): Record<string, unknown> {
   return args && typeof args === "object" && !Array.isArray(args)
@@ -110,20 +105,20 @@ export function relatedActionIds(tool: string, args: unknown): RelatedActionId[]
   return related;
 }
 
-export async function emitAgentActed(input: {
+export async function buildAgentActedEvent(input: {
   actionId: string;
   agentId: AgentId;
   tool: string;
   effect: Exclude<ToolEffect, "read">;
   args: unknown;
   result: ToolResult;
-}): Promise<void> {
+}): Promise<AppendEventInput> {
   // `result` is accepted to keep the successful tool result in this boundary,
   // but intentionally never serialized; it may contain private prose.
   void input.result;
   const relatedIds = relatedActionIds(input.tool, input.args);
   const agent = await getAgent(input.agentId).catch(() => undefined);
-  await appendEvent({
+  return {
     type: "agent.acted",
     agentId: input.agentId,
     locationId: agent?.locationId ?? null,
@@ -136,5 +131,5 @@ export async function emitAgentActed(input: {
       actionId: input.actionId,
       ...(relatedIds.length ? { relatedIds } : {}),
     },
-  });
+  };
 }

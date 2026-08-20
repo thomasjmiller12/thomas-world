@@ -1,16 +1,21 @@
 import { createHash } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import type { AgentId } from "@town/contract";
 import { db, schema } from "../db/client.js";
+import {
+  materializeEventRow,
+  publishCommittedEvent,
+  type AppendEventInput,
+} from "../engine/events.js";
 import type {
   ToolResult,
   TownFunctionTool,
   TownTool,
   TownToolInvocationContext,
 } from "./llm/tool.js";
-import { emitAgentActed } from "./action-event.js";
+import { buildAgentActedEvent } from "./action-event.js";
 
-const { agentActionJournal } = schema;
+const { agentActionJournal, worldEvents } = schema;
 
 function canonical(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
@@ -68,7 +73,12 @@ async function runJournaledAction(options: {
       .select()
       .from(agentActionJournal)
       .where(eq(agentActionJournal.id, id));
-    if (existing?.status === "completed") return existing.result as ToolResult;
+    if (existing?.status === "completed") {
+      await publishPendingSemanticAction(id).catch((error) =>
+        console.error(`[action-journal] semantic event retry failed for ${id}:`, (error as Error).message),
+      );
+      return existing.result as ToolResult;
+    }
     // Every external tool is required to forward this journal id as its own
     // provider/storage idempotency key. That makes the ambiguous crash window
     // safe to resume, unlike an ordinary world write whose outcome may need a
@@ -94,20 +104,29 @@ async function runJournaledAction(options: {
         applied = true;
       },
     } satisfies TownToolInvocationContext);
+    const semanticEvent =
+      applied && options.tool.effect !== "read" && options.emitSemantic !== false
+        ? await buildAgentActedEvent({
+            actionId: id,
+            agentId: options.agentId,
+            tool: options.tool.name,
+            effect: options.tool.effect,
+            args: options.args,
+            result,
+          })
+        : null;
     await db
       .update(agentActionJournal)
-      .set({ status: "completed", result, completedAt: new Date() })
-      .where(eq(agentActionJournal.id, id));
-    if (applied && options.tool.effect !== "read" && options.emitSemantic !== false) {
-      await emitAgentActed({
-        actionId: id,
-        agentId: options.agentId,
-        tool: options.tool.name,
-        effect: options.tool.effect,
-        args: options.args,
+      .set({
+        status: "completed",
         result,
-      }).catch((error) =>
-        console.warn(`[action-journal] semantic event failed for ${id}:`, (error as Error).message),
+        semanticEvent: semanticEvent as Record<string, unknown> | null,
+        completedAt: new Date(),
+      })
+      .where(eq(agentActionJournal.id, id));
+    if (semanticEvent) {
+      await publishPendingSemanticAction(id).catch((error) =>
+        console.error(`[action-journal] semantic event failed for ${id}:`, (error as Error).message),
       );
     }
     return result;
@@ -123,6 +142,83 @@ async function runJournaledAction(options: {
       .catch(() => undefined);
     throw error;
   }
+}
+
+/**
+ * Publish one queued semantic action exactly once.
+ *
+ * The journal row is locked while the append-only event and its marker are
+ * committed in the same transaction. A crash can therefore leave both absent
+ * (safe to retry) or both present (already done), never an unmarked duplicate.
+ */
+export async function publishPendingSemanticAction(actionId: string): Promise<number | null> {
+  const eventRow = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select id from agent_action_journal where id = ${actionId} for update`,
+    );
+    const [row] = await tx
+      .select({
+        semanticEvent: agentActionJournal.semanticEvent,
+        semanticEventId: agentActionJournal.semanticEventId,
+      })
+      .from(agentActionJournal)
+      .where(eq(agentActionJournal.id, actionId));
+    if (!row?.semanticEvent || row.semanticEventId !== null) return null;
+
+    const input = row.semanticEvent as unknown as AppendEventInput;
+    const [inserted] = await tx
+      .insert(worldEvents)
+      .values({
+        type: input.type,
+        agentId: input.agentId ?? null,
+        locationId: input.locationId ?? null,
+        visitorId: input.visitorId ?? null,
+        visibility: input.visibility,
+        payload: input.payload,
+      })
+      .returning();
+    await tx
+      .update(agentActionJournal)
+      .set({ semanticEventId: inserted.id, semanticEmittedAt: new Date() })
+      .where(eq(agentActionJournal.id, actionId));
+    return inserted;
+  });
+
+  if (!eventRow) return null;
+  publishCommittedEvent(materializeEventRow(eventRow));
+  return eventRow.id;
+}
+
+export async function flushPendingSemanticActions(limit = 100): Promise<{
+  found: number;
+  published: number;
+  failed: number;
+}> {
+  const pending = await db
+    .select({ id: agentActionJournal.id })
+    .from(agentActionJournal)
+    .where(
+      and(
+        eq(agentActionJournal.status, "completed"),
+        isNotNull(agentActionJournal.semanticEvent),
+        isNull(agentActionJournal.semanticEventId),
+      ),
+    )
+    .limit(limit);
+  let published = 0;
+  let failed = 0;
+  for (const row of pending) {
+    try {
+      if ((await publishPendingSemanticAction(row.id)) !== null) published++;
+    } catch (error) {
+      failed++;
+      console.error(
+        `[action-journal] pending semantic event failed for ${row.id}:`,
+        (error as Error).message,
+      );
+    }
+  }
+  return { found: pending.length, published, failed };
 }
 
 export function journalMutatingTools(

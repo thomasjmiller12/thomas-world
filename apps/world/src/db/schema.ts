@@ -622,12 +622,21 @@ export const agentActionJournal = pgTable(
     status: text("status").notNull().default("started"),
     result: jsonb("result"),
     error: text("error"),
+    // Public-safe event input queued atomically with completion. The action
+    // journal doubles as a transactional outbox: a boot/interval repair can
+    // publish any completed action whose semanticEventId is still null.
+    semanticEvent: jsonb("semantic_event").$type<Record<string, unknown>>(),
+    semanticEventId: bigint("semantic_event_id", { mode: "number" }),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
+    semanticEmittedAt: timestamp("semantic_emitted_at", { withTimezone: true }),
   },
   (t) => [
     uniqueIndex("agent_action_turn_tool_input_idx").on(t.turnId, t.toolName, t.inputHash),
     index("agent_action_agent_started_idx").on(t.agentId, t.startedAt),
+    index("agent_action_semantic_pending_idx")
+      .on(t.completedAt)
+      .where(sql`${t.semanticEvent} IS NOT NULL AND ${t.semanticEventId} IS NULL`),
   ],
 );
 

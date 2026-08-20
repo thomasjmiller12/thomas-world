@@ -26,20 +26,19 @@ export const AgentActivityPayload = z.object({
   activity: z.string(), // "working on X", "reading Y"
 });
 
+export const RelatedActionId = z.object({
+  kind: z.enum(["agent", "artifact", "location", "message", "object", "request", "session", "visitor"]),
+  id: z.string(),
+});
+export type RelatedActionId = z.infer<typeof RelatedActionId>;
+
 export const AgentActedPayload = z.object({
   agent: AgentId,
   tool: z.string(),
   effect: z.enum(["write", "external"]),
   summary: z.string(),
   actionId: z.string(),
-  relatedIds: z
-    .array(
-      z.object({
-        kind: z.enum(["agent", "artifact", "location", "message", "object", "request", "session", "visitor"]),
-        id: z.string(),
-      }),
-    )
-    .optional(),
+  relatedIds: z.array(RelatedActionId).optional(),
 });
 
 export const AgentThoughtPayload = z.object({

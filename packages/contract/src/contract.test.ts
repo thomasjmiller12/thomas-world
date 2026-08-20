@@ -20,6 +20,7 @@ import {
   ChronicleResponse,
   ExternalReference,
   PortfolioProof,
+  RelatedActionId,
 } from "./index.js";
 
 describe("id enums", () => {
@@ -38,6 +39,14 @@ describe("id enums", () => {
   it("covers the seven artifact kinds", () => {
     expect(ArtifactKind.parse("daily_digest")).toBe("daily_digest");
     expect(() => ArtifactKind.parse("tweet")).toThrow();
+  });
+
+  it("shares one related-action identifier schema across event and REST surfaces", () => {
+    expect(RelatedActionId.parse({ kind: "artifact", id: "art-1" })).toEqual({
+      kind: "artifact",
+      id: "art-1",
+    });
+    expect(() => RelatedActionId.parse({ kind: "transcript", id: "private-1" })).toThrow();
   });
 });
 

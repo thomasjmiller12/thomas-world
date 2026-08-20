@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { AgentId, LocationId, DayPhase } from "./ids.js";
 import { ArtifactKind } from "./artifacts.js";
-import { WorldEvent, WorldEventType } from "./events.js";
+import { RelatedActionId, WorldEvent, WorldEventType } from "./events.js";
 import { WorldObject, SemanticZone } from "./objects.js";
 import { ShareCard } from "./share-cards.js";
 
@@ -527,14 +527,7 @@ export const ChronicleItem = z.discriminatedUnion("kind", [
     tool: z.string(),
     summary: z.string(),
     actionId: z.string(),
-    relatedIds: z
-      .array(
-        z.object({
-          kind: z.enum(["agent", "artifact", "location", "message", "object", "request", "session", "visitor"]),
-          id: z.string(),
-        }),
-      )
-      .optional(),
+    relatedIds: z.array(RelatedActionId).optional(),
   }),
 ]);
 export type ChronicleItem = z.infer<typeof ChronicleItem>;
