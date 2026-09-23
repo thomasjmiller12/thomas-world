@@ -35,6 +35,13 @@ Agents never see the frontend (no screenshots/pixels) — only the world delta t
 - OpenAI strict tool schemas must be closed and tuple-free: do not use an open `z.record(...)` or `z.tuple(...)` in the OpenAI function-tool wire shape. `runtime/llm/openai/tools.test.ts` converts the complete production tool surface and rejects tuple-form `items`; keep that regression test current when tools change.
 - `world.phase` controls day/night presentation and the scheduler's passive-tick window; `world.awake` means visitor-interactive availability and must not become false merely because it is night. Visitor chat is interrupt-driven and remains available overnight unless the hard daily budget is exhausted.
 - Visitor room chat is canonical world state: `chat_session_participants` owns the active roster (one visitor + at most two facets), `chat_messages` is one private shared transcript, and `chat_sessions.agent_id` is only the stable opening facet/back-compat attribution. A visitor message is persisted once, directed to the explicit/named/last speaker, then the other member gets one bounded tool-free `[pass]` interjection opportunity. `done` closes one speaker turn; `response_done` closes the whole visitor response. Nonmember `agent.spoke` remains ambient canvas speech and must never be inserted into the private transcript.
+- Every continuous turn declares its purpose. Dynamic date, purpose, and current evidence belong in the input below the stable system prefix. Reflection instructions end with that turn; hosted code execution is unavailable for reflection and room interjections. Capture one town-local date for a reflection's input and saved diary title.
+- `/health` checks operational liveness; `/health/behavior` diagnoses bounded public-event evidence and may return 503 for repetition/date drift. It must not trigger thread resets. Diaries and activity labels are not progress; `agent.rested` records deliberate silence and closes earlier repetition episodes without inventing work.
+
+## Verification
+
+- Build `@town/contract` before tests/typecheck because workspace exports resolve to `dist`. New event types also need the inline text-enum in `apps/world/src/db/schema.ts` and the exhaustive web event mapper; the database column itself is text.
+- Real database tests are opt-in: `ROOM_CHAT_TEST_DATABASE_URL` uses a unique temporary schema on localhost; `LIVING_PROJECT_TEST_DATABASE_URL` requires a dedicated localhost database whose name starts with `town_living_test`. Never point them at production. CI provisions pgvector/Postgres and runs both.
 
 ## Stack decisions (full rationale in the plan §2)
 
