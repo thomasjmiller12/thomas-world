@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import {
   CreateContributionRequest, RespondToContributionInput,
   type AgentId, type ArtifactContribution, type ArtifactRevision, type ArtifactRevisionSummary,
@@ -88,7 +88,7 @@ export async function createContribution(artifactId: string, input: unknown) {
   return { contribution: await toContribution(result.row, visitorId), created: result.created };
 }
 
-/** Untrusted visitor prose, never runtime instructions. Oldest unresolved work first. */
+/** Untrusted visitor prose. Unanswered work must not hide behind old blockers. */
 export async function pendingContributionsForAgent(agentId: AgentId) {
   const rows = await db.select({
     id: contributions.id, artifactId: contributions.artifactId, artifactTitle: artifacts.title,
@@ -96,7 +96,10 @@ export async function pendingContributionsForAgent(agentId: AgentId) {
     status: contributions.status, createdAt: contributions.createdAt,
   }).from(contributions).innerJoin(artifacts, eq(artifacts.id, contributions.artifactId))
     .where(and(eq(contributions.agentId, agentId), inArray(contributions.status, [...unresolved])))
-    .orderBy(asc(contributions.updatedAt), asc(contributions.id)).limit(10);
+    .orderBy(
+      sql`case ${contributions.status} when 'pending' then 0 when 'accepted' then 1 else 2 end`,
+      asc(contributions.updatedAt), asc(contributions.id),
+    ).limit(10);
   return Promise.all(rows.map(async (r) => {
     const [latest] = await db.select({ response: responses.response }).from(responses)
       .where(eq(responses.contributionId, r.id)).orderBy(desc(responses.createdAt), desc(responses.id)).limit(1);

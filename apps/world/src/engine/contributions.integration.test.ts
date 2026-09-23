@@ -254,4 +254,28 @@ describe.skipIf(!connection)("living projects on real Postgres", () => {
     const pending = await engine.pendingContributionsForAgent("builder");
     expect(pending.length).toBeLessThanOrEqual(10);
   });
+
+  it("surfaces a new pending suggestion ahead of ten older blocked suggestions", async () => {
+    // Use a different owner so fixtures from other tests cannot crowd this queue.
+    await db.update(schema.artifacts).set({ agentId: "hobby" }).where(eq(schema.artifacts.id, artifactId));
+    const old = new Date(Date.now() - 2 * 86_400_000);
+    await db.insert(schema.artifactContributions).values(Array.from({ length: 10 }, () => ({
+      id: randomUUID(), artifactId, agentId: "hobby" as const, visitorId,
+      requestId: randomUUID(), contributorName: "Earlier visitor", text: "Waiting on a blocker",
+      status: "blocked" as const, createdAt: old, updatedAt: old,
+    })));
+    const pendingId = randomUUID();
+    const acceptedId = randomUUID();
+    await db.insert(schema.artifactContributions).values([
+      { id: pendingId, artifactId, agentId: "hobby", visitorId, requestId: randomUUID(), contributorName: "New visitor", text: "New idea", status: "pending" },
+      { id: acceptedId, artifactId, agentId: "hobby", visitorId, requestId: randomUUID(), contributorName: "New visitor", text: "Work underway", status: "accepted" },
+    ]);
+    const queue = (await engine.pendingContributionsForAgent("hobby")).filter((r) => r.artifactId === artifactId);
+    expect(queue).toHaveLength(10);
+    expect(queue[0].id).toBe(pendingId);
+    expect(queue[1].id).toBe(acceptedId);
+    expect(queue.slice(2).every((r) => r.status === "blocked")).toBe(true);
+    // Preserve repeatability when using a previously initialized local test DB.
+    await db.update(schema.artifactContributions).set({ status: "declined" }).where(eq(schema.artifactContributions.artifactId, artifactId));
+  });
 });
