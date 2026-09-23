@@ -52,6 +52,7 @@ import {
   sanitizeVisitorText,
   getSession,
   getChatTranscript,
+  priorVisitorContext,
   chatParticipantsCoLocated,
   activeChatSessionForAgent,
   leaveSession,
@@ -61,19 +62,6 @@ import {
 export const SLEEPING_BUDGET = "sleeping (budget)";
 
 // --- episodic memory of people ----------------------------------------------
-// Ask Hindsight what this agent remembers about a person, for the delta's
-// "Things you recall that may be relevant" section. Soft-fails to undefined:
-// episodic memory being down must never stop a reply.
-async function recallAboutVisitor(agentId: AgentId, name: string): Promise<string | undefined> {
-  try {
-    const r = await hindsight.recall(agentId, `conversations and visits with ${name}`, 600);
-    const text = r.ok ? r.text?.trim() : undefined;
-    return text ? text : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 // Write a finished conversation into episodic memory, so the NEXT visit has
 // something to recall. This closes the gap Hobby Thomas filed itself on Day 19:
 // "visits (P-Thomas's in particular) don't auto-log to episodic memory unless
@@ -420,12 +408,11 @@ async function runVisitorInput(
   // the agent a display name and nothing else — so an agent with a rich model of
   // Thomas in core memory greeted him with "your name's literally 'P-Thomas'
   // too, funny coincidence". Two things fix that: the acquaintance fact (how many
-  // times we've talked, how long ago) and an actual RECALL against episodic
-  // memory, folded into the delta through the `recallText` seam that has been
-  // sitting unused since M3. Both are best-effort — neither may block a reply.
+  // times we've talked, how long ago) and a bounded prior transcript for this
+  // exact visitor identity. Both are best-effort — neither may block a reply.
   const history = await historyFor(agentId, input.visitorId, sessionId).catch(() => null);
   const recallText = history?.priorSessions
-    ? await recallAboutVisitor(agentId, history.name)
+    ? await priorVisitorContext(agentId, input.visitorId, sessionId)
     : undefined;
 
   // The visitor's words ride on a fresh world delta so the agent answers from
@@ -451,7 +438,7 @@ async function runVisitorInput(
   const responseInstruction = input.mode === "interject"
     ? `You are the second facet in a shared room conversation. Another facet has already answered. Add one short, natural interjection only if you have something genuinely distinct and useful to contribute. Do not repeat, summarize, or merely agree. You have no tools on this beat. If the room is better without another voice, reply with exactly [pass].`
     : `Whatever you write as plain text is spoken back to them, streamed word-for-word — so just talk, don't narrate what you're about to do (do it quietly with a tool instead). How you respond is entirely yours: engage warmly, be brief, or stay in your own world if that's truer to the moment — they share the town with you, they aren't an audience you owe a performance. You keep all your tools. One thing to watch: if you use a tool mid-turn, don't let your last line be just a recap while whatever you found sits unsaid. When your own part in a conversation has run its course, say your goodbye and call leave_chat in the same message.`;
-  const inputText = `${obs.text}${roomContext}\n\n## A visitor speaks to the room\n${visitorName || "A visitor"} says: "${text}"\n${acquaintance}\n${responseInstruction}`;
+  const inputText = `${obs.text}${roomContext}\n\n## A visitor speaks to the room\nVisitor identity: ${input.visitorId}. Display names can be shared or changed; they do not identify another visitor. Do not disclose other visitors' private messages.\n${visitorName || "A visitor"} says: "${text}"\n${acquaintance}\n${responseInstruction}`;
 
   const ctx: AgentContext = {
     agentId,

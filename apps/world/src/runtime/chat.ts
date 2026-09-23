@@ -9,14 +9,13 @@
 //     sessions.
 
 import { randomUUID } from "node:crypto";
-import { eq, and, or, isNull, desc, asc } from "drizzle-orm";
+import { eq, ne, and, or, isNull, gte, lte, desc, asc } from "drizzle-orm";
 import type { AgentId, GetChatResponse, LocationId, ShareCard } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { getAgent, moveAgent, setActivity, setStatus } from "../engine/agents.js";
 import { isAdjacent } from "../engine/locations.js";
 import { getVisitor } from "../engine/visitors.js";
 import { appendEvent } from "../engine/events.js";
-import { identityIds } from "../engine/visitor-history.js";
 import { releaseAgentReservation, tryReserveAgent } from "./queue.js";
 import { withRoomLock } from "./room-lock.js";
 
@@ -646,16 +645,15 @@ export async function getChatTranscript(sessionId: string): Promise<GetChatRespo
 // broken rather than warm.
 //
 // This returns recent shared-room messages from sessions in which this facet
-// participated, so the panel can show "here's where you left off". Identity is
-// folded with identityIds() — the same heuristic the acquaintance line uses — so
-// a visitor whose row forked across devices still sees their own history.
+// participated, so the panel can show "here's where you left off". Private
+// history is owned by the exact token-authenticated visitor id. A matching
+// display name is not proof of identity or permission to read another visit.
 export async function priorConversationWith(
   agentId: AgentId,
   visitorId: string,
   opts: { excludeSessionId?: string; limit?: number } = {},
 ): Promise<{ messages: GetChatResponse["messages"]; lastAt: string | null }> {
   const limit = opts.limit ?? 20;
-  const aliasIds = await identityIds(visitorId);
 
   const rows = await db
     .select({
@@ -677,17 +675,19 @@ export async function priorConversationWith(
     )
     .where(
       and(
-        or(...aliasIds.map((id) => eq(chatSessions.visitorId, id))),
+        eq(chatSessions.visitorId, visitorId),
+        ne(chatMessages.sender, "operator"),
+        opts.excludeSessionId ? ne(chatSessions.id, opts.excludeSessionId) : undefined,
+        gte(chatMessages.ts, chatSessionParticipants.joinedAt),
+        or(isNull(chatSessionParticipants.leftAt), lte(chatMessages.ts, chatSessionParticipants.leftAt)),
       ),
     )
     // Newest-first so the LIMIT keeps the most recent exchange, then flipped
     // below — taking the oldest N would show the wrong end of a long history.
     .orderBy(desc(chatMessages.id))
-    .limit(limit + 40);
+    .limit(limit);
 
   const messages = rows
-    .filter((r) => r.sessionId !== opts.excludeSessionId && r.sender !== "operator")
-    .slice(0, limit)
     .reverse()
     .map((r) => ({
       id: String(r.id),
@@ -705,4 +705,21 @@ export async function priorConversationWith(
     messages,
     lastAt: messages.length ? messages[messages.length - 1].ts : null,
   };
+}
+
+// Automatic context and explicit visitor recall share the same verified
+// transcript boundary. Names and semantic similarity are not access checks.
+export async function priorVisitorContext(
+  agentId: AgentId,
+  visitorId: string,
+  excludeSessionId: string,
+): Promise<string | undefined> {
+  try {
+    const prior = await priorConversationWith(agentId, visitorId, { excludeSessionId, limit: 12 });
+    if (!prior.messages.length) return undefined;
+    return `Earlier conversation with visitor ${visitorId} (same browser identity):\n` +
+      prior.messages.map(message => `${message.sender}: ${message.body}`).join("\n").slice(-2_400);
+  } catch {
+    return undefined;
+  }
 }

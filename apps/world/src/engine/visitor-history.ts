@@ -15,7 +15,7 @@
 // recall on you specifically before you even said who you were, and nothing came
 // back." This module supplies the missing facts.
 
-import { and, desc, eq, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, lte } from "drizzle-orm";
 import type { AgentId } from "@town/contract";
 import { db, schema } from "../db/client.js";
 
@@ -39,46 +39,11 @@ export interface VisitorHistory {
   priorSessions: number;
   /** When the most recent PRIOR conversation with this agent started. */
   lastSeenAt: Date | null;
-  /** Every visitor row id folded into this identity (see `identityIds`). */
-  aliasIds: string[];
 }
 
-// PRIMARY identity is the durable `town.visitorId` the browser keeps in
-// localStorage — that alone covers the common case (same person, same browser,
-// returning weeks later) and is what makes this feature work at all.
-//
-// It still forks in practice: a different device, a cleared profile, or an
-// incognito window mints a fresh row. Production has three separate rows for
-// Thomas himself. So we ALSO fold rows sharing a case-insensitive display name.
-//
-// KNOWN LIMITATION, observed in real data — do not mistake this for solved.
-// `renameVisitor` overwrites `visitors.name` in place with no history, so the
-// fold only sees whoever someone is called RIGHT NOW. Thomas's 2026-07-13 row
-// (30e8b596) was "P-Thomas" during the conversation, was addressed as "Timtom",
-// and is stored today as "Sean" — so it will NOT fold with the 47-session
-// "P-Thomas" row from June. A durable cross-device identity needs either a
-// claimed handle or a name-history table; both are out of scope here.
-//
-// The fold is also a heuristic in the other direction: two different people who
-// both call themselves "Tom" get merged. That trade-off is acceptable for a
-// personal portfolio town (a false merge costs a slightly-wrong pleasantry; a
-// false split costs the product's core promise) but is NOT safe to carry into
-// anything multi-tenant.
-export async function identityIds(visitorId: string): Promise<string[]> {
-  const [self] = await db
-    .select({ id: visitors.id, name: visitors.name })
-    .from(visitors)
-    .where(eq(visitors.id, visitorId));
-  if (!self) return [visitorId];
-  const name = (self.name ?? "").trim();
-  if (!name) return [self.id];
-  const rows = await db
-    .select({ id: visitors.id })
-    .from(visitors)
-    .where(sql`lower(trim(${visitors.name})) = lower(${name})`);
-  const ids = new Set<string>([self.id, ...rows.map((r) => r.id)]);
-  return [...ids];
-}
+// The durable browser visitor id is the identity boundary. Display names are
+// unverified and editable; folding them joined strangers' private transcripts.
+// Cross-device continuity requires a separately verified account-link flow.
 
 /**
  * What this agent should know about this visitor on sight. `excludeSessionId` is
@@ -90,7 +55,6 @@ export async function historyFor(
   visitorId: string,
   excludeSessionId?: string,
 ): Promise<VisitorHistory | null> {
-  const aliasIds = await identityIds(visitorId);
   const [self] = await db
     .select({ name: visitors.name })
     .from(visitors)
@@ -113,7 +77,7 @@ export async function historyFor(
     .innerJoin(chatMessages, eq(chatMessages.sessionId, chatSessions.id))
     .where(
       and(
-        or(...aliasIds.map((id) => eq(chatSessions.visitorId, id))),
+        eq(chatSessions.visitorId, visitorId),
       ),
     )
     .orderBy(desc(chatSessions.startedAt));
@@ -126,7 +90,6 @@ export async function historyFor(
     name: self.name ?? "a visitor",
     priorSessions: days.size,
     lastSeenAt: prior[0]?.startedAt ?? null,
-    aliasIds,
   };
 }
 

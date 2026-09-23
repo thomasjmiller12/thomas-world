@@ -78,6 +78,7 @@ import {
   ChatRoomFullError,
   getSession,
   joinSession,
+  priorVisitorContext,
 } from "./chat.js";
 import {
   searchShareables,
@@ -1075,10 +1076,17 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
 
   const recall = defineTownTool({
     name: "recall",
-    description:
-      "Search your long-term episodic memory for things relevant to a query — past days, decisions, conversations. Returns what comes to mind.",
+    description: ctx.chatSessionId
+      ? "Read the current visitor's earlier private conversations with you. In visitor chat this returns only that verified visitor's transcript; it does not search other people's memories."
+      : "Search your long-term episodic memory for things relevant to a query — past days, decisions, conversations. Returns what comes to mind.",
     inputSchema: z.object({ query: z.string().min(1).max(500) }),
     run: async ({ query }) => {
+      if (ctx.chatSessionId) {
+        const session = await getSession(ctx.chatSessionId);
+        if (!session?.participants.includes(ctx.agentId)) return "This visitor conversation has ended.";
+        return await priorVisitorContext(ctx.agentId, session.visitorId, ctx.chatSessionId)
+          ?? "No earlier conversation is recorded for this visitor identity.";
+      }
       const r = await hindsight.recall(ctx.agentId, query);
       return clampText(r.text, 4_000, "recall with a more specific query");
     },

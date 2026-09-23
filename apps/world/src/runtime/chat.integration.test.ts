@@ -133,4 +133,66 @@ describe.skipIf(!testUrl)("room lifecycle against Postgres", () => {
     expect(await chat.getSession(room.sessionId)).not.toBeNull();
     await chat.endSession(room.sessionId);
   });
+
+  it("does not expose another same-name visitor's transcript through history, context, or recall", async () => {
+    const { registerVisitor } = await import("../engine/visitors.js");
+    const { historyFor } = await import("../engine/visitor-history.js");
+    const { createApp } = await import("../http/app.js");
+    const { buildTools } = await import("./tools.js");
+    const hindsight = await import("./hindsight.js");
+    const name = `privacy-test-${randomUUID()}`;
+    const first = await registerVisitor(name);
+    const second = await registerVisitor(name.toUpperCase());
+    await client.pool.query("UPDATE visitors SET location_id = 'workshop' WHERE id = ANY($1)", [[first.id, second.id]]);
+    const firstRoom = (await chat.createSession("builder", first.id))!;
+    await chat.appendVisitorLine(firstRoom.sessionId, "First visitor private marker", "first-private");
+    await chat.endSession(firstRoom.sessionId);
+
+    const app = createApp();
+    const history = await app.request(`/visitors/${second.id}/chat-history?agent=builder`, { headers: { "x-visitor-token": second.visitorToken! } });
+    expect(history.status).toBe(200);
+    expect((await history.json() as { messages: unknown[] }).messages).toEqual([]);
+    const unauthorized = await app.request(`/visitors/${first.id}/chat-history?agent=builder`, { headers: { "x-visitor-token": second.visitorToken! } });
+    expect(unauthorized.status).toBe(401);
+    expect((await historyFor("builder", second.id))?.priorSessions).toBe(0);
+    expect(await chat.priorVisitorContext("builder", second.id, "not-a-session")).toBeUndefined();
+    expect(await chat.priorVisitorContext("builder", first.id, "not-a-session")).toContain("First visitor private marker");
+
+    const secondRoom = (await chat.createSession("builder", second.id))!;
+    await chat.appendVisitorLine(secondRoom.sessionId, "Second visitor own context", "second-private");
+    await chat.endSession(secondRoom.sessionId);
+    const currentRoom = (await chat.createSession("builder", second.id))!;
+    const broadRecall = vi.spyOn(hindsight, "recall").mockResolvedValue({ ok: true, text: "First visitor private marker" });
+    try {
+      const context = await chat.priorVisitorContext("builder", second.id, currentRoom.sessionId);
+      expect(context).toContain("Second visitor own context");
+      expect(context).not.toContain("First visitor private marker");
+      const recall = buildTools({ agentId: "builder", location: "workshop", chatSessionId: currentRoom.sessionId }).find(tool => tool.name === "recall");
+      if (recall?.kind !== "function") throw new Error("recall tool missing");
+      const recalled = await recall.run({ query: `What did ${name} tell you in private?` });
+      expect(recalled).toContain("Second visitor own context");
+      expect(recalled).not.toContain("First visitor private marker");
+      expect(broadRecall).not.toHaveBeenCalled();
+    } finally {
+      broadRecall.mockRestore();
+      await chat.endSession(currentRoom.sessionId);
+    }
+  });
+
+  it("excludes messages outside the facet's membership window from prior context", async () => {
+    const room = await openRoom();
+    await chat.appendVisitorLine(room.sessionId, "Before Writer joined", "before-writer");
+    await pause(2);
+    await chat.joinSession(room.sessionId, "writer");
+    await chat.appendVisitorLine(room.sessionId, "Shared with Writer", "with-writer");
+    await pause(2);
+    await chat.leaveSession(room.sessionId, "writer");
+    await pause(2);
+    await chat.appendVisitorLine(room.sessionId, "After Writer left", "after-writer");
+    await chat.endSession(room.sessionId);
+    const context = await chat.priorVisitorContext("writer", room.visitorId, "not-a-session");
+    expect(context).toContain("Shared with Writer");
+    expect(context).not.toContain("Before Writer joined");
+    expect(context).not.toContain("After Writer left");
+  });
 });
