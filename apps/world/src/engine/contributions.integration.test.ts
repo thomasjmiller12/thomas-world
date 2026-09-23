@@ -218,7 +218,11 @@ describe.skipIf(!connection)("living projects on real Postgres", () => {
   it("rolls versions and artifact content back when the event cannot commit", async () => {
     await db.execute(sql.raw("CREATE OR REPLACE FUNCTION living_test_reject_event() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.type = 'artifact.updated' THEN RAISE EXCEPTION 'test rollback'; END IF; RETURN NEW; END $$"));
     await db.execute(sql.raw("CREATE TRIGGER living_test_reject_event BEFORE INSERT ON world_events FOR EACH ROW EXECUTE FUNCTION living_test_reject_event()"));
-    try { await expect(updateArtifact(artifactId, { body: "not committed" })).rejects.toThrow("test rollback"); }
+    try {
+      // Drizzle preserves PostgreSQL's trigger error as the query error cause.
+      await expect(updateArtifact(artifactId, { body: "not committed" })).rejects
+        .toMatchObject({ cause: expect.objectContaining({ message: "test rollback" }) });
+    }
     finally {
       await db.execute(sql.raw("DROP TRIGGER living_test_reject_event ON world_events"));
       await db.execute(sql.raw("DROP FUNCTION living_test_reject_event()"));

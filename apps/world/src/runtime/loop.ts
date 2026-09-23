@@ -41,6 +41,8 @@ import { runTurn, type TurnOutcome } from "./turn.js";
 import { runReflection } from "./reflection.js";
 import { isQuietReply } from "./turn-context.js";
 import { behaviorForAgent, behaviorContext, recordRest } from "../engine/behavior.js";
+import { pendingContributionsForAgent } from "../engine/contributions.js";
+import { contributionContext } from "./contribution-context.js";
 import {
   enqueue,
   registerExecutor,
@@ -230,11 +232,14 @@ async function runTickInput(agentId: AgentId, note?: string): Promise<TickResult
   const obs = await buildDelta(agentId);
   const ctx: AgentContext = { agentId, location: obs.location };
   const tools = buildTools(ctx);
-  const behavior = await behaviorForAgent(agentId);
+  const [behavior, pending] = await Promise.all([
+    behaviorForAgent(agentId), pendingContributionsForAgent(agentId),
+  ]);
   const inputText = [
     obs.text,
     `Current activity label: ${agent.activity ?? "unspecified"}. Correct it with set_activity if it no longer describes your work.`,
     behaviorContext(behavior),
+    contributionContext(pending),
     ...(note ? [`## Cue\n${note}`] : []),
   ].join("\n\n");
 

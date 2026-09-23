@@ -37,7 +37,9 @@ describe.skipIf(!testUrl)("room lifecycle against Postgres", () => {
       }
       const migration = await readFile(new URL(`../../drizzle/${entry.tag}.sql`, import.meta.url), "utf8");
       for (const statement of migration.split("--> statement-breakpoint")) {
-        if (statement.trim()) await client.pool.query(statement);
+        // Generated FKs name public explicitly. Retarget them along with the
+        // search path so this suite never references another suite's tables.
+        if (statement.trim()) await client.pool.query(statement.replaceAll('"public".', `"${schemaName}".`));
       }
     }
     chat = await import("./chat.js");
