@@ -1,6 +1,9 @@
 packages:
   - "apps/*"
   - "packages/*"
+# Remove Next 15's vulnerable internal pin; revisit when upgrading Next.
+overrides:
+  'next@15.5.26>postcss': '8.5.28'
 allowBuilds:
   protobufjs: true
   esbuild: true
