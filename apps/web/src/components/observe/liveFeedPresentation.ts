@@ -9,6 +9,7 @@ import type { FeedItem } from '@town/contract';
 // renderer.
 const NON_STORY_FEED_TYPES = new Set<NonNullable<FeedItem['type']>>([
   'chronicle.updated',
+  'agent.rested',
   'visitor.arrived',
   'visitor.left',
   'visitor.moved',

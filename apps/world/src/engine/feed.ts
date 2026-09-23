@@ -1,7 +1,7 @@
 // Human-readable rendering of world events for GET /feed and /debug — the
 // "day-in-the-life" surface (plan §5, §7). One line per event.
 
-import { and, desc, eq, lt, type SQL } from "drizzle-orm";
+import { and, desc, eq, lt, notInArray, type SQL } from "drizzle-orm";
 import type { WorldEvent, WorldEventType, AgentId, LocationId } from "@town/contract";
 import { db, schema } from "../db/client.js";
 
@@ -29,6 +29,8 @@ export async function renderLine(e: WorldEvent): Promise<string> {
         : `${await who(p.agent)} walked from ${p.from} to ${p.to}.`;
     case "agent.activity":
       return `${await who(p.agent)} is ${p.activity}.`;
+    case "agent.rested":
+      return `${await who(p.agent)} is taking a quiet moment.`;
     case "agent.acted":
       return `${await who(p.agent)} ${p.summary}.`;
     case "agent.thought":
@@ -121,7 +123,9 @@ export async function getFeed(
   cursor?: string,
   limit = 50,
 ): Promise<{ items: FeedRow[]; nextCursor: string | null; count: number }> {
-  const conds: SQL[] = [];
+  // Diagnostic silence and cache completion are not story entries. Filter
+  // before LIMIT so these frequent signals cannot bury actual visible work.
+  const conds: SQL[] = [notInArray(worldEvents.type, ["agent.rested", "chronicle.updated"])];
   if (agent) conds.push(eq(worldEvents.agentId, agent));
   if (cursor) {
     const n = Number(cursor);
