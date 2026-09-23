@@ -16,6 +16,9 @@ import {
   HealthResponse,
   FeedResponse,
   AgentStatus,
+  ChatMessageRequest,
+  JoinChatRequest,
+  JoinChatResponse,
   ChatStreamFrame,
   ChronicleResponse,
   ExternalReference,
@@ -175,6 +178,15 @@ describe("REST shapes round-trip", () => {
   });
 
   it("validates the chat stream frame annotations", () => {
+    expect(
+      ChatMessageRequest.parse({
+        text: "hi",
+        to: "writer",
+        requestId: "123e4567-e89b-42d3-a456-426614174000",
+      }).to,
+    ).toBe("writer");
+    expect(JoinChatRequest.parse({ agentId: "builder" }).agentId).toBe("builder");
+    expect(JoinChatResponse.parse({ participants: ["builder", "writer"] }).participants).toHaveLength(2);
     expect(ChatStreamFrame.parse({ type: "turn_started", agent: "writer" }).type).toBe("turn_started");
     expect(ChatStreamFrame.parse({ type: "text", text: "hi", agent: "writer" }).type).toBe("text");
     expect(
@@ -206,6 +218,10 @@ describe("REST shapes round-trip", () => {
     expect(
       ChatStreamFrame.parse({ type: "chat_ended", agent: "writer", reason: "heading off to write" }).type,
     ).toBe("chat_ended");
+    expect(
+      ChatStreamFrame.parse({ type: "participants", participants: ["builder", "writer"] }).type,
+    ).toBe("participants");
+    expect(ChatStreamFrame.parse({ type: "response_done" }).type).toBe("response_done");
   });
 
   it("validates a ChronicleResponse with each item kind", () => {
@@ -458,6 +474,14 @@ describe("M2 event payloads round-trip", () => {
       payload: { agent: "researcher", sessionId: "s1" },
     };
     expect(WorldEvent.parse(joinedFeed).type).toBe("chat.joined");
+    const left = {
+      id: "evt_m6b",
+      ts: "2026-06-11T10:03:45.000Z",
+      visibility: "private",
+      type: "chat.left",
+      payload: { agent: "researcher", reason: "stepped away" },
+    };
+    expect(WorldEvent.parse(left).type).toBe("chat.left");
     const converted = {
       id: "evt_m7",
       ts: "2026-06-11T10:04:00.000Z",
@@ -586,6 +610,7 @@ describe("M2 REST shapes round-trip", () => {
       sessionId: "s1",
       visitorId: "v1",
       participants: ["hobby"],
+      responses: [{ requestId: "request-1", completed: true }],
       messages: [
         { id: "m1", sender: "visitor", body: "hi", ts: "2026-06-11T10:00:00.000Z" },
         { id: "m2", sender: "hobby", body: "hey there", ts: "2026-06-11T10:00:05.000Z" },
@@ -593,6 +618,7 @@ describe("M2 REST shapes round-trip", () => {
     });
     expect(chat.messages[0].sender).toBe("visitor");
     expect(chat.messages[1].sender).toBe("hobby");
+    expect(chat.responses[0]).toEqual({ requestId: "request-1", completed: true });
     // operator rows are never exposed — `operator` is not a valid sender here
     expect(() =>
       GetChatResponse.parse({

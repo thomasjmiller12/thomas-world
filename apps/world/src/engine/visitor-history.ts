@@ -15,11 +15,11 @@
 // recall on you specifically before you even said who you were, and nothing came
 // back." This module supplies the missing facts.
 
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, lte, or, sql } from "drizzle-orm";
 import type { AgentId } from "@town/contract";
 import { db, schema } from "../db/client.js";
 
-const { chatSessions, chatMessages, visitors } = schema;
+const { chatSessions, chatSessionParticipants, chatMessages, visitors } = schema;
 
 export interface VisitorHistory {
   /** The stable visitor id this history was computed for. */
@@ -103,10 +103,16 @@ export async function historyFor(
   const rows = await db
     .selectDistinct({ id: chatSessions.id, startedAt: chatSessions.startedAt })
     .from(chatSessions)
+    .innerJoin(
+      chatSessionParticipants,
+      and(
+        eq(chatSessionParticipants.sessionId, chatSessions.id),
+        eq(chatSessionParticipants.agentId, agentId),
+      ),
+    )
     .innerJoin(chatMessages, eq(chatMessages.sessionId, chatSessions.id))
     .where(
       and(
-        eq(chatSessions.agentId, agentId),
         or(...aliasIds.map((id) => eq(chatSessions.visitorId, id))),
       ),
     )
@@ -144,17 +150,32 @@ export async function historyForMany(
  * A compact transcript of a finished conversation, for writing into episodic
  * memory. Bounded so a long session can't blow up a Hindsight item.
  */
-export async function transcriptDigest(sessionId: string, maxChars = 2_400): Promise<string | null> {
+export async function transcriptDigest(
+  sessionId: string,
+  perspectiveAgentId?: AgentId,
+  maxChars = 2_400,
+  until?: Date,
+): Promise<string | null> {
   const rows = await db
     .select({ sender: chatMessages.sender, body: chatMessages.body })
     .from(chatMessages)
-    .where(eq(chatMessages.sessionId, sessionId))
+    .where(
+      until
+        ? and(eq(chatMessages.sessionId, sessionId), lte(chatMessages.ts, until))
+        : eq(chatMessages.sessionId, sessionId),
+    )
     .orderBy(chatMessages.ts);
   if (rows.length === 0) return null;
   const lines: string[] = [];
   let used = 0;
   for (const r of rows) {
-    const who = r.sender === "visitor" ? "them" : "me";
+    if (r.sender === "operator") continue;
+    const who =
+      r.sender === "visitor"
+        ? "them"
+        : r.sender === "agent" || r.sender === perspectiveAgentId
+          ? "me"
+          : r.sender;
     const line = `${who}: ${r.body.replace(/\s+/g, " ").trim()}`;
     if (used + line.length > maxChars) {
       lines.push("…(rest of the conversation not kept)");

@@ -340,6 +340,8 @@ export function renderEvents(events: WorldEvent[], location: LocationId, viewer:
           return `- the ${p.fixture} ${p.effect}${p.agent ? ` (${p.agent})` : ""} in the ${p.location}`;
         case "chat.joined":
           return `- ${p.agent} joined a conversation`;
+        case "chat.left":
+          return `- ${p.agent} left a conversation${p.reason ? ` (${p.reason})` : ""}`;
         case "conversation.converted":
           return `- a conversation turned into a chat with a visitor`;
         case "chat.started":

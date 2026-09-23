@@ -5,6 +5,7 @@ import {
   GetVisitorResponse,
   CreateChatResponse,
   GetChatResponse,
+  JoinChatResponse,
   ChatHistoryResponse,
   ChatStreamFrame,
   worldEventTypes,
@@ -83,20 +84,18 @@ interface ActiveChat {
   sessionId: string;
   sessionToken: string;
   participants: AgentId[];
-  // primary agent — the one the visitor walked up to (drives the panel header).
+  // Currently addressed facet (drives the panel header and direct reply).
   primaryAgent: ThomasId;
   pingTimer: ReturnType<typeof setInterval> | null;
   abort: AbortController | null;
   // Accumulates streamed text per speaker so we can emit a whole ChatMessage on
   // turn completion (the React panel appends ChatMessage objects).
   turnText: Map<string, string>;
-  // Set when the in-flight stream has delivered its terminal frame (done /
-  // chat_ended). A stream that ENDS without one was killed mid-turn (proxy
+  // Set when the in-flight stream has delivered its whole-response terminal
+  // frame (response_done / chat_ended). A stream that ends without one was killed mid-turn (proxy
   // idle-timeout during a long tool round) → recoverDroppedTurn().
   streamSettled: boolean;
-  // The last agent messageId surfaced (done frame or recovery), so recovery can
-  // tell a NEW reply from the previous one in the transcript.
-  lastMessageId: string | null;
+  seenMessageIds: Set<string>;
 }
 
 // The single client that replaces AgentSimulator + InteractionSystem +
@@ -820,18 +819,25 @@ export class WorldClient {
         const message = this.pendingMessages.dequeue();
         if (!message) break;
 
-        // No session (or the queued line targets a different facet) → switch
-        // sessions only after the previous turn has fully settled.
-        if (!this.activeChat || this.activeChat.primaryAgent !== message.agentId) {
+        if (!this.activeChat) {
           const opened = await this.openSession(message.agentId);
           if (!opened) continue; // openSession surfaced the error
         }
 
         const chat = this.activeChat;
-        if (!chat || chat.primaryAgent !== message.agentId) continue;
+        if (!chat) continue;
+        // A queued line keeps its text, but not authority to re-invite someone
+        // who left during an earlier reply. Retarget it to the canonical room.
+        const addressed = chat.participants.includes(message.agentId)
+          ? message.agentId
+          : chat.participants.includes(chat.primaryAgent)
+            ? chat.primaryAgent
+            : chat.participants[0];
+        if (!addressed) continue;
+        chat.primaryAgent = addressed;
         await this.streamTurn(
           `${this.baseUrl}/chats/${encodeURIComponent(chat.sessionId)}/messages`,
-          { text: message.text }
+          { text: message.text, to: addressed }
         );
       }
     } finally {
@@ -897,14 +903,86 @@ export class WorldClient {
       abort: null,
       turnText: new Map(),
       streamSettled: true,
-      lastMessageId: null,
+      seenMessageIds: new Set(),
     };
     this.startPing();
-    EventBus.emit('chat-opened', { npcId: agentId });
+    EventBus.emit('chat-opened', {
+      npcId: agentId,
+      sessionId: session.sessionId,
+      participants: session.participants,
+    });
+    EventBus.emit('chat-participants', {
+      sessionId: session.sessionId,
+      participants: session.participants,
+      addressed: agentId,
+    });
     // Show the visitor where they left off. Fire-and-forget: history is a nicety
     // and must never delay or block the panel opening.
     void this.loadChatHistory(agentId, session.sessionId);
     return true;
+  }
+
+  async addressChat(agentId: ThomasId): Promise<boolean> {
+    const chat = this.activeChat;
+    if (!chat) return true;
+    if (!chat.participants.includes(agentId) && !(await this.joinChatParticipant(agentId))) {
+      return false;
+    }
+    if (this.activeChat !== chat || !chat.participants.includes(agentId)) return false;
+    chat.primaryAgent = agentId;
+    EventBus.emit('chat-participants', {
+      sessionId: chat.sessionId,
+      participants: chat.participants,
+      addressed: agentId,
+    });
+    return true;
+  }
+
+  private async joinChatParticipant(agentId: ThomasId): Promise<boolean> {
+    const chat = this.activeChat;
+    if (!chat) return false;
+    try {
+      const res = await fetch(
+        `${this.baseUrl}/chats/${encodeURIComponent(chat.sessionId)}/participants`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-session-token': chat.sessionToken,
+          },
+          body: JSON.stringify({ agentId }),
+        }
+      );
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { reason?: string };
+        if (this.activeChat === chat) {
+          EventBus.emit('chat-error', {
+            npcId: agentId,
+            sessionId: chat.sessionId,
+            reason: body.reason ?? `error-${res.status}`,
+          });
+        }
+        return false;
+      }
+      const joined = JoinChatResponse.parse(await res.json());
+      if (this.activeChat !== chat) return false;
+      chat.participants = joined.participants;
+      EventBus.emit('chat-participants', {
+        sessionId: chat.sessionId,
+        participants: joined.participants,
+        addressed: agentId,
+      });
+      return true;
+    } catch {
+      if (this.activeChat === chat) {
+        EventBus.emit('chat-error', {
+          npcId: agentId,
+          sessionId: chat.sessionId,
+          reason: 'server-down',
+        });
+      }
+      return false;
+    }
   }
 
   // Shared POST-SSE turn streamer: fetch + ReadableStream parse of
@@ -912,6 +990,7 @@ export class WorldClient {
   private async streamTurn(url: string, body: Record<string, unknown>): Promise<void> {
     const chat = this.activeChat;
     if (!chat) return;
+    const requestId = crypto.randomUUID();
     const abort = new AbortController();
     chat.abort = abort;
     chat.streamSettled = false;
@@ -924,7 +1003,7 @@ export class WorldClient {
           'content-type': 'application/json',
           'x-session-token': chat.sessionToken,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, requestId }),
         signal: abort.signal,
       });
     } catch {
@@ -954,7 +1033,7 @@ export class WorldClient {
         const chunk = decoder.decode(value, { stream: true });
         for (const msg of parser.feed(chunk)) {
           if (isHeartbeat(msg) || !msg.data) continue;
-          this.handleChatFrame(msg.data);
+          this.handleChatFrame(chat, msg.data);
         }
       }
     } catch {
@@ -970,14 +1049,13 @@ export class WorldClient {
     // panel got `memory_recalled`, never the text). The turn almost always
     // completes server-side — poll the transcript and surface the reply.
     if (!chat.streamSettled && !abort.signal.aborted && this.activeChat === chat) {
-      await this.recoverDroppedTurn(chat);
+      await this.recoverDroppedTurn(chat, requestId);
     }
 
   }
 
-  private handleChatFrame(data: string): void {
-    const chat = this.activeChat;
-    if (!chat) return;
+  private handleChatFrame(chat: ActiveChat, data: string): void {
+    if (this.activeChat !== chat) return;
     let parsed: unknown;
     try {
       parsed = JSON.parse(data);
@@ -1023,8 +1101,7 @@ export class WorldClient {
         const agent: ThomasId = frame.agent ?? chat.primaryAgent;
         const text = chat.turnText.get(agent) ?? '';
         chat.turnText.delete(agent);
-        chat.streamSettled = true;
-        chat.lastMessageId = frame.messageId;
+        chat.seenMessageIds.add(frame.messageId);
         EventBus.emit('chat-turn-done', {
           npcId: agent,
           sessionId: chat.sessionId,
@@ -1041,6 +1118,23 @@ export class WorldClient {
         EventBus.emit('npc-chat-response', message);
         break;
       }
+
+      case 'participants':
+        chat.participants = frame.participants;
+        if (!chat.participants.includes(chat.primaryAgent)) {
+          chat.primaryAgent = chat.participants[0];
+        }
+        EventBus.emit('chat-participants', {
+          sessionId: chat.sessionId,
+          participants: frame.participants,
+          addressed: chat.primaryAgent,
+        });
+        break;
+
+      case 'response_done':
+        chat.streamSettled = true;
+        EventBus.emit('chat-response-done', { sessionId: chat.sessionId });
+        break;
 
       case 'action':
         // The agent ran a tool mid-chat (walked, made something). Surface it as
@@ -1083,43 +1177,60 @@ export class WorldClient {
     }
   }
 
-  // Recovery for a mid-turn stream kill: poll the transcript until a NEW agent
-  // message appears (the turn finishing server-side), then surface it through
-  // the same EventBus events a live stream would have produced. The panel's
-  // open streaming bubble (with its memory chip) receives the text and closes.
-  private async recoverDroppedTurn(chat: ActiveChat): Promise<void> {
+  // Recovery for a mid-turn stream kill: replay every unseen agent row, but do
+  // not settle the visitor input until its durable response boundary is marked
+  // complete. The boundary is essential when the second facet silently passes.
+  private async recoverDroppedTurn(chat: ActiveChat, requestId: string): Promise<void> {
     for (let attempt = 0; attempt < 6; attempt++) {
       await new Promise((r) => setTimeout(r, attempt === 0 ? 2_000 : 5_000));
       if (this.activeChat !== chat) return; // closed / retargeted meanwhile
       const transcript = await this.rehydrateChat(chat.sessionId, chat.sessionToken);
       if (!transcript) continue;
-      const last = transcript.messages[transcript.messages.length - 1];
-      if (!last || last.sender === 'visitor') continue; // turn still running
-      if (last.id === chat.lastMessageId) continue; // no new reply yet
-      chat.lastMessageId = last.id;
-      const agent = last.sender as ThomasId;
-      const already = chat.turnText.get(agent) ?? '';
-      const missing = last.body.startsWith(already) ? last.body.slice(already.length) : last.body;
-      if (missing) {
-        EventBus.emit('chat-delta', { npcId: agent, sessionId: chat.sessionId, text: missing });
+      chat.participants = transcript.participants;
+      const unseen = transcript.messages.filter(
+        (message) => message.sender !== 'visitor' && !chat.seenMessageIds.has(message.id)
+      );
+      for (const message of unseen) {
+        const agent = message.sender as ThomasId;
+        if (!chat.turnText.has(agent)) {
+          chat.turnText.set(agent, '');
+          EventBus.emit('chat-turn-started', { npcId: agent, sessionId: chat.sessionId });
+        }
+        const already = chat.turnText.get(agent) ?? '';
+        const missing = message.body.startsWith(already)
+          ? message.body.slice(already.length)
+          : message.body;
+        if (missing) {
+          EventBus.emit('chat-delta', { npcId: agent, sessionId: chat.sessionId, text: missing });
+        }
+        chat.turnText.delete(agent);
+        for (const card of message.attachments ?? []) {
+          EventBus.emit('chat-share-card', { npcId: agent, sessionId: chat.sessionId, card });
+        }
+        chat.seenMessageIds.add(message.id);
+        EventBus.emit('chat-turn-done', {
+          npcId: agent,
+          sessionId: chat.sessionId,
+          messageId: message.id,
+        });
+        EventBus.emit('npc-chat-response', {
+          sender: agent,
+          senderName: NPC_CONFIGS[agent]?.displayName ?? agent,
+          text: message.body,
+          timestamp: Date.now(),
+        });
       }
-      chat.turnText.delete(agent);
-      // Re-surface any cards the agent shared on the dropped turn.
-      for (const card of last.attachments ?? []) {
-        EventBus.emit('chat-share-card', { npcId: agent, sessionId: chat.sessionId, card });
-      }
-      EventBus.emit('chat-turn-done', {
-        npcId: agent,
+      EventBus.emit('chat-participants', {
         sessionId: chat.sessionId,
-        messageId: last.id,
+        participants: chat.participants,
+        addressed: chat.primaryAgent,
       });
-      EventBus.emit('npc-chat-response', {
-        sender: agent,
-        senderName: NPC_CONFIGS[agent]?.displayName ?? agent,
-        text: last.body,
-        timestamp: Date.now(),
-      });
-      return;
+      const response = transcript.responses.find((item) => item.requestId === requestId);
+      if (response?.completed) {
+        chat.streamSettled = true;
+        EventBus.emit('chat-response-done', { sessionId: chat.sessionId });
+        return;
+      }
     }
     // Six polls (~27s) with nothing new — let the visitor know rather than
     // leaving a silently hung bubble.

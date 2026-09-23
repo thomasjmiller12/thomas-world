@@ -194,6 +194,14 @@ export const ChatJoinedPayload = z.object({
   agent: AgentId,
 });
 
+// One facet left a room chat while the shared session may remain open with
+// another facet. The session id follows the same private/public rule as join.
+export const ChatLeftPayload = z.object({
+  sessionId: z.string().optional(),
+  agent: AgentId,
+  reason: z.string().optional(),
+});
+
 /** @deprecated no longer emitted as of M2.1 — paced scenes removed; kept so historical world_events rows parse */
 // A paced scene was converted to a group chat (visitor interjected). Public;
 // no session linkage exposed (the chat is private to the interjecting visitor).
@@ -341,6 +349,7 @@ export const WorldEvent = z.discriminatedUnion("type", [
   z.object({ ...envelopeBase, type: z.literal("chat.started"), payload: ChatStartedPayload }),
   z.object({ ...envelopeBase, type: z.literal("chat.ended"), payload: ChatEndedPayload }),
   z.object({ ...envelopeBase, type: z.literal("chat.joined"), payload: ChatJoinedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("chat.left"), payload: ChatLeftPayload }),
   z.object({ ...envelopeBase, type: z.literal("conversation.converted"), payload: ConversationConvertedPayload }),
   z.object({ ...envelopeBase, type: z.literal("world.time"), payload: WorldTimePayload }),
   z.object({ ...envelopeBase, type: z.literal("object.created"), payload: ObjectCreatedPayload }),
@@ -379,6 +388,7 @@ export const worldEventTypes = [
   "chat.started",
   "chat.ended",
   "chat.joined",
+  "chat.left",
   "conversation.converted",
   "world.time",
   "object.created",

@@ -16,14 +16,14 @@ import type { ThomasId } from '@/lib/types';
 // hardcoded NPC per scene: ANY agent whose server-authoritative locationId maps
 // to this scene is rendered, and the sprite reflects the agent's live state —
 // arrivals walk in from the door, departures walk to the door and despawn, and
-// an agent the visitor is chatting with faces the player (but can still walk
-// away mid-chat — agent.moved keeps flowing for a chatting agent).
+// every agent in the visitor's room faces the player (and a deliberate
+// invite_visitor move still carries the whole room through agent.moved).
 //
 // Driven entirely by the typed EventBus (WorldClient / snapshot / DreamMode):
 //   npc-status        → authoritative location + engagement (spawn/despawn here)
 //   npc-move-to       → an agent changed location (arrival / departure animation)
-//   chat-opened       → the visitor engaged this agent (face the player)
-//   chat-closed/-ended → the chat ended (visitor- or agent-initiated)
+//   chat-opened/participants → canonical room members face the player
+//   chat-closed/-ended       → clear the whole room engagement
 //
 // One manager per scene. It tracks only agents currently in THIS scene's
 // locations; off-scene agents are not rendered (their life rides the roster +
@@ -80,8 +80,8 @@ export class NPCManager {
   };
 
   private readonly onMoveTo = (m: WorldEvents['npc-move-to']) => {
-    // An agent moved — walk its sprite even while it's chatting (a chatting
-    // agent retains full agency mid-chat: it can get up and walk away).
+    // An agent moved — walk its sprite even while it is in a room chat (for
+    // example, invite_visitor deliberately moves the whole room together).
     if (m.target) this.pendingTarget.set(m.npcId, m.target);
     const prev = this.agentLocations.get(m.npcId);
     this.agentLocations.set(m.npcId, m.to);
@@ -102,26 +102,37 @@ export class NPCManager {
   };
 
   private readonly onChatOpened = (c: WorldEvents['chat-opened']) => {
-    this.chatting.add(c.npcId);
-    this.applyStateFor(c.npcId);
+    this.replaceChatting(c.participants ?? [c.npcId]);
+  };
+
+  private readonly onChatParticipants = (c: WorldEvents['chat-participants']) => {
+    this.replaceChatting(c.participants);
   };
 
   // Both close paths (visitor-initiated chat-closed, agent-initiated chat-ended)
   // clear the chatting mark.
   private readonly onChatClosed = (c: WorldEvents['chat-closed']) => {
-    this.chatting.delete(c.npcId);
-    this.applyStateFor(c.npcId);
+    void c;
+    this.replaceChatting([]);
   };
 
   private readonly onChatEnded = (c: WorldEvents['chat-ended']) => {
-    this.chatting.delete(c.npcId);
-    this.applyStateFor(c.npcId);
+    void c;
+    this.replaceChatting([]);
   };
+
+  private replaceChatting(participants: ThomasId[]): void {
+    const changed = new Set<ThomasId>([...this.chatting, ...participants]);
+    this.chatting.clear();
+    for (const id of participants) this.chatting.add(id);
+    for (const id of changed) this.applyStateFor(id);
+  }
 
   private wire(): void {
     EventBus.on('npc-status', this.onStatus);
     EventBus.on('npc-move-to', this.onMoveTo);
     EventBus.on('chat-opened', this.onChatOpened);
+    EventBus.on('chat-participants', this.onChatParticipants);
     EventBus.on('chat-closed', this.onChatClosed);
     EventBus.on('chat-ended', this.onChatEnded);
   }
@@ -130,6 +141,7 @@ export class NPCManager {
     EventBus.off('npc-status', this.onStatus);
     EventBus.off('npc-move-to', this.onMoveTo);
     EventBus.off('chat-opened', this.onChatOpened);
+    EventBus.off('chat-participants', this.onChatParticipants);
     EventBus.off('chat-closed', this.onChatClosed);
     EventBus.off('chat-ended', this.onChatEnded);
   }

@@ -1,29 +1,26 @@
-// Visitor chat = a thin SESSION + TRANSCRIPT layer (M3). The conversation itself
-// no longer has its own LLM context: a visitor's message is an interrupt INPUT to
-// the agent's continuous thread (loop.ts runVisitorInput), and the agent's reply
-// is plain text it SPEAKS. This module only:
-//   - creates/ends a session (a routing record: which visitor ↔ which agent, + a
-//     per-session token) and emits chat.started / chat.ended presence events,
+// Visitor chat = a SESSION + SHARED TRANSCRIPT layer. The conversation itself
+// still lives in each facet's continuous thread (loop.ts); a room session merely
+// supplies canonical membership, routing, privacy, and one visible transcript.
+// This module:
+//   - creates/joins/leaves/ends a room (one visitor + at most two facets),
 //   - persists the visible transcript (chat_messages) so a dropped panel can
 //     rehydrate, fed by the loop's visitor turn (appendVisitorLine/appendAgentLine),
 //   - sanitizes visitor input, validates the session token, pings + sweeps stale
 //     sessions.
-//
-// Gone with M3: openChat's framing/engagement/LLM, runChatTurn, the director +
-// interject, group-chat perspectives, and the operator-note routing for fixture/
-// movement — the agent perceives those through its world delta now, not a stashed
-// note. The frontend is unchanged (same /chats endpoints + ChatStreamFrame).
 
 import { randomUUID } from "node:crypto";
 import { eq, and, or, isNull, desc, asc } from "drizzle-orm";
-import type { AgentId, GetChatResponse, ShareCard } from "@town/contract";
+import type { AgentId, GetChatResponse, LocationId, ShareCard } from "@town/contract";
 import { db, schema } from "../db/client.js";
-import { getAgent, setActivity, setStatus } from "../engine/agents.js";
+import { getAgent, moveAgent, setActivity, setStatus } from "../engine/agents.js";
+import { isAdjacent } from "../engine/locations.js";
 import { getVisitor } from "../engine/visitors.js";
 import { appendEvent } from "../engine/events.js";
 import { identityIds } from "../engine/visitor-history.js";
+import { releaseAgentReservation, tryReserveAgent } from "./queue.js";
+import { withRoomLock } from "./room-lock.js";
 
-const { chatSessions, chatMessages } = schema;
+const { chatSessions, chatSessionParticipants, chatMessages } = schema;
 
 // Strip anything that looks like an injected instruction from visitor input
 // before it reaches the model as plain user text (anti prompt-injection). We
@@ -56,6 +53,10 @@ export class ChatEngagedError extends Error {
   readonly reason = "engaged" as const;
 }
 
+export class ChatRoomFullError extends Error {
+  readonly reason = "room-full" as const;
+}
+
 export function sameChatLocation(
   visitorLocation: string | null | undefined,
   agentLocation: string | null | undefined,
@@ -68,8 +69,48 @@ export async function chatParticipantsCoLocated(agentId: AgentId, visitorId: str
   return sameChatLocation(visitor?.locationId, agent?.locationId);
 }
 
-// Open a session: a routing record + token. One visitor may hold an agent's open
-// session at a time; the partial unique index below the check closes the race.
+export async function getActiveParticipants(sessionId: string): Promise<AgentId[]> {
+  const rows = await db
+    .select({ agentId: chatSessionParticipants.agentId })
+    .from(chatSessionParticipants)
+    .where(
+      and(
+        eq(chatSessionParticipants.sessionId, sessionId),
+        isNull(chatSessionParticipants.leftAt),
+      ),
+    )
+    .orderBy(asc(chatSessionParticipants.joinedAt));
+  return rows.map((row) => row.agentId as AgentId);
+}
+
+export async function activeChatSessionForAgent(agentId: AgentId): Promise<string | null> {
+  const [row] = await db
+    .select({ sessionId: chatSessionParticipants.sessionId })
+    .from(chatSessionParticipants)
+    .innerJoin(chatSessions, eq(chatSessions.id, chatSessionParticipants.sessionId))
+    .where(
+      and(
+        eq(chatSessionParticipants.agentId, agentId),
+        isNull(chatSessionParticipants.leftAt),
+        isNull(chatSessions.endedAt),
+      ),
+    )
+    .limit(1);
+  return row?.sessionId ?? null;
+}
+
+export async function activeChatSessionForVisitor(visitorId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ sessionId: chatSessions.id })
+    .from(chatSessions)
+    .where(and(eq(chatSessions.visitorId, visitorId), isNull(chatSessions.endedAt)))
+    .limit(1);
+  return row?.sessionId ?? null;
+}
+
+// Open a session: a routing record + initial canonical member. One visitor has
+// one open room and one facet can occupy only one open room; partial unique
+// indexes close cross-process races.
 // Returns null if the agent or visitor does not exist.
 export async function createSession(
   agentId: AgentId,
@@ -81,15 +122,13 @@ export async function createSession(
   if (!visitor) return null;
   if (!sameChatLocation(visitor.locationId, agent.locationId)) throw new ChatPresenceError();
 
-  // Reconnect/reopen is idempotent for one embodied pair. A dropped close or a
-  // second tab no longer creates several simultaneous social bodies for the
-  // same continuous mind.
+  // Reconnect/reopen is idempotent when this facet is already in the visitor's
+  // open room. A different facet must use joinSession explicitly.
   const [existing] = await db
     .select()
     .from(chatSessions)
     .where(
       and(
-        eq(chatSessions.agentId, agentId),
         eq(chatSessions.visitorId, visitorId),
         isNull(chatSessions.endedAt),
       ),
@@ -97,6 +136,8 @@ export async function createSession(
     .orderBy(desc(chatSessions.startedAt))
     .limit(1);
   if (existing) {
+    const participants = await getActiveParticipants(existing.id);
+    if (!participants.includes(agentId)) throw new ChatEngagedError();
     const sessionToken = existing.sessionToken ?? randomUUID();
     if (!existing.sessionToken) {
       await db.update(chatSessions).set({ sessionToken }).where(eq(chatSessions.id, existing.id));
@@ -105,25 +146,24 @@ export async function createSession(
       sessionId: existing.id,
       agentId,
       visitorId,
-      participants: [agentId],
+      participants,
       sessionToken,
     };
   }
-  const [occupied] = await db
-    .select({ visitorId: chatSessions.visitorId })
-    .from(chatSessions)
-    .where(and(eq(chatSessions.agentId, agentId), isNull(chatSessions.endedAt)))
-    .limit(1);
-  if (occupied) throw new ChatEngagedError();
+
+  if (!tryReserveAgent(agentId)) throw new ChatEngagedError();
   const sessionId = randomUUID();
   const sessionToken = randomUUID();
   try {
-    await db.insert(chatSessions).values({ id: sessionId, agentId, visitorId, sessionToken });
+    await db.transaction(async (tx) => {
+      await tx.insert(chatSessions).values({ id: sessionId, agentId, visitorId, sessionToken });
+      await tx.insert(chatSessionParticipants).values({ sessionId, agentId });
+    });
   } catch (error) {
-    // The partial unique index closes the check→insert race between two
-    // visitors arriving at the same facet at once.
     if ((error as { code?: string }).code === "23505") throw new ChatEngagedError();
     throw error;
+  } finally {
+    releaseAgentReservation(agentId);
   }
   // chat.started is PUBLIC presence only — no sessionId (chat content is the
   // agent's spoken replies, which surface as agent.spoke in the room).
@@ -138,17 +178,120 @@ export async function createSession(
   return { sessionId, agentId, visitorId, participants: [agentId], sessionToken };
 }
 
+export async function joinSession(
+  sessionId: string,
+  agentId: AgentId,
+  opts: { allowAdjacent?: boolean } = {},
+): Promise<AgentId[]> {
+  const [session, agent] = await Promise.all([
+    db.select().from(chatSessions).where(eq(chatSessions.id, sessionId)).limit(1),
+    getAgent(agentId),
+  ]);
+  const current = session[0];
+  if (!current || current.endedAt || !agent) throw new ChatEngagedError();
+  const visitor = await getVisitor(current.visitorId);
+  if (!visitor) throw new ChatPresenceError();
+  let invitedTo: LocationId | undefined;
+  if (!sameChatLocation(visitor.locationId, agent.locationId)) {
+    const canWalkOver =
+      opts.allowAdjacent &&
+      visitor.locationId &&
+      agent.locationId &&
+      (await isAdjacent(agent.locationId as LocationId, visitor.locationId as LocationId));
+    if (!canWalkOver) throw new ChatPresenceError();
+    invitedTo = visitor.locationId as LocationId;
+  }
+
+  const already = await getActiveParticipants(sessionId);
+  if (already.includes(agentId)) return already;
+  // Do not let an invite turn a stale panel into a room spanning two physical
+  // locations. The visitor must first return to the current room (or close it).
+  for (const participant of already) {
+    if (!(await chatParticipantsCoLocated(participant, current.visitorId))) {
+      throw new ChatPresenceError();
+    }
+  }
+  if (!tryReserveAgent(agentId)) throw new ChatEngagedError();
+  let participants: AgentId[];
+  try {
+    participants = await db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select({ endedAt: chatSessions.endedAt })
+        .from(chatSessions)
+        .where(eq(chatSessions.id, sessionId))
+        .for("update");
+      if (!locked || locked.endedAt) throw new ChatEngagedError();
+
+      const active = await tx
+        .select({ agentId: chatSessionParticipants.agentId })
+        .from(chatSessionParticipants)
+        .where(
+          and(
+            eq(chatSessionParticipants.sessionId, sessionId),
+            isNull(chatSessionParticipants.leftAt),
+          ),
+        )
+        .orderBy(asc(chatSessionParticipants.joinedAt));
+      const participants = active.map((row) => row.agentId as AgentId);
+      if (participants.includes(agentId)) return participants;
+      if (participants.length >= 2) throw new ChatRoomFullError();
+
+      const [historical] = await tx
+        .select({ agentId: chatSessionParticipants.agentId })
+        .from(chatSessionParticipants)
+        .where(
+          and(
+            eq(chatSessionParticipants.sessionId, sessionId),
+            eq(chatSessionParticipants.agentId, agentId),
+          ),
+        )
+        .limit(1);
+      // One row intentionally represents one contiguous visibility window. A
+      // facet that chose to leave cannot be silently re-added to the same room;
+      // allowing it would overwrite joinedAt/leftAt and break transcript privacy.
+      if (historical) throw new ChatEngagedError();
+      await tx.insert(chatSessionParticipants).values({ sessionId, agentId });
+      return [...participants, agentId];
+    });
+  } catch (error) {
+    releaseAgentReservation(agentId);
+    if ((error as { code?: string }).code === "23505") throw new ChatEngagedError();
+    throw error;
+  }
+  try {
+    if (invitedTo) await moveAgent(agentId, invitedTo);
+    await appendEvent({
+      type: "chat.joined",
+      agentId,
+      visibility: "public",
+      payload: { agent: agentId },
+    });
+    await setStatus(agentId, "with a visitor");
+    await setActivity(agentId, `talking with ${visitor.name}`);
+    return participants;
+  } finally {
+    releaseAgentReservation(agentId);
+  }
+}
+
 // The session's agent + visitor (for routing a visitor message to the right
 // thread). Null if the session is unknown or already ended.
 export async function getSession(
   sessionId: string,
-): Promise<{ agentId: AgentId; visitorId: string } | null> {
+): Promise<{ agentId: AgentId; visitorId: string; participants: AgentId[] } | null> {
   const [s] = await db
     .select({ agentId: chatSessions.agentId, visitorId: chatSessions.visitorId, endedAt: chatSessions.endedAt })
     .from(chatSessions)
     .where(eq(chatSessions.id, sessionId));
   if (!s || s.endedAt) return null;
-  return { agentId: s.agentId as AgentId, visitorId: s.visitorId };
+  const participants = await getActiveParticipants(sessionId);
+  if (participants.length === 0) return null;
+  const primary = s.agentId as AgentId;
+  return {
+    agentId: participants.includes(primary) ? primary : participants[0],
+    visitorId: s.visitorId,
+    participants,
+  };
 }
 
 // Called once per session when it actually closes, AFTER the chat.ended event.
@@ -159,6 +302,7 @@ type SessionEndedHook = (args: {
   agentId: AgentId;
   visitorId: string;
   sessionId: string;
+  until: Date;
 }) => Promise<void>;
 
 let onSessionEnded: SessionEndedHook | null = null;
@@ -167,36 +311,148 @@ export function registerSessionEndedHook(fn: SessionEndedHook): void {
   onSessionEnded = fn;
 }
 
-export async function endSession(sessionId: string): Promise<void> {
-  // Atomically claim closure. leave_chat, the sweep, pagehide, and an explicit
-  // close can race; only the winner emits presence and writes episodic memory.
-  const [session] = await db
-    .update(chatSessions)
-    .set({ endedAt: new Date() })
-    .where(and(eq(chatSessions.id, sessionId), isNull(chatSessions.endedAt)))
-    .returning();
-  if (!session) return;
+async function finalizeMember(args: {
+  agentId: AgentId;
+  visitorId: string;
+  sessionId: string;
+  until: Date;
+  event: "chat.ended" | "chat.left";
+}): Promise<void> {
+  const { agentId, visitorId, sessionId, until, event } = args;
   await appendEvent({
-    type: "chat.ended",
-    agentId: session.agentId as AgentId,
+    type: event,
+    agentId,
     visibility: "public",
-    payload: { agent: session.agentId, visitorId: session.visitorId },
+    payload: event === "chat.ended" ? { agent: agentId, visitorId } : { agent: agentId },
   });
-  await setStatus(session.agentId as AgentId, "awake").catch(() => undefined);
-  await setActivity(session.agentId as AgentId, "wrapping up a visitor conversation").catch(
-    () => undefined,
-  );
-  if (onSessionEnded && session.visitorId) {
-    // Awaited so the write lands before a sweep-triggered teardown finishes, but
-    // never allowed to fail the close.
-    await onSessionEnded({
-      agentId: session.agentId as AgentId,
-      visitorId: session.visitorId,
-      sessionId,
-    }).catch((err) =>
-      console.warn(`[chat] session-ended hook failed for ${sessionId}:`, (err as Error).message),
+  await setStatus(agentId, "awake").catch(() => undefined);
+  await setActivity(
+    agentId,
+    event === "chat.ended"
+      ? "wrapping up a visitor conversation"
+      : "stepping away from a visitor conversation",
+  ).catch(() => undefined);
+  if (onSessionEnded) {
+    await onSessionEnded({ agentId, visitorId, sessionId, until }).catch((err) =>
+      console.warn(
+        `[chat] membership-ended hook failed for ${sessionId}/${agentId}:`,
+        (err as Error).message,
+      ),
     );
   }
+}
+
+export async function endSession(sessionId: string): Promise<void> {
+  const closedAt = new Date();
+  // Atomically claim closure and vacate every active membership. leave_chat,
+  // the sweep, pagehide, and an explicit close can race; only the winner emits.
+  const result = await db.transaction(async (tx) => {
+    const [session] = await tx
+      .update(chatSessions)
+      .set({ endedAt: closedAt })
+      .where(and(eq(chatSessions.id, sessionId), isNull(chatSessions.endedAt)))
+      .returning();
+    if (!session) return null;
+    const allMembers = await tx
+      .select({ agentId: chatSessionParticipants.agentId, leftAt: chatSessionParticipants.leftAt })
+      .from(chatSessionParticipants)
+      .where(eq(chatSessionParticipants.sessionId, sessionId));
+    await tx
+      .update(chatSessionParticipants)
+      .set({ leftAt: closedAt })
+      .where(
+        and(
+          eq(chatSessionParticipants.sessionId, sessionId),
+          isNull(chatSessionParticipants.leftAt),
+        ),
+      );
+    return { session, allMembers };
+  });
+  if (!result) return;
+  const { session, allMembers } = result;
+  const activeMembers = allMembers.filter((member) => member.leftAt === null);
+  for (const member of activeMembers) {
+    const agentId = member.agentId as AgentId;
+    await finalizeMember({
+      agentId,
+      visitorId: session.visitorId,
+      sessionId,
+      until: closedAt,
+      event: "chat.ended",
+    });
+  }
+}
+
+// A facet can step out while the shared room remains alive. The final member's
+// leave closes the session because a visitor-only room has no conversation.
+export async function leaveSession(
+  sessionId: string,
+  agentId: AgentId,
+): Promise<{ ended: boolean; participants: AgentId[] }> {
+  const leftAt = new Date();
+  const result = await db.transaction(async (tx) => {
+    const [session] = await tx
+      .select({ visitorId: chatSessions.visitorId, endedAt: chatSessions.endedAt })
+      .from(chatSessions)
+      .where(eq(chatSessions.id, sessionId))
+      .for("update");
+    if (!session || session.endedAt) return { kind: "ended" as const };
+
+    const active = await tx
+      .select({ agentId: chatSessionParticipants.agentId })
+      .from(chatSessionParticipants)
+      .where(
+        and(
+          eq(chatSessionParticipants.sessionId, sessionId),
+          isNull(chatSessionParticipants.leftAt),
+        ),
+      )
+      .orderBy(asc(chatSessionParticipants.joinedAt));
+    const participants = active.map((row) => row.agentId as AgentId);
+    if (!participants.includes(agentId)) {
+      return participants.length
+        ? { kind: "unchanged" as const, participants }
+        : { kind: "ended" as const };
+    }
+
+    if (participants.length === 1) {
+      await tx
+        .update(chatSessions)
+        .set({ endedAt: leftAt })
+        .where(and(eq(chatSessions.id, sessionId), isNull(chatSessions.endedAt)));
+    }
+    await tx
+      .update(chatSessionParticipants)
+      .set({ leftAt })
+      .where(
+        and(
+          eq(chatSessionParticipants.sessionId, sessionId),
+          eq(chatSessionParticipants.agentId, agentId),
+          isNull(chatSessionParticipants.leftAt),
+        ),
+      );
+    return {
+      kind: participants.length === 1 ? "ended" as const : "left" as const,
+      visitorId: session.visitorId,
+      participants: participants.filter((id) => id !== agentId),
+    };
+  });
+
+  if (result.kind === "unchanged") return { ended: false, participants: result.participants };
+  if (result.kind === "ended" && !("visitorId" in result)) {
+    return { ended: true, participants: [] };
+  }
+  if (!("visitorId" in result) || !result.visitorId || !result.participants) {
+    return { ended: true, participants: [] };
+  }
+  await finalizeMember({
+    agentId,
+    visitorId: result.visitorId,
+    sessionId,
+    until: leftAt,
+    event: result.kind === "ended" ? "chat.ended" : "chat.left",
+  });
+  return { ended: result.kind === "ended", participants: result.participants };
 }
 
 // Token check for the auth-gated chat endpoints. True iff the session exists and
@@ -253,18 +509,37 @@ export async function sweepStaleChats(staleMs = 3 * 60_000): Promise<void> {
     );
     if (stale) {
       console.log(`[chat] auto-closing stale session ${s.id} (agent ${s.agentId}).`);
-      await endSession(s.id);
+      await withRoomLock(s.id, () => endSession(s.id));
     }
   }
 }
 
 // Persist the visitor's line (the loop sanitizes before calling).
-export async function appendVisitorLine(sessionId: string, text: string): Promise<string> {
+export async function appendVisitorLine(
+  sessionId: string,
+  text: string,
+  responseRequestId: string,
+): Promise<string> {
   const [row] = await db
     .insert(chatMessages)
-    .values({ sessionId, sender: "visitor", body: text })
+    .values({ sessionId, sender: "visitor", body: text, responseRequestId })
     .returning({ id: chatMessages.id });
   return String(row.id);
+}
+
+export async function completeVisitorResponse(
+  sessionId: string,
+  responseRequestId: string,
+): Promise<void> {
+  await db
+    .update(chatMessages)
+    .set({ responseCompletedAt: new Date() })
+    .where(
+      and(
+        eq(chatMessages.sessionId, sessionId),
+        eq(chatMessages.responseRequestId, responseRequestId),
+      ),
+    );
 }
 
 // Persist the agent's spoken reply and return the REAL row id (for the `done`
@@ -292,9 +567,24 @@ export async function visitorTurnCount(sessionId: string): Promise<number> {
   return rows.length;
 }
 
-// GET /chats/:id payload: the session + VISIBLE transcript (for panel recovery).
-// One agent per session in M3; the legacy "agent" sentinel maps to it. Any
-// historical "operator" rows are filtered out.
+export async function lastActiveAgentSpeaker(
+  sessionId: string,
+  participants: AgentId[],
+): Promise<AgentId | undefined> {
+  const rows = await db
+    .select({ sender: chatMessages.sender })
+    .from(chatMessages)
+    .where(eq(chatMessages.sessionId, sessionId))
+    .orderBy(desc(chatMessages.id))
+    .limit(20);
+  return rows
+    .map((row) => row.sender as AgentId)
+    .find((sender) => participants.includes(sender));
+}
+
+// GET /chats/:id payload: canonical active roster + shared visible transcript.
+// The legacy "agent" sentinel maps to the opening facet. Historical operator
+// rows remain private model context and are never exposed.
 export async function getChatTranscript(sessionId: string): Promise<GetChatResponse | null> {
   const [session] = await db.select().from(chatSessions).where(eq(chatSessions.id, sessionId));
   if (!session) return null;
@@ -304,6 +594,17 @@ export async function getChatTranscript(sessionId: string): Promise<GetChatRespo
     .where(eq(chatMessages.sessionId, sessionId))
     .orderBy(asc(chatMessages.id));
   const primary = session.agentId as AgentId;
+  const participantRows = await db
+    .select({ agentId: chatSessionParticipants.agentId, leftAt: chatSessionParticipants.leftAt })
+    .from(chatSessionParticipants)
+    .where(eq(chatSessionParticipants.sessionId, sessionId))
+    .orderBy(asc(chatSessionParticipants.joinedAt));
+  const active = participantRows
+    .filter((row) => row.leftAt === null)
+    .map((row) => row.agentId as AgentId);
+  const participants = active.length
+    ? active
+    : participantRows.map((row) => row.agentId as AgentId);
   const messages = rows
     .filter((r) => r.sender !== "operator")
     .map((r) => ({
@@ -317,11 +618,18 @@ export async function getChatTranscript(sessionId: string): Promise<GetChatRespo
       ts: r.ts.toISOString(),
       attachments: (r.attachments ?? []) as ShareCard[],
     }));
+  const responses = rows
+    .filter((row) => row.sender === "visitor" && row.responseRequestId)
+    .map((row) => ({
+      requestId: row.responseRequestId!,
+      completed: row.responseCompletedAt !== null,
+    }));
   return {
     sessionId: session.id,
     visitorId: session.visitorId,
-    participants: [primary],
+    participants,
     messages,
+    responses,
   };
 }
 
@@ -333,8 +641,8 @@ export async function getChatTranscript(sessionId: string): Promise<GetChatRespo
 // with "you've talked 9 times before" above an empty transcript, which reads as
 // broken rather than warm.
 //
-// This returns the visitor's recent messages with ONE agent across ALL of their
-// past sessions, so the panel can show "here's where you left off". Identity is
+// This returns recent shared-room messages from sessions in which this facet
+// participated, so the panel can show "here's where you left off". Identity is
 // folded with identityIds() — the same heuristic the acquaintance line uses — so
 // a visitor whose row forked across devices still sees their own history.
 export async function priorConversationWith(
@@ -356,9 +664,15 @@ export async function priorConversationWith(
     })
     .from(chatMessages)
     .innerJoin(chatSessions, eq(chatMessages.sessionId, chatSessions.id))
+    .innerJoin(
+      chatSessionParticipants,
+      and(
+        eq(chatSessionParticipants.sessionId, chatSessions.id),
+        eq(chatSessionParticipants.agentId, agentId),
+      ),
+    )
     .where(
       and(
-        eq(chatSessions.agentId, agentId),
         or(...aliasIds.map((id) => eq(chatSessions.visitorId, id))),
       ),
     )
@@ -373,7 +687,11 @@ export async function priorConversationWith(
     .reverse()
     .map((r) => ({
       id: String(r.id),
-      sender: (r.sender === "visitor" ? "visitor" : agentId) as "visitor" | AgentId,
+      sender: (r.sender === "visitor"
+        ? "visitor"
+        : r.sender === "agent"
+          ? agentId
+          : r.sender) as "visitor" | AgentId,
       body: r.body,
       ts: r.ts.toISOString(),
       attachments: (r.attachments ?? []) as ShareCard[],

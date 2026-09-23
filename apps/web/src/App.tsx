@@ -131,6 +131,10 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
     if (npcId) EventBus.emit('chat-closed', { npcId });
   }, []);
 
+  const handleChatAddress = useCallback((npcId: ThomasId) => {
+    void worldRef.current?.addressChat(npcId);
+  }, []);
+
   // Roster click just mirrors the selection for the row highlight — the profile
   // popover (with bio + actions) is owned by AgentRoster itself now (M2.1).
   const handleRosterClick = useCallback((id: ThomasId) => {
@@ -435,6 +439,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
             <ChatSession
               onSend={handleChatSend}
               onClose={handleChatSessionClose}
+              onAddress={handleChatAddress}
               suspended={chronicle != null || about != null || artifactCollection != null}
               currentLocation={currentLocation}
             />

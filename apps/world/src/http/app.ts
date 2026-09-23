@@ -2,6 +2,7 @@
 // engine helpers; the only writes here are visitor registration and the chat
 // stubs the runtime phase fills in. SSE drives the live frontend.
 
+import { randomUUID } from "node:crypto";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
@@ -23,6 +24,9 @@ import {
   PatchVisitorRequest,
   CreateChatResponse,
   GetChatResponse,
+  ChatMessageRequest,
+  JoinChatRequest,
+  JoinChatResponse,
   ChatHistoryResponse,
   InteractRequest,
   AboutResponse,
@@ -97,6 +101,7 @@ import { resolveSystemModel } from "../runtime/llm/models.js";
 import { flushTracing } from "../runtime/tracing.js";
 import {
   createSession,
+  joinSession,
   priorConversationWith,
   endSession,
   getSession,
@@ -104,10 +109,13 @@ import {
   pingChat,
   getChatTranscript,
   visitorTurnCount,
-  chatParticipantsCoLocated,
   ChatPresenceError,
   ChatEngagedError,
+  ChatRoomFullError,
+  activeChatSessionForVisitor,
 } from "../runtime/chat.js";
+import { runRoomResponse } from "../runtime/room-chat.js";
+import { withRoomLock } from "../runtime/room-lock.js";
 import { enqueue } from "../runtime/queue.js";
 import { consumePendingCall } from "../runtime/director.js";
 import { getArtifactState, setArtifactStateKey, shouldCueOwner } from "../engine/artifact-state.js";
@@ -749,7 +757,13 @@ export function createApp() {
     }
 
     if (locationId !== undefined) {
-      const moved = await moveVisitor(id, locationId);
+      // Visitor movement shares the room lifecycle lane. Without this, a tap in
+      // a new room can race a participant join or whole-room escort and briefly
+      // create a private conversation whose bodies are in different places.
+      const activeRoom = await activeChatSessionForVisitor(id);
+      const moved = activeRoom
+        ? await withRoomLock(activeRoom, () => moveVisitor(id, locationId))
+        : await moveVisitor(id, locationId);
       // Co-located tick boost (design doc §2): when the visitor actually changed
       // rooms, pull agents AT THE DESTINATION forward (the boost re-arms their
       // timer, which enqueues a tick) so they can acknowledge the arrival — and
@@ -944,6 +958,33 @@ export function createApp() {
     return c.json(validated(GetChatResponse, transcript));
   });
 
+  // --- POST /chats/:id/participants {agentId} ----------------------------
+  // Join one exactly co-located facet to the visitor's private room. The
+  // session token proves ownership; canonical membership enforces max two.
+  app.post("/chats/:id/participants", async (c) => {
+    const sessionId = c.req.param("id");
+    const token = c.req.header("x-session-token") ?? undefined;
+    if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
+    const parsed = JoinChatRequest.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) return c.json({ error: "agentId required" }, 400);
+    const result = await withRoomLock(sessionId, () =>
+      joinSession(sessionId, parsed.data.agentId),
+    ).catch((error) => {
+      if (error instanceof ChatPresenceError) return "not-co-located" as const;
+      if (error instanceof ChatRoomFullError) return "room-full" as const;
+      if (error instanceof ChatEngagedError) return "engaged" as const;
+      throw error;
+    });
+    if (result === "not-co-located") {
+      return c.json({ error: "not co-located", reason: result }, 409);
+    }
+    if (result === "room-full") return c.json({ error: "room is full", reason: result }, 409);
+    if (result === "engaged") {
+      return c.json({ error: "agent is already occupied", reason: result }, 409);
+    }
+    return c.json(validated(JoinChatResponse, { participants: result }));
+  });
+
   // --- POST /chats/:id/messages {text} → SSE ChatStreamFrame stream -------
   // Token-gated. The visitor's message is enqueued as an INTERRUPT input to the
   // agent's continuous thread (queue.ts → loop.ts runVisitorInput); the resulting
@@ -954,15 +995,13 @@ export function createApp() {
     const sessionId = c.req.param("id");
     const token = c.req.header("x-session-token") ?? undefined;
     if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
-    const body = await c.req.json().catch(() => ({}));
-    const text = typeof body?.text === "string" ? body.text : "";
-    if (!text.trim()) return c.json({ error: "text required" }, 400);
+    const parsed = ChatMessageRequest.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success || !parsed.data.text.trim()) return c.json({ error: "text required" }, 400);
+    const { text, to } = parsed.data;
+    const requestId = parsed.data.requestId ?? randomUUID();
 
     const session = await getSession(sessionId);
     if (!session) return c.json({ error: "unknown session" }, 404);
-    if (!(await chatParticipantsCoLocated(session.agentId, session.visitorId))) {
-      return c.json({ error: "not co-located", reason: "not-co-located" }, 409);
-    }
 
     // Per-visitor chat limits + 40-turn session cap (design doc §7). The session
     // token already authenticated the caller, so the visitorId is trusted.
@@ -978,8 +1017,6 @@ export function createApp() {
       return c.json({ error: "session full", message: IN_FICTION_429.chatPerDay }, 429);
     }
 
-    const visitor = await getVisitor(session.visitorId);
-
     return streamSSE(c, async (stream) => {
       // Keep bytes flowing during long tool rounds (model + Hindsight latency):
       // with zero traffic the edge proxy kills the idle response mid-turn. Empty-
@@ -988,14 +1025,12 @@ export function createApp() {
         void stream.writeSSE({ data: "" }).catch(() => undefined);
       }, 15_000);
       try {
-        // enqueue resolves when THIS turn has run (the worker serializes it behind
-        // anything in flight); awaiting it holds the SSE stream open for the turn.
-        await enqueue(session.agentId, {
-          kind: "visitor",
+        await runRoomResponse({
           sessionId,
           visitorId: session.visitorId,
-          visitorName: visitor?.name ?? "",
           text,
+          to,
+          requestId,
           handlers: {
             onFrame: async (frame) => {
               await stream.writeSSE({ data: JSON.stringify(frame) });
@@ -1018,7 +1053,10 @@ export function createApp() {
       headerToken ??
       (typeof body?.sessionToken === "string" ? body.sessionToken : undefined);
     if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
-    await endSession(sessionId);
+    // Closing waits behind any response already speaking in this room. That
+    // keeps the final line inside the transcript/memory boundary and prevents
+    // a late turn from writing into an already-ended session.
+    await withRoomLock(sessionId, () => endSession(sessionId));
     return c.json({ ok: true });
   });
 

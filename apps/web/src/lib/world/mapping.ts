@@ -124,6 +124,7 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
     case 'conversation.ended':
     case 'conversation.converted':
     case 'chat.joined':
+    case 'chat.left':
     // Canonical object-graph + artifact-state events. These have canvas/panel
     // surfaces, but their consumers (PlacedObjects, ArtifactFrame) subscribe to
     // the raw 'world-event' channel directly — no mapped npc-* emit needed.

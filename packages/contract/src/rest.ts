@@ -321,6 +321,13 @@ export const GetChatResponse = z.object({
   visitorId: z.string(),
   participants: z.array(AgentId),
   messages: z.array(ChatTranscriptMessage),
+  // Durable response boundaries for POST-SSE recovery. A visitor request can
+  // finish without a second visible agent row when the optional interjector
+  // passes, so transcript rows alone cannot prove the room response is done.
+  responses: z.array(z.object({
+    requestId: z.string(),
+    completed: z.boolean(),
+  })).default([]),
 });
 export type GetChatResponse = z.infer<typeof GetChatResponse>;
 
@@ -363,8 +370,23 @@ export type ChatHistoryResponse = z.infer<typeof ChatHistoryResponse>;
 
 export const ChatMessageRequest = z.object({
   text: z.string().min(1),
+  // Client-generated idempotency/recovery key for this visitor message.
+  requestId: z.string().uuid().optional(),
+  // Optional addressed speaker in a room chat. The server validates that the
+  // facet is still an active participant before directing the turn to them.
+  to: AgentId.optional(),
 });
 export type ChatMessageRequest = z.infer<typeof ChatMessageRequest>;
+
+export const JoinChatRequest = z.object({
+  agentId: AgentId,
+});
+export type JoinChatRequest = z.infer<typeof JoinChatRequest>;
+
+export const JoinChatResponse = z.object({
+  participants: z.array(AgentId).min(1).max(2),
+});
+export type JoinChatResponse = z.infer<typeof JoinChatResponse>;
 
 // Marks the start of an agent's turn (multi-party attribution). The client
 // opens a new speaker bubble for `agent` on receipt.
@@ -433,6 +455,21 @@ export const ChatEndedFrame = z.object({
 });
 export type ChatEndedFrame = z.infer<typeof ChatEndedFrame>;
 
+// Canonical room membership changed while this response was in flight. This
+// is the private-session counterpart to presence-only world events.
+export const ChatParticipantsFrame = z.object({
+  type: z.literal("participants"),
+  participants: z.array(AgentId).min(1).max(2),
+});
+export type ChatParticipantsFrame = z.infer<typeof ChatParticipantsFrame>;
+
+// Terminal marker for one visitor message. An agent-level `done` closes a
+// speaker bubble; a room response may contain two such turns.
+export const ChatResponseDoneFrame = z.object({
+  type: z.literal("response_done"),
+});
+export type ChatResponseDoneFrame = z.infer<typeof ChatResponseDoneFrame>;
+
 // The agent shared a concrete card mid-chat (M2.2 — Part 4): an artifact, a
 // curated external reference/project, or a portfolio proof. Emitted the instant
 // the share tool resolves, so the visitor sees the card while the reply streams.
@@ -452,6 +489,8 @@ export const ChatStreamFrame = z.discriminatedUnion("type", [
   ChatDone,
   ChatActionFrame,
   ChatEndedFrame,
+  ChatParticipantsFrame,
+  ChatResponseDoneFrame,
   ChatShareCardFrame,
 ]);
 export type ChatStreamFrame = z.infer<typeof ChatStreamFrame>;

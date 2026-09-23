@@ -72,7 +72,13 @@ import { randomUUID } from "node:crypto";
 import { zoneExists, zonesForLocation } from "../engine/zones.js";
 import { renderPlace, renderOthersLine } from "./observation.js";
 import { getVisitor, escortVisitorTo } from "../engine/visitors.js";
-import { getSession } from "./chat.js";
+import {
+  ChatEngagedError,
+  ChatPresenceError,
+  ChatRoomFullError,
+  getSession,
+  joinSession,
+} from "./chat.js";
 import {
   searchShareables,
   renderShareableHits,
@@ -108,6 +114,7 @@ export interface AgentContext {
   // them. Set (to []) only on visitor turns.
   pendingShareCards?: ShareCard[];
   onShare?: (card: ShareCard) => void | Promise<void>;
+  onParticipantsChanged?: (participants: AgentId[]) => void | Promise<void>;
 }
 
 function markApplied(invocation: unknown): void {
@@ -327,19 +334,20 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       const targetZone = await resolveTargetZone(to, toObject, toZone);
       const spotLabel = toObject ?? toZone;
 
-      // Move yourself too (mirrors move_to's own hub-and-spoke hop), unless
-      // it's a pure within-room reposition with both of you already here.
-      if (to !== ctx.location) {
-        const adjacent = await isAdjacent(ctx.location, to);
-        if (!adjacent) {
-          await moveAgent(ctx.agentId, "town");
-          ctx.location = "town";
+      // A room travels as one embodied group. Moving only the speaking facet
+      // would silently eject the other member on the next message.
+      for (const participant of session.participants) {
+        const member = await getAgent(participant);
+        if (!member) continue;
+        const from = member.locationId as LocationId;
+        if (from !== to) {
+          if (!(await isAdjacent(from, to))) await moveAgent(participant, "town");
+          await moveAgent(participant, to, targetZone);
+        } else if (targetZone) {
+          await moveAgent(participant, to, targetZone);
         }
-        await moveAgent(ctx.agentId, to, targetZone);
-        ctx.location = to;
-      } else if (targetZone) {
-        await moveAgent(ctx.agentId, to, targetZone);
       }
+      ctx.location = to;
 
       await escortVisitorTo(session.visitorId, ctx.agentId, to, targetZone);
       markApplied(invocation);
@@ -347,8 +355,40 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       const loc = await getLocation(to);
       const name = loc?.name ?? to;
       const spotNote = targetZone ? `, over by the ${spotLabel}` : "";
-      await ctx.onAction?.("invite_visitor", `brings the visitor along to the ${name}`);
-      return `You bring them along to the ${name}${spotNote}. ${loc?.description ?? ""}`;
+      const company = session.participants.length > 1 ? "the whole room" : "the visitor";
+      await ctx.onAction?.("invite_visitor", `brings ${company} along to the ${name}`);
+      return `You bring ${company} along to the ${name}${spotNote}. ${loc?.description ?? ""}`;
+    },
+  });
+
+  const invite_to_chat = defineTownTool({
+    name: "invite_to_chat",
+    effect: "write",
+    description:
+      "Invite one other Thomas facet into this private visitor conversation. The room holds at most two facets. A facet already here joins in place; one in an adjacent room walks over. Use this when their perspective would genuinely improve the conversation, not just to fill the room.",
+    inputSchema: z.object({
+      agent: z.enum(agentIds as unknown as [string, ...string[]]),
+    }),
+    run: async ({ agent }, invocation) => {
+      if (!ctx.chatSessionId) return "You can only invite someone while talking with a visitor.";
+      const invited = agent as AgentId;
+      if (invited === ctx.agentId) return "You're already in this conversation.";
+      const before = await getSession(ctx.chatSessionId).catch(() => null);
+      if (!before) return "This conversation has already ended.";
+      if (before.participants.includes(invited)) return `${invited} is already in the room chat.`;
+      if (before.participants.length >= 2) return "The room chat already has two facets in it.";
+      try {
+        const participants = await joinSession(ctx.chatSessionId, invited, { allowAdjacent: true });
+        markApplied(invocation);
+        await ctx.onParticipantsChanged?.(participants);
+        await ctx.onAction?.("invite_to_chat", `invites ${invited} into the room chat`);
+        return `${invited} joins the room chat. They can hear the shared conversation now.`;
+      } catch (error) {
+        if (error instanceof ChatRoomFullError) return "The room chat filled up before they could join.";
+        if (error instanceof ChatEngagedError) return `${invited} is occupied with something else right now.`;
+        if (error instanceof ChatPresenceError) return `${invited} is too far away to join from here.`;
+        throw error;
+      }
     },
   });
 
@@ -1311,6 +1351,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     if (moveIndex >= 0) tools.splice(moveIndex, 1);
     tools.push(buildLeaveChat(ctx));
     tools.push(invite_visitor as RunnableTool);
+    tools.push(invite_to_chat as RunnableTool);
     for (const t of buildShareTools(ctx)) tools.push(t);
   }
 

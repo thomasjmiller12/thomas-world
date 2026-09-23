@@ -140,6 +140,20 @@ describe("invite_visitor — offered only within a visitor turn (Phase C.5)", ()
   });
 });
 
+describe("invite_to_chat — canonical room membership", () => {
+  it("appears only during a visitor conversation", () => {
+    const inChat: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
+    expect(names(inChat)).toContain("invite_to_chat");
+    expect(names({ agentId: "builder", location: "workshop" })).not.toContain("invite_to_chat");
+  });
+
+  it("refuses when the underlying room no longer exists", async () => {
+    const ctx: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
+    const out = await toolByName(ctx, "invite_to_chat").run({ agent: "writer" });
+    expect(out as string).toMatch(/already ended/i);
+  });
+});
+
 describe("share_card — offered only within a visitor turn, merged from three tools (2026-07-30)", () => {
   it("appears when a chat session is set, absent otherwise", () => {
     const inChat: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };

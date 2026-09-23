@@ -49,6 +49,8 @@ export async function renderLine(e: WorldEvent): Promise<string> {
       return `A visitor joined the conversation.`;
     case "chat.joined":
       return `${await who(p.agent)} joined the conversation.`;
+    case "chat.left":
+      return `${await who(p.agent)} left the conversation${p.reason ? `: ${p.reason}` : "."}`;
     case "message.sent":
       return p.broadcast
         ? `${await who(p.from)} broadcast a message to everyone.`

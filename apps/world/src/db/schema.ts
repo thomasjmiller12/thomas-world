@@ -78,6 +78,7 @@ const eventTypeEnum = [
   "chat.started",
   "chat.ended",
   "chat.joined",
+  "chat.left",
   "conversation.converted",
   "world.time",
   "object.created",
@@ -394,11 +395,9 @@ export const visitors = pgTable("visitors", {
 // --- chat sessions / messages (visitor chat) --------------------------------
 export const chatSessions = pgTable("chat_sessions", {
   id: text("id").primaryKey(),
-  // The one agent the visitor is chatting with (chat.started/.ended
-  // attribution). Group chat (a `participantAgentIds` roster + a
-  // `pendingOperatorNote` mid-chat cue) was retired-era director machinery that
-  // never shipped a reader — both columns were write-only (or unwritten) and
-  // were DROPPED 2026-07-30; see drizzle/0015_drop_dead_machinery.sql.
+  // Stable opening facet, retained for chat.started/.ended attribution and
+  // backwards-compatible API responses. Active room membership is canonical
+  // in chat_session_participants; do not use this column as an occupancy lock.
   agentId: text("agent_id", { enum: agentEnum }).notNull(),
   visitorId: text("visitor_id").notNull(),
   // Per-session bearer required on /open, /messages, /close, /ping (design doc
@@ -415,10 +414,34 @@ export const chatSessions = pgTable("chat_sessions", {
   lastPingAt: timestamp("last_ping_at", { withTimezone: true }),
   endedAt: timestamp("ended_at", { withTimezone: true }),
 }, (t) => [
-  uniqueIndex("chat_sessions_one_open_per_agent_idx")
-    .on(t.agentId)
+  uniqueIndex("chat_sessions_one_open_per_visitor_idx")
+    .on(t.visitorId)
     .where(sql`${t.endedAt} is null`),
 ]);
+
+// Canonical room-chat roster. A session has one or two active facets; historical
+// rows remain after a facet leaves so shared transcript continuity is queryable.
+// The partial unique index is the cross-process occupancy lock: one facet can
+// participate in at most one open room at a time.
+export const chatSessionParticipants = pgTable(
+  "chat_session_participants",
+  {
+    sessionId: text("session_id").notNull(),
+    agentId: text("agent_id", { enum: agentEnum }).notNull(),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+    leftAt: timestamp("left_at", { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({
+      name: "chat_session_participants_session_id_agent_id_pk",
+      columns: [t.sessionId, t.agentId],
+    }),
+    uniqueIndex("chat_session_participants_one_active_session_per_agent_idx")
+      .on(t.agentId)
+      .where(sql`${t.leftAt} is null`),
+    index("chat_session_participants_session_idx").on(t.sessionId),
+  ],
+);
 
 export const chatMessages = pgTable(
   "chat_messages",
@@ -438,9 +461,19 @@ export const chatMessages = pgTable(
     // cards mid-chat (artifact / external reference / proof); they're persisted
     // here so a dropped panel rehydrates them. Empty for ordinary lines.
     attachments: jsonb("attachments").$type<ShareCard[]>().notNull().default([]),
+    // Visitor rows carry a client-generated request id plus a durable response
+    // boundary. Agent/operator rows leave both null. This lets a browser recover
+    // a dropped room stream even when the optional second facet says [pass].
+    responseRequestId: text("response_request_id"),
+    responseCompletedAt: timestamp("response_completed_at", { withTimezone: true }),
     ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("chat_messages_session_idx").on(t.sessionId)],
+  (t) => [
+    index("chat_messages_session_idx").on(t.sessionId),
+    uniqueIndex("chat_messages_session_response_request_idx")
+      .on(t.sessionId, t.responseRequestId)
+      .where(sql`${t.responseRequestId} is not null`),
+  ],
 );
 
 // --- thread_summaries (Town Chronicle lazy summaries, M2.1) -----------------

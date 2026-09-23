@@ -13,6 +13,7 @@ import { config } from "../config.js";
 import { activeProviderConfiguration } from "./llm/provider.js";
 import { getProfile } from "./roles.js";
 import { enqueue } from "./queue.js";
+import { activeChatSessionForAgent, sweepStaleChats } from "./chat.js";
 import { circuitBroken } from "./failures.js";
 import { getAgent } from "../engine/agents.js";
 import { isOvernight, isActiveHours, currentPhase } from "./clock.js";
@@ -20,7 +21,6 @@ import { appendEvent } from "../engine/events.js";
 import { db, schema } from "../db/client.js";
 import { gt, sql } from "drizzle-orm";
 import { syncVault, pushAgentNotes } from "./vault.js";
-import { sweepStaleChats } from "./chat.js";
 import { runRetentionSweep } from "../engine/retention.js";
 import { flushPendingSemanticActions } from "./action-journal.js";
 
@@ -124,10 +124,12 @@ async function tickAgent(agentId: AgentId): Promise<void> {
       );
       return;
     }
-    // Nightly reflection ALWAYS runs — exempt from both the budget cap and the
-    // waking-hours window. It's the end-of-day ritual (diary + core-memory
-    // curation), cheap and important; we never want to skip it. Reflection's own
-    // DB-grounded idempotency keeps it to once per night.
+    // A facet in a visitor room is socially occupied. Chat inputs still arrive
+    // as interrupts, but autonomous ticks/reflection wait until the room closes.
+    if (await activeChatSessionForAgent(agentId)) return;
+
+    // Nightly reflection is exempt from budget and waking-hour gates, but not
+    // from an active visitor conversation. Its DB idempotency keeps it once/night.
     if (isOvernight() && !reflectedThisNight.has(agentId)) {
       const { ran } = await enqueue(agentId, { kind: "reflection" });
       if (ran) reflectedThisNight.add(agentId);
