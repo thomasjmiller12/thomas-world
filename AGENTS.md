@@ -46,6 +46,7 @@ Agents never see the frontend (no screenshots/pixels) — only the world delta t
 - Build `@town/contract` before tests/typecheck because workspace exports resolve to `dist`. New event types also need the inline text-enum in `apps/world/src/db/schema.ts` and the exhaustive web event mapper; the database column itself is text.
 - Keep `@types/node` an explicit world dev dependency, aligned with the web package. Relying on transitive types can mix incompatible Node declaration versions: a warm local checkout passes while a fresh install loses inherited child-process methods. Verify dependency changes in a clean install or hosted CI.
 - Real database tests are opt-in: `ROOM_CHAT_TEST_DATABASE_URL` uses a unique temporary schema on localhost; `LIVING_PROJECT_TEST_DATABASE_URL` requires a dedicated localhost database whose name starts with `town_living_test`. Never point them at production. CI provisions pgvector/Postgres and runs both.
+- Membership boundaries use PostgreSQL `clock_timestamp()` after the room-row lock; transaction-start `now()` and JavaScript dates can misorder messages. Keep transcript visibility comparisons in SQL so PostgreSQL microseconds survive teardown and history reads.
 
 ## Stack decisions (full rationale in the plan §2)
 

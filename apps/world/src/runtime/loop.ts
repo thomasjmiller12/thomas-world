@@ -76,12 +76,11 @@ export async function logVisitToEpisodicMemory(
   agentId: AgentId,
   visitorId: string,
   sessionId: string,
-  until?: Date,
 ): Promise<void> {
   try {
     const [history, digest] = await Promise.all([
       historyFor(agentId, visitorId, sessionId),
-      transcriptDigest(sessionId, agentId, 2_400, until),
+      transcriptDigest(sessionId, agentId, 2_400),
     ]);
     if (!digest) return; // nothing was actually said
     const name = history?.name ?? "a visitor";
@@ -176,8 +175,8 @@ registerExecutor(executeInput);
 
 // Every closed conversation becomes an episodic memory, so the next visit has
 // something for `recall` to find.
-registerSessionEndedHook(({ agentId, visitorId, sessionId, until }) =>
-  logVisitToEpisodicMemory(agentId, visitorId, sessionId, until),
+registerSessionEndedHook(({ agentId, visitorId, sessionId }) =>
+  logVisitToEpisodicMemory(agentId, visitorId, sessionId),
 );
 
 // --- tick -------------------------------------------------------------------

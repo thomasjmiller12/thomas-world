@@ -9,7 +9,7 @@
 //     sessions.
 
 import { randomUUID } from "node:crypto";
-import { eq, ne, and, or, isNull, gte, lte, desc, asc } from "drizzle-orm";
+import { eq, ne, and, or, isNull, gte, lte, desc, asc, sql } from "drizzle-orm";
 import type { AgentId, GetChatResponse, LocationId, ShareCard } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { getAgent, moveAgent, setActivity, setStatus } from "../engine/agents.js";
@@ -156,7 +156,7 @@ export async function createSession(
   try {
     await db.transaction(async (tx) => {
       await tx.insert(chatSessions).values({ id: sessionId, agentId, visitorId, sessionToken });
-      await tx.insert(chatSessionParticipants).values({ sessionId, agentId });
+      await tx.insert(chatSessionParticipants).values({ sessionId, agentId, joinedAt: sql`clock_timestamp()` });
     });
   } catch (error) {
     if ((error as { code?: string }).code === "23505") throw new ChatEngagedError();
@@ -249,7 +249,8 @@ export async function joinSession(
       // facet that chose to leave cannot be silently re-added to the same room;
       // allowing it would overwrite joinedAt/leftAt and break transcript privacy.
       if (historical) throw new ChatEngagedError();
-      await tx.insert(chatSessionParticipants).values({ sessionId, agentId });
+      // now() is transaction start, which can predate a wait for the room lock.
+      await tx.insert(chatSessionParticipants).values({ sessionId, agentId, joinedAt: sql`clock_timestamp()` });
       return [...participants, agentId];
     });
   } catch (error) {
@@ -301,7 +302,6 @@ type SessionEndedHook = (args: {
   agentId: AgentId;
   visitorId: string;
   sessionId: string;
-  until: Date;
 }) => Promise<void>;
 
 let onSessionEnded: SessionEndedHook | null = null;
@@ -314,10 +314,9 @@ async function finalizeMember(args: {
   agentId: AgentId;
   visitorId: string;
   sessionId: string;
-  until: Date;
   event: "chat.ended" | "chat.left";
 }): Promise<void> {
-  const { agentId, visitorId, sessionId, until, event } = args;
+  const { agentId, visitorId, sessionId, event } = args;
   await appendEvent({
     type: event,
     agentId,
@@ -332,7 +331,7 @@ async function finalizeMember(args: {
       : "stepping away from a visitor conversation",
   ).catch(() => undefined);
   if (onSessionEnded) {
-    await onSessionEnded({ agentId, visitorId, sessionId, until }).catch((err) =>
+    await onSessionEnded({ agentId, visitorId, sessionId }).catch((err) =>
       console.warn(
         `[chat] membership-ended hook failed for ${sessionId}/${agentId}:`,
         (err as Error).message,
@@ -342,23 +341,24 @@ async function finalizeMember(args: {
 }
 
 export async function endSession(sessionId: string): Promise<void> {
-  const closedAt = new Date();
   // Atomically claim closure and vacate every active membership. leave_chat,
   // the sweep, pagehide, and an explicit close can race; only the winner emits.
   const result = await db.transaction(async (tx) => {
-    const [session] = await tx
-      .update(chatSessions)
-      .set({ endedAt: closedAt })
-      .where(and(eq(chatSessions.id, sessionId), isNull(chatSessions.endedAt)))
-      .returning();
-    if (!session) return null;
+    const [session] = await tx.select().from(chatSessions)
+      .where(eq(chatSessions.id, sessionId)).for("update");
+    if (!session || session.endedAt) return null;
+    // Capture the database clock AFTER the lock. Keep its full precision when
+    // copying the cutoff; JS Date would truncate PostgreSQL microseconds.
+    const [closed] = await tx.update(chatSessions).set({ endedAt: sql`clock_timestamp()` })
+      .where(eq(chatSessions.id, sessionId))
+      .returning({ at: sql<string>`${chatSessions.endedAt}::text` });
     const allMembers = await tx
       .select({ agentId: chatSessionParticipants.agentId, leftAt: chatSessionParticipants.leftAt })
       .from(chatSessionParticipants)
       .where(eq(chatSessionParticipants.sessionId, sessionId));
     await tx
       .update(chatSessionParticipants)
-      .set({ leftAt: closedAt })
+      .set({ leftAt: sql`${closed.at}::timestamptz` })
       .where(
         and(
           eq(chatSessionParticipants.sessionId, sessionId),
@@ -376,7 +376,6 @@ export async function endSession(sessionId: string): Promise<void> {
       agentId,
       visitorId: session.visitorId,
       sessionId,
-      until: closedAt,
       event: "chat.ended",
     });
   }
@@ -388,7 +387,6 @@ export async function leaveSession(
   sessionId: string,
   agentId: AgentId,
 ): Promise<{ ended: boolean; participants: AgentId[] }> {
-  const leftAt = new Date();
   const result = await db.transaction(async (tx) => {
     const [session] = await tx
       .select({ visitorId: chatSessions.visitorId, endedAt: chatSessions.endedAt })
@@ -414,22 +412,21 @@ export async function leaveSession(
         : { kind: "ended" as const };
     }
 
-    if (participants.length === 1) {
-      await tx
-        .update(chatSessions)
-        .set({ endedAt: leftAt })
-        .where(and(eq(chatSessions.id, sessionId), isNull(chatSessions.endedAt)));
-    }
-    await tx
+    const [left] = await tx
       .update(chatSessionParticipants)
-      .set({ leftAt })
+      .set({ leftAt: sql`clock_timestamp()` })
       .where(
         and(
           eq(chatSessionParticipants.sessionId, sessionId),
           eq(chatSessionParticipants.agentId, agentId),
           isNull(chatSessionParticipants.leftAt),
         ),
-      );
+      )
+      .returning({ at: sql<string>`${chatSessionParticipants.leftAt}::text` });
+    if (participants.length === 1) {
+      await tx.update(chatSessions).set({ endedAt: sql`${left.at}::timestamptz` })
+        .where(eq(chatSessions.id, sessionId));
+    }
     return {
       kind: participants.length === 1 ? "ended" as const : "left" as const,
       visitorId: session.visitorId,
@@ -448,7 +445,6 @@ export async function leaveSession(
     agentId,
     visitorId: result.visitorId,
     sessionId,
-    until: leftAt,
     event: result.kind === "ended" ? "chat.ended" : "chat.left",
   });
   return { ended: result.kind === "ended", participants: result.participants };

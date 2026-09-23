@@ -184,17 +184,92 @@ describe.skipIf(!testUrl)("room lifecycle against Postgres", () => {
   it("excludes messages outside the facet's membership window from prior context", async () => {
     const room = await openRoom();
     await chat.appendVisitorLine(room.sessionId, "Before Writer joined", "before-writer");
-    await pause(2);
     await chat.joinSession(room.sessionId, "writer");
     await chat.appendVisitorLine(room.sessionId, "Shared with Writer", "with-writer");
-    await pause(2);
     await chat.leaveSession(room.sessionId, "writer");
-    await pause(2);
     await chat.appendVisitorLine(room.sessionId, "After Writer left", "after-writer");
     await chat.endSession(room.sessionId);
     const context = await chat.priorVisitorContext("writer", room.visitorId, "not-a-session");
     expect(context).toContain("Shared with Writer");
     expect(context).not.toContain("Before Writer joined");
     expect(context).not.toContain("After Writer left");
+  });
+
+  it("uses the database clock when closing a room or leaving a membership", async () => {
+    const hindsight = await import("./hindsight.js");
+    const remember = vi.spyOn(hindsight, "remember").mockResolvedValue({ ok: true, text: "Stored." });
+    const room = await openRoom();
+    await chat.joinSession(room.sessionId, "writer");
+    await chat.appendVisitorLine(room.sessionId, "Last message before leaving", "clock-leave");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2000-01-01T00:00:00Z"));
+    try {
+      await chat.leaveSession(room.sessionId, "writer");
+      expect(await chat.priorVisitorContext("writer", room.visitorId, "other-room")).toContain("Last message before leaving");
+      expect(remember).toHaveBeenCalledWith("writer", expect.stringContaining("Last message before leaving"), "visit");
+      await chat.appendVisitorLine(room.sessionId, "Last message before closing", "clock-close");
+      await chat.endSession(room.sessionId);
+      expect(await chat.priorVisitorContext("builder", room.visitorId, "other-room")).toContain("Last message before closing");
+      expect(remember).toHaveBeenCalledWith("builder", expect.stringContaining("Last message before closing"), "visit");
+      const { rows } = await client.pool.query(`SELECT s.ended_at = p.left_at AS same_cutoff, p.left_at >= m.ts AS includes_last
+        FROM chat_sessions s JOIN chat_session_participants p ON p.session_id = s.id AND p.agent_id = 'builder'
+        JOIN chat_messages m ON m.session_id = s.id AND m.response_request_id = 'clock-close' WHERE s.id = $1`, [room.sessionId]);
+      expect(rows).toEqual([{ same_cutoff: true, includes_last: true }]);
+    } finally {
+      remember.mockRestore();
+      vi.useRealTimers();
+      await chat.endSession(room.sessionId);
+    }
+  });
+
+  it("starts membership after a queued join acquires the room lock", async () => {
+    const room = await openRoom();
+    const holder = await client.pool.connect();
+    let joining: Promise<unknown> | undefined;
+    try {
+      await holder.query("BEGIN");
+      await holder.query("SELECT id FROM chat_sessions WHERE id = $1 FOR UPDATE", [room.sessionId]);
+      joining = chat.joinSession(room.sessionId, "writer");
+      let waiting = false;
+      for (let i = 0; i < 100 && !waiting; i += 1) {
+        const result = await client.pool.query("SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%chat_sessions%'");
+        waiting = result.rowCount! > 0;
+        if (!waiting) await pause(10);
+      }
+      expect(waiting).toBe(true);
+      await chat.appendVisitorLine(room.sessionId, "Private while join was waiting", "join-wait");
+      await holder.query("COMMIT");
+      await joining;
+      await chat.appendVisitorLine(room.sessionId, "Shared after actual join", "join-finished");
+      await chat.endSession(room.sessionId);
+      const context = await chat.priorVisitorContext("writer", room.visitorId, "other-room");
+      expect(context).toContain("Shared after actual join");
+      expect(context).not.toContain("Private while join was waiting");
+    } finally {
+      await holder.query("ROLLBACK");
+      holder.release();
+      await joining;
+      await chat.endSession(room.sessionId);
+    }
+  });
+
+  it("keeps exact microsecond membership boundaries in stored history and teardown digests", async () => {
+    const { transcriptDigest } = await import("../engine/visitor-history.js");
+    const room = await openRoom();
+    await chat.joinSession(room.sessionId, "writer");
+    await client.pool.query("UPDATE chat_session_participants SET joined_at = '2030-01-01T00:00:00.123100Z', left_at = '2030-01-01T00:00:00.123900Z' WHERE session_id = $1 AND agent_id = 'writer'", [room.sessionId]);
+    await client.pool.query(`INSERT INTO chat_messages (session_id, sender, body, ts) VALUES
+      ($1, 'visitor', 'Before exact join', '2030-01-01T00:00:00.123099Z'),
+      ($1, 'visitor', 'Inside exact membership', '2030-01-01T00:00:00.123899Z'),
+      ($1, 'visitor', 'After exact leave', '2030-01-01T00:00:00.123901Z')`, [room.sessionId]);
+    const history = await chat.priorVisitorContext("writer", room.visitorId, "other-room");
+    expect(history).toContain("Inside exact membership");
+    expect(history).not.toContain("Before exact join");
+    expect(history).not.toContain("After exact leave");
+    const digest = await transcriptDigest(room.sessionId, "writer");
+    expect(digest).toContain("Inside exact membership");
+    expect(digest).not.toContain("Before exact join");
+    expect(digest).not.toContain("After exact leave");
+    await chat.endSession(room.sessionId);
   });
 });

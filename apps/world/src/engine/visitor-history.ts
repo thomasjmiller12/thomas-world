@@ -15,7 +15,7 @@
 // recall on you specifically before you even said who you were, and nothing came
 // back." This module supplies the missing facts.
 
-import { and, desc, eq, lte } from "drizzle-orm";
+import { and, desc, eq, exists, gte, isNull, lte, or } from "drizzle-orm";
 import type { AgentId } from "@town/contract";
 import { db, schema } from "../db/client.js";
 
@@ -117,15 +117,23 @@ export async function transcriptDigest(
   sessionId: string,
   perspectiveAgentId?: AgentId,
   maxChars = 2_400,
-  until?: Date,
 ): Promise<string | null> {
   const rows = await db
     .select({ sender: chatMessages.sender, body: chatMessages.body })
     .from(chatMessages)
     .where(
-      until
-        ? and(eq(chatMessages.sessionId, sessionId), lte(chatMessages.ts, until))
-        : eq(chatMessages.sessionId, sessionId),
+      and(
+        eq(chatMessages.sessionId, sessionId),
+        // Read the canonical visibility window in SQL. Passing its cutoff via
+        // JS Date loses microseconds and can discard the last real message.
+        perspectiveAgentId ? exists(db.select({ sessionId: chatSessionParticipants.sessionId })
+          .from(chatSessionParticipants).where(and(
+            eq(chatSessionParticipants.sessionId, chatMessages.sessionId),
+            eq(chatSessionParticipants.agentId, perspectiveAgentId),
+            gte(chatMessages.ts, chatSessionParticipants.joinedAt),
+            or(isNull(chatSessionParticipants.leftAt), lte(chatMessages.ts, chatSessionParticipants.leftAt)),
+          ))) : undefined,
+      ),
     )
     .orderBy(chatMessages.ts);
   if (rows.length === 0) return null;
