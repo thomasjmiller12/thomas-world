@@ -4,6 +4,7 @@ import { THOMAS_COLORS } from '@/lib/constants';
 import type { ThomasId } from '@/lib/types';
 import { agentShortName } from '@/components/chat/primitives';
 import { fetchArtifact } from './chronicleClient';
+import { createArtifactLoader } from './artifactLoader';
 import { artifactKindLabel, headerDate } from './chroniclePresentation';
 import { MarkdownBody } from './MarkdownBody';
 import { ArtifactFrame } from '@/components/artifact/ArtifactFrame';
@@ -31,34 +32,18 @@ export function ArtifactReader({ artifactId, onBack, readOnly = false }: Props) 
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    const ctrl = new AbortController();
-    setLoading(true);
-    setError(false);
-    fetchArtifact(artifactId, ctrl.signal)
-      .then((a) => setArtifact(a))
-      .catch((e) => {
-        if (ctrl.signal.aborted) return;
-        setError(true);
-        void e;
-      })
-      .finally(() => {
-        if (!ctrl.signal.aborted) setLoading(false);
-      });
-    return () => ctrl.abort();
-  }, [artifactId, attempt]);
-
-  useEffect(() => {
-    let controller: AbortController | null = null;
+    const loader = createArtifactLoader((signal) => fetchArtifact(artifactId, signal), {
+      onArtifact: setArtifact, onLoading: setLoading, onError: setError,
+    });
     const onEvent = (event: WorldEvent) => {
       if (event.type !== 'artifact.updated' || event.payload.artifactId !== artifactId) return;
-      controller?.abort();
-      controller = new AbortController();
       // Keep the contribution form mounted while replacing the current artifact.
-      void fetchArtifact(artifactId, controller.signal).then(setArtifact).catch(() => undefined);
+      loader.load(true);
     };
     EventBus.on('world-event', onEvent);
-    return () => { controller?.abort(); EventBus.off('world-event', onEvent); };
-  }, [artifactId]);
+    loader.load();
+    return () => { loader.cancel(); EventBus.off('world-event', onEvent); };
+  }, [artifactId, attempt]);
 
   const agent = artifact?.agentId as ThomasId | undefined;
   // Hex (not a CSS var) — MarkdownBody derives alpha variants like `${color}66`.
