@@ -33,6 +33,17 @@ minimumReleaseAgeExclude:
   - '@opentelemetry/sdk-node@0.219.0'
   - '@opentelemetry/sdk-trace-base@2.8.0'
   - '@opentelemetry/sdk-trace-node@2.8.0'
+  # Verified upstream September 22 security hardening release.
+  - '@next/env@15.5.26'
+  - '@next/swc-darwin-arm64@15.5.26'
+  - '@next/swc-darwin-x64@15.5.26'
+  - '@next/swc-linux-arm64-gnu@15.5.26'
+  - '@next/swc-linux-arm64-musl@15.5.26'
+  - '@next/swc-linux-x64-gnu@15.5.26'
+  - '@next/swc-linux-x64-musl@15.5.26'
+  - '@next/swc-win32-arm64-msvc@15.5.26'
+  - '@next/swc-win32-x64-msvc@15.5.26'
+  - next@15.5.26
 onlyBuiltDependencies:
   - esbuild
   - sharp
