@@ -92,6 +92,7 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
     // Surfaced via feed / roster only — no canvas emit:
     case 'message.sent':
     case 'agent.acted':
+    case 'agent.rested':
     case 'artifact.created':
     case 'artifact.updated':
     case 'bulletin.posted':

@@ -16,8 +16,21 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: town
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: town_living_test_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U town -d town_living_test_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       NEXT_TELEMETRY_DISABLED: "1"
+      ROOM_CHAT_TEST_DATABASE_URL: postgresql://town:ci-only@127.0.0.1:5432/town_living_test_ci
+      LIVING_PROJECT_TEST_DATABASE_URL: postgresql://town:ci-only@127.0.0.1:5432/town_living_test_ci
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

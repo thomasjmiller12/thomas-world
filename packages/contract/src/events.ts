@@ -328,6 +328,7 @@ const envelopeBase = {
 export const WorldEvent = z.discriminatedUnion("type", [
   z.object({ ...envelopeBase, type: z.literal("agent.moved"), payload: AgentMovedPayload }),
   z.object({ ...envelopeBase, type: z.literal("agent.activity"), payload: AgentActivityPayload }),
+  z.object({ ...envelopeBase, type: z.literal("agent.rested"), payload: z.object({ agent: AgentId }) }),
   z.object({ ...envelopeBase, type: z.literal("agent.acted"), payload: AgentActedPayload }),
   z.object({ ...envelopeBase, type: z.literal("agent.thought"), payload: AgentThoughtPayload }),
   z.object({ ...envelopeBase, type: z.literal("agent.spoke"), payload: AgentSpokePayload }),
@@ -367,6 +368,7 @@ export type WorldEvent = z.infer<typeof WorldEvent>;
 export const worldEventTypes = [
   "agent.moved",
   "agent.activity",
+  "agent.rested",
   "agent.acted",
   "agent.thought",
   "agent.spoke",

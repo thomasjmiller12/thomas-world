@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { assessBehavior, type BehaviorEvent } from "./behavior.js";
+import { describe, expect, it, vi } from "vitest";
+import { assessBehavior, recordRest, type BehaviorEvent } from "./behavior.js";
+import { appendEvent } from "./events.js";
+vi.mock("./events.js", () => ({ appendEvent: vi.fn(), recentEventsForAgent: vi.fn() }));
 
 const now = new Date("2026-09-22T23:00:00Z");
 function event(hour: number, type: string, payload: Record<string, unknown>): BehaviorEvent {
@@ -45,6 +47,18 @@ describe("behavior quality, separate from liveness", () => {
     expect(result.lastMeaningfulAt).toBeNull();
   });
 
+  it("does not let diary or digest edits conceal a repeated acknowledgement loop", () => {
+    const result = assessBehavior([
+      event(18, "agent.thought", { text: "Noted." }),
+      event(19, "artifact.updated", { kind: "diary_entry" }),
+      event(20, "agent.thought", { text: "Noted." }),
+      event(21, "artifact.updated", { kind: "daily_digest" }),
+      event(22, "agent.thought", { text: "Noted." }),
+    ], now);
+    expect(result.status).toBe("stalled");
+    expect(result.lastMeaningfulAt).toBeNull();
+  });
+
   it("ignores private and old evidence and quotes mentioning a future event", () => {
     const result = assessBehavior([
       { ...event(20, "agent.thought", { text: "Diary — 2026-12-04" }), visibility: "private" },
@@ -55,5 +69,25 @@ describe("behavior quality, separate from liveness", () => {
     expect(result.futureDiaryDates).toBe(0);
     expect(result.status).toBe("quiet");
     expect(assessBehavior([], now).status).toBe("unknown");
+  });
+
+  it("records intentional quiet so the prior repetition episode can recover", async () => {
+    const repeated = [18, 19, 20].map((hour) => event(hour, "agent.thought", { text: "Noted." }));
+    expect(assessBehavior(repeated, now).status).toBe("stalled");
+    await recordRest("builder");
+    const saved = vi.mocked(appendEvent).mock.calls.at(-1)![0];
+    expect(saved.type).toBe("agent.rested");
+    expect(assessBehavior([...repeated, { ...saved, ts: event(21, "", {}).ts }], now).status).toBe("quiet");
+    expect(assessBehavior([...repeated, { ...saved, ts: event(21, "", {}).ts },
+      event(22, "agent.thought", { text: "Noted." })], now).repeatedUtterances).toBe(1);
+  });
+
+  it("does not treat old false diary dates as a continuing failure after real work", () => {
+    const result = assessBehavior([
+      ...[18, 19].map((hour) => event(hour, "agent.spoke", { text: "Diary — 2026-12-04" })),
+      event(20, "artifact.updated", { kind: "app" }),
+    ], now);
+    expect(result.status).toBe("active");
+    expect(result.futureDiaryDates).toBe(0);
   });
 });

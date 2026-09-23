@@ -57,6 +57,7 @@ const artifactKindEnum = [
 const eventTypeEnum = [
   "agent.moved",
   "agent.activity",
+  "agent.rested",
   "agent.acted",
   "agent.thought",
   "agent.spoke",

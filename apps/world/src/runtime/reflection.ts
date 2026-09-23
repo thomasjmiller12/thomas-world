@@ -25,6 +25,7 @@ import { randomUUID } from "node:crypto";
 import { buildCoreMemoryTool } from "./tools.js";
 import { getAgent } from "../engine/agents.js";
 import { recentEventsForAgent } from "../engine/events.js";
+import { townDate } from "./clock.js";
 
 const REFLECTION_PROMPT = `It's the end of the day in the town — your quiet hour.
 
@@ -58,11 +59,13 @@ export async function runReflection(agentId: AgentId): Promise<{ ran: boolean }>
 }
 
 async function runReflectionTurn(agentId: AgentId): Promise<{ ran: boolean }> {
+  const observedAt = new Date();
+  const today = townDate(observedAt);
   const profile = getProfile(agentId);
   const tickId = `reflect-${agentId}-${randomUUID().slice(0, 8)}`;
   const trace = startTrace("reflection", {
     userId: agentId,
-    sessionId: utcDay(),
+    sessionId: today,
     metadata: {
       soulGitHash: soulGitHash(agentId),
       provider: profile.role.tickModel.provider,
@@ -78,7 +81,7 @@ async function runReflectionTurn(agentId: AgentId): Promise<{ ran: boolean }> {
   const [core, agent, recent] = await Promise.all([
     coreMemorySnapshot(agentId), getAgent(agentId), recentEventsForAgent(agentId, 30),
   ]);
-  const since = Date.now() - 24 * 60 * 60 * 1000;
+  const since = observedAt.getTime() - 24 * 60 * 60 * 1000;
   const evidence = recent.filter((event) => Date.parse(event.ts) >= since);
   const inputText = [
     REFLECTION_PROMPT,
@@ -101,6 +104,7 @@ async function runReflectionTurn(agentId: AgentId): Promise<{ ran: boolean }> {
     const outcome = await runTurn({
       agentId,
       purpose: "reflection",
+      observedAt,
       model: profile.role.tickModel,
       maxTokens: 2048,
       inputText,
@@ -122,7 +126,6 @@ async function runReflectionTurn(agentId: AgentId): Promise<{ ran: boolean }> {
   // and a Hindsight hiccup must never fail the reflection after the diary
   // landed (that ordering is what caused the multi-diary retry loop).
   if (diaryText) {
-    const today = utcDay();
     await createArtifact({
       agentId,
       kind: "diary_entry",
@@ -140,8 +143,4 @@ async function runReflectionTurn(agentId: AgentId): Promise<{ ran: boolean }> {
 
   trace.end({ wroteDiary: Boolean(diaryText) });
   return { ran: true };
-}
-
-function utcDay(): string {
-  return new Date().toISOString().slice(0, 10);
 }

@@ -36,6 +36,9 @@ export interface TurnOutcome {
 export interface RunTurnOptions {
   agentId: AgentId;
   purpose: TurnPurpose;
+  // Reflection captures its date once so a turn crossing midnight keeps the
+  // same date in the prompt and persisted diary title.
+  observedAt?: Date;
   model: ModelRef;
   maxTokens: number;
   inputText: string;
@@ -59,7 +62,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
     items: loaded.items,
   });
 
-  let inputText = `${turnContext(opts.purpose)}\n\n${opts.inputText}`;
+  let inputText = `${turnContext(opts.purpose, opts.observedAt)}\n\n${opts.inputText}`;
   if (prepared.items.length === 0) {
     const seed = await buildSeedContext(opts.agentId);
     inputText = `${seed}\n\n---\n\n${inputText}`;

@@ -1,7 +1,7 @@
 // Behavior quality is separate from successful API calls and process liveness.
 // This bounded public-event assessment is diagnostic, never an automatic reset.
 import type { AgentId } from "@town/contract";
-import { recentEventsForAgent } from "./events.js";
+import { appendEvent, recentEventsForAgent } from "./events.js";
 import { townDate } from "../runtime/clock.js";
 
 export interface BehaviorEvent {
@@ -22,14 +22,14 @@ export interface BehaviorAssessment {
 }
 
 const changes = new Set([
-  "agent.moved", "message.sent", "artifact.updated", "artifact.state_changed",
+  "agent.moved", "message.sent", "artifact.state_changed",
   "object.created", "object.removed", "object.moved", "object.state_changed",
   "object.attached", "object.noted", "bulletin.posted", "capability.requested",
   "capability.resolved", "conversation.started",
 ]);
 
 function meaningful(event: BehaviorEvent): boolean {
-  return changes.has(event.type) || (event.type === "artifact.created" &&
+  return changes.has(event.type) || ((event.type === "artifact.created" || event.type === "artifact.updated") &&
     event.payload.kind !== "diary_entry" && event.payload.kind !== "daily_digest");
 }
 
@@ -50,7 +50,11 @@ export function assessBehavior(events: BehaviorEvent[], now = new Date()): Behav
     Date.parse(e.ts) >= now.getTime() - 7 * 86_400_000 && Date.parse(e.ts) <= now.getTime())
     .sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts));
   const progress = recent.filter(meaningful).at(-1);
-  const speech = recent.filter((e) => (e.type === "agent.spoke" || e.type === "agent.thought") &&
+  // A completed intentional rest or real change closes the prior repetition
+  // episode. Otherwise repaired agents would remain stalled for seven days.
+  const recovery = recent.filter((e) => meaningful(e) || e.type === "agent.rested").at(-1);
+  const currentEpisode = recovery ? recent.slice(recent.indexOf(recovery) + 1) : recent;
+  const speech = currentEpisode.filter((e) => (e.type === "agent.spoke" || e.type === "agent.thought") &&
     typeof e.payload.text === "string").slice(-6);
   const last = speech.at(-1);
   const repeated = last ? speech.filter((e) => similar(String(e.payload.text), String(last.payload.text))) : [];
@@ -71,11 +75,19 @@ export function assessBehavior(events: BehaviorEvent[], now = new Date()): Behav
   const stalled = (repeated.length >= 3 && noProgressDuringRepeat) || futureDates >= 2;
   if (recent.length && !progress) reasons.push("No meaningful world change in the sampled public events; diaries and activity labels do not count as progress.");
   return {
-    status: stalled ? "stalled" : progress ? "active" : recent.length ? "quiet" : "unknown",
+    status: stalled ? "stalled" : recovery?.type === "agent.rested" ? "quiet" : progress ? "active" : recent.length ? "quiet" : "unknown",
     reasons, sampledEvents: recent.length, since: recent[0]?.ts ?? null,
     lastMeaningfulAt: progress?.ts ?? null,
     repeatedUtterances: repeated.length, futureDiaryDates: futureDates,
   };
+}
+
+// No speech bubble, activity-label rewrite, or fictional accomplishment. The
+// durable event lets diagnostics observe a successful choice to remain quiet.
+export async function recordRest(agentId: AgentId): Promise<void> {
+  await appendEvent({
+    type: "agent.rested", agentId, visibility: "public", payload: { agent: agentId },
+  });
 }
 
 export async function behaviorForAgent(agentId: AgentId, now = new Date()): Promise<BehaviorAssessment> {

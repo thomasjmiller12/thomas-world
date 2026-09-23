@@ -40,7 +40,7 @@ import { startTrace } from "./tracing.js";
 import { runTurn, type TurnOutcome } from "./turn.js";
 import { runReflection } from "./reflection.js";
 import { isQuietReply } from "./turn-context.js";
-import { behaviorForAgent, behaviorContext } from "../engine/behavior.js";
+import { behaviorForAgent, behaviorContext, recordRest } from "../engine/behavior.js";
 import {
   enqueue,
   registerExecutor,
@@ -278,8 +278,9 @@ async function runTickInput(agentId: AgentId, note?: string): Promise<TickResult
   if (agent.status !== "awake") await setStatus(agentId, "awake");
 
   // Utterance: speech if anyone's present, a thought-aloud if alone.
-  if (outcome.finalText && !outcome.refused && !isQuietReply(outcome.finalText)) {
-    await emitUtterance(agentId, ctx.location, outcome.finalText);
+  if (outcome.finalText && !outcome.refused) {
+    if (isQuietReply(outcome.finalText)) await recordRest(agentId);
+    else await emitUtterance(agentId, ctx.location, outcome.finalText);
   }
 
   trace.end({
