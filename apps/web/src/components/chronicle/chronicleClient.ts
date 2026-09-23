@@ -49,11 +49,13 @@ export async function fetchChronicle(opts: {
 
 // GET /artifacts?kind=&agent= — the Made/Board browsers' list source.
 export async function fetchArtifacts(opts: {
+  scope?: "all" | "made";
   kind?: ArtifactKind | null;
   agent?: AgentId | null;
   signal?: AbortSignal;
 }): Promise<ArtifactSummary[]> {
   const url = new URL(`${baseUrl()}/artifacts`);
+  if (opts.scope) url.searchParams.set('scope', opts.scope);
   if (opts.kind) url.searchParams.set('kind', opts.kind);
   if (opts.agent) url.searchParams.set('agent', opts.agent);
   const res = await fetch(url.toString(), { signal: opts.signal });

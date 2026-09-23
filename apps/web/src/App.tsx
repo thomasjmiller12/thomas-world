@@ -460,6 +460,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
               initialTab={chronicle.tab}
               initialDay={chronicle.day}
               initialArtifactId={chronicle.artifactId ?? null}
+              readOnly={observe}
             />
           )}
 

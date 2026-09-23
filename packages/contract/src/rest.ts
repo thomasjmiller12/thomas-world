@@ -235,6 +235,8 @@ export type MessagesResponse = z.infer<typeof MessagesResponse>;
 // --- GET /artifacts?kind=&agent=  and  GET /artifacts/:id -------------------
 
 export const ArtifactsQuery = z.object({
+  // Made defaults to creations; diaries and bulletins have dedicated views.
+  scope: z.enum(["all", "made"]).optional(),
   kind: ArtifactKind.optional(),
   agent: AgentId.optional(),
 });

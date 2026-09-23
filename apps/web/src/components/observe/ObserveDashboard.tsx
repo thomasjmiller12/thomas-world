@@ -4,6 +4,7 @@ import {
   FeedResponse,
   type ChronicleItem,
   type ChronicleIssue,
+  type ChronicleCitation,
   type DayPhase,
   type FeedItem,
 } from '@town/contract';
@@ -22,6 +23,8 @@ import { MadeTab } from '@/components/chronicle/MadeTab';
 import { BoardTab } from '@/components/chronicle/BoardTab';
 import { MessagesTab } from '@/components/chronicle/MessagesTab';
 import { ArtifactReader } from '@/components/chronicle/ArtifactReader';
+import { useChronicleRefresh } from '@/components/chronicle/useChronicleRefresh';
+import { AboutPanel, type AboutTab } from '@/components/portfolio/AboutPanel';
 
 // ObserveDashboard — the observer-only surface (/observe). Everything a visitor
 // can see, none of what a visitor can do: live agent presence + activity, the
@@ -58,6 +61,8 @@ export function ObserveDashboard() {
   const [chronicleLoading, setChronicleLoading] = useState(false);
   const [chronicleError, setChronicleError] = useState(false);
   const reqSeq = useRef(0);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [about, setAbout] = useState<{ tab: AboutTab; referenceId?: string; proofId?: string } | null>(null);
 
   // Boot the observe-mode client once: snapshot + SSE, no identity.
   useEffect(() => {
@@ -78,13 +83,14 @@ export function ObserveDashboard() {
   }, []);
 
   // Chronicle loading (mirrors ChroniclePanel, without the overlay chrome).
-  useEffect(() => {
-    if (tab !== 'today' && tab !== 'conversations') return;
+  const loadChronicle = useCallback((targetDay: string | null, silent: boolean) => {
     const seq = ++reqSeq.current;
     const ctrl = new AbortController();
-    setChronicleLoading(true);
-    setChronicleError(false);
-    fetchChronicle({ day, signal: ctrl.signal })
+    if (!silent) {
+      setChronicleLoading(true);
+      setChronicleError(false);
+    }
+    fetchChronicle({ day: targetDay, signal: ctrl.signal })
       .then((page) => {
         if (seq !== reqSeq.current) return;
         setItems(page.items);
@@ -93,13 +99,31 @@ export function ObserveDashboard() {
         setResolvedDay(page.day);
       })
       .catch(() => {
-        if (seq === reqSeq.current) setChronicleError(true);
+        if (seq === reqSeq.current && !silent) setChronicleError(true);
       })
       .finally(() => {
-        if (seq === reqSeq.current) setChronicleLoading(false);
+        if (seq === reqSeq.current && !silent) setChronicleLoading(false);
       });
     return () => ctrl.abort();
-  }, [day, tab]);
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'today' || tab === 'conversations') return loadChronicle(day, false);
+  }, [day, tab, loadChronicle]);
+
+  useChronicleRefresh({ day, resolvedDay, days, readerOpen: readerId !== null || about !== null }, (latestDay) => {
+    if (latestDay && (tab === 'today' || tab === 'conversations')) loadChronicle(day, true);
+    setRefreshNonce((n) => n + 1);
+  });
+
+  const handleOpenCitation = useCallback((citation: ChronicleCitation) => {
+    const [kind, id] = (citation.href ?? '').split(/:(.+)/);
+    if (!id) return;
+    if (kind === 'artifact') setReaderId(id);
+    else if (kind === 'thread') setTab('conversations');
+    else if (kind === 'reference') setAbout({ tab: 'projects', referenceId: id });
+    else if (kind === 'proof') setAbout({ tab: 'proof', proofId: id });
+  }, []);
 
   const dayIdx = days.indexOf(resolvedDay);
   const hasNewer = dayIdx > 0;
@@ -244,7 +268,7 @@ export function ObserveDashboard() {
 
         {/* ── body ── */}
         {readerId ? (
-          <ArtifactReader artifactId={readerId} onBack={() => setReaderId(null)} />
+          <ArtifactReader artifactId={readerId} onBack={() => setReaderId(null)} readOnly />
         ) : (
           <>
             {tab === 'live' && <LiveFeed />}
@@ -255,22 +279,29 @@ export function ObserveDashboard() {
                 loading={chronicleLoading}
                 error={chronicleError}
                 onOpenArtifact={setReaderId}
-                onOpenCitation={(c) => {
-                  const href = c.href ?? '';
-                  if (href.startsWith('artifact:')) setReaderId(href.slice('artifact:'.length));
-                }}
+                onOpenCitation={handleOpenCitation}
                 onGoToDay={setDay}
               />
             )}
             {tab === 'conversations' && (
               <ConversationsTab items={items} loading={chronicleLoading} error={chronicleError} />
             )}
-            {tab === 'made' && <MadeTab onOpenArtifact={setReaderId} />}
-            {tab === 'board' && <BoardTab onOpenArtifact={setReaderId} />}
-            {tab === 'messages' && <MessagesTab />}
+            {tab === 'made' && <MadeTab onOpenArtifact={setReaderId} refreshNonce={refreshNonce} />}
+            {tab === 'board' && <BoardTab onOpenArtifact={setReaderId} refreshNonce={refreshNonce} />}
+            {tab === 'messages' && <MessagesTab refreshNonce={refreshNonce} />}
           </>
         )}
       </div>
+      {about && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
+          <AboutPanel
+            onClose={() => setAbout(null)}
+            initialTab={about.tab}
+            initialReferenceId={about.referenceId ?? null}
+            initialProofId={about.proofId ?? null}
+          />
+        </div>
+      )}
     </div>
   );
 }

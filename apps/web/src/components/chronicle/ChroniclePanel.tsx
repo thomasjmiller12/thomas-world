@@ -9,6 +9,7 @@ import { MadeTab } from './MadeTab';
 import { BoardTab } from './BoardTab';
 import { MessagesTab } from './MessagesTab';
 import { ArtifactReader } from './ArtifactReader';
+import { useChronicleRefresh } from './useChronicleRefresh';
 
 // ChroniclePanel — the full-screen "Town Chronicle" hub (M2.1, replaces the
 // feed side panel). An ink-toned scrim leaves the town visibly alive behind it;
@@ -27,20 +28,6 @@ import { ArtifactReader } from './ArtifactReader';
 
 type Tab = 'today' | 'conversations' | 'made' | 'board' | 'messages';
 
-// World-event types that can change today's Chronicle — a debounced refetch
-// fires when one streams in (while viewing the latest day). Kept narrow so
-// ambient noise (moves, thoughts, visitor presence) doesn't trigger refetches.
-const CHRONICLE_LIVE_TYPES = new Set<string>([
-  'agent.spoke',
-  'artifact.created',
-  'artifact.updated',
-  'message.sent',
-  'bulletin.posted',
-  'capability.requested',
-  'capability.resolved',
-  'agent.acted',
-]);
-
 const TABS: { id: Tab; label: string }[] = [
   { id: 'today', label: 'Today' },
   { id: 'conversations', label: 'Conversations' },
@@ -51,6 +38,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 export interface ChroniclePanelProps {
   onClose: () => void;
+  readOnly?: boolean;
   // Initial tab (default 'today'). "see their day →" opens 'today'.
   initialTab?: Tab;
   // Initial day key (YYYY-MM-DD) to load; omitted => the latest day the server has.
@@ -60,7 +48,7 @@ export interface ChroniclePanelProps {
   initialArtifactId?: string | null;
 }
 
-export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = null, initialArtifactId = null }: ChroniclePanelProps) {
+export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = null, initialArtifactId = null, readOnly = false }: ChroniclePanelProps) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const [day, setDay] = useState<string | null>(initialDay);
   // Chronicle (day-scoped) state — Today + Conversations read from this.
@@ -121,44 +109,10 @@ export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = nul
   // (Re)load the chronicle whenever the selected day changes (user-driven).
   useEffect(() => loadChronicle(day, false), [day, loadChronicle]);
 
-  // Live refresh: while viewing the latest day with no reader open, re-pull on a
-  // debounced burst of world events (and on tab-focus regain) so the Chronicle
-  // keeps up without a manual refresh / room switch. Refs let the stable event
-  // handler read current state without re-subscribing.
-  const liveRef = useRef({ day, resolvedDay, days, readerId });
-  liveRef.current = { day, resolvedDay, days, readerId };
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const isLatestDay = () => {
-      const { day: d, resolvedDay: rd, days: ds } = liveRef.current;
-      return d === null || ds.length === 0 || rd === ds[0];
-    };
-    const scheduleRefresh = () => {
-      if (liveRef.current.readerId || !isLatestDay()) return;
-      if (timer) return; // coalesce a burst into one refetch
-      timer = setTimeout(() => {
-        timer = null;
-        if (liveRef.current.readerId || !isLatestDay()) return;
-        loadChronicle(liveRef.current.day, true);
-        setRefreshNonce((n) => n + 1);
-      }, 4_000);
-    };
-    const onWorldEvent = (ev: { type: string }) => {
-      if (CHRONICLE_LIVE_TYPES.has(ev.type)) scheduleRefresh();
-    };
-    const onVisibility = () => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        scheduleRefresh();
-      }
-    };
-    EventBus.on('world-event', onWorldEvent);
-    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      if (timer) clearTimeout(timer);
-      EventBus.off('world-event', onWorldEvent);
-      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [loadChronicle]);
+  useChronicleRefresh({ day, resolvedDay, days, readerOpen: readerId !== null }, (latestDay) => {
+    if (latestDay) loadChronicle(day, true);
+    setRefreshNonce((n) => n + 1);
+  });
 
   // Resolve a Town Crier citation to its source. Artifact citations open the
   // in-hub reader; thread citations switch to Conversations; reference/proof
@@ -357,7 +311,7 @@ export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = nul
             columns); Today/Conversations/Board scroll in this body. */}
         <div style={{ flex: 1, overflowY: tab === 'made' || readerId ? 'hidden' : 'auto', padding: '16px 24px 24px', minHeight: 0 }}>
           {readerId ? (
-            <ArtifactReader artifactId={readerId} onBack={() => setReaderId(null)} />
+            <ArtifactReader artifactId={readerId} onBack={() => setReaderId(null)} readOnly={readOnly} />
           ) : (
             <>
               {tab === 'today' && (

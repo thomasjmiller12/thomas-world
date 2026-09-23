@@ -1,7 +1,7 @@
 // Artifact CRUD — create + update ONLY (no delete; the world keeps what it
 // makes). Each anchored to a location fixture where visitors find it (plan §6).
 
-import { and, desc, eq, gt, type SQL } from "drizzle-orm";
+import { and, desc, eq, gt, notInArray, sql, type SQL } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import type { AgentId, ArtifactKind, LocationId } from "@town/contract";
 import { db, schema } from "../db/client.js";
@@ -135,17 +135,22 @@ export async function getArtifact(id: string): Promise<ArtifactRow | undefined> 
 }
 
 export async function listArtifacts(
-  filters: { kind?: ArtifactKind; agent?: AgentId } = {},
+  filters: { kind?: ArtifactKind; agent?: AgentId; scope?: "all" | "made" } = {},
   limit = 100,
 ): Promise<ArtifactRow[]> {
   const conds: SQL[] = [];
   if (filters.kind) conds.push(eq(artifacts.kind, filters.kind));
   if (filters.agent) conds.push(eq(artifacts.agentId, filters.agent));
+  if (filters.scope === "made") conds.push(notInArray(artifacts.kind, ["diary_entry", "bulletin"]));
+  // Apply the display scope before LIMIT so nightly diaries cannot bury apps.
+  const order = filters.scope === "made"
+    ? [sql`case when ${artifacts.kind} = 'interactive' then 0 else 1 end`, desc(artifacts.updatedAt)]
+    : [desc(artifacts.createdAt)];
   return db
     .select()
     .from(artifacts)
     .where(conds.length ? and(...conds) : undefined)
-    .orderBy(desc(artifacts.createdAt))
+    .orderBy(...order)
     .limit(limit);
 }
 

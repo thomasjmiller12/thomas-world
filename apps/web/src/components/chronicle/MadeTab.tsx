@@ -13,7 +13,7 @@ import { artifactKindLabel, headerDate } from './chroniclePresentation';
 // Board tab. Selecting a card hands its id up to the hub's ArtifactReader.
 
 const ALL_AGENTS = Object.values(NPC_CONFIGS);
-// The Board owns bulletins; the Made browser shows everything else.
+// The default view foregrounds creations; diaries remain an explicit filter.
 const MADE_KINDS = artifactKinds.filter((k) => k !== 'bulletin') as ArtifactKind[];
 
 interface Props {
@@ -36,14 +36,14 @@ export function MadeTab({ onOpenArtifact, refreshNonce = 0 }: Props) {
     setLoading(true);
     setError(false);
     fetchArtifacts({
+      scope: kind === 'all' ? 'made' : 'all',
       kind: kind === 'all' ? null : kind,
       agent: agent === 'all' ? null : agent,
       signal: ctrl.signal,
     })
       .then((list) => {
         if (seq !== reqSeq.current) return;
-        // When no kind filter is set we still want to hide bulletins (Board's job).
-        setArtifacts(kind === 'all' ? list.filter((a) => a.kind !== 'bulletin') : list);
+        setArtifacts(list);
       })
       .catch(() => {
         if (seq !== reqSeq.current) return;
@@ -60,7 +60,7 @@ export function MadeTab({ onOpenArtifact, refreshNonce = 0 }: Props) {
       {/* filter chips */}
       <div style={{ flexShrink: 0, paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 8 }}>
-          <Chip on={kind === 'all'} onClick={() => setKind('all')} color="var(--ink)" label="All kinds" />
+          <Chip on={kind === 'all'} onClick={() => setKind('all')} color="var(--ink)" label="Creations" />
           {MADE_KINDS.map((k) => (
             <Chip key={k} on={kind === k} onClick={() => setKind(k)} color="var(--ink)" label={artifactKindLabel(k)} />
           ))}
@@ -158,10 +158,10 @@ function ArtifactCard({ artifact, onOpen }: { artifact: ArtifactSummary; onOpen:
         </div>
         <span style={{ font: '700 11px var(--sans)', color }}>{agentShortName(agent)}</span>
         <span style={{ font: '400 9.5px var(--mono)', color: 'var(--ink-3)', letterSpacing: '.04em', marginLeft: 'auto' }}>
-          {headerDate(artifact.createdAt)}
+          {headerDate(artifact.updatedAt)}
         </span>
       </div>
-      <span style={{ font: '700 11px var(--sans)', color, marginTop: 2 }}>read →</span>
+      <span style={{ font: '700 11px var(--sans)', color, marginTop: 2 }}>{artifact.kind === 'interactive' ? 'open app →' : 'read →'}</span>
     </button>
   );
 }

@@ -644,7 +644,8 @@ export function createApp() {
     const kind: ArtifactKind | undefined =
       kindParam && artifactKindSet.has(kindParam) ? (kindParam as ArtifactKind) : undefined;
     const agent = isAgentId(agentParam) ? agentParam : undefined;
-    const rows = await listArtifacts({ kind, agent });
+    const scope = c.req.query("scope") === "made" ? "made" : "all";
+    const rows = await listArtifacts({ kind, agent, scope });
     return c.json({ artifacts: rows.map(toArtifactSummary) });
   });
 

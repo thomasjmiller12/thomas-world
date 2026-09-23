@@ -17,10 +17,11 @@ import { ArtifactFrame } from '@/components/artifact/ArtifactFrame';
 
 interface Props {
   artifactId: string;
+  readOnly?: boolean;
   onBack: () => void;
 }
 
-export function ArtifactReader({ artifactId, onBack }: Props) {
+export function ArtifactReader({ artifactId, onBack, readOnly = false }: Props) {
   const [artifact, setArtifact] = useState<Artifact | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -132,7 +133,10 @@ export function ArtifactReader({ artifactId, onBack }: Props) {
             {artifact.kind === 'interactive' ? (
               // An agent-built app: run it in the sandboxed frame instead of
               // rendering its HTML source as prose.
-              <ArtifactFrame artifact={artifact} />
+              <>
+                {readOnly && <p style={{ color: 'var(--ink-3)', fontSize: 12 }}>Observing — shared changes are disabled.</p>}
+                <ArtifactFrame artifact={artifact} readOnly={readOnly} />
+              </>
             ) : (
               <MarkdownBody body={artifact.body} color={color} />
             )}
