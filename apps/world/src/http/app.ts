@@ -130,6 +130,7 @@ import {
   sessionTurnDecision,
 } from "./rate-limit.js";
 import { parseProviderAttachment } from "./delivery.js";
+import { contributionRoutes } from "./contributions.js";
 
 const agentSet = new Set<string>(agentIds);
 const locationSet = new Set<string>(locationIds);
@@ -654,6 +655,8 @@ export function createApp() {
     if (!row) return c.json({ error: "not found" }, 404);
     return c.json({ artifact: toArtifact(row) });
   });
+
+  app.route("/", contributionRoutes());
 
   // --- artifact state (programmable world, D3) -----------------------------
   // The keyed JSON store an interactive artifact shares with its owning agent.

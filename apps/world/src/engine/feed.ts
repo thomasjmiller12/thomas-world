@@ -61,6 +61,10 @@ export async function renderLine(e: WorldEvent): Promise<string> {
       }.`;
     case "artifact.updated":
       return `${await who(p.agent)} updated "${p.title}".`;
+    case "artifact.contribution":
+      return p.status === "pending"
+        ? `A visitor left a suggestion for ${await who(p.agent)}'s creation.`
+        : `${await who(p.agent)} marked a visitor suggestion ${p.status}.`;
     case "bulletin.posted":
       return `${await who(p.agent)} posted a bulletin: "${p.title}".`;
     case "capability.requested":

@@ -1,6 +1,14 @@
 import { z } from "zod";
 import { AgentId, LocationId, DayPhase, Visibility } from "./ids.js";
 import { ArtifactKind } from "./artifacts.js";
+import { ContributionStatus } from "./contributions.js";
+
+export const ArtifactContributionPayload = z.object({
+  artifactId: z.string(),
+  contributionId: z.string(),
+  agent: AgentId,
+  status: ContributionStatus,
+});
 
 // The world-event taxonomy (plan §5). This is BOTH the SSE event stream the
 // frontend consumes AND the `world_events.type` enum — one source of truth.
@@ -339,6 +347,7 @@ export const WorldEvent = z.discriminatedUnion("type", [
   z.object({ ...envelopeBase, type: z.literal("message.sent"), payload: MessageSentPayload }),
   z.object({ ...envelopeBase, type: z.literal("artifact.created"), payload: ArtifactCreatedPayload }),
   z.object({ ...envelopeBase, type: z.literal("artifact.updated"), payload: ArtifactUpdatedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("artifact.contribution"), payload: ArtifactContributionPayload }),
   z.object({ ...envelopeBase, type: z.literal("bulletin.posted"), payload: BulletinPostedPayload }),
   z.object({ ...envelopeBase, type: z.literal("capability.requested"), payload: CapabilityRequestedPayload }),
   z.object({ ...envelopeBase, type: z.literal("capability.resolved"), payload: CapabilityResolvedPayload }),
@@ -380,6 +389,7 @@ export const worldEventTypes = [
   "message.sent",
   "artifact.created",
   "artifact.updated",
+  "artifact.contribution",
   "bulletin.posted",
   "capability.requested",
   "capability.resolved",

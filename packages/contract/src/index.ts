@@ -5,6 +5,7 @@
 
 export * from "./ids.js";
 export * from "./artifacts.js";
+export * from "./contributions.js";
 export * from "./objects.js";
 export * from "./beats.js";
 export * from "./events.js";

@@ -96,6 +96,7 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
     case 'agent.rested':
     case 'artifact.created':
     case 'artifact.updated':
+    case 'artifact.contribution':
     case 'bulletin.posted':
     case 'capability.requested':
     case 'capability.resolved':

@@ -68,6 +68,7 @@ const eventTypeEnum = [
   "message.sent",
   "artifact.created",
   "artifact.updated",
+  "artifact.contribution",
   "bulletin.posted",
   "capability.requested",
   "capability.resolved",
@@ -271,6 +272,7 @@ export const artifacts = pgTable(
     // back-compat (Chronicle/feed read them).
     objectId: text("object_id"),
     published: boolean("published").notNull().default(false),
+    version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -285,6 +287,46 @@ export const artifacts = pgTable(
 );
 
 // --- artifact_state (programmable world, D3) ---------------------------------
+export const artifactContributions = pgTable("artifact_contributions", {
+  id: text("id").primaryKey(),
+  artifactId: text("artifact_id").notNull().references(() => artifacts.id),
+  agentId: text("agent_id", { enum: agentEnum }).notNull(),
+  visitorId: text("visitor_id").notNull().references(() => visitors.id),
+  requestId: text("request_id").notNull(),
+  contributorName: text("contributor_name").notNull(),
+  text: text("text").notNull(),
+  status: text("status", { enum: ["pending", "accepted", "blocked", "completed", "declined"] }).notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("artifact_contributions_request_idx").on(t.visitorId, t.requestId),
+  index("artifact_contributions_artifact_idx").on(t.artifactId, t.createdAt),
+  index("artifact_contributions_pending_idx").on(t.agentId, t.status, t.createdAt),
+]);
+
+// Immutable snapshots, including the legacy version captured before the first edit.
+export const artifactRevisions = pgTable("artifact_revisions", {
+  id: text("id").primaryKey(),
+  artifactId: text("artifact_id").notNull().references(() => artifacts.id),
+  version: integer("version").notNull(),
+  agentId: text("agent_id", { enum: agentEnum }).notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  published: boolean("published").notNull(),
+  contributionId: text("contribution_id").references(() => artifactContributions.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("artifact_revisions_version_idx").on(t.artifactId, t.version)]);
+
+export const contributionResponses = pgTable("contribution_responses", {
+  id: text("id").primaryKey(),
+  contributionId: text("contribution_id").notNull().references(() => artifactContributions.id),
+  agentId: text("agent_id", { enum: agentEnum }).notNull(),
+  status: text("status", { enum: ["pending", "accepted", "blocked", "completed", "declined"] }).notNull(),
+  response: text("response").notNull(),
+  revisionId: text("revision_id").references(() => artifactRevisions.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("contribution_responses_contribution_idx").on(t.contributionId, t.createdAt)]);
+
 // The per-artifact keyed JSON store — the "database" an interactive artifact
 // gets for free: a Go board's position, a guestbook's entries, a poll's tallies.
 // Visitors write through PUT /artifacts/:id/state/:key (rate-limited,

@@ -169,6 +169,13 @@
       "when": 1787525147030,
       "tag": "0023_dear_madrox",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790142152389,
+      "tag": "0024_living_projects",
+      "breakpoints": true
     }
   ]
 }

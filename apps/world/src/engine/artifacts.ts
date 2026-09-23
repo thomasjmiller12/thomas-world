@@ -5,10 +5,11 @@ import { and, desc, eq, gt, notInArray, sql, type SQL } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import type { AgentId, ArtifactKind, LocationId } from "@town/contract";
 import { db, schema } from "../db/client.js";
-import { appendEvent } from "./events.js";
+import { appendEvent, materializeEventRow, publishCommittedEvent } from "./events.js";
+import { ContributionError } from "./contributions.js";
 import { attachArtifact, findObjectAtLocation } from "./objects.js";
 
-const { artifacts } = schema;
+const { artifacts, artifactRevisions, artifactContributions, worldEvents } = schema;
 export type ArtifactRow = typeof artifacts.$inferSelect;
 
 // Default in-world anchor for each artifact kind (plan §6 table).
@@ -104,29 +105,54 @@ export interface UpdateArtifactInput {
 export async function updateArtifact(
   id: string,
   patch: UpdateArtifactInput,
+  attribution?: { agentId: AgentId; contributionId?: string },
 ): Promise<ArtifactRow | undefined> {
-  const [existing] = await db.select().from(artifacts).where(eq(artifacts.id, id));
-  if (!existing) return undefined;
-  const [row] = await db
-    .update(artifacts)
-    .set({ ...patch, updatedAt: new Date() })
-    .where(eq(artifacts.id, id))
-    .returning();
-  await appendEvent({
-    type: "artifact.updated",
-    agentId: row.agentId as AgentId,
-    locationId: row.locationId as LocationId | null,
-    visibility: "public",
-    payload: {
-      artifactId: row.id,
-      agent: row.agentId,
-      kind: row.kind,
-      title: row.title,
-      location: row.locationId,
-      fixture: row.fixture,
-    },
+  const result = await db.transaction(async (tx) => {
+    // One artifact lock orders versions and preserves the exact preceding content.
+    const [existing] = await tx.select().from(artifacts).where(eq(artifacts.id, id)).for("update");
+    if (!existing) return undefined;
+    if (attribution && existing.agentId !== attribution.agentId) {
+      throw new ContributionError("Only the owner may revise this creation.", 403);
+    }
+    if (attribution?.contributionId) {
+      const [contribution] = await tx.select().from(artifactContributions)
+        .where(eq(artifactContributions.id, attribution.contributionId)).for("update");
+      if (!contribution || contribution.artifactId !== id || contribution.agentId !== attribution.agentId) {
+        throw new ContributionError("That contribution does not belong to this creation and its owner.", 400);
+      }
+      if (contribution.status === "completed" || contribution.status === "declined") {
+        throw new ContributionError("That contribution is closed.", 409);
+      }
+    }
+    const title = patch.title ?? existing.title;
+    const body = patch.body ?? existing.body;
+    const published = patch.published ?? existing.published;
+    if (title === existing.title && body === existing.body && published === existing.published) {
+      if (attribution?.contributionId) throw new ContributionError("No content changed; a contribution cannot be credited with an unchanged revision.", 400);
+      return { row: existing, event: null };
+    }
+    const now = new Date();
+    const snapshot = { artifactId: id, agentId: existing.agentId, title: existing.title,
+      body: existing.body, published: existing.published, version: existing.version };
+    // Existing artifacts predate history. Capture their current version once,
+    // without attributing it to the new visitor suggestion.
+    await tx.insert(artifactRevisions).values({ id: randomUUID(), ...snapshot, createdAt: existing.updatedAt })
+      .onConflictDoNothing({ target: [artifactRevisions.artifactId, artifactRevisions.version] });
+    await tx.insert(artifactRevisions).values({
+      ...snapshot, id: randomUUID(), version: existing.version + 1, title, body, published,
+      contributionId: attribution?.contributionId, createdAt: now,
+    });
+    const [row] = await tx.update(artifacts).set({ title, body, published, version: existing.version + 1, updatedAt: now })
+      .where(eq(artifacts.id, id)).returning();
+    const [event] = await tx.insert(worldEvents).values({
+      type: "artifact.updated", agentId: row.agentId, locationId: row.locationId,
+      visibility: "public", payload: { artifactId: row.id, agent: row.agentId,
+        kind: row.kind, title: row.title, location: row.locationId, fixture: row.fixture },
+    }).returning();
+    return { row, event };
   });
-  return row;
+  if (result?.event) publishCommittedEvent(materializeEventRow(result.event));
+  return result?.row;
 }
 
 export async function getArtifact(id: string): Promise<ArtifactRow | undefined> {

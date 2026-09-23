@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Artifact, AgentId } from '@town/contract';
+import type { Artifact, AgentId, WorldEvent } from '@town/contract';
 import { THOMAS_COLORS } from '@/lib/constants';
 import type { ThomasId } from '@/lib/types';
 import { agentShortName } from '@/components/chat/primitives';
@@ -7,6 +7,8 @@ import { fetchArtifact } from './chronicleClient';
 import { artifactKindLabel, headerDate } from './chroniclePresentation';
 import { MarkdownBody } from './MarkdownBody';
 import { ArtifactFrame } from '@/components/artifact/ArtifactFrame';
+import { ArtifactTrail } from './ArtifactTrail';
+import { EventBus } from '@/game/EventBus';
 
 // ArtifactReader — the in-hub document reader (M2.1). Lazily GETs the full
 // artifact body (list views carry only the headline) and renders it as a paper
@@ -44,6 +46,19 @@ export function ArtifactReader({ artifactId, onBack, readOnly = false }: Props) 
       });
     return () => ctrl.abort();
   }, [artifactId, attempt]);
+
+  useEffect(() => {
+    let controller: AbortController | null = null;
+    const onEvent = (event: WorldEvent) => {
+      if (event.type !== 'artifact.updated' || event.payload.artifactId !== artifactId) return;
+      controller?.abort();
+      controller = new AbortController();
+      // Keep the contribution form mounted while replacing the current artifact.
+      void fetchArtifact(artifactId, controller.signal).then(setArtifact).catch(() => undefined);
+    };
+    EventBus.on('world-event', onEvent);
+    return () => { controller?.abort(); EventBus.off('world-event', onEvent); };
+  }, [artifactId]);
 
   const agent = artifact?.agentId as ThomasId | undefined;
   // Hex (not a CSS var) — MarkdownBody derives alpha variants like `${color}66`.
@@ -141,6 +156,10 @@ export function ArtifactReader({ artifactId, onBack, readOnly = false }: Props) 
               <MarkdownBody body={artifact.body} color={color} />
             )}
           </article>
+
+          {!['diary_entry', 'daily_digest', 'bulletin'].includes(artifact.kind) && (
+            <ArtifactTrail key={artifact.id} artifact={artifact} readOnly={readOnly} />
+          )}
 
           {/* Silkscreen meta footer */}
           <div
