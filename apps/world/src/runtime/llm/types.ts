@@ -53,6 +53,9 @@ export interface ProviderTurnRequest<TTool = unknown> {
   maxTurns: number;
   maxOutputTokens: number;
   attachment?: ProviderAttachment;
+  // Hosted tools are capabilities too. Reflection and room interjections must
+  // not regain code execution merely because an adapter normally offers it.
+  codeExecution?: boolean;
   onFrame?: (frame: ChatStreamFrame) => void | Promise<void>;
   onUsage: (usage: NormalizedUsage) => Promise<void>;
 }

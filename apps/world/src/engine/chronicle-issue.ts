@@ -33,7 +33,7 @@ import { recordNormalizedUsage } from "./usage.js";
 const { chronicleIssues, artifacts } = schema;
 
 // Bump when the prompt/schema changes so stale cached issues can be told apart.
-export const PROMPT_VERSION = "crier-2026-06-20";
+export const PROMPT_VERSION = "crier-2026-09-22";
 
 // How long today's issue is considered fresh before a regenerate is allowed (it
 // keeps developing through the day). Past days are immutable once printed.
@@ -254,6 +254,8 @@ export type GeneratedIssue = z.infer<typeof GeneratedIssue>;
 const SYSTEM = `You are The Town Crier for Thomas's Town — a small, slightly whimsical AI village where five facets of one person (Career, Researcher, Builder, Writer, Hobby) live, work, talk, and make things on their own.
 
 Write a compact newspaper issue for the given day in the Town Crier's voice: specific, warm, a little literary, never marketing-y. Every concrete claim about something that happened must cite one or more source ids inline as markers like [S3]. Use only the sources provided. Do NOT invent URLs, projects, artifacts, visitors, messages, or agent actions. If the day is sparse, write an honest quiet-day issue. Markers go inline in the prose right after the claim they support.
+
+Distinguish reflections and repeated utterances from completed work. A diary is a diary, not a new project or evidence of progress. If residents keep repeating themselves or waiting on the same blocker, report that plainly; do not turn stagnation into a story about growth, restraint, or craft. The packet's day and event timestamps are authoritative; dates claimed inside quoted diaries can be wrong. Do not endorse a future diary date as the date of an event.
 
 Return ONLY a JSON object, no prose around it, matching:
 {

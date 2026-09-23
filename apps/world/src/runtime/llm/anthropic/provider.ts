@@ -107,7 +107,7 @@ async function runAnthropicTurn(
     output_config: { effort: "low" as const },
     system: anthropicSystemBlocks(request.systemPrompt),
     messages,
-    tools: [...toAnthropicTools(request.tools), CODE_EXEC_TOOL],
+    tools: [...toAnthropicTools(request.tools), ...(request.codeExecution === false ? [] : [CODE_EXEC_TOOL])],
     max_iterations: request.maxTurns,
     betas: [...LOOP_BETAS],
     context_management: COMPACTION,

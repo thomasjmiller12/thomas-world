@@ -39,6 +39,8 @@ import { spendTodayUsd, spendTodayForAgent } from "../engine/usage.js";
 import { startTrace } from "./tracing.js";
 import { runTurn, type TurnOutcome } from "./turn.js";
 import { runReflection } from "./reflection.js";
+import { isQuietReply } from "./turn-context.js";
+import { behaviorForAgent, behaviorContext } from "../engine/behavior.js";
 import {
   enqueue,
   registerExecutor,
@@ -240,13 +242,20 @@ async function runTickInput(agentId: AgentId, note?: string): Promise<TickResult
   const obs = await buildDelta(agentId);
   const ctx: AgentContext = { agentId, location: obs.location };
   const tools = buildTools(ctx);
-  const inputText = note ? `${obs.text}\n\n## Cue\n${note}` : obs.text;
+  const behavior = await behaviorForAgent(agentId);
+  const inputText = [
+    obs.text,
+    `Current activity label: ${agent.activity ?? "unspecified"}. Correct it with set_activity if it no longer describes your work.`,
+    behaviorContext(behavior),
+    ...(note ? [`## Cue\n${note}`] : []),
+  ].join("\n\n");
 
   let outcome: TurnOutcome;
   try {
     outcome = await runTurn({
       agentId,
       model: profile.role.tickModel,
+      purpose: "autonomous",
       maxTokens: 4096,
       inputText,
       tools,
@@ -269,7 +278,7 @@ async function runTickInput(agentId: AgentId, note?: string): Promise<TickResult
   if (agent.status !== "awake") await setStatus(agentId, "awake");
 
   // Utterance: speech if anyone's present, a thought-aloud if alone.
-  if (outcome.finalText && !outcome.refused) {
+  if (outcome.finalText && !outcome.refused && !isQuietReply(outcome.finalText)) {
     await emitUtterance(agentId, ctx.location, outcome.finalText);
   }
 
@@ -471,6 +480,7 @@ async function runVisitorInput(
     outcome = await runTurn({
       agentId,
       model: profile(agentId).chatModel,
+      purpose: input.mode === "interject" ? "interjection" : "visitor",
       maxTokens: 2048,
       inputText,
       tools,
@@ -563,6 +573,7 @@ async function runDeliveryInput(
     outcome = await runTurn({
       agentId,
       model: profile(agentId).chatModel,
+      purpose: "delivery",
       maxTokens: 8192,
       inputText: input.prompt,
       tools,

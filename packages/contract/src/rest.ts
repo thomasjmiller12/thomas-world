@@ -147,6 +147,23 @@ export const HealthResponse = z.object({
 });
 export type HealthResponse = z.infer<typeof HealthResponse>;
 
+// Public behavioral evidence is deliberately separate from process/API health.
+export const BehaviorHealthResponse = z.object({
+  ok: z.boolean(),
+  ts: z.string(),
+  agents: z.array(z.object({
+    id: AgentId,
+    status: z.enum(["active", "quiet", "stalled", "unknown"]),
+    reasons: z.array(z.string()),
+    sampledEvents: z.number().int().nonnegative(),
+    since: z.string().nullable(),
+    lastMeaningfulAt: z.string().nullable(),
+    repeatedUtterances: z.number().int().nonnegative(),
+    futureDiaryDates: z.number().int().nonnegative(),
+  })),
+});
+export type BehaviorHealthResponse = z.infer<typeof BehaviorHealthResponse>;
+
 // --- GET /events?after=<id>  (catch-up / polling fallback) ------------------
 
 export const EventsQuery = z.object({

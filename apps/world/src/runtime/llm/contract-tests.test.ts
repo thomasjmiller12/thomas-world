@@ -41,6 +41,7 @@ import { MAX_TURN_ROUNDS, runTurn } from "../turn.js";
 
 const baseOptions = () => ({
   agentId: "builder" as const,
+  purpose: "autonomous" as const,
   model: { provider: "anthropic" as const, model: "claude-sonnet-5" },
   maxTokens: 1_000,
   inputText: "What should I do next?",
@@ -73,6 +74,31 @@ describe("runTurn provider contract", () => {
       expect.objectContaining({ max_iterations: MAX_TURN_ROUNDS }),
     );
     expect(result.rounds).toBe(MAX_TURN_ROUNDS);
+  });
+
+  it("scopes reflection to its turn while preserving the existing native history", async () => {
+    const history = [
+      { role: "user", content: [{ type: "text", text: "Write a diary for today." }] },
+      { role: "assistant", content: [{ type: "text", text: "Diary — 2026-12-03: a quiet day." }] },
+    ];
+    mocks.loadThread.mockResolvedValue({ items: history, inputCursor: 41 });
+    mocks.toolRunner.mockImplementation((params) =>
+      nonStreamingRunner(params, [anthropicMessage({ text: "[quiet]", stopReason: "end_turn" })]),
+    );
+    await runTurn(baseOptions());
+    const params = mocks.toolRunner.mock.calls[0][0];
+    expect(params.messages.slice(0, 2)).toEqual(history);
+    expect(JSON.stringify(params.messages[2])).toContain("Purpose: autonomous");
+    expect(JSON.stringify(params.messages[2])).toContain("previous reflection or visitor exchange has ended");
+    expect(mocks.buildSeedContext).not.toHaveBeenCalled();
+  });
+
+  it("gives Anthropic interjections no function or hosted tools", async () => {
+    mocks.toolRunner.mockImplementation((params) =>
+      nonStreamingRunner(params, [anthropicMessage({ text: "[pass]", stopReason: "end_turn" })]),
+    );
+    await runTurn({ ...baseOptions(), purpose: "interjection" });
+    expect(mocks.toolRunner.mock.calls[0][0].tools).toEqual([]);
   });
 
   it("does not persist a partial thread when the provider fails", async () => {

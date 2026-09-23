@@ -491,7 +491,7 @@ export async function buildDelta(
   if (noticePush.length) pushParts.push(renderEvents(noticePush, location, agentId));
   const since = pushParts.length
     ? pushParts.join("\n")
-    : "Nothing new has reached you since your last turn — carry on with what you're doing.";
+    : "No new messages or notices. Choose a next step from current state and your interests, or rest; there is no need to repeat your last response.";
 
   const sections: string[] = [
     `## Where you are`,

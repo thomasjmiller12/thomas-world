@@ -23,6 +23,8 @@ import { runTurn } from "./turn.js";
 import { recordTurnFailure } from "./failure-handler.js";
 import { randomUUID } from "node:crypto";
 import { buildCoreMemoryTool } from "./tools.js";
+import { getAgent } from "../engine/agents.js";
+import { recentEventsForAgent } from "../engine/events.js";
 
 const REFLECTION_PROMPT = `It's the end of the day in the town — your quiet hour.
 
@@ -73,9 +75,17 @@ async function runReflectionTurn(agentId: AgentId): Promise<{ ran: boolean }> {
   // The reflection input. The day itself is ALREADY in the thread (M3) — we only
   // surface current core memory so the agent can curate it, then prompt the
   // reflection + diary. This is appended to the continuous thread by runTurn.
-  const core = await coreMemorySnapshot(agentId);
+  const [core, agent, recent] = await Promise.all([
+    coreMemorySnapshot(agentId), getAgent(agentId), recentEventsForAgent(agentId, 30),
+  ]);
+  const since = Date.now() - 24 * 60 * 60 * 1000;
+  const evidence = recent.filter((event) => Date.parse(event.ts) >= since);
   const inputText = [
     REFLECTION_PROMPT,
+    `## Current world evidence (bounded sample from the last 24 hours)`,
+    `Location: ${agent?.locationId ?? "unknown"}. Activity: ${agent?.activity ?? "unspecified"}.`,
+    ...evidence.map((event) => `${event.ts} ${event.type}: ${JSON.stringify(event.payload).slice(0, 600)}`),
+    ...(evidence.length ? [] : ["No recent events in this sample. Do not invent any."]),
     ``,
     `## Your core memory right now`,
     core,
@@ -90,6 +100,7 @@ async function runReflectionTurn(agentId: AgentId): Promise<{ ran: boolean }> {
     // perception cursor is preserved (reflection perceives nothing new).
     const outcome = await runTurn({
       agentId,
+      purpose: "reflection",
       model: profile.role.tickModel,
       maxTokens: 2048,
       inputText,

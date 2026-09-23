@@ -13,6 +13,7 @@ import {
   locationIds,
   artifactKinds,
   HealthResponse,
+  BehaviorHealthResponse,
   SnapshotResponse,
   EventsResponse,
   FeedResponse,
@@ -68,6 +69,7 @@ import { getChronicle, todayUtc, regenerateDayIssue } from "../engine/chronicle.
 import { buildAbout, listProofs, getProof } from "../engine/portfolio.js";
 import { listReferences, getReferenceRow, rowToReference } from "../engine/references.js";
 import { getAgent, allAgents } from "../engine/agents.js";
+import { behaviorForAgent } from "../engine/behavior.js";
 import { listMessages } from "../engine/messages.js";
 import { recordInboundMail } from "../engine/inbound-mail.js";
 import {
@@ -292,6 +294,17 @@ export function createApp() {
   // configured. Deliberate quiet (dormant hours, exhausted budget) stays ok.
   app.get("/health/agents", async (c) => {
     const body = await healthBody();
+    return c.json(body, body.ok ? 200 : 503);
+  });
+
+  app.get("/health/behavior", async (c) => {
+    const now = new Date();
+    const agents = await Promise.all(agentIds.map(async (id) => ({
+      id, ...await behaviorForAgent(id, now),
+    })));
+    const body = validated(BehaviorHealthResponse, {
+      ok: agents.every((agent) => agent.status !== "stalled"), ts: now.toISOString(), agents,
+    });
     return c.json(body, body.ok ? 200 : 503);
   });
 

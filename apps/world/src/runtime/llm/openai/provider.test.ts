@@ -119,6 +119,12 @@ function baseRequest(overrides: Record<string, unknown> = {}) {
   };
 }
 
+it("does not add Code Interpreter to explicitly tool-free turns", async () => {
+  mocks.run.mockResolvedValue(fakeRunResult([modelResponse([assistant("[pass]")])]));
+  await openaiProvider.runTurn(baseRequest({ tools: [], codeExecution: false }));
+  expect(mocks.run.mock.calls.at(-1)![0].tools).toEqual([]);
+});
+
 async function persistFakeRunItems(
   options: { session: { addItems: (items: unknown[]) => Promise<void> } },
   responses: ReturnType<typeof modelResponse>[],

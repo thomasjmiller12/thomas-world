@@ -107,13 +107,13 @@ function createTurnAgent(request: ProviderTurnRequest<TownTool>): Agent {
     model: request.model.model,
     tools: [
       ...toOpenAITools(request.tools),
-      codeInterpreterTool({
+      ...(request.codeExecution === false ? [] : [codeInterpreterTool({
         includeOutputs: true,
         container: {
           type: "auto",
           ...(fileIds.length > 0 ? { file_ids: fileIds } : {}),
         },
-      }),
+      })]),
     ],
     modelSettings: {
       maxTokens: request.maxOutputTokens,

@@ -11,6 +11,7 @@ import { buildSystemPrompt } from "./llm/system.js";
 import type { ModelRef, ProviderAttachment } from "./llm/types.js";
 import type { TownTool } from "./llm/tool.js";
 import { journalMutatingTools } from "./action-journal.js";
+import { turnContext, permitsCodeExecution, type TurnPurpose } from "./turn-context.js";
 
 export { classifyRoundText, releaseHeld } from "./llm/speech.js";
 
@@ -34,6 +35,7 @@ export interface TurnOutcome {
 
 export interface RunTurnOptions {
   agentId: AgentId;
+  purpose: TurnPurpose;
   model: ModelRef;
   maxTokens: number;
   inputText: string;
@@ -57,10 +59,10 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
     items: loaded.items,
   });
 
-  let inputText = opts.inputText;
+  let inputText = `${turnContext(opts.purpose)}\n\n${opts.inputText}`;
   if (prepared.items.length === 0) {
     const seed = await buildSeedContext(opts.agentId);
-    inputText = `${seed}\n\n---\n\n${opts.inputText}`;
+    inputText = `${seed}\n\n---\n\n${inputText}`;
   }
 
   let totalCost = 0;
@@ -78,6 +80,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<TurnOutcome> {
     maxTurns: MAX_TURN_ROUNDS,
     maxOutputTokens: opts.maxTokens,
     attachment: opts.attachment,
+    codeExecution: permitsCodeExecution(opts.purpose),
     onFrame: opts.stream?.onFrame,
     onUsage: async (usage) => {
       const cost = await recordNormalizedUsage({
