@@ -619,6 +619,10 @@ describe("M2 REST shapes round-trip", () => {
     expect(chat.messages[0].sender).toBe("visitor");
     expect(chat.messages[1].sender).toBe("hobby");
     expect(chat.responses[0]).toEqual({ requestId: "request-1", completed: true });
+    expect(chat.endedAt).toBeNull();
+    expect(GetChatResponse.parse({
+      ...chat, participants: [], endedAt: "2026-09-22T10:01:00.000Z",
+    }).endedAt).toBe("2026-09-22T10:01:00.000Z");
     // operator rows are never exposed — `operator` is not a valid sender here
     expect(() =>
       GetChatResponse.parse({

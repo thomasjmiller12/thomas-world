@@ -82,6 +82,27 @@ describe("isSilentInterjection", () => {
 });
 
 describe("runRoomResponse", () => {
+  it("finishes both durable turns after the client transport disconnects", async () => {
+    const persisted: string[] = [];
+    fake.enqueue.mockImplementation(async (agent, input) => {
+      await input.handlers.onFrame({ type: "turn_started", agent });
+      await input.handlers.onFrame({ type: "text", text: "Still persisted", agent });
+      persisted.push(agent);
+      await input.handlers.onFrame({ type: "done", messageId: agent, agent });
+      return { ran: true, reason: "ok" };
+    });
+    const disconnected = vi.fn(() => { throw new Error("connection closed"); });
+
+    await runRoomResponse({
+      sessionId: "session-1", visitorId: "visitor-1", text: "hi room",
+      requestId: "disconnected-1", handlers: { onFrame: disconnected },
+    });
+
+    expect(persisted).toEqual(["builder", "writer"]);
+    expect(disconnected).toHaveBeenCalledOnce();
+    expect(fake.completeVisitorResponse).toHaveBeenCalledWith("session-1", "disconnected-1");
+  });
+
   it("persists the visitor once, suppresses [pass], and closes the response", async () => {
     fake.enqueue
       .mockImplementationOnce(async (_agent, input) => {

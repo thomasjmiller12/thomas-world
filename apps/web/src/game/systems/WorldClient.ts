@@ -1220,6 +1220,21 @@ export class WorldClient {
           timestamp: Date.now(),
         });
       }
+      // A dropped stream can lose chat_ended as well as response_done. Replay
+      // any final speech first, then adopt the server's closed-room state.
+      if (transcript.endedAt) {
+        chat.streamSettled = true;
+        EventBus.emit('chat-ended', {
+          npcId: chat.primaryAgent,
+          sessionId: chat.sessionId,
+          reason: 'the conversation has ended',
+        });
+        this.teardownActiveChat();
+        return;
+      }
+      if (!chat.participants.includes(chat.primaryAgent) && chat.participants[0]) {
+        chat.primaryAgent = chat.participants[0];
+      }
       EventBus.emit('chat-participants', {
         sessionId: chat.sessionId,
         participants: chat.participants,

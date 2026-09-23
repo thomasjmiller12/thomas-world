@@ -494,23 +494,29 @@ export function isChatStale(
 // close only sessions with NO ping AND no message for `staleMs` (default 3 min).
 export async function sweepStaleChats(staleMs = 3 * 60_000): Promise<void> {
   const open = await db.select().from(chatSessions).where(isNull(chatSessions.endedAt));
-  const now = Date.now();
   for (const s of open) {
-    const [lastMsg] = await db
-      .select({ ts: chatMessages.ts })
-      .from(chatMessages)
-      .where(eq(chatMessages.sessionId, s.id))
-      .orderBy(desc(chatMessages.ts))
-      .limit(1);
-    const stale = isChatStale(
-      { startedAt: s.startedAt, lastPingAt: s.lastPingAt, lastMessageAt: lastMsg?.ts ?? null },
-      now,
-      staleMs,
-    );
-    if (stale) {
+    await withRoomLock(s.id, async () => {
+      // A slow response may have held this lane while the sweep waited. Read
+      // its latest liveness signals now, not before acquiring the room lock.
+      const [current] = await db
+        .select()
+        .from(chatSessions)
+        .where(and(eq(chatSessions.id, s.id), isNull(chatSessions.endedAt)));
+      if (!current) return;
+      const [lastMsg] = await db
+        .select({ ts: chatMessages.ts })
+        .from(chatMessages)
+        .where(eq(chatMessages.sessionId, s.id))
+        .orderBy(desc(chatMessages.ts))
+        .limit(1);
+      if (!isChatStale(
+        { startedAt: current.startedAt, lastPingAt: current.lastPingAt, lastMessageAt: lastMsg?.ts ?? null },
+        Date.now(),
+        staleMs,
+      )) return;
       console.log(`[chat] auto-closing stale session ${s.id} (agent ${s.agentId}).`);
-      await withRoomLock(s.id, () => endSession(s.id));
-    }
+      await endSession(s.id);
+    });
   }
 }
 
@@ -602,9 +608,6 @@ export async function getChatTranscript(sessionId: string): Promise<GetChatRespo
   const active = participantRows
     .filter((row) => row.leftAt === null)
     .map((row) => row.agentId as AgentId);
-  const participants = active.length
-    ? active
-    : participantRows.map((row) => row.agentId as AgentId);
   const messages = rows
     .filter((r) => r.sender !== "operator")
     .map((r) => ({
@@ -627,7 +630,8 @@ export async function getChatTranscript(sessionId: string): Promise<GetChatRespo
   return {
     sessionId: session.id,
     visitorId: session.visitorId,
-    participants,
+    participants: active,
+    endedAt: session.endedAt?.toISOString() ?? null,
     messages,
     responses,
   };

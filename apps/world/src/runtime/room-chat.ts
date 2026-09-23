@@ -70,15 +70,28 @@ export async function runRoomResponse(args: {
   to?: AgentId;
   handlers: TurnHandlers;
 }): Promise<void> {
+  // The browser is only a view onto a durable response. A dead transport must
+  // never abort the agent before its transcript/native thread are persisted.
+  let streamOpen = true;
+  const handlers: TurnHandlers = {
+    onFrame: async (frame) => {
+      if (!streamOpen) return;
+      try {
+        await args.handlers.onFrame(frame);
+      } catch {
+        streamOpen = false;
+      }
+    },
+  };
   await withRoomLock(args.sessionId, async () => {
     let visitorLinePersisted = false;
     try {
-      let session = await reconcileRoom(args.sessionId, args.handlers);
+      let session = await reconcileRoom(args.sessionId, handlers);
       if (!session || session.visitorId !== args.visitorId) return;
       const visitor = await getVisitor(args.visitorId);
       if (!visitor) {
         await endSession(args.sessionId);
-        await args.handlers.onFrame({
+        await handlers.onFrame({
           type: "chat_ended",
           agent: session.agentId,
           reason: "the visitor has left",
@@ -101,10 +114,10 @@ export async function runRoomResponse(args: {
         visitorMessageId,
         mode: "direct",
         roomParticipants: session.participants,
-        handlers: args.handlers,
+        handlers,
       });
 
-      session = await reconcileRoom(args.sessionId, args.handlers);
+      session = await reconcileRoom(args.sessionId, handlers);
       const second = session?.participants.find((agentId) => agentId !== first);
       if (session && second) {
         const buffered: ChatStreamFrame[] = [];
@@ -120,7 +133,7 @@ export async function runRoomResponse(args: {
           handlers: { onFrame: (frame) => void buffered.push(frame) },
         });
         if (interjection.ran && interjection.reason === "ok" && !isSilentInterjection(buffered)) {
-          for (const frame of buffered) await args.handlers.onFrame(frame);
+          for (const frame of buffered) await handlers.onFrame(frame);
         }
       }
     } finally {
@@ -134,12 +147,7 @@ export async function runRoomResponse(args: {
           ),
         );
       }
-      try {
-        await args.handlers.onFrame({ type: "response_done" });
-      } catch {
-        // The client stream may already be gone; the durable DB marker above is
-        // the recovery source of truth.
-      }
+      await handlers.onFrame({ type: "response_done" });
     }
   });
 }

@@ -339,6 +339,8 @@ export const GetChatResponse = z.object({
   sessionId: z.string(),
   visitorId: z.string(),
   participants: z.array(AgentId),
+  // Recovery must distinguish a closed room from a completed speaker turn.
+  endedAt: z.string().datetime().nullable().default(null),
   messages: z.array(ChatTranscriptMessage),
   // Durable response boundaries for POST-SSE recovery. A visitor request can
   // finish without a second visible agent row when the optional interjector
