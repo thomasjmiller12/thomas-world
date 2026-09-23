@@ -446,6 +446,28 @@ async function loadIssueRow(day: string) {
   return r ?? null;
 }
 
+// Read-only fast path: cached editorial copy or a deterministic edition from
+// the current timeline. No model calls or persistence are required to render it.
+export async function readChronicleIssue(day: string, items: ChronicleItem[], today: string): Promise<{
+  issue: ChronicleIssue;
+  needsGeneration: boolean;
+}> {
+  const existing = await loadIssueRow(day);
+  const packet = buildSourcePacket(day, items, new Map());
+  const fresh = existing && (day !== today || (
+    Date.now() - existing.generatedAt.getTime() < TODAY_TTL_MS && existing.promptVersion === PROMPT_VERSION
+  ));
+  const deterministic = packet.sources.length > 0
+    ? fallbackIssue(day, packet)
+    : emptyIssue(day, await latestMeaningfulDay(day));
+  return {
+    // Deterministic fallback remains current as events arrive, even without a
+    // configured model. A cached generated issue keeps its editorial cadence.
+    issue: existing?.status === "ready" ? rowToIssue(existing) : deterministic,
+    needsGeneration: Boolean(hasLlm() && packet.sources.length > 0 && !fresh),
+  };
+}
+
 async function persistIssue(
   issue: ChronicleIssue,
   packet: ChronicleSourcePacket,

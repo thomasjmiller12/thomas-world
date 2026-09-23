@@ -8,6 +8,7 @@ import type { FeedItem } from '@town/contract';
 // raw "(unknown event)" row when the event taxonomy gets ahead of its prose
 // renderer.
 const NON_STORY_FEED_TYPES = new Set<NonNullable<FeedItem['type']>>([
+  'chronicle.updated',
   'visitor.arrived',
   'visitor.left',
   'visitor.moved',

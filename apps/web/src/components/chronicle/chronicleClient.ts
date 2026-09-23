@@ -23,6 +23,7 @@ import { resolveWorldBaseUrl } from '@/lib/world/mapping';
 const baseUrl = (): string => resolveWorldBaseUrl(process.env.NEXT_PUBLIC_WORLD_URL);
 
 export interface ChroniclePage {
+  generationPending: boolean;
   // The day actually rendered (YYYY-MM-DD) — may differ from the requested day
   // when none was given (server returns the latest).
   day: string;
@@ -44,7 +45,7 @@ export async function fetchChronicle(opts: {
   const res = await fetch(url.toString(), { signal: opts.signal });
   if (!res.ok) throw new Error(`chronicle failed: ${res.status}`);
   const parsed = ChronicleResponse.parse(await res.json());
-  return { day: parsed.day, days: parsed.days, issue: parsed.issue, items: parsed.items };
+  return { day: parsed.day, days: parsed.days, issue: parsed.issue, items: parsed.items, generationPending: parsed.generationPending };
 }
 
 // GET /artifacts?kind=&agent= — the Made/Board browsers' list source.

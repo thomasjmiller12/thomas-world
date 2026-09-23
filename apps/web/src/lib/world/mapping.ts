@@ -90,6 +90,7 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
       return [spec('world-phase', { phase: ev.payload.phase })];
 
     // Surfaced via feed / roster only — no canvas emit:
+    case 'chronicle.updated':
     case 'message.sent':
     case 'agent.acted':
     case 'agent.rested':

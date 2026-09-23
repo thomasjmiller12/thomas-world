@@ -17,20 +17,28 @@ export function createChronicleRefresh(
   refresh: (latestDay: boolean) => void,
 ) {
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let completed = false;
   const schedule = () => {
-    if (getState().readerOpen || timer) return;
+    if ((getState().readerOpen && !completed) || timer) return;
     timer = setTimeout(() => {
       timer = null;
       const { day, resolvedDay, days, readerOpen } = getState();
-      if (readerOpen) return;
+      const force = completed;
+      completed = false;
+      if (readerOpen && !force) return;
       // Historical Today/Conversations stay fixed. Made/Board/Messages are not
       // day-scoped and should still refresh if a visitor previously chose a day.
-      refresh(day === null || days.length === 0 || resolvedDay === days[0]);
+      refresh(force || day === null || days.length === 0 || resolvedDay === days[0]);
     }, 4_000);
   };
   return {
-    onWorldEvent: (event: { type: string }) => {
-      if (LIVE_TYPES.has(event.type)) schedule();
+    onWorldEvent: (event: { type: string; payload?: unknown }) => {
+      if (event.type === 'chronicle.updated') {
+        const day = (event.payload as { day?: string } | undefined)?.day;
+        if (!day || day !== getState().resolvedDay) return;
+        completed = true;
+        schedule();
+      } else if (LIVE_TYPES.has(event.type)) schedule();
     },
     onVisible: schedule,
     dispose: () => { if (timer) clearTimeout(timer); },

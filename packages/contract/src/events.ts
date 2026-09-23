@@ -326,6 +326,7 @@ const envelopeBase = {
 };
 
 export const WorldEvent = z.discriminatedUnion("type", [
+  z.object({ ...envelopeBase, type: z.literal("chronicle.updated"), payload: z.object({ day: z.string() }) }),
   z.object({ ...envelopeBase, type: z.literal("agent.moved"), payload: AgentMovedPayload }),
   z.object({ ...envelopeBase, type: z.literal("agent.activity"), payload: AgentActivityPayload }),
   z.object({ ...envelopeBase, type: z.literal("agent.rested"), payload: z.object({ agent: AgentId }) }),
@@ -366,6 +367,7 @@ export type WorldEvent = z.infer<typeof WorldEvent>;
 
 // The bare `type` enum, handy for SQL column checks and exhaustive switches.
 export const worldEventTypes = [
+  "chronicle.updated",
   "agent.moved",
   "agent.activity",
   "agent.rested",

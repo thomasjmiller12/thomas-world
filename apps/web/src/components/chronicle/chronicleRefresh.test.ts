@@ -28,6 +28,18 @@ describe('Chronicle live refresh on both surfaces', () => {
     expect(refresh).toHaveBeenCalledExactlyOnceWith(false);
   });
 
+  it('refreshes a completed historical day even while a reader is open, and ignores other days', () => {
+    const refresh = vi.fn();
+    const state = { ...latest(), day: '2026-09-21', resolvedDay: '2026-09-21', readerOpen: true };
+    const controller = createChronicleRefresh(() => state, refresh);
+    controller.onWorldEvent({ type: 'chronicle.updated', payload: { day: '2026-09-22' } });
+    vi.advanceTimersByTime(4_000);
+    expect(refresh).not.toHaveBeenCalled();
+    controller.onWorldEvent({ type: 'chronicle.updated', payload: { day: '2026-09-21' } });
+    vi.advanceTimersByTime(4_000);
+    expect(refresh).toHaveBeenCalledExactlyOnceWith(true);
+  });
+
   it('does not disrupt an open reader, checks current state after the debounce, and cancels on unmount', () => {
     let state = latest();
     const refresh = vi.fn();

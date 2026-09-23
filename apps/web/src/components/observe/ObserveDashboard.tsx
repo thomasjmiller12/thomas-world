@@ -2,8 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   FeedResponse,
-  type ChronicleItem,
-  type ChronicleIssue,
   type ChronicleCitation,
   type DayPhase,
   type FeedItem,
@@ -14,7 +12,7 @@ import { WorldClient } from '@/game/systems/WorldClient';
 import { resolveWorldBaseUrl } from '@/lib/world/mapping';
 import { NPC_CONFIGS } from '@/game/data/npc-configs';
 import { useAgentStatuses } from '@/lib/useAgentStatuses';
-import { fetchChronicle } from '@/components/chronicle/chronicleClient';
+import { useChronicleData } from '@/components/chronicle/useChronicleData';
 import { relativeDayLabel } from '@/components/chronicle/chroniclePresentation';
 import { isStoryFeedItem } from './liveFeedPresentation';
 import { TodayTab } from '@/components/chronicle/TodayTab';
@@ -54,13 +52,7 @@ export function ObserveDashboard() {
 
   // Chronicle day state (Today / Conversations).
   const [day, setDay] = useState<string | null>(null);
-  const [items, setItems] = useState<ChronicleItem[]>([]);
-  const [issue, setIssue] = useState<ChronicleIssue | null>(null);
-  const [days, setDays] = useState<string[]>([]);
-  const [resolvedDay, setResolvedDay] = useState('');
-  const [chronicleLoading, setChronicleLoading] = useState(false);
-  const [chronicleError, setChronicleError] = useState(false);
-  const reqSeq = useRef(0);
+  const { items, issue, days, resolvedDay, loading: chronicleLoading, error: chronicleError, generationPending, loadChronicle } = useChronicleData(day, tab === 'today' || tab === 'conversations');
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [about, setAbout] = useState<{ tab: AboutTab; referenceId?: string; proofId?: string } | null>(null);
 
@@ -81,35 +73,6 @@ export function ObserveDashboard() {
       world.stop();
     };
   }, []);
-
-  // Chronicle loading (mirrors ChroniclePanel, without the overlay chrome).
-  const loadChronicle = useCallback((targetDay: string | null, silent: boolean) => {
-    const seq = ++reqSeq.current;
-    const ctrl = new AbortController();
-    if (!silent) {
-      setChronicleLoading(true);
-      setChronicleError(false);
-    }
-    fetchChronicle({ day: targetDay, signal: ctrl.signal })
-      .then((page) => {
-        if (seq !== reqSeq.current) return;
-        setItems(page.items);
-        setIssue(page.issue);
-        setDays(page.days);
-        setResolvedDay(page.day);
-      })
-      .catch(() => {
-        if (seq === reqSeq.current && !silent) setChronicleError(true);
-      })
-      .finally(() => {
-        if (seq === reqSeq.current && !silent) setChronicleLoading(false);
-      });
-    return () => ctrl.abort();
-  }, []);
-
-  useEffect(() => {
-    if (tab === 'today' || tab === 'conversations') return loadChronicle(day, false);
-  }, [day, tab, loadChronicle]);
 
   useChronicleRefresh({ day, resolvedDay, days, readerOpen: readerId !== null || about !== null }, (latestDay) => {
     if (latestDay && (tab === 'today' || tab === 'conversations')) loadChronicle(day, true);
@@ -267,6 +230,9 @@ export function ObserveDashboard() {
         </div>
 
         {/* ── body ── */}
+        {generationPending && !readerId && showDayNav && (
+          <p role="status" style={{ fontSize: 12, color: 'var(--ink-3)' }}>The Chronicle is being updated. <button onClick={() => loadChronicle(day, false)}>Refresh</button></p>
+        )}
         {readerId ? (
           <ArtifactReader artifactId={readerId} onBack={() => setReaderId(null)} readOnly />
         ) : (

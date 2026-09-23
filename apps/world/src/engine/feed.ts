@@ -87,6 +87,8 @@ export async function renderLine(e: WorldEvent): Promise<string> {
       return `${await who(p.agent)} started chatting with a visitor.`;
     case "chat.ended":
       return `${await who(p.agent)} finished a visitor conversation.`;
+    case "chronicle.updated":
+      return `The Chronicle for ${p.day} was refreshed.`;
     case "world.time":
       return `It's now ${p.phase}.`;
     default:

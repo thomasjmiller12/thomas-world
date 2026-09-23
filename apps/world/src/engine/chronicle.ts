@@ -26,7 +26,10 @@ import { config } from "../config.js";
 import { getLlmProvider, hasLlm } from "../runtime/llm/provider.js";
 import { resolveSystemModel } from "../runtime/llm/models.js";
 import { recordNormalizedUsage } from "./usage.js";
-import { attachIssue, regenerateIssue } from "./chronicle-issue.js";
+import { attachIssue, readChronicleIssue, regenerateIssue } from "./chronicle-issue.js";
+
+import { subscribe } from "./bus.js";
+import { appendEvent } from "./events.js";
 
 const { worldEvents, artifacts, threadSummaries } = schema;
 
@@ -262,6 +265,16 @@ interface CacheEntry {
   threads: ChronicleThread[];
 }
 const cache = new Map<string, CacheEntry>();
+let cacheRevision = 0;
+// The bus publishes only committed events, including action-journal writes.
+// Evict before the browser's debounced refresh; a 60s cache otherwise hides the
+// event it just received. Private chat never enters this public projection.
+subscribe((event) => {
+  if (event.visibility === "private" || !(CHRONICLE_EVENT_TYPES as readonly string[]).includes(event.type)) return;
+  cacheRevision++;
+  // The available-day picker is copied into each cache entry.
+  cache.clear();
+});
 
 // Cap the number of summary generations per /chronicle request so a day with a
 // large backlog of un-summarized threads doesn't fan out an unbounded batch of
@@ -290,6 +303,7 @@ const AGENT_LABELS: Record<AgentId, string> = {
 // Returns the contract payload AND the threads-with-endTs (so the summary pass
 // can tell which threads are closed without re-deriving them).
 async function buildChronicle(dayUtc: string): Promise<CacheEntry> {
+  const revision = cacheRevision;
   const { start, end } = dayBounds(dayUtc); // throws on bad day
   const today = todayUtc();
   const isToday = dayUtc === today;
@@ -418,67 +432,87 @@ async function buildChronicle(dayUtc: string): Promise<CacheEntry> {
 
   // `issue` is filled by getChronicle (cheap cached attach / lazy generation);
   // buildChronicle (and its cache) carry the timeline only.
-  const payload: ChronicleResponse = { day: dayUtc, days, items, issue: null };
+  const payload: ChronicleResponse = { day: dayUtc, days, items, issue: null, generationPending: false };
   const entry: CacheEntry = { builtAt: Date.now(), payload, threads };
-  cache.set(dayUtc, entry);
+  // Do not repopulate stale data if a commit arrived during the DB read.
+  if (revision === cacheRevision) cache.set(dayUtc, entry);
   return entry;
 }
 
-// The public Chronicle read (the GET /chronicle handler). Builds (or serves
-// cached) the day, then lazily fills thread summaries: for each CLOSED thread
-// (its last line older than the gap) without a cached summary, fire ONE Haiku
-// call, persist it to thread_summaries, and attach it — capped at SUMMARY_GEN_CAP
-// generations per request (others stay summary: null and fill on later reads).
-// Open threads always stay summary: null. Existing summaries from prior requests
-// are loaded from the table and attached for free. Throws on a malformed day.
+// GET /chronicle never awaits a model. Read cached summaries/editorial copy,
+// return a deterministic edition if needed, then enqueue bounded enrichment.
 export async function getChronicle(dayUtc: string): Promise<ChronicleResponse> {
   const { payload, threads } = await buildChronicle(dayUtc);
-
-  // Load every already-summarized thread for this day in one query, attach them,
-  // and remember which ids are covered so we don't regenerate.
   const existing = await db
     .select({ threadId: threadSummaries.threadId, summary: threadSummaries.summary })
     .from(threadSummaries)
     .where(eq(threadSummaries.day, dayUtc));
   const summaryById = new Map(existing.map((r) => [r.threadId, r.summary]));
+  const items = payload.items.map((item) => item.kind === "thread"
+    ? { ...item, summary: summaryById.get(item.id) ?? null }
+    : item);
+  const { issue, needsGeneration } = await readChronicleIssue(dayUtc, items, todayUtc());
+  const candidates = hasLlm()
+    ? closedThreadsNeedingSummary(threads, new Set(summaryById.keys()), Date.now()).slice(0, SUMMARY_GEN_CAP)
+    : [];
+  scheduleChronicleGeneration(dayUtc, items, candidates, needsGeneration);
+  return { ...payload, items, issue, generationPending: generationJobs.has(dayUtc) };
+}
 
-  // Closed threads still missing a summary → candidates for generation.
-  const candidates = closedThreadsNeedingSummary(
-    threads,
-    new Set(summaryById.keys()),
-    Date.now(),
-  ).slice(0, SUMMARY_GEN_CAP);
+// One batch per day, at most two days concurrently, and a cooldown between
+// batches/retries. Polling a pending job cannot enqueue more work or fan out
+// through an arbitrarily large backlog. Later visits can enrich the next batch.
+const generationJobs = new Map<string, Promise<void>>();
+const lastGenerationAttempt = new Map<string, number>();
+const GENERATION_COOLDOWN_MS = 60_000;
+const MAX_GENERATION_DAYS = 2;
 
-  // Generate (best-effort) and persist. A single failure never breaks the read.
-  if (hasLlm()) {
+function scheduleChronicleGeneration(
+  day: string,
+  items: ChronicleItem[],
+  candidates: ChronicleThread[],
+  issueNeeded: boolean,
+): void {
+  if ((!issueNeeded && candidates.length === 0) || generationJobs.has(day) || generationJobs.size >= MAX_GENERATION_DAYS) return;
+  const last = lastGenerationAttempt.get(day);
+  if (last !== undefined && Date.now() - last < GENERATION_COOLDOWN_MS) return;
+  lastGenerationAttempt.set(day, Date.now());
+  // Bound bookkeeping as well as provider work when arbitrary days are read.
+  if (lastGenerationAttempt.size > 64) lastGenerationAttempt.delete(lastGenerationAttempt.keys().next().value!);
+
+  // The microtask starts after the map is set, so simultaneous reads coalesce.
+  const job = Promise.resolve().then(async () => {
     for (const thread of candidates) {
       try {
-        const summary = await summarizeThread(thread, dayUtc);
-        if (summary) summaryById.set(thread.id, summary);
-      } catch (err) {
-        console.warn(`[chronicle] summary failed for ${thread.id}:`, (err as Error).message);
+        const summary = await summarizeThread(thread, day);
+        const item = items.find((item) => item.kind === "thread" && item.id === thread.id);
+        if (item?.kind === "thread" && summary) item.summary = summary;
+      } catch (error) {
+        console.warn(`[chronicle] summary failed for ${thread.id}:`, (error as Error).message);
       }
     }
-  }
-
-  // Attach whatever summaries we now have onto the thread items in the payload.
-  for (const item of payload.items) {
-    if (item.kind === "thread") {
-      item.summary = summaryById.get(item.id) ?? null;
+    if (issueNeeded) await attachIssue(day, items, todayUtc());
+  }).catch((error) => {
+    console.warn(`[chronicle] background generation failed for ${day}:`, (error as Error).message);
+  }).finally(async () => {
+    generationJobs.delete(day);
+    lastGenerationAttempt.set(day, Date.now());
+    // A completion signal, not source content: safe on the public event stream.
+    // The cooldown prevents this refresh from immediately starting another batch.
+    try {
+      await appendEvent({ type: "chronicle.updated", visibility: "public", payload: { day } });
+    } catch (error) {
+      console.warn(`[chronicle] completion event failed for ${day}:`, (error as Error).message);
     }
-  }
+  });
+  generationJobs.set(day, job);
+}
 
-  // The Town Crier issue (M2.2). attachIssue serves a cached row when fresh and
-  // only spends on the LLM when missing/stale (its own in-flight + TTL guards),
-  // so this stays cheap on the common path. Never let a generation hiccup break
-  // the timeline read — fall through to a null issue on any error.
-  let issue: ChronicleResponse["issue"] = null;
-  try {
-    issue = await attachIssue(dayUtc, payload.items, todayUtc());
-  } catch (err) {
-    console.warn(`[chronicle] issue attach failed for ${dayUtc}:`, (err as Error).message);
-  }
-  return { ...payload, issue };
+// Test seam: only call after all queued test jobs have settled.
+export function _resetChronicleForTest(): void {
+  cache.clear();
+  lastGenerationAttempt.clear();
+  generationJobs.clear();
 }
 
 // Admin: force-regenerate the Town Crier issue for a day (POST /admin/chronicle/

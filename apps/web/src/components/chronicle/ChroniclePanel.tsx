@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ChronicleItem, ChronicleIssue, ChronicleCitation } from '@town/contract';
+import { useCallback, useEffect, useState } from 'react';
+import type { ChronicleCitation } from '@town/contract';
 import { EventBus } from '@/game/EventBus';
-import { fetchChronicle } from './chronicleClient';
+import { useChronicleData } from './useChronicleData';
 import { relativeDayLabel } from './chroniclePresentation';
 import { TodayTab } from './TodayTab';
 import { ConversationsTab } from './ConversationsTab';
@@ -51,13 +51,7 @@ export interface ChroniclePanelProps {
 export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = null, initialArtifactId = null, readOnly = false }: ChroniclePanelProps) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const [day, setDay] = useState<string | null>(initialDay);
-  // Chronicle (day-scoped) state — Today + Conversations read from this.
-  const [items, setItems] = useState<ChronicleItem[]>([]);
-  const [issue, setIssue] = useState<ChronicleIssue | null>(null);
-  const [days, setDays] = useState<string[]>([]);
-  const [resolvedDay, setResolvedDay] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const { items, issue, days, resolvedDay, loading, error, generationPending, loadChronicle } = useChronicleData(day);
   // The artifact open in the in-hub reader (null => list view). Reader overlays
   // any tab; ESC pops it before closing the hub.
   const [readerId, setReaderId] = useState<string | null>(initialArtifactId);
@@ -65,7 +59,6 @@ export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = nul
   // Bumped on a live (silent) refresh so the self-fetching tabs (Made / Board /
   // Messages) re-pull too — Today / Conversations refresh via `items` directly.
   const [refreshNonce, setRefreshNonce] = useState(0);
-  const reqSeq = useRef(0);
 
   // Freeze player movement while the hub owns the keyboard (the established
   // dialog-opened/closed hook). Mount/unmount only.
@@ -75,39 +68,6 @@ export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = nul
       EventBus.emit('dialog-closed');
     };
   }, []);
-
-  // Load a day's chronicle. `silent` (live refresh) skips the loading skeleton
-  // so a background update doesn't flash the panel.
-  const loadChronicle = useCallback(
-    (targetDay: string | null, silent: boolean) => {
-      const seq = ++reqSeq.current;
-      const ctrl = new AbortController();
-      if (!silent) {
-        setLoading(true);
-        setError(false);
-      }
-      fetchChronicle({ day: targetDay, signal: ctrl.signal })
-        .then((page) => {
-          if (seq !== reqSeq.current) return;
-          setItems(page.items);
-          setIssue(page.issue);
-          setDays(page.days);
-          setResolvedDay(page.day);
-        })
-        .catch(() => {
-          if (seq !== reqSeq.current || silent) return;
-          setError(true);
-        })
-        .finally(() => {
-          if (seq === reqSeq.current && !silent) setLoading(false);
-        });
-      return () => ctrl.abort();
-    },
-    [],
-  );
-
-  // (Re)load the chronicle whenever the selected day changes (user-driven).
-  useEffect(() => loadChronicle(day, false), [day, loadChronicle]);
 
   useChronicleRefresh({ day, resolvedDay, days, readerOpen: readerId !== null }, (latestDay) => {
     if (latestDay) loadChronicle(day, true);
@@ -310,6 +270,9 @@ export function ChroniclePanel({ onClose, initialTab = 'today', initialDay = nul
         {/* MadeTab + ArtifactReader own their internal scroll (they're flex
             columns); Today/Conversations/Board scroll in this body. */}
         <div style={{ flex: 1, overflowY: tab === 'made' || readerId ? 'hidden' : 'auto', padding: '16px 24px 24px', minHeight: 0 }}>
+          {generationPending && !readerId && (tab === 'today' || tab === 'conversations') && (
+            <p role="status" style={{ fontSize: 12, color: 'var(--ink-3)' }}>The Chronicle is being updated. <button onClick={() => loadChronicle(day, false)}>Refresh</button></p>
+          )}
           {readerId ? (
             <ArtifactReader artifactId={readerId} onBack={() => setReaderId(null)} readOnly={readOnly} />
           ) : (

@@ -55,6 +55,7 @@ const artifactKindEnum = [
   "shared_page",
 ] as const;
 const eventTypeEnum = [
+  "chronicle.updated",
   "agent.moved",
   "agent.activity",
   "agent.rested",

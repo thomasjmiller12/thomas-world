@@ -651,6 +651,8 @@ export const ChronicleIssue = z.object({
 export type ChronicleIssue = z.infer<typeof ChronicleIssue>;
 
 export const ChronicleResponse = z.object({
+  // True only while a bounded background enrichment job is running.
+  generationPending: z.boolean().default(false),
   day: z.string(), // the day rendered (YYYY-MM-DD)
   days: z.array(z.string()), // available days, desc — powers the day picker
   // The newspaper issue for the day (null while generating / unavailable). The
