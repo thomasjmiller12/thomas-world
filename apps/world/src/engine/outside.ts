@@ -6,7 +6,7 @@
 // optional.
 
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { AgentId } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { appendEvent } from "./events.js";
@@ -35,6 +35,50 @@ export interface OpenCapabilityRequest {
   agentId: AgentId;
   summary: string;
   ts: Date;
+}
+
+export type CapabilityResolutionStatus = "approved" | "declined" | "fulfilled";
+
+// Include resolved requests: an old core-memory blocker must be checkable
+// against the actual decision, even after it leaves the open backlog.
+export async function capabilityRequestsFor(agentId: AgentId, limit = 20) {
+  return db.select({
+    id: capabilityRequests.id,
+    agentId: capabilityRequests.agentId,
+    summary: capabilityRequests.summary,
+    status: capabilityRequests.status,
+    ts: capabilityRequests.ts,
+  }).from(capabilityRequests).where(eq(capabilityRequests.agentId, agentId))
+    .orderBy(desc(capabilityRequests.ts), desc(capabilityRequests.id))
+    .limit(Math.max(1, Math.min(100, limit)));
+}
+
+export async function resolveCapabilityRequest(
+  id: string,
+  status: CapabilityResolutionStatus,
+  publicNote?: string,
+): Promise<{ id: string; agentId: AgentId; summary: string; status: CapabilityResolutionStatus } | undefined> {
+  const [request] = await db.select().from(capabilityRequests).where(eq(capabilityRequests.id, id));
+  if (!request) return undefined;
+  if (request.status !== status) {
+    await db.update(capabilityRequests).set({ status }).where(eq(capabilityRequests.id, id));
+    await appendEvent({
+      type: "capability.resolved",
+      // P-Thomas resolved this; payload.agent is the target. Leaving envelope
+      // agentId null keeps the event in the target's notice push instead of
+      // filtering it as one of their own actions.
+      agentId: null,
+      visibility: "public",
+      payload: {
+        requestId: id,
+        agent: request.agentId,
+        summary: request.summary,
+        status,
+        ...(publicNote?.trim() ? { note: publicNote.trim().slice(0, 500) } : {}),
+      },
+    });
+  }
+  return { id, agentId: request.agentId as AgentId, summary: request.summary, status };
 }
 
 // What the agent is told after filing. Pure, because this string is the entire
@@ -106,22 +150,34 @@ export async function recordCapabilityRequest(
   agentId: AgentId,
   summary: string,
   rationale: string,
+  idempotencyKey?: string,
 ): Promise<{ id: string; emailed: boolean }> {
-  const id = randomUUID();
-  await db.insert(capabilityRequests).values({ id, agentId, summary, rationale });
-  // capability.requested is public — it's the meta-layer flex surface (plan §5).
-  await appendEvent({
-    type: "capability.requested",
-    agentId,
-    visibility: "public",
-    payload: { agent: agentId, summary },
-  });
+  const id = idempotencyKey ? `cap-${idempotencyKey}` : randomUUID();
+  const [inserted] = await db
+    .insert(capabilityRequests)
+    .values({ id, agentId, summary, rationale })
+    .onConflictDoNothing()
+    .returning({ id: capabilityRequests.id });
+  if (inserted) {
+    // capability.requested is public — it's the meta-layer flex surface (plan §5).
+    await appendEvent({
+      type: "capability.requested",
+      agentId,
+      visibility: "public",
+      payload: { agent: agentId, summary },
+    });
+  }
 
   let emailed = false;
   try {
     const subject = `Capability request: ${summary.split("\n")[0].slice(0, 120)}`;
     const body = `${agentNames[agentId]} filed a capability request from the office outbox.\n\nWHAT THEY WANT\n${summary}\n\nWHY\n${rationale}\n\n— request id ${id}`;
-    const r = await sendEmailToThomas(agentId, subject, body);
+    const r = await sendEmailToThomas(
+      agentId,
+      subject,
+      body,
+      idempotencyKey ? `capability-${idempotencyKey}` : undefined,
+    );
     emailed = r.sent;
   } catch (err) {
     console.warn(
@@ -140,9 +196,21 @@ export async function sendEmailToThomas(
   agentId: AgentId,
   subject: string,
   body: string,
+  idempotencyKey?: string,
 ): Promise<{ id: string; sent: boolean; messageId?: string }> {
-  const id = randomUUID();
-  await db.insert(outbox).values({ id, agentId, subject, body, status: "queued" });
+  const id = idempotencyKey ? `mail-${idempotencyKey}` : randomUUID();
+  const [inserted] = await db
+    .insert(outbox)
+    .values({ id, agentId, subject, body, status: "queued" })
+    .onConflictDoNothing()
+    .returning({ id: outbox.id });
+  if (!inserted) {
+    const [existing] = await db
+      .select({ status: outbox.status })
+      .from(outbox)
+      .where(eqId(id));
+    if (existing?.status === "sent") return { id, sent: true };
+  }
 
   if (!config.features.resend) {
     return { id, sent: false };
@@ -160,6 +228,7 @@ export async function sendEmailToThomas(
       headers: {
         Authorization: `Bearer ${config.resendApiKey}`,
         "Content-Type": "application/json",
+        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
       },
       body: JSON.stringify({
         from: senderFor(agentId),

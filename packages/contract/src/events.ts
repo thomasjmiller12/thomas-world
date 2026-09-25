@@ -1,6 +1,14 @@
 import { z } from "zod";
 import { AgentId, LocationId, DayPhase, Visibility } from "./ids.js";
 import { ArtifactKind } from "./artifacts.js";
+import { ContributionStatus } from "./contributions.js";
+
+export const ArtifactContributionPayload = z.object({
+  artifactId: z.string(),
+  contributionId: z.string(),
+  agent: AgentId,
+  status: ContributionStatus,
+});
 
 // The world-event taxonomy (plan §5). This is BOTH the SSE event stream the
 // frontend consumes AND the `world_events.type` enum — one source of truth.
@@ -24,6 +32,21 @@ export const AgentMovedPayload = z.object({
 export const AgentActivityPayload = z.object({
   agent: AgentId,
   activity: z.string(), // "working on X", "reading Y"
+});
+
+export const RelatedActionId = z.object({
+  kind: z.enum(["agent", "artifact", "location", "message", "object", "request", "session", "visitor"]),
+  id: z.string(),
+});
+export type RelatedActionId = z.infer<typeof RelatedActionId>;
+
+export const AgentActedPayload = z.object({
+  agent: AgentId,
+  tool: z.string(),
+  effect: z.enum(["write", "external"]),
+  summary: z.string(),
+  actionId: z.string(),
+  relatedIds: z.array(RelatedActionId).optional(),
 });
 
 export const AgentThoughtPayload = z.object({
@@ -93,6 +116,14 @@ export const BulletinPostedPayload = z.object({
 export const CapabilityRequestedPayload = z.object({
   agent: AgentId,
   summary: z.string(), // the meta-layer flex surface
+});
+
+export const CapabilityResolvedPayload = z.object({
+  requestId: z.string(),
+  agent: AgentId,
+  summary: z.string(),
+  status: z.enum(["approved", "declined", "fulfilled"]),
+  note: z.string().optional(),
 });
 
 export const VisitorArrivedPayload = z.object({
@@ -169,6 +200,14 @@ export const WorldEffectPayload = z.object({
 export const ChatJoinedPayload = z.object({
   sessionId: z.string().optional(),
   agent: AgentId,
+});
+
+// One facet left a room chat while the shared session may remain open with
+// another facet. The session id follows the same private/public rule as join.
+export const ChatLeftPayload = z.object({
+  sessionId: z.string().optional(),
+  agent: AgentId,
+  reason: z.string().optional(),
 });
 
 /** @deprecated no longer emitted as of M2.1 — paced scenes removed; kept so historical world_events rows parse */
@@ -295,8 +334,11 @@ const envelopeBase = {
 };
 
 export const WorldEvent = z.discriminatedUnion("type", [
+  z.object({ ...envelopeBase, type: z.literal("chronicle.updated"), payload: z.object({ day: z.string() }) }),
   z.object({ ...envelopeBase, type: z.literal("agent.moved"), payload: AgentMovedPayload }),
   z.object({ ...envelopeBase, type: z.literal("agent.activity"), payload: AgentActivityPayload }),
+  z.object({ ...envelopeBase, type: z.literal("agent.rested"), payload: z.object({ agent: AgentId }) }),
+  z.object({ ...envelopeBase, type: z.literal("agent.acted"), payload: AgentActedPayload }),
   z.object({ ...envelopeBase, type: z.literal("agent.thought"), payload: AgentThoughtPayload }),
   z.object({ ...envelopeBase, type: z.literal("agent.spoke"), payload: AgentSpokePayload }),
   z.object({ ...envelopeBase, type: z.literal("conversation.started"), payload: ConversationStartedPayload }),
@@ -305,8 +347,10 @@ export const WorldEvent = z.discriminatedUnion("type", [
   z.object({ ...envelopeBase, type: z.literal("message.sent"), payload: MessageSentPayload }),
   z.object({ ...envelopeBase, type: z.literal("artifact.created"), payload: ArtifactCreatedPayload }),
   z.object({ ...envelopeBase, type: z.literal("artifact.updated"), payload: ArtifactUpdatedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("artifact.contribution"), payload: ArtifactContributionPayload }),
   z.object({ ...envelopeBase, type: z.literal("bulletin.posted"), payload: BulletinPostedPayload }),
   z.object({ ...envelopeBase, type: z.literal("capability.requested"), payload: CapabilityRequestedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("capability.resolved"), payload: CapabilityResolvedPayload }),
   z.object({ ...envelopeBase, type: z.literal("visitor.arrived"), payload: VisitorArrivedPayload }),
   z.object({ ...envelopeBase, type: z.literal("visitor.left"), payload: VisitorLeftPayload }),
   z.object({ ...envelopeBase, type: z.literal("visitor.moved"), payload: VisitorMovedPayload }),
@@ -316,6 +360,7 @@ export const WorldEvent = z.discriminatedUnion("type", [
   z.object({ ...envelopeBase, type: z.literal("chat.started"), payload: ChatStartedPayload }),
   z.object({ ...envelopeBase, type: z.literal("chat.ended"), payload: ChatEndedPayload }),
   z.object({ ...envelopeBase, type: z.literal("chat.joined"), payload: ChatJoinedPayload }),
+  z.object({ ...envelopeBase, type: z.literal("chat.left"), payload: ChatLeftPayload }),
   z.object({ ...envelopeBase, type: z.literal("conversation.converted"), payload: ConversationConvertedPayload }),
   z.object({ ...envelopeBase, type: z.literal("world.time"), payload: WorldTimePayload }),
   z.object({ ...envelopeBase, type: z.literal("object.created"), payload: ObjectCreatedPayload }),
@@ -331,8 +376,11 @@ export type WorldEvent = z.infer<typeof WorldEvent>;
 
 // The bare `type` enum, handy for SQL column checks and exhaustive switches.
 export const worldEventTypes = [
+  "chronicle.updated",
   "agent.moved",
   "agent.activity",
+  "agent.rested",
+  "agent.acted",
   "agent.thought",
   "agent.spoke",
   "conversation.started",
@@ -341,8 +389,10 @@ export const worldEventTypes = [
   "message.sent",
   "artifact.created",
   "artifact.updated",
+  "artifact.contribution",
   "bulletin.posted",
   "capability.requested",
+  "capability.resolved",
   "visitor.arrived",
   "visitor.left",
   "visitor.moved",
@@ -352,6 +402,7 @@ export const worldEventTypes = [
   "chat.started",
   "chat.ended",
   "chat.joined",
+  "chat.left",
   "conversation.converted",
   "world.time",
   "object.created",

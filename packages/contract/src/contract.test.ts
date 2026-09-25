@@ -16,10 +16,14 @@ import {
   HealthResponse,
   FeedResponse,
   AgentStatus,
+  ChatMessageRequest,
+  JoinChatRequest,
+  JoinChatResponse,
   ChatStreamFrame,
   ChronicleResponse,
   ExternalReference,
   PortfolioProof,
+  RelatedActionId,
 } from "./index.js";
 
 describe("id enums", () => {
@@ -38,6 +42,14 @@ describe("id enums", () => {
   it("covers the seven artifact kinds", () => {
     expect(ArtifactKind.parse("daily_digest")).toBe("daily_digest");
     expect(() => ArtifactKind.parse("tweet")).toThrow();
+  });
+
+  it("shares one related-action identifier schema across event and REST surfaces", () => {
+    expect(RelatedActionId.parse({ kind: "artifact", id: "art-1" })).toEqual({
+      kind: "artifact",
+      id: "art-1",
+    });
+    expect(() => RelatedActionId.parse({ kind: "transcript", id: "private-1" })).toThrow();
   });
 });
 
@@ -166,6 +178,15 @@ describe("REST shapes round-trip", () => {
   });
 
   it("validates the chat stream frame annotations", () => {
+    expect(
+      ChatMessageRequest.parse({
+        text: "hi",
+        to: "writer",
+        requestId: "123e4567-e89b-42d3-a456-426614174000",
+      }).to,
+    ).toBe("writer");
+    expect(JoinChatRequest.parse({ agentId: "builder" }).agentId).toBe("builder");
+    expect(JoinChatResponse.parse({ participants: ["builder", "writer"] }).participants).toHaveLength(2);
     expect(ChatStreamFrame.parse({ type: "turn_started", agent: "writer" }).type).toBe("turn_started");
     expect(ChatStreamFrame.parse({ type: "text", text: "hi", agent: "writer" }).type).toBe("text");
     expect(
@@ -197,6 +218,10 @@ describe("REST shapes round-trip", () => {
     expect(
       ChatStreamFrame.parse({ type: "chat_ended", agent: "writer", reason: "heading off to write" }).type,
     ).toBe("chat_ended");
+    expect(
+      ChatStreamFrame.parse({ type: "participants", participants: ["builder", "writer"] }).type,
+    ).toBe("participants");
+    expect(ChatStreamFrame.parse({ type: "response_done" }).type).toBe("response_done");
   });
 
   it("validates a ChronicleResponse with each item kind", () => {
@@ -255,6 +280,17 @@ describe("REST shapes round-trip", () => {
           ts: "2026-06-12T14:00:00.000Z",
           agent: "researcher",
           line: "Researcher settled into the library.",
+        },
+        {
+          kind: "action",
+          id: "act1",
+          ts: "2026-06-12T14:01:00.000Z",
+          agent: "builder",
+          locationId: "workshop",
+          tool: "mount_artifact",
+          summary: "mounted an artifact in the world",
+          actionId: "action-1",
+          relatedIds: [{ kind: "artifact", id: "art1" }],
         },
       ],
     });
@@ -438,6 +474,14 @@ describe("M2 event payloads round-trip", () => {
       payload: { agent: "researcher", sessionId: "s1" },
     };
     expect(WorldEvent.parse(joinedFeed).type).toBe("chat.joined");
+    const left = {
+      id: "evt_m6b",
+      ts: "2026-06-11T10:03:45.000Z",
+      visibility: "private",
+      type: "chat.left",
+      payload: { agent: "researcher", reason: "stepped away" },
+    };
+    expect(WorldEvent.parse(left).type).toBe("chat.left");
     const converted = {
       id: "evt_m7",
       ts: "2026-06-11T10:04:00.000Z",
@@ -455,9 +499,19 @@ describe("M2 REST shapes round-trip", () => {
       ok: true,
       ts: "2026-06-11T10:00:00.000Z",
       llm: true,
+      provider: "openai",
+      providerConfigured: true,
+      models: {
+        agents: [
+          { agent: "builder", tick: "gpt-5.4-mini", chat: "gpt-5.4" },
+        ],
+        chronicle: "gpt-5.4",
+        townCrier: "gpt-5.4",
+      },
       budgetExhausted: false,
     });
     expect(h.budgetExhausted).toBe(false);
+    expect(h.provider).toBe("openai");
   });
 
   it("validates an AgentStatus", () => {
@@ -556,6 +610,7 @@ describe("M2 REST shapes round-trip", () => {
       sessionId: "s1",
       visitorId: "v1",
       participants: ["hobby"],
+      responses: [{ requestId: "request-1", completed: true }],
       messages: [
         { id: "m1", sender: "visitor", body: "hi", ts: "2026-06-11T10:00:00.000Z" },
         { id: "m2", sender: "hobby", body: "hey there", ts: "2026-06-11T10:00:05.000Z" },
@@ -563,6 +618,11 @@ describe("M2 REST shapes round-trip", () => {
     });
     expect(chat.messages[0].sender).toBe("visitor");
     expect(chat.messages[1].sender).toBe("hobby");
+    expect(chat.responses[0]).toEqual({ requestId: "request-1", completed: true });
+    expect(chat.endedAt).toBeNull();
+    expect(GetChatResponse.parse({
+      ...chat, participants: [], endedAt: "2026-09-22T10:01:00.000Z",
+    }).endedAt).toBe("2026-09-22T10:01:00.000Z");
     // operator rows are never exposed — `operator` is not a valid sender here
     expect(() =>
       GetChatResponse.parse({
@@ -594,6 +654,47 @@ describe("programmable-world schemas (D1–D4)", () => {
       expect(ev.payload.keys).toEqual(["board"]);
       expect(ev.payload.visitorId).toBe("v1");
     }
+  });
+
+  it("round-trips a semantic agent.acted event with typed related ids", () => {
+    const ev = WorldEvent.parse({
+      id: "evt_action_1",
+      ts: "2026-08-20T10:00:00.000Z",
+      agentId: "builder",
+      visibility: "public",
+      type: "agent.acted",
+      payload: {
+        agent: "builder",
+        tool: "write_artifact_state",
+        effect: "write",
+        summary: "updated an interactive",
+        actionId: "action-1",
+        relatedIds: [{ kind: "artifact", id: "art-1" }],
+      },
+    });
+    expect(ev.type).toBe("agent.acted");
+    if (ev.type === "agent.acted") {
+      expect(ev.payload.actionId).toBe("action-1");
+      expect(ev.payload.relatedIds).toEqual([{ kind: "artifact", id: "art-1" }]);
+    }
+  });
+
+  it("round-trips a capability resolution", () => {
+    const ev = WorldEvent.parse({
+      id: "evt_capability_1",
+      ts: "2026-08-20T10:01:00.000Z",
+      agentId: null,
+      visibility: "public",
+      type: "capability.resolved",
+      payload: {
+        requestId: "req-1",
+        agent: "builder",
+        summary: "A code sandbox",
+        status: "fulfilled",
+        note: "The provider code tool is live.",
+      },
+    });
+    expect(ev.type).toBe("capability.resolved");
   });
 
   it("round-trips object.created with a placement hint and object.removed", () => {

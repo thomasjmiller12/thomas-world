@@ -4,7 +4,6 @@ import { EventBus } from '@/game/EventBus';
 import type { ThomasId } from '@/lib/types';
 import { useAgentStatuses, statusLine } from '@/lib/useAgentStatuses';
 import { locationLabel } from '@/components/chronicle/chroniclePresentation';
-import { sameScene } from '@/game/data/location-anchors';
 import { NPC_CONFIGS } from '@/game/data/npc-configs';
 import { agentColor, agentShortName } from './primitives';
 import { ChatPanel } from './ChatPanel';
@@ -31,26 +30,24 @@ interface ChatSessionProps {
   // WorldClient seam.
   onSend: (npcId: ThomasId, text: string) => void; // POST /chats (if new) + /messages
   onClose: (npcId: ThomasId | null, hadSession: boolean) => void; // POST /close if a session existed
+  onAddress: (npcId: ThomasId) => void; // focus/join without replacing the session
   // The Chronicle hub owns the keyboard while open — the chat suspends its own
   // key handling (ESC/Enter/SPACE) so the two don't fight.
   suspended: boolean;
-  // The contract location the visitor is currently standing in. Scopes "room"
-  // speech + co-presence so the panel reads as a group conversation: other
-  // co-located facets' agent.spoke land in the transcript, and arrivals/
-  // departures show as diegetic lines. Null until the first scene resolves.
+  // The visitor's current location. It determines which nonmembers can be
+  // explicitly invited; ambient speech stays on the canvas, outside the private
+  // transcript. Null until the first scene resolves.
   currentLocation: LocationId | null;
 }
-
-// How long after an agent streams a chat reply we treat its matching room-speech
-// (agent.spoke) event as a duplicate echo and suppress it from the transcript.
-const STREAM_ECHO_WINDOW_MS = 20_000;
 
 // ── reducer state ────────────────────────────────────────────────────────────
 type Phase = 'closed' | 'idle' | 'live' | 'ended';
 
 interface State {
   phase: Phase;
+  sessionId: string | null;
   target: ChatTarget | null;
+  participants: ThomasId[];
   lines: ChatLine[];
   // The speaker whose turn is currently streaming (null between turns).
   streamingSpeaker: ThomasId | null;
@@ -60,15 +57,21 @@ interface State {
   // Guard so an in-flight history fetch can't prepend the same lines twice
   // (retarget → open → a late response from the previous target).
   historyLoaded: boolean;
+  // Number of optimistic visitor lines that have not reached a terminal frame.
+  // Rapid sends are allowed, but retargeting would abort/orphan those replies.
+  pendingReplies: number;
 }
 
 const INITIAL: State = {
   phase: 'closed',
+  sessionId: null,
   target: null,
+  participants: [],
   lines: [],
   streamingSpeaker: null,
   hadSession: false,
   historyLoaded: false,
+  pendingReplies: 0,
 };
 
 type Action =
@@ -81,9 +84,8 @@ type Action =
   | { t: 'delta'; speaker: ThomasId; text: string }
   | { t: 'memory'; speaker: ThomasId; label: string }
   | { t: 'turn-done'; speaker: ThomasId }
-  // A co-located facet (not the one streaming to us) spoke to the room — render
-  // it as a finished agent bubble so the conversation reads as a group.
-  | { t: 'room-line'; speaker: ThomasId; text: string }
+  | { t: 'response-done' }
+  | { t: 'participants'; sessionId: string; participants: ThomasId[]; target?: ChatTarget }
   | { t: 'action'; speaker: ThomasId; detail: string }
   | { t: 'share-card'; speaker: ThomasId; card: ShareCard }
   | { t: 'ended'; speaker: ThomasId; reason?: string | null }
@@ -112,14 +114,15 @@ function reducer(state: State, a: Action): State {
   switch (a.t) {
     case 'target':
       // Open (or retarget to) an agent — fresh idle session, no network yet.
-      return { ...INITIAL, phase: 'idle', target: a.target };
+      return { ...INITIAL, phase: 'idle', target: a.target, participants: [a.target.npcId] };
 
     case 'visitor-line':
       return {
         ...state,
         phase: state.phase === 'idle' ? 'live' : state.phase,
         hadSession: true,
-              lines: [...state.lines, { id: nextId(), kind: 'visitor', speaker: 'visitor', text: a.text }],
+        pendingReplies: state.pendingReplies + 1,
+        lines: [...state.lines, { id: nextId(), kind: 'visitor', speaker: 'visitor', text: a.text }],
       };
 
     case 'history': {
@@ -170,22 +173,46 @@ function reducer(state: State, a: Action): State {
 
     case 'turn-done': {
       const idx = lastStreamingIdx(state.lines, a.speaker);
-      if (idx === -1) return { ...state, streamingSpeaker: null };
+      if (idx === -1) {
+        return {
+          ...state,
+          streamingSpeaker: null,
+        };
+      }
       const lines = state.lines.slice();
       lines[idx] = { ...lines[idx], streaming: false };
-      return { ...state, streamingSpeaker: null, lines };
-    }
-
-    case 'room-line':
-      // Another co-located facet spoke to the room (not via our chat stream) —
-      // append a finished agent bubble so the visitor sees the group talk.
       return {
         ...state,
-        lines: [
-          ...state.lines,
-          { id: nextId(), kind: 'agent', speaker: a.speaker, text: a.text },
-        ],
+        streamingSpeaker: null,
+        lines,
       };
+    }
+
+    case 'response-done':
+      return { ...state, pendingReplies: Math.max(0, state.pendingReplies - 1) };
+
+    case 'participants': {
+      const departed = state.participants.filter((id) => !a.participants.includes(id));
+      const lines = departed.reduce<ChatLine[]>(
+        (next, id) => [
+          ...next,
+          {
+            id: nextId(),
+            kind: 'action',
+            speaker: id,
+            text: `${agentShortName(id)} stepped out of the room chat.`,
+          },
+        ],
+        state.lines,
+      );
+      return {
+        ...state,
+        sessionId: a.sessionId,
+        participants: a.participants,
+        target: a.target ?? state.target,
+        lines,
+      };
+    }
 
     case 'action':
       // The agent acted mid-chat — a centered diegetic line.
@@ -214,7 +241,8 @@ function reducer(state: State, a: Action): State {
         ...state,
         phase: 'ended',
         streamingSpeaker: null,
-              lines: [
+        pendingReplies: 0,
+        lines: [
           ...state.lines,
           { id: nextId(), kind: 'ended', text: endedLine(a.speaker, a.reason) },
         ],
@@ -223,6 +251,7 @@ function reducer(state: State, a: Action): State {
     case 'error':
       return {
         ...state,
+        pendingReplies: Math.max(0, state.pendingReplies - 1),
         lines: [...state.lines, { id: nextId(), kind: 'system', text: errorLine(a.reason) }],
       };
 
@@ -247,16 +276,16 @@ function endedLine(speaker: ThomasId, reason?: string | null): string {
 }
 
 function errorLine(reason: string): string {
-  if (reason === 'mid-thought')
-    return 'Deep in thought right now — give it a few seconds and try again.';
   if (reason === 'engaged') return "They're with another visitor right now. Try again in a bit.";
+  if (reason === 'room-full') return 'This room chat already has two facets in it.';
   if (reason === 'not-connected') return 'The town is still waking up. Try again in a moment.';
+  if (reason === 'not-co-located') return 'You stepped away. Walk back to them to continue talking.';
   if (reason === 'sleeping')
     return "They're asleep right now — read the Chronicle to see today, and come back when the town wakes.";
   return 'The town is quiet right now. Try again shortly.';
 }
 
-export function ChatSession({ onSend, onClose, suspended, currentLocation }: ChatSessionProps) {
+export function ChatSession({ onSend, onClose, onAddress, suspended, currentLocation }: ChatSessionProps) {
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const statuses = useAgentStatuses();
 
@@ -267,15 +296,6 @@ export function ChatSession({ onSend, onClose, suspended, currentLocation }: Cha
   statusesRef.current = statuses;
   const suspendedRef = useRef(suspended);
   suspendedRef.current = suspended;
-  const currentLocationRef = useRef(currentLocation);
-  currentLocationRef.current = currentLocation;
-  // De-dupe room speech by source event id (replay / re-delivery safe).
-  const seenSpeechIds = useRef<Set<string>>(new Set());
-  // When each agent last streamed a chat-frame reply. A streamed reply ALSO
-  // arrives over SSE as agent.spoke (the server speaks visitor replies to the
-  // room too); suppress that echo for a short window so retargeting to another
-  // facet doesn't re-append the previous speaker's last line as a room bubble.
-  const lastStreamAt = useRef<Map<ThomasId, number>>(new Map());
   // Whether the chat input is currently focused (drives the ESC/Enter ladder).
   const focusedRef = useRef(false);
   // Bumped to imperatively refocus the ChatPanel input. Lives in a ref so the
@@ -298,9 +318,17 @@ export function ChatSession({ onSend, onClose, suspended, currentLocation }: Cha
         bumpFocus();
         return;
       }
-      // A different agent: while idle this is a free retarget; while live/ended
-      // close the current session (network if it had one) then open the new one.
-      if (s.phase === 'live' || s.phase === 'ended') {
+      // Switching facets tears down the browser stream, while the model turn
+      // continues server-side. Wait for every queued reply so none becomes an
+      // orphaned response after its session is closed.
+      if (s.pendingReplies > 0) return;
+      // A live room keeps its shared transcript: addressing another co-located
+      // facet either focuses an existing member or asks WorldClient to join it.
+      if (s.phase === 'live' && s.hadSession) {
+        onAddress(p.npcId);
+        return;
+      }
+      if (s.phase === 'ended') {
         onClose(s.target?.npcId ?? null, s.hadSession);
       }
       const activity = statusLine(statusesRef.current[p.npcId]);
@@ -311,67 +339,60 @@ export function ChatSession({ onSend, onClose, suspended, currentLocation }: Cha
     // session keeps streaming. (Only ESC / × / chat_ended close it.)
 
     // Guard: drop chat-* stream events while closed (a frame racing a close).
-    const live = () => stateRef.current.phase !== 'closed';
+    const live = (sessionId?: string) => {
+      const current = stateRef.current;
+      return (
+        current.phase !== 'closed' &&
+        (!sessionId || current.sessionId === sessionId)
+      );
+    };
 
-    const onTurnStarted = (p: { npcId: ThomasId }) => {
-      lastStreamAt.current.set(p.npcId, Date.now());
-      if (live()) dispatch({ t: 'turn-started', speaker: p.npcId });
+    const onTurnStarted = (p: { npcId: ThomasId; sessionId: string }) => {
+      if (live(p.sessionId)) dispatch({ t: 'turn-started', speaker: p.npcId });
     };
-    const onDelta = (p: { npcId: ThomasId; text: string }) => {
-      lastStreamAt.current.set(p.npcId, Date.now());
-      if (live()) dispatch({ t: 'delta', speaker: p.npcId, text: p.text });
+    const onDelta = (p: { npcId: ThomasId; sessionId: string; text: string }) => {
+      if (live(p.sessionId)) dispatch({ t: 'delta', speaker: p.npcId, text: p.text });
     };
-    const onMemory = (p: { npcId: ThomasId; label: string }) => {
-      if (live()) dispatch({ t: 'memory', speaker: p.npcId, label: p.label });
+    const onMemory = (p: { npcId: ThomasId; sessionId: string; label: string }) => {
+      if (live(p.sessionId)) dispatch({ t: 'memory', speaker: p.npcId, label: p.label });
     };
-    const onTurnDone = (p: { npcId: ThomasId }) => {
-      lastStreamAt.current.set(p.npcId, Date.now());
-      if (live()) dispatch({ t: 'turn-done', speaker: p.npcId });
+    const onTurnDone = (p: { npcId: ThomasId; sessionId: string }) => {
+      if (live(p.sessionId)) dispatch({ t: 'turn-done', speaker: p.npcId });
     };
-    const onAction = (p: { npcId: ThomasId; detail: string }) => {
-      if (live()) dispatch({ t: 'action', speaker: p.npcId, detail: p.detail });
+    const onResponseDone = (p: { sessionId: string }) => {
+      if (live(p.sessionId)) dispatch({ t: 'response-done' });
     };
-    const onShareCard = (p: { npcId: ThomasId; card: ShareCard }) => {
-      if (live()) dispatch({ t: 'share-card', speaker: p.npcId, card: p.card });
+    const onParticipants = (p: { sessionId: string; participants: ThomasId[]; addressed?: ThomasId }) => {
+      const current = stateRef.current;
+      if (
+        current.phase === 'closed' ||
+        (current.sessionId !== null && current.sessionId !== p.sessionId)
+      ) return;
+      const addressed = p.addressed;
+      const target = addressed
+        ? {
+            npcId: addressed,
+            npcName: NPC_CONFIGS[addressed]?.displayName ?? `${agentShortName(addressed)} Thomas`,
+            activity: statusLine(statusesRef.current[addressed]),
+          }
+        : undefined;
+      dispatch({ t: 'participants', sessionId: p.sessionId, participants: p.participants, target });
     };
-    const onEnded = (p: { npcId: ThomasId; reason?: string | null }) => {
-      if (live()) dispatch({ t: 'ended', speaker: p.npcId, reason: p.reason ?? null });
+    const onAction = (p: { npcId: ThomasId; sessionId: string; detail: string }) => {
+      if (live(p.sessionId)) dispatch({ t: 'action', speaker: p.npcId, detail: p.detail });
     };
-    const onError = (p: { reason: string }) => {
-      if (live()) dispatch({ t: 'error', reason: p.reason });
+    const onShareCard = (p: { npcId: ThomasId; sessionId: string; card: ShareCard }) => {
+      if (live(p.sessionId)) dispatch({ t: 'share-card', speaker: p.npcId, card: p.card });
+    };
+    const onEnded = (p: { npcId: ThomasId; sessionId: string; reason?: string | null }) => {
+      if (live(p.sessionId)) dispatch({ t: 'ended', speaker: p.npcId, reason: p.reason ?? null });
+    };
+    const onError = (p: { sessionId?: string; reason: string }) => {
+      if (live(p.sessionId)) dispatch({ t: 'error', reason: p.reason });
     };
     const onTypingFocus = (p: { focused: boolean }) => {
       focusedRef.current = p.focused;
     };
-
-    // Room speech: a co-located facet (NOT the one streaming to us) spoke aloud.
-    // Land it in the transcript so the visitor sees the group conversation —
-    // the very thing they were missing (agents talk to the room; the panel was
-    // 1:1). The target itself talks via the chat stream, so suppress its
-    // agent.spoke to avoid a double.
-    const onRoomSpeech = (p: {
-      npcId: ThomasId;
-      message: string;
-      location?: LocationId;
-      id?: string;
-    }) => {
-      const s = stateRef.current;
-      if (s.phase === 'closed' || !s.target) return;
-      const here = currentLocationRef.current;
-      if (!here || !p.location || !sameScene(p.location, here)) return;
-      // The target talks to us via the chat stream — its agent.spoke echo would
-      // double. So would a just-streamed reply from a former target (retarget
-      // edge), so also skip any agent that streamed within the echo window.
-      if (p.npcId === s.target.npcId) return;
-      const streamedAt = lastStreamAt.current.get(p.npcId) ?? 0;
-      if (Date.now() - streamedAt < STREAM_ECHO_WINDOW_MS) return;
-      if (p.id) {
-        if (seenSpeechIds.current.has(p.id)) return;
-        seenSpeechIds.current.add(p.id);
-      }
-      dispatch({ t: 'room-line', speaker: p.npcId, text: p.message });
-    };
-
 
     // Prior conversation with this facet, fetched by WorldClient right after the
     // session opens. Rendered above the live transcript behind an "earlier"
@@ -404,12 +425,13 @@ export function ChatSession({ onSend, onClose, suspended, currentLocation }: Cha
     };
 
     EventBus.on('npc-interaction', onInteraction);
-    EventBus.on('npc-speech', onRoomSpeech);
     EventBus.on('chat-history', onHistory);
     EventBus.on('chat-turn-started', onTurnStarted);
     EventBus.on('chat-delta', onDelta);
     EventBus.on('chat-memory-recalled', onMemory);
     EventBus.on('chat-turn-done', onTurnDone);
+    EventBus.on('chat-response-done', onResponseDone);
+    EventBus.on('chat-participants', onParticipants);
     EventBus.on('chat-action', onAction);
     EventBus.on('chat-share-card', onShareCard);
     EventBus.on('chat-ended', onEnded);
@@ -418,80 +440,38 @@ export function ChatSession({ onSend, onClose, suspended, currentLocation }: Cha
 
     return () => {
       EventBus.off('npc-interaction', onInteraction);
-      EventBus.off('npc-speech', onRoomSpeech);
       EventBus.off('chat-history', onHistory);
       EventBus.off('chat-turn-started', onTurnStarted);
       EventBus.off('chat-delta', onDelta);
       EventBus.off('chat-memory-recalled', onMemory);
       EventBus.off('chat-turn-done', onTurnDone);
-        EventBus.off('chat-action', onAction);
+      EventBus.off('chat-response-done', onResponseDone);
+      EventBus.off('chat-participants', onParticipants);
+      EventBus.off('chat-action', onAction);
       EventBus.off('chat-share-card', onShareCard);
       EventBus.off('chat-ended', onEnded);
       EventBus.off('chat-error', onError);
       EventBus.off('typing-focus', onTypingFocus);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onClose, bumpFocus]);
+  }, [onClose, onAddress, bumpFocus]);
 
-  // ── co-presence (who else is in the room) + arrival/departure lines ────────
-  // Derived from live agent statuses scoped to the visitor's room. Diffed across
-  // renders to drop a diegetic "X walked over." / "X stepped away." line so the
-  // room reads as alive (e.g. Hobby summons Writer → Writer walks in → a line).
-  const presentRef = useRef<ThomasId[]>([]);
-  const presenceInitRef = useRef(false);
-  // The room the presence baseline was taken in — when the visitor walks to a
-  // different scene mid-chat, re-baseline instead of diffing the new room's
-  // occupants against the old room's (which would spam false walked-over lines).
-  const presenceSceneRef = useRef<LocationId | null>(null);
-  useEffect(() => {
-    if (state.phase === 'closed' || !currentLocation) {
-      presenceInitRef.current = false;
-      presenceSceneRef.current = null;
-      presentRef.current = [];
-      return;
-    }
-    const present = (Object.keys(statuses) as ThomasId[]).filter((id) => {
-      const st = statuses[id];
-      return !!st && sameScene(st.locationId, currentLocation);
-    });
-    const roomChanged =
-      presenceSceneRef.current == null || !sameScene(presenceSceneRef.current, currentLocation);
-    if (!presenceInitRef.current || roomChanged) {
-      // First read for this session, or the visitor moved rooms — adopt the room
-      // as-is, don't announce.
-      presenceInitRef.current = true;
-      presenceSceneRef.current = currentLocation;
-      presentRef.current = present;
-      return;
-    }
-    const prev = presentRef.current;
-    const target = state.target?.npcId;
-    presentRef.current = present;
-    for (const id of present) {
-      if (!prev.includes(id) && id !== target) {
-        dispatch({ t: 'action', speaker: id, detail: `${agentShortName(id)} walked over.` });
-      }
-    }
-    for (const id of prev) {
-      if (!present.includes(id) && id !== target) {
-        dispatch({ t: 'action', speaker: id, detail: `${agentShortName(id)} stepped away.` });
-      }
-    }
-  }, [statuses, currentLocation, state.phase, state.target?.npcId]);
-
-  // The co-located facets other than the one we're addressing — rendered as a
-  // presence bar the visitor can tap to bring another facet into focus.
-  const present = useMemo(() => {
-    const target = state.target?.npcId;
-    if (!target || !currentLocation) return [] as ThomasId[];
+  // Co-located nonmembers are invitation candidates, never implicit transcript
+  // participants. Ambient room speech stays on the canvas.
+  const available = useMemo(() => {
+    if (!currentLocation || state.phase !== 'live' || !state.sessionId) return [] as ThomasId[];
+    const roomIsHere = state.participants.every(
+      (id) => statuses[id]?.locationId === currentLocation,
+    );
+    if (!roomIsHere) return [] as ThomasId[];
     return (Object.keys(statuses) as ThomasId[]).filter((id) => {
       const st = statuses[id];
-      return id !== target && !!st && sameScene(st.locationId, currentLocation);
+      return !state.participants.includes(id) && !!st && st.locationId === currentLocation;
     });
-  }, [statuses, currentLocation, state.target?.npcId]);
+  }, [statuses, currentLocation, state.phase, state.sessionId, state.participants]);
 
-  // Tap a present facet → retarget the conversation to them (reuses the same
-  // interaction path SPACE/tap uses; the reducer closes + reopens cleanly).
+  // Tap a present facet → address them in the live room (joining explicitly if
+  // needed); before the first send the same interaction simply changes target.
   const handleAddress = useCallback((npcId: ThomasId) => {
     const npcName = NPC_CONFIGS[npcId]?.displayName ?? `${agentShortName(npcId)} Thomas`;
     EventBus.emit('npc-interaction', { npcId, npcName });
@@ -567,8 +547,10 @@ export function ChatSession({ onSend, onClose, suspended, currentLocation }: Cha
       onSend={handleSend}
       onClose={doClose}
       focusNonce={focusNonceRef.current}
-      present={present}
+      participants={state.participants}
+      available={available}
       onAddress={handleAddress}
+      pendingReplies={state.pendingReplies}
     />
   );
 }

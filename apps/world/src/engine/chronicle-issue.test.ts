@@ -1,6 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { ChronicleItem } from "@town/contract";
-import { buildSourcePacket, fallbackIssue } from "./chronicle-issue.js";
+import {
+  buildSourcePacket,
+  fallbackIssue,
+  generateWithCitationRepair,
+  parseGeneratedIssueText,
+} from "./chronicle-issue.js";
 
 // Pure-function coverage for the Town Crier source packet + deterministic
 // fallback (the LLM generation path needs a live model + DB and is covered by
@@ -92,3 +97,63 @@ describe("fallbackIssue", () => {
     expect(issue.citations).toEqual([]);
   });
 });
+
+function generatedJson(citationId = "S1") {
+  return JSON.stringify({
+    title: "A Tiny Synth Finds Its First Audience",
+    subtitle: "Writer and Hobby traded ideas at the cafe.",
+    lead: {
+      bodyMd: `A small instrument took shape over coffee. [${citationId}]`,
+      citationIds: [citationId],
+    },
+    sections: [],
+  });
+}
+
+describe.each(["anthropic", "openai"] as const)(
+  "provider-neutral generated issue parsing (%s fixture)",
+  (provider) => {
+    const packet = buildSourcePacket(day, items, new Map());
+
+    it("accepts valid bare JSON", () => {
+      expect(parseGeneratedIssueText(generatedJson(), packet.sourceIds)).toMatchObject({
+        title: "A Tiny Synth Finds Its First Audience",
+      });
+    });
+
+    it("accepts fenced JSON", () => {
+      const text = `Here is the issue:\n\n\`\`\`json\n${generatedJson()}\n\`\`\``;
+      expect(parseGeneratedIssueText(text, packet.sourceIds).lead.citationIds).toEqual(["S1"]);
+    });
+
+    it("rejects invalid schema output", () => {
+      expect(() =>
+        parseGeneratedIssueText(JSON.stringify({ title: 42 }), packet.sourceIds),
+      ).toThrow();
+    });
+
+    it("repairs one invalid citation and preserves the provider's second output", async () => {
+      const generate = vi
+        .fn<(feedback: string | null) => Promise<string>>()
+        .mockResolvedValueOnce(generatedJson("S999"))
+        .mockResolvedValueOnce(generatedJson("S1"));
+
+      const issue = await generateWithCitationRepair(packet, generate);
+
+      expect(issue.lead.citationIds).toEqual(["S1"]);
+      expect(generate).toHaveBeenCalledTimes(2);
+      expect(generate.mock.calls[0][0]).toBeNull();
+      expect(generate.mock.calls[1][0]).toContain("unknown citation ids: S999");
+      expect(provider).toMatch(/anthropic|openai/);
+    });
+
+    it("fails after one repair attempt is exhausted", async () => {
+      const generate = vi.fn(async () => generatedJson("S999"));
+
+      await expect(generateWithCitationRepair(packet, generate)).rejects.toThrow(
+        "unknown citation ids: S999",
+      );
+      expect(generate).toHaveBeenCalledTimes(2);
+    });
+  },
+);

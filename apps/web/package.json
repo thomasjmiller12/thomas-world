@@ -7,11 +7,12 @@
     "scripts": {
         "dev": "next dev -p 8080",
         "build": "pnpm --filter @town/contract build && next build",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run"
     },
     "dependencies": {
         "@town/contract": "workspace:*",
-        "next": "^15.3.9",
+        "next": "^15.5.26",
         "phaser": "^3.90.0",
         "react": "19.0.0",
         "react-dom": "19.0.0",
@@ -23,8 +24,9 @@
         "@types/node": "^20",
         "@types/react": "^19",
         "@types/react-dom": "^19",
-        "postcss": "^8.5.8",
+        "postcss": "^8.5.28",
         "tailwindcss": "^4.2.2",
-        "typescript": "^5"
+        "typescript": "^5",
+        "vitest": "^4.1.8"
     }
 }

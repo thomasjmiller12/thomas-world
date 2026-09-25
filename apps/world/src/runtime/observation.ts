@@ -8,9 +8,11 @@
 // Push/pull (delta = push only; everything else is pulled via tools):
 //  - standing state: time, where I am + who's co-located, my anchors (core memory)
 //  - notice-push: my inbox (DMs/broadcasts) + co-located room events
-//  - EXCLUDED: my own events (already in my thread) + events elsewhere (pull)
+//  - global salience: a tiny public strip for arrivals, made things, board posts,
+//    and capability requests; richer elsewhere detail remains pull-only
+//  - EXCLUDED: my own events (already in my thread) + ordinary room noise elsewhere
 
-import { eq, gt, sql } from "drizzle-orm";
+import { and, desc, eq, gt, notInArray, sql } from "drizzle-orm";
 import type { AgentId, LocationId, WorldEvent, ObjectNote } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { getAgent } from "../engine/agents.js";
@@ -28,6 +30,7 @@ import {
   type VisitorRow,
 } from "../engine/visitors.js";
 import { clockLine } from "./clock.js";
+import { renderPursuits } from "./pursuits.js";
 
 const { visitors } = schema;
 
@@ -239,7 +242,7 @@ export function renderPlace(
   const phrases = shown.map((o) => {
     let s = `${o.displayName}${renderObjectState(o.state)}`;
     const last = o.notes && o.notes.length ? o.notes[o.notes.length - 1] : undefined;
-    if (last) s += ` — a note reads "${last.text}"`;
+    if (last) s += ` — a note reads "${last.text}" (left ${last.ts})`;
     return s;
   });
   if (restCount > 0) {
@@ -291,9 +294,13 @@ export function renderEvents(events: WorldEvent[], location: LocationId, viewer:
       const p = e.payload as Record<string, unknown>;
       switch (e.type) {
         case "agent.moved":
-          return `- ${p.agent} moved to ${p.to}`;
+          return p.from === p.to
+            ? `- ${p.agent} repositioned within ${p.to}`
+            : `- ${p.agent} moved to ${p.to}`;
         case "agent.activity":
           return `- ${p.agent} is now ${p.activity}`;
+        case "agent.acted":
+          return `- ${p.agent} ${p.summary}`;
         case "agent.spoke": {
           if (!p.text) return `- ${p.agent} said something (elsewhere)`;
           if (p.to === viewer) return `- ${p.agent} said (to you): "${p.text}"`;
@@ -318,6 +325,8 @@ export function renderEvents(events: WorldEvent[], location: LocationId, viewer:
           return `- ${p.agent} posted a bulletin: "${p.title}" (read_board to read it)`;
         case "capability.requested":
           return `- ${p.agent} requested a new capability: ${p.summary}`;
+        case "capability.resolved":
+          return `- P-Thomas marked ${p.agent === viewer ? "your" : `${p.agent}'s`} capability request ${p.status}: ${p.summary}${p.note ? ` — ${p.note}` : ""}`;
         case "visitor.arrived":
           return `- a visitor (${p.name}) arrived in town`;
         case "visitor.left":
@@ -332,6 +341,8 @@ export function renderEvents(events: WorldEvent[], location: LocationId, viewer:
           return `- the ${p.fixture} ${p.effect}${p.agent ? ` (${p.agent})` : ""} in the ${p.location}`;
         case "chat.joined":
           return `- ${p.agent} joined a conversation`;
+        case "chat.left":
+          return `- ${p.agent} left a conversation${p.reason ? ` (${p.reason})` : ""}`;
         case "conversation.converted":
           return `- a conversation turned into a chat with a visitor`;
         case "chat.started":
@@ -356,11 +367,38 @@ export function renderEvents(events: WorldEvent[], location: LocationId, viewer:
         case "object.attached":
           return `- ${p.agent} put "${p.title}" on the ${p.objectId}`;
         default:
-          // All event types are handled above; `e` narrows to never here.
+          // Older event kinds remain readable even when they have no dedicated
+          // agent-facing prose yet.
           return `- something happened (${(e as WorldEvent).type})`;
       }
     })
     .join("\n");
+}
+
+const GLOBAL_SALIENCE_TYPES = new Set<WorldEvent["type"]>([
+  "visitor.arrived",
+  "visitor.left",
+  "artifact.created",
+  "artifact.updated",
+  "bulletin.posted",
+  "capability.requested",
+  "capability.resolved",
+]);
+
+// Preserve room-scale embodiment while letting agents notice the few public
+// facts that change the shared town. This deliberately excludes remote speech,
+// movement, and storage invalidations so the delta cannot become a firehose.
+export function noticePushEvents(
+  events: WorldEvent[],
+  agentId: AgentId,
+  location: LocationId,
+): WorldEvent[] {
+  return events.filter(
+    (event) =>
+      event.agentId !== agentId &&
+      (event.locationId === location ||
+        (event.visibility === "public" && GLOBAL_SALIENCE_TYPES.has(event.type))),
+  );
 }
 
 // Build the per-input WORLD DELTA (M3 push/pull model). Far leaner than the old
@@ -388,7 +426,7 @@ export async function buildDelta(
   const location = agent.locationId as LocationId;
 
   const cursor = await readCursor(agentId);
-  const [loc, here, perceivedRes, inboxRes, outsideMail, visitorCount, visitorsHere, core, objectsHere, pinnedHere] =
+  const [loc, here, perceivedRes, inboxRes, outsideMail, visitorCount, visitorsHere, core, objectsHere, pinnedHere, pursuits] =
     await Promise.all([
       getLocation(location),
       agentsAtLocation(location, agentId),
@@ -402,7 +440,10 @@ export async function buildDelta(
       db
         .select()
         .from(schema.artifacts)
-        .where(eq(schema.artifacts.locationId, location)),
+        .where(and(eq(schema.artifacts.locationId, location),
+          notInArray(schema.artifacts.kind, ["diary_entry", "daily_digest", "bulletin"])))
+        .orderBy(desc(schema.artifacts.updatedAt), desc(schema.artifacts.id)).limit(4),
+      renderPursuits(agentId),
     ]);
   const inbox = inboxRes.rows;
   const [arrivalMs, visitorHistory] = await Promise.all([
@@ -418,11 +459,7 @@ export async function buildDelta(
     ).catch(() => new Map()),
   ]);
 
-  // NOTICE-PUSH filter: co-located events I did not author. Self-events are
-  // already in the thread; elsewhere-headlines are pull, not push.
-  const noticePush = perceivedRes.events.filter(
-    (e) => e.locationId === location && e.agentId !== agentId,
-  );
+  const noticePush = noticePushEvents(perceivedRes.events, agentId, location);
 
   // Order the canonical objects to match the legacy fixtures order so a clean
   // room renders byte-identically to today's `Fixtures here:` line (the renderer
@@ -458,7 +495,7 @@ export async function buildDelta(
   if (noticePush.length) pushParts.push(renderEvents(noticePush, location, agentId));
   const since = pushParts.length
     ? pushParts.join("\n")
-    : "Nothing new has reached you since your last turn — carry on with what you're doing.";
+    : "No new messages or notices. Choose a next step from current state and your interests, or rest; there is no need to repeat your last response.";
 
   const sections: string[] = [
     `## Where you are`,
@@ -475,8 +512,11 @@ export async function buildDelta(
       visitorHistory,
     ),
     ``,
-    `## Your anchors (core memory — keep these short, current, and true at reflection)`,
+    `## Your anchors (dated memories; verify old status claims against the world)`,
     core,
+    ``,
+    `## Your current pursuits`,
+    pursuits,
     ``,
     `## Since you last looked`,
     since,

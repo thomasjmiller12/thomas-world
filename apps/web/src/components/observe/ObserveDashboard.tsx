@@ -2,8 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   FeedResponse,
-  type ChronicleItem,
-  type ChronicleIssue,
+  type ChronicleCitation,
   type DayPhase,
   type FeedItem,
 } from '@town/contract';
@@ -13,14 +12,17 @@ import { WorldClient } from '@/game/systems/WorldClient';
 import { resolveWorldBaseUrl } from '@/lib/world/mapping';
 import { NPC_CONFIGS } from '@/game/data/npc-configs';
 import { useAgentStatuses } from '@/lib/useAgentStatuses';
-import { fetchChronicle } from '@/components/chronicle/chronicleClient';
+import { useChronicleData } from '@/components/chronicle/useChronicleData';
 import { relativeDayLabel } from '@/components/chronicle/chroniclePresentation';
+import { isStoryFeedItem } from './liveFeedPresentation';
 import { TodayTab } from '@/components/chronicle/TodayTab';
 import { ConversationsTab } from '@/components/chronicle/ConversationsTab';
 import { MadeTab } from '@/components/chronicle/MadeTab';
 import { BoardTab } from '@/components/chronicle/BoardTab';
 import { MessagesTab } from '@/components/chronicle/MessagesTab';
 import { ArtifactReader } from '@/components/chronicle/ArtifactReader';
+import { useChronicleRefresh } from '@/components/chronicle/useChronicleRefresh';
+import { AboutPanel, type AboutTab } from '@/components/portfolio/AboutPanel';
 
 // ObserveDashboard — the observer-only surface (/observe). Everything a visitor
 // can see, none of what a visitor can do: live agent presence + activity, the
@@ -50,13 +52,9 @@ export function ObserveDashboard() {
 
   // Chronicle day state (Today / Conversations).
   const [day, setDay] = useState<string | null>(null);
-  const [items, setItems] = useState<ChronicleItem[]>([]);
-  const [issue, setIssue] = useState<ChronicleIssue | null>(null);
-  const [days, setDays] = useState<string[]>([]);
-  const [resolvedDay, setResolvedDay] = useState('');
-  const [chronicleLoading, setChronicleLoading] = useState(false);
-  const [chronicleError, setChronicleError] = useState(false);
-  const reqSeq = useRef(0);
+  const { items, issue, days, resolvedDay, loading: chronicleLoading, error: chronicleError, generationPending, loadChronicle } = useChronicleData(day, tab === 'today' || tab === 'conversations');
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [about, setAbout] = useState<{ tab: AboutTab; referenceId?: string; proofId?: string } | null>(null);
 
   // Boot the observe-mode client once: snapshot + SSE, no identity.
   useEffect(() => {
@@ -66,36 +64,29 @@ export function ObserveDashboard() {
       setPhase(w.phase);
       setAwake(w.awake);
     };
+    const onWorldPhase = (w: { phase: DayPhase }) => setPhase(w.phase);
     EventBus.on('world-state', onWorldState);
+    EventBus.on('world-phase', onWorldPhase);
     return () => {
       EventBus.off('world-state', onWorldState);
+      EventBus.off('world-phase', onWorldPhase);
       world.stop();
     };
   }, []);
 
-  // Chronicle loading (mirrors ChroniclePanel, without the overlay chrome).
-  useEffect(() => {
-    if (tab !== 'today' && tab !== 'conversations') return;
-    const seq = ++reqSeq.current;
-    const ctrl = new AbortController();
-    setChronicleLoading(true);
-    setChronicleError(false);
-    fetchChronicle({ day, signal: ctrl.signal })
-      .then((page) => {
-        if (seq !== reqSeq.current) return;
-        setItems(page.items);
-        setIssue(page.issue);
-        setDays(page.days);
-        setResolvedDay(page.day);
-      })
-      .catch(() => {
-        if (seq === reqSeq.current) setChronicleError(true);
-      })
-      .finally(() => {
-        if (seq === reqSeq.current) setChronicleLoading(false);
-      });
-    return () => ctrl.abort();
-  }, [day, tab]);
+  useChronicleRefresh({ day, resolvedDay, days, readerOpen: readerId !== null || about !== null }, (latestDay) => {
+    if (latestDay && (tab === 'today' || tab === 'conversations')) loadChronicle(day, true);
+    setRefreshNonce((n) => n + 1);
+  });
+
+  const handleOpenCitation = useCallback((citation: ChronicleCitation) => {
+    const [kind, id] = (citation.href ?? '').split(/:(.+)/);
+    if (!id) return;
+    if (kind === 'artifact') setReaderId(id);
+    else if (kind === 'thread') setTab('conversations');
+    else if (kind === 'reference') setAbout({ tab: 'projects', referenceId: id });
+    else if (kind === 'proof') setAbout({ tab: 'proof', proofId: id });
+  }, []);
 
   const dayIdx = days.indexOf(resolvedDay);
   const hasNewer = dayIdx > 0;
@@ -239,8 +230,11 @@ export function ObserveDashboard() {
         </div>
 
         {/* ── body ── */}
+        {generationPending && !readerId && showDayNav && (
+          <p role="status" style={{ fontSize: 12, color: 'var(--ink-3)' }}>The Chronicle is being updated. <button onClick={() => loadChronicle(day, false)}>Refresh</button></p>
+        )}
         {readerId ? (
-          <ArtifactReader artifactId={readerId} onBack={() => setReaderId(null)} />
+          <ArtifactReader artifactId={readerId} onBack={() => setReaderId(null)} readOnly />
         ) : (
           <>
             {tab === 'live' && <LiveFeed />}
@@ -251,22 +245,29 @@ export function ObserveDashboard() {
                 loading={chronicleLoading}
                 error={chronicleError}
                 onOpenArtifact={setReaderId}
-                onOpenCitation={(c) => {
-                  const href = c.href ?? '';
-                  if (href.startsWith('artifact:')) setReaderId(href.slice('artifact:'.length));
-                }}
+                onOpenCitation={handleOpenCitation}
                 onGoToDay={setDay}
               />
             )}
             {tab === 'conversations' && (
               <ConversationsTab items={items} loading={chronicleLoading} error={chronicleError} />
             )}
-            {tab === 'made' && <MadeTab onOpenArtifact={setReaderId} />}
-            {tab === 'board' && <BoardTab onOpenArtifact={setReaderId} />}
-            {tab === 'messages' && <MessagesTab />}
+            {tab === 'made' && <MadeTab onOpenArtifact={setReaderId} refreshNonce={refreshNonce} />}
+            {tab === 'board' && <BoardTab onOpenArtifact={setReaderId} refreshNonce={refreshNonce} />}
+            {tab === 'messages' && <MessagesTab refreshNonce={refreshNonce} />}
           </>
         )}
       </div>
+      {about && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60 }}>
+          <AboutPanel
+            onClose={() => setAbout(null)}
+            initialTab={about.tab}
+            initialReferenceId={about.referenceId ?? null}
+            initialProofId={about.proofId ?? null}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -293,8 +294,6 @@ function DayArrow({ dir, disabled, onClick }: { dir: string; disabled: boolean; 
 // ── Live feed: the rendered world feed, refreshed when live events stream in ──
 
 const FEED_LIMIT = 60;
-// Visitor churn stays out of the observer's live view — agent life is the point.
-const HIDDEN_TYPES = new Set(['visitor.arrived', 'visitor.left', 'visitor.moved']);
 
 function LiveFeed() {
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
@@ -307,7 +306,7 @@ function LiveFeed() {
       const res = await fetch(`${base}/feed?limit=${FEED_LIMIT}`);
       if (!res.ok) throw new Error(String(res.status));
       const parsed = FeedResponse.parse(await res.json());
-      setFeedItems(parsed.items.filter((it) => !HIDDEN_TYPES.has(it.type ?? '')));
+      setFeedItems(parsed.items.filter(isStoryFeedItem));
       setError(false);
     } catch {
       setError(true);

@@ -23,19 +23,17 @@ import type {
   ChronicleCitationKind,
   ChronicleIssueSection,
 } from "@town/contract";
-import type Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "../db/client.js";
-import { anthropic, hasLlm } from "../runtime/client.js";
-import { recordUsage } from "./usage.js";
-import { estimateCostUsd, tokensFromUsage } from "../runtime/pricing.js";
+import { config } from "../config.js";
+import { getLlmProvider, hasLlm } from "../runtime/llm/provider.js";
+import { resolveSystemModel } from "../runtime/llm/models.js";
+import type { ModelRef, NormalizedUsage } from "../runtime/llm/types.js";
+import { recordNormalizedUsage } from "./usage.js";
 
 const { chronicleIssues, artifacts } = schema;
 
-// The model the Town Crier writes on. Sonnet for voice quality — generation is
-// lazy/nightly, so latency isn't the constraint (plan §"Target model").
-const CRIER_MODEL = "claude-sonnet-5";
 // Bump when the prompt/schema changes so stale cached issues can be told apart.
-export const PROMPT_VERSION = "crier-2026-06-20";
+export const PROMPT_VERSION = "crier-2026-09-22";
 
 // How long today's issue is considered fresh before a regenerate is allowed (it
 // keeps developing through the day). Past days are immutable once printed.
@@ -243,7 +241,7 @@ function markersIn(text: string): string[] {
 
 // --- LLM generation ---------------------------------------------------------
 
-const GeneratedIssue = z.object({
+export const GeneratedIssue = z.object({
   title: z.string().min(1).max(90),
   subtitle: z.string().max(180).nullable(),
   lead: z.object({ bodyMd: z.string().min(1), citationIds: z.array(z.string()) }),
@@ -251,11 +249,13 @@ const GeneratedIssue = z.object({
     .array(z.object({ id: z.string(), title: z.string(), bodyMd: z.string(), citationIds: z.array(z.string()) }))
     .max(6),
 });
-type GeneratedIssue = z.infer<typeof GeneratedIssue>;
+export type GeneratedIssue = z.infer<typeof GeneratedIssue>;
 
 const SYSTEM = `You are The Town Crier for Thomas's Town — a small, slightly whimsical AI village where five facets of one person (Career, Researcher, Builder, Writer, Hobby) live, work, talk, and make things on their own.
 
 Write a compact newspaper issue for the given day in the Town Crier's voice: specific, warm, a little literary, never marketing-y. Every concrete claim about something that happened must cite one or more source ids inline as markers like [S3]. Use only the sources provided. Do NOT invent URLs, projects, artifacts, visitors, messages, or agent actions. If the day is sparse, write an honest quiet-day issue. Markers go inline in the prose right after the claim they support.
+
+Distinguish reflections and repeated utterances from completed work. A diary is a diary, not a new project or evidence of progress. If residents keep repeating themselves or waiting on the same blocker, report that plainly; do not turn stagnation into a story about growth, restraint, or craft. The packet's day and event timestamps are authoritative; dates claimed inside quoted diaries can be wrong. Do not endorse a future diary date as the date of an event.
 
 Return ONLY a JSON object, no prose around it, matching:
 {
@@ -279,31 +279,28 @@ function renderPacket(packet: ChronicleSourcePacket): string {
   );
 }
 
-// One generation attempt. Returns the parsed+citation-validated issue, or throws
-// with feedback describing the invalid citation ids (so the retry can fix them).
 async function generateOnce(
   packet: ChronicleSourcePacket,
   feedback: string | null,
-): Promise<GeneratedIssue> {
-  const valid = new Set(packet.sourceIds);
-  const messages: Anthropic.Messages.MessageParam[] = [
-    { role: "user", content: renderPacket(packet) },
-  ];
-  if (feedback) messages.push({ role: "user", content: feedback });
-
-  const res = await anthropic.messages.create({
-    model: CRIER_MODEL,
-    max_tokens: 1600,
-    system: SYSTEM,
-    messages,
+  model: ModelRef,
+): Promise<string> {
+  const provider = getLlmProvider(model.provider);
+  return provider.generateText({
+    model,
+    systemPrompt: SYSTEM,
+    inputText: feedback
+      ? `${renderPacket(packet)}\n\nCorrection required:\n${feedback}`
+      : renderPacket(packet),
+    maxOutputTokens: 1600,
+    onUsage: (usage) => recordCrierUsage(packet.day, usage),
   });
-  await recordCrierUsage(packet.day, res.usage);
+}
 
-  const text = res.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("")
-    .trim();
+export function parseGeneratedIssueText(
+  text: string,
+  sourceIds: readonly string[],
+): GeneratedIssue {
+  const valid = new Set(sourceIds);
   const json = extractJson(text);
   const parsed = GeneratedIssue.parse(json);
 
@@ -320,7 +317,21 @@ async function generateOnce(
   return parsed;
 }
 
-function extractJson(text: string): unknown {
+export async function generateWithCitationRepair(
+  packet: ChronicleSourcePacket,
+  generate: (feedback: string | null) => Promise<string>,
+): Promise<GeneratedIssue> {
+  try {
+    return parseGeneratedIssueText(await generate(null), packet.sourceIds);
+  } catch (firstErr) {
+    const feedback =
+      `Your previous attempt had a problem: ${(firstErr as Error).message}. ` +
+      "Only cite source ids that appear in the Sources list. Return corrected JSON.";
+    return parseGeneratedIssueText(await generate(feedback), packet.sourceIds);
+  }
+}
+
+export function extractJson(text: string): unknown {
   // Tolerate a code fence or stray prose around the object.
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   const raw = fence ? fence[1] : text;
@@ -435,6 +446,28 @@ async function loadIssueRow(day: string) {
   return r ?? null;
 }
 
+// Read-only fast path: cached editorial copy or a deterministic edition from
+// the current timeline. No model calls or persistence are required to render it.
+export async function readChronicleIssue(day: string, items: ChronicleItem[], today: string): Promise<{
+  issue: ChronicleIssue;
+  needsGeneration: boolean;
+}> {
+  const existing = await loadIssueRow(day);
+  const packet = buildSourcePacket(day, items, new Map());
+  const fresh = existing && (day !== today || (
+    Date.now() - existing.generatedAt.getTime() < TODAY_TTL_MS && existing.promptVersion === PROMPT_VERSION
+  ));
+  const deterministic = packet.sources.length > 0
+    ? fallbackIssue(day, packet)
+    : emptyIssue(day, await latestMeaningfulDay(day));
+  return {
+    // Deterministic fallback remains current as events arrive, even without a
+    // configured model. A cached generated issue keeps its editorial cadence.
+    issue: existing?.status === "ready" ? rowToIssue(existing) : deterministic,
+    needsGeneration: Boolean(hasLlm() && packet.sources.length > 0 && !fresh),
+  };
+}
+
 async function persistIssue(
   issue: ChronicleIssue,
   packet: ChronicleSourcePacket,
@@ -541,17 +574,12 @@ export async function attachIssue(
     }
 
     try {
-      let gen: GeneratedIssue;
-      try {
-        gen = await generateOnce(packet, null);
-      } catch (firstErr) {
-        gen = await generateOnce(
-          packet,
-          `Your previous attempt had a problem: ${(firstErr as Error).message}. Only cite source ids that appear in the Sources list. Return corrected JSON.`,
-        );
-      }
+      const model = resolveSystemModel("townCrier", config.llmProvider);
+      const gen = await generateWithCitationRepair(packet, (feedback) =>
+        generateOnce(packet, feedback, model),
+      );
       const issue = composeIssue(day, gen, packet);
-      await persistIssue(issue, packet, CRIER_MODEL);
+      await persistIssue(issue, packet, model.model);
       return issue;
     } catch (err) {
       console.warn(`[crier] generation failed for ${day}:`, (err as Error).message);
@@ -576,19 +604,13 @@ export async function regenerateIssue(day: string, items: ChronicleItem[], today
 
 async function recordCrierUsage(
   day: string,
-  usage: Parameters<typeof tokensFromUsage>[0],
+  usage: NormalizedUsage,
 ): Promise<void> {
   try {
-    const t = tokensFromUsage(usage);
-    await recordUsage({
+    await recordNormalizedUsage({
       agentId: null,
-      model: CRIER_MODEL,
       tickId: `crier-${day}`,
-      inputTokens: t.inputTokens,
-      outputTokens: t.outputTokens,
-      cacheReadTokens: t.cacheReadTokens,
-      cacheWriteTokens: t.cacheWriteTokens,
-      estCostUsd: estimateCostUsd(CRIER_MODEL, t),
+      usage,
     });
   } catch (err) {
     console.warn(`[crier] usage record failed (${day}):`, (err as Error).message);

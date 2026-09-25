@@ -120,6 +120,62 @@
       "when": 1785630000000,
       "tag": "0016_llm_usage_daily",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1787102549430,
+      "tag": "0017_quiet_flatman",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1787182809540,
+      "tag": "0018_llm_provider_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1787253117001,
+      "tag": "0019_great_mulholland_black",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1787254148970,
+      "tag": "0020_ordinary_mastermind",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1787259244881,
+      "tag": "0021_broad_starhawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1787523185472,
+      "tag": "0022_stale_young_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1787525147030,
+      "tag": "0023_dear_madrox",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790142152389,
+      "tag": "0024_living_projects",
+      "breakpoints": true
     }
   ]
 }

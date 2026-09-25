@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, "thomas/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: town
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: town_living_test_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U town -d town_living_test_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      ROOM_CHAT_TEST_DATABASE_URL: postgresql://town:ci-only@127.0.0.1:5432/town_living_test_ci
+      LIVING_PROJECT_TEST_DATABASE_URL: postgresql://town:ci-only@127.0.0.1:5432/town_living_test_ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      # Reads pnpm 11.5.3 from packageManager; Node 22 is installed first.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          cache: true
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      # Workspace package exports resolve to dist, including in tests.
+      - name: Build shared contract
+        run: pnpm --filter @town/contract build
+      - name: Test all workspaces
+        run: pnpm -r test
+      - name: Typecheck all workspaces
+        run: pnpm typecheck
+      - name: Build all workspaces
+        run: pnpm build

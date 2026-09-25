@@ -16,6 +16,7 @@
 
 import type { AgentId } from "@town/contract";
 import type { TurnHandlers } from "./turn.js";
+import type { ProviderAttachment } from "./llm/types.js";
 
 export type AgentInput =
   // `note` is an optional directive cue folded into the tick's perceived delta
@@ -30,12 +31,14 @@ export type AgentInput =
       visitorId: string;
       visitorName: string;
       text: string;
+      visitorMessageId: string;
+      mode?: "direct" | "interject";
+      roomParticipants?: AgentId[];
       handlers: TurnHandlers;
     }
-  // A one-time dataset handoff: a prompt + a Files-API file_id attached to the
-  // turn as a container_upload, so the agent can analyze it in the code-exec
-  // sandbox. Interrupt-tier (runs promptly).
-  | { kind: "delivery"; fileId: string; prompt: string };
+  // A one-time provider-owned dataset handoff. The adapter translates it into
+  // that provider's code-execution attachment shape. Interrupt-tier.
+  | { kind: "delivery"; attachment: ProviderAttachment; prompt: string };
 
 // The structured result an executor returns (superset of the loop's TickResult).
 export interface ExecResult {
@@ -67,6 +70,7 @@ interface QueueItem {
 
 const queues = new Map<AgentId, QueueItem[]>();
 const running = new Set<AgentId>();
+const reservations = new Set<AgentId>();
 
 function isInterrupt(input: AgentInput): boolean {
   if (input.kind === "visitor" || input.kind === "delivery") return true;
@@ -114,7 +118,7 @@ export function enqueue(agentId: AgentId, input: AgentInput): Promise<ExecResult
 // Drain an agent's queue, one input at a time. A single worker per agent (guarded
 // by `running`) guarantees the consciousness is single-threaded.
 async function drain(agentId: AgentId): Promise<void> {
-  if (running.has(agentId)) return;
+  if (running.has(agentId) || reservations.has(agentId)) return;
   running.add(agentId);
   try {
     for (;;) {
@@ -136,8 +140,26 @@ async function drain(agentId: AgentId): Promise<void> {
   }
 }
 
+// Briefly reserve an idle consciousness while a chat open/join transaction
+// claims its durable membership row. Work enqueued during the reservation waits
+// and drains normally on release. A reservation never interrupts or jumps a
+// running/queued turn.
+export function tryReserveAgent(agentId: AgentId): boolean {
+  if (running.has(agentId) || reservations.has(agentId) || (queues.get(agentId)?.length ?? 0) > 0) {
+    return false;
+  }
+  reservations.add(agentId);
+  return true;
+}
+
+export function releaseAgentReservation(agentId: AgentId): void {
+  if (!reservations.delete(agentId)) return;
+  void drain(agentId);
+}
+
 // Test seam: clear all queues (does not stop an in-flight turn).
 export function _resetQueueForTest(): void {
   queues.clear();
   running.clear();
+  reservations.clear();
 }

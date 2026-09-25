@@ -17,7 +17,9 @@ import {
   doublePrecision,
   index,
   primaryKey,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import type {
   AgentId,
   LocationId,
@@ -53,8 +55,11 @@ const artifactKindEnum = [
   "shared_page",
 ] as const;
 const eventTypeEnum = [
+  "chronicle.updated",
   "agent.moved",
   "agent.activity",
+  "agent.rested",
+  "agent.acted",
   "agent.thought",
   "agent.spoke",
   "conversation.started",
@@ -63,8 +68,10 @@ const eventTypeEnum = [
   "message.sent",
   "artifact.created",
   "artifact.updated",
+  "artifact.contribution",
   "bulletin.posted",
   "capability.requested",
+  "capability.resolved",
   "visitor.arrived",
   "visitor.left",
   "visitor.moved",
@@ -74,6 +81,7 @@ const eventTypeEnum = [
   "chat.started",
   "chat.ended",
   "chat.joined",
+  "chat.left",
   "conversation.converted",
   "world.time",
   "object.created",
@@ -140,25 +148,32 @@ export const agents = pgTable("agents", {
 });
 
 // --- agent_threads (M3: continuity) -----------------------------------------
-// Each agent's CONTINUOUS thread — the persisted `BetaMessageParam[]` that is
-// the agent's consciousness across ticks and chats (incl. server-side
-// compaction blocks, which round-trip verbatim — verified Phase 0). One row per
-// agent; `content` is loaded into the tool runner to resume and re-persisted
-// after every successful turn. `inputCursor` is the high-water world-event id
-// already folded into the thread as notice-push (the delta cursor). Like
+// Each agent's provider-native continuous thread, keyed independently by
+// (agent_id, provider). `inputCursor` is the high-water world-event id already
+// folded into the thread as notice-push (the delta cursor). Like
 // agent.locationId, **seed must NEVER reset this** — it's living state.
 //
-// `content` is intentionally loosely typed (`unknown[]`): importing the SDK's
-// ESM BetaMessageParam type here would break drizzle-kit's CJS schema loader
-// (same reason the enums above are inlined). engine/thread.ts casts.
-export const agentThreads = pgTable("agent_threads", {
-  agentId: text("agent_id", { enum: agentEnum }).primaryKey(),
-  content: jsonb("content").$type<unknown[]>().notNull().default([]),
-  inputCursor: bigint("input_cursor", { mode: "number" }),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+// `content` is intentionally loosely typed (`unknown[]`): provider adapters
+// own their native history shape, while the shared persistence layer treats it
+// as opaque JSON.
+export const agentThreads = pgTable(
+  "agent_threads",
+  {
+    agentId: text("agent_id", { enum: agentEnum }).notNull(),
+    provider: text("provider").notNull().default("anthropic"),
+    content: jsonb("content").$type<unknown[]>().notNull().default([]),
+    inputCursor: bigint("input_cursor", { mode: "number" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({
+      name: "agent_threads_agent_id_provider_pk",
+      columns: [t.agentId, t.provider],
+    }),
+  ],
+);
 
 // --- locations --------------------------------------------------------------
 export const locations = pgTable("locations", {
@@ -257,6 +272,7 @@ export const artifacts = pgTable(
     // back-compat (Chronicle/feed read them).
     objectId: text("object_id"),
     published: boolean("published").notNull().default(false),
+    version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -271,6 +287,46 @@ export const artifacts = pgTable(
 );
 
 // --- artifact_state (programmable world, D3) ---------------------------------
+export const artifactContributions = pgTable("artifact_contributions", {
+  id: text("id").primaryKey(),
+  artifactId: text("artifact_id").notNull().references(() => artifacts.id),
+  agentId: text("agent_id", { enum: agentEnum }).notNull(),
+  visitorId: text("visitor_id").notNull().references(() => visitors.id),
+  requestId: text("request_id").notNull(),
+  contributorName: text("contributor_name").notNull(),
+  text: text("text").notNull(),
+  status: text("status", { enum: ["pending", "accepted", "blocked", "completed", "declined"] }).notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("artifact_contributions_request_idx").on(t.visitorId, t.requestId),
+  index("artifact_contributions_artifact_idx").on(t.artifactId, t.createdAt),
+  index("artifact_contributions_pending_idx").on(t.agentId, t.status, t.createdAt),
+]);
+
+// Immutable snapshots, including the legacy version captured before the first edit.
+export const artifactRevisions = pgTable("artifact_revisions", {
+  id: text("id").primaryKey(),
+  artifactId: text("artifact_id").notNull().references(() => artifacts.id),
+  version: integer("version").notNull(),
+  agentId: text("agent_id", { enum: agentEnum }).notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  published: boolean("published").notNull(),
+  contributionId: text("contribution_id").references(() => artifactContributions.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("artifact_revisions_version_idx").on(t.artifactId, t.version)]);
+
+export const contributionResponses = pgTable("contribution_responses", {
+  id: text("id").primaryKey(),
+  contributionId: text("contribution_id").notNull().references(() => artifactContributions.id),
+  agentId: text("agent_id", { enum: agentEnum }).notNull(),
+  status: text("status", { enum: ["pending", "accepted", "blocked", "completed", "declined"] }).notNull(),
+  response: text("response").notNull(),
+  revisionId: text("revision_id").references(() => artifactRevisions.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("contribution_responses_contribution_idx").on(t.contributionId, t.createdAt)]);
+
 // The per-artifact keyed JSON store — the "database" an interactive artifact
 // gets for free: a Go board's position, a guestbook's entries, a poll's tallies.
 // Visitors write through PUT /artifacts/:id/state/:key (rate-limited,
@@ -383,11 +439,9 @@ export const visitors = pgTable("visitors", {
 // --- chat sessions / messages (visitor chat) --------------------------------
 export const chatSessions = pgTable("chat_sessions", {
   id: text("id").primaryKey(),
-  // The one agent the visitor is chatting with (chat.started/.ended
-  // attribution). Group chat (a `participantAgentIds` roster + a
-  // `pendingOperatorNote` mid-chat cue) was retired-era director machinery that
-  // never shipped a reader — both columns were write-only (or unwritten) and
-  // were DROPPED 2026-07-30; see drizzle/0015_drop_dead_machinery.sql.
+  // Stable opening facet, retained for chat.started/.ended attribution and
+  // backwards-compatible API responses. Active room membership is canonical
+  // in chat_session_participants; do not use this column as an occupancy lock.
   agentId: text("agent_id", { enum: agentEnum }).notNull(),
   visitorId: text("visitor_id").notNull(),
   // Per-session bearer required on /open, /messages, /close, /ping (design doc
@@ -403,7 +457,35 @@ export const chatSessions = pgTable("chat_sessions", {
   // long-reading visitor is never cut off, but an abandoned tab frees the agent.
   lastPingAt: timestamp("last_ping_at", { withTimezone: true }),
   endedAt: timestamp("ended_at", { withTimezone: true }),
-});
+}, (t) => [
+  uniqueIndex("chat_sessions_one_open_per_visitor_idx")
+    .on(t.visitorId)
+    .where(sql`${t.endedAt} is null`),
+]);
+
+// Canonical room-chat roster. A session has one or two active facets; historical
+// rows remain after a facet leaves so shared transcript continuity is queryable.
+// The partial unique index is the cross-process occupancy lock: one facet can
+// participate in at most one open room at a time.
+export const chatSessionParticipants = pgTable(
+  "chat_session_participants",
+  {
+    sessionId: text("session_id").notNull(),
+    agentId: text("agent_id", { enum: agentEnum }).notNull(),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+    leftAt: timestamp("left_at", { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({
+      name: "chat_session_participants_session_id_agent_id_pk",
+      columns: [t.sessionId, t.agentId],
+    }),
+    uniqueIndex("chat_session_participants_one_active_session_per_agent_idx")
+      .on(t.agentId)
+      .where(sql`${t.leftAt} is null`),
+    index("chat_session_participants_session_idx").on(t.sessionId),
+  ],
+);
 
 export const chatMessages = pgTable(
   "chat_messages",
@@ -423,9 +505,19 @@ export const chatMessages = pgTable(
     // cards mid-chat (artifact / external reference / proof); they're persisted
     // here so a dropped panel rehydrates them. Empty for ordinary lines.
     attachments: jsonb("attachments").$type<ShareCard[]>().notNull().default([]),
+    // Visitor rows carry a client-generated request id plus a durable response
+    // boundary. Agent/operator rows leave both null. This lets a browser recover
+    // a dropped room stream even when the optional second facet says [pass].
+    responseRequestId: text("response_request_id"),
+    responseCompletedAt: timestamp("response_completed_at", { withTimezone: true }),
     ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("chat_messages_session_idx").on(t.sessionId)],
+  (t) => [
+    index("chat_messages_session_idx").on(t.sessionId),
+    uniqueIndex("chat_messages_session_response_request_idx")
+      .on(t.sessionId, t.responseRequestId)
+      .where(sql`${t.responseRequestId} is not null`),
+  ],
 );
 
 // --- thread_summaries (Town Chronicle lazy summaries, M2.1) -----------------
@@ -526,7 +618,7 @@ export const capabilityRequests = pgTable("capability_requests", {
   agentId: text("agent_id", { enum: agentEnum }).notNull(),
   summary: text("summary").notNull(),
   rationale: text("rationale").notNull(),
-  // "open" | "approved" | "declined"
+  // "open" | "approved" | "declined" | "fulfilled"
   status: text("status").notNull().default("open"),
   ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -537,7 +629,9 @@ export const llmUsage = pgTable(
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     agentId: text("agent_id", { enum: agentEnum }),
+    provider: text("provider").notNull().default("anthropic"),
     model: text("model").notNull(),
+    endpoint: text("endpoint").notNull().default("turn"),
     // The tick/chat id this call belonged to (free-form correlation key).
     tickId: text("tick_id"),
     inputTokens: integer("input_tokens").notNull().default(0),
@@ -551,7 +645,7 @@ export const llmUsage = pgTable(
 );
 
 // --- llm_usage_daily (retention rollup, 2026-07-30) -------------------------
-// A day × agent × model rollup of llm_usage, written by engine/retention.ts
+// A day × agent × provider × model rollup of llm_usage, written by engine/retention.ts
 // immediately before it deletes the raw per-call rows it summarizes — so
 // historical cost analysis ("what did last quarter cost") survives after the
 // raw ledger is pruned. `spendTodayUsd`/`spendTodayForAgent` (engine/usage.ts)
@@ -560,7 +654,7 @@ export const llmUsage = pgTable(
 // `agentId` uses the sentinel "_system" (engine/retention.ts SYSTEM_AGENT_KEY)
 // for llm_usage rows recorded with a null agentId (Town Crier / Chronicle
 // summary calls — see chronicle.ts/chronicle-issue.ts) instead of allowing
-// NULL here, so (day, agent_id, model) can be a real, NOT-NULL composite
+// NULL here, so the daily composite keys can stay NOT NULL
 // primary key with a clean `ON CONFLICT` upsert — Postgres NULLs never
 // collide under a unique constraint, which would silently break idempotency.
 export const llmUsageDaily = pgTable(
@@ -568,6 +662,7 @@ export const llmUsageDaily = pgTable(
   {
     day: text("day").notNull(), // YYYY-MM-DD, UTC
     agentId: text("agent_id").notNull(), // an AgentId, or SYSTEM_AGENT_KEY
+    provider: text("provider").notNull().default("anthropic"),
     model: text("model").notNull(),
     calls: integer("calls").notNull().default(0),
     inputTokens: integer("input_tokens").notNull().default(0),
@@ -577,7 +672,49 @@ export const llmUsageDaily = pgTable(
     estCostUsd: doublePrecision("est_cost_usd").notNull().default(0),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.day, t.agentId, t.model] })],
+  (t) => [
+    primaryKey({
+      name: "llm_usage_daily_day_agent_id_provider_model_pk",
+      columns: [t.day, t.agentId, t.provider, t.model],
+    }),
+  ],
+);
+
+// --- agent_action_journal --------------------------------------------------
+// Durable idempotency/result spine for mutating agent tools. A provider retry
+// may generate a new call id, so the dedupe identity is the stable logical turn
+// scope + tool name + canonical input hash; provider call id is retained for
+// debugging. A row is written BEFORE the body acts and completed afterward.
+export const agentActionJournal = pgTable(
+  "agent_action_journal",
+  {
+    id: text("id").primaryKey(),
+    turnId: text("turn_id").notNull(),
+    toolCallId: text("tool_call_id"),
+    agentId: text("agent_id", { enum: agentEnum }).notNull(),
+    toolName: text("tool_name").notNull(),
+    inputHash: text("input_hash").notNull(),
+    effect: text("effect").notNull(),
+    // started | completed | failed
+    status: text("status").notNull().default("started"),
+    result: jsonb("result"),
+    error: text("error"),
+    // Public-safe event input queued atomically with completion. The action
+    // journal doubles as a transactional outbox: a boot/interval repair can
+    // publish any completed action whose semanticEventId is still null.
+    semanticEvent: jsonb("semantic_event").$type<Record<string, unknown>>(),
+    semanticEventId: bigint("semantic_event_id", { mode: "number" }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    semanticEmittedAt: timestamp("semantic_emitted_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("agent_action_turn_tool_input_idx").on(t.turnId, t.toolName, t.inputHash),
+    index("agent_action_agent_started_idx").on(t.agentId, t.startedAt),
+    index("agent_action_semantic_pending_idx")
+      .on(t.completedAt)
+      .where(sql`${t.semanticEvent} IS NOT NULL AND ${t.semanticEventId} IS NULL`),
+  ],
 );
 
 // --- outbox (queued outbound email when Resend is absent, brief) ------------

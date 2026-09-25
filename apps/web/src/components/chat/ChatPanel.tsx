@@ -43,10 +43,11 @@ interface ChatPanelProps {
   // Imperative focus request from the parent (Enter / SPACE refocus). A bumped
   // counter re-runs the focus effect.
   focusNonce: number;
-  // Co-located facets other than the one being addressed — the room you're in.
-  // Tapping one re-focuses the conversation on them.
-  present: ThomasId[];
+  // Canonical private-room members and co-located invitation candidates.
+  participants: ThomasId[];
+  available: ThomasId[];
   onAddress: (npcId: ThomasId) => void;
+  pendingReplies: number;
 }
 
 export function ChatPanel({
@@ -59,8 +60,10 @@ export function ChatPanel({
   onSend,
   onClose,
   focusNonce,
-  present,
+  participants,
+  available,
   onAddress,
+  pendingReplies,
 }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const [narrow, setNarrow] = useState(false);
@@ -127,7 +130,9 @@ export function ChatPanel({
   };
 
   const short = agentShortName(target.npcId);
-  const generating = !!streamingSpeaker && lines.some((l) => l.streaming);
+  const roomMembers = participants.length > 0 ? participants : [target.npcId];
+  const roomTitle = roomMembers.map(agentShortName).join(' + ');
+  const generating = pendingReplies > 0;
   // The context strip only reads while we haven't started talking.
   const showLately = phase === 'idle' && rows.length > 0;
 
@@ -184,23 +189,33 @@ export function ChatPanel({
           borderBottom: '1px solid var(--line)',
         }}
       >
-        <div
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 11,
-            background: `${color}1f`,
-            display: 'grid',
-            placeItems: 'center',
-            overflow: 'hidden',
-            flexShrink: 0,
-          }}
-        >
-          <SpritePortrait npcId={target.npcId} scale={1.4} />
+        <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          {roomMembers.map((id, index) => {
+            const memberColor = agentColor(id);
+            return (
+              <div
+                key={id}
+                style={{
+                  width: 38,
+                  height: 38,
+                  marginLeft: index === 0 ? 0 : -11,
+                  borderRadius: 11,
+                  border: '2px solid var(--paper-2)',
+                  background: `${memberColor}1f`,
+                  display: 'grid',
+                  placeItems: 'center',
+                  overflow: 'hidden',
+                  zIndex: roomMembers.length - index,
+                }}
+              >
+                <SpritePortrait npcId={id} scale={1.4} />
+              </div>
+            );
+          })}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ font: '600 16px var(--display)', color: 'var(--ink)' }}>
-            {short} Thomas
+            {roomTitle}{roomMembers.length === 1 ? ' Thomas' : ''}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
             <StatusDot color={color} size={7} />
@@ -215,7 +230,7 @@ export function ChatPanel({
                 whiteSpace: 'nowrap',
               }}
             >
-              {liveActivity}
+              {roomMembers.length > 1 ? `room chat · addressing ${short}` : liveActivity}
             </span>
           </div>
         </div>
@@ -235,9 +250,9 @@ export function ChatPanel({
         </button>
       </div>
 
-      {/* presence bar — who else is in the room. Tap a facet to bring them into
-          focus (the conversation is a room, not a 1:1). */}
-      {present.length > 0 && (
+      {/* Room ribbon: solid chips are private members; + chips are nearby facets
+          the visitor can explicitly invite. */}
+      {(roomMembers.length > 1 || available.length > 0) && (
         <div
           style={{
             display: 'flex',
@@ -259,24 +274,31 @@ export function ChatPanel({
               flexShrink: 0,
             }}
           >
-            Here
+            Room
           </span>
-          {present.map((id) => {
+          {roomMembers.map((id) => {
             const c = agentColor(id);
+            const addressed = id === target.npcId;
             return (
               <button
                 key={id}
                 onClick={() => onAddress(id)}
-                title={`Talk to ${agentShortName(id)} Thomas`}
+                disabled={generating}
+                title={
+                  generating
+                    ? 'Wait for the pending replies before switching facets'
+                    : `Talk to ${agentShortName(id)} Thomas`
+                }
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 5,
                   padding: '3px 9px 3px 3px',
                   borderRadius: 999,
-                  border: `1px solid ${c}33`,
-                  background: `${c}12`,
-                  cursor: 'pointer',
+                  border: `1px solid ${addressed ? c : `${c}55`}`,
+                  background: addressed ? `${c}20` : `${c}0d`,
+                  cursor: generating ? 'wait' : 'pointer',
+                  opacity: generating ? 0.5 : 1,
                   flexShrink: 0,
                 }}
               >
@@ -296,6 +318,33 @@ export function ChatPanel({
                 <span style={{ font: '600 11px var(--sans)', color: 'var(--ink-2)' }}>
                   {agentShortName(id)}
                 </span>
+              </button>
+            );
+          })}
+          {roomMembers.length < 2 && available.map((id) => {
+            const c = agentColor(id);
+            return (
+              <button
+                key={`invite-${id}`}
+                onClick={() => onAddress(id)}
+                disabled={generating}
+                title={`Invite ${agentShortName(id)} Thomas into this room chat`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '4px 9px',
+                  borderRadius: 999,
+                  border: '1px dashed var(--line-2)',
+                  background: 'transparent',
+                  cursor: generating ? 'wait' : 'pointer',
+                  opacity: generating ? 0.5 : 0.85,
+                  flexShrink: 0,
+                  font: '600 11px var(--sans)',
+                  color: c,
+                }}
+              >
+                + {agentShortName(id)}
               </button>
             );
           })}
@@ -442,8 +491,12 @@ export function ChatPanel({
           </button>
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 8, padding: '10px 12px 14px', borderTop: '1px solid var(--line)' }}>
-          <input
+        <div style={{ padding: '8px 12px 14px', borderTop: '1px solid var(--line)' }}>
+          <div style={{ font: '500 9px var(--mono)', color: 'var(--ink-3)', margin: '0 1px 7px', lineHeight: 1.35 }}>
+            OPEN ROOM · your typed words stay private; spoken replies may be overheard here and archived in the Chronicle.
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -465,8 +518,8 @@ export function ChatPanel({
               outline: 'none',
               fontFamily: 'var(--sans)',
             }}
-          />
-          <button
+            />
+            <button
             onClick={() => handleSend(input)}
             style={{
               padding: '0 15px',
@@ -479,7 +532,8 @@ export function ChatPanel({
             }}
           >
             Send
-          </button>
+            </button>
+          </div>
         </div>
       )}
     </div>

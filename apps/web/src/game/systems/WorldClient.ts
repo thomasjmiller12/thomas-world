@@ -5,6 +5,7 @@ import {
   GetVisitorResponse,
   CreateChatResponse,
   GetChatResponse,
+  JoinChatResponse,
   ChatHistoryResponse,
   ChatStreamFrame,
   worldEventTypes,
@@ -21,6 +22,8 @@ import {
   reconnectDelayMs,
 } from '@/lib/world/mapping';
 import { SseParser, isHeartbeat } from '@/lib/world/sse';
+import { PendingChatMessages } from '@/lib/world/pending-chat-messages';
+import { availabilityForTransport } from '@/lib/world/availability';
 
 // Momentary events — animations, popups, bubbles — that must NOT replay when a
 // visitor joins (they'd fire stale: a phone ringing / a bit popping for an event
@@ -64,26 +67,35 @@ const PING_INTERVAL_MS = 60_000;
 // the snapshot is the source of truth for positions, so this self-heals the
 // "agents don't move until I refresh" staleness without waiting on the stream.
 const RESYNC_INTERVAL_MS = 90_000;
+const STREAM_LEASE_MS = 12_000;
+const STREAM_LEASE_RENEW_MS = 4_000;
+
+type StreamChannelMessage =
+  | { kind: 'event'; sender: string; event: unknown }
+  | {
+      kind: 'availability';
+      sender: string;
+      state: 'live' | 'reconnecting' | 'budget-asleep' | 'unavailable';
+    }
+  | { kind: 'released'; sender: string };
 
 // Per-open chat session bookkeeping (one visitor↔agent(s) session at a time).
 interface ActiveChat {
   sessionId: string;
   sessionToken: string;
   participants: AgentId[];
-  // primary agent — the one the visitor walked up to (drives the panel header).
+  // Currently addressed facet (drives the panel header and direct reply).
   primaryAgent: ThomasId;
   pingTimer: ReturnType<typeof setInterval> | null;
   abort: AbortController | null;
   // Accumulates streamed text per speaker so we can emit a whole ChatMessage on
   // turn completion (the React panel appends ChatMessage objects).
   turnText: Map<string, string>;
-  // Set when the in-flight stream has delivered its terminal frame (done /
-  // chat_ended). A stream that ENDS without one was killed mid-turn (proxy
+  // Set when the in-flight stream has delivered its whole-response terminal
+  // frame (response_done / chat_ended). A stream that ends without one was killed mid-turn (proxy
   // idle-timeout during a long tool round) → recoverDroppedTurn().
   streamSettled: boolean;
-  // The last agent messageId surfaced (done frame or recovery), so recovery can
-  // tell a NEW reply from the previous one in the transcript.
-  lastMessageId: string | null;
+  seenMessageIds: Set<string>;
 }
 
 // The single client that replaces AgentSimulator + InteractionSystem +
@@ -93,8 +105,8 @@ interface ActiveChat {
 // wire shapes are parsed through @town/contract zod schemas — drift throws here
 // instead of silently corrupting the UI.
 //
-// Network is best-effort: any failure degrades to dream mode (a `world-sleeping`
-// flag the UI reads); the town keeps running. The server is built in a parallel
+// Network is best-effort: snapshot truth and stream transport are reported
+// separately through `world-availability`; the town keeps running. The server is built in a parallel
 // track, so this is coded against the CONTRACT, not a live server.
 export class WorldClient {
   private readonly baseUrl: string;
@@ -106,6 +118,19 @@ export class WorldClient {
   private lastEventId: string | null = null;
   private reconnectAttempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  // Cross-tab SSE ownership. One visible tab per browser identity owns the
+  // network stream; siblings receive its public frames over BroadcastChannel.
+  // This prevents the per-IP cap from turning ordinary tab churn into a 429
+  // reconnect storm while preserving a fully authoritative resync on focus.
+  private readonly tabId =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  private streamChannel: BroadcastChannel | null = null;
+  private streamLeaseKey: string | null = null;
+  private streamOwner = false;
+  private streamLeaseTimer: ReturnType<typeof setInterval> | null = null;
+  private streamClaimTimer: ReturnType<typeof setTimeout> | null = null;
   // True once the SSE stream has opened at least once. A subsequent `onopen` is
   // a reconnect — we re-hydrate the snapshot so authoritative positions are
   // corrected even if the gap exceeded the server's backlog replay window.
@@ -113,8 +138,13 @@ export class WorldClient {
   // Slow authoritative re-sync timer + in-flight guard (see RESYNC_INTERVAL_MS).
   private resyncTimer: ReturnType<typeof setInterval> | null = null;
   private resyncing = false;
+  // Only a live snapshot can establish budget availability. Stream traffic is
+  // transport evidence, not proof that the hard daily budget is available.
+  private authoritativeAwake: boolean | null = null;
 
   private currentLocation: LocationId | null = null;
+  private desiredLocation: LocationId | null = null;
+  private locationPatch: Promise<void> = Promise.resolve();
   private activeChat: ActiveChat | null = null;
   private stopped = false;
   // start() is idempotent: scene transitions re-emit `current-scene-ready`, but
@@ -125,10 +155,11 @@ export class WorldClient {
   // The last applied snapshot, kept so resyncScene() can re-emit per-agent
   // status to a freshly-created NPCManager WITHOUT re-opening streams.
   private lastSnapshot: SnapshotResponse | null = null;
-  // Single-slot queue: a visitor send that arrives while a turn is streaming is
-  // parked here and flushed when the current turn's stream finishes (one body,
-  // one turn at a time). Newer sends overwrite an older queued one.
-  private queuedMessage: string | null = null;
+  // Every optimistic visitor line is retained in FIFO order and one drain loop
+  // owns session creation + POST-SSE turns. This prevents rapid sends from
+  // overwriting each other or racing two session opens.
+  private readonly pendingMessages = new PendingChatMessages<ThomasId>();
+  private drainingMessages = false;
 
   // Observe mode (spectator): never registers a visitor, never reports
   // location, never interacts or chats — reads only (snapshot + SSE without a
@@ -161,28 +192,29 @@ export class WorldClient {
       try {
         await this.establishIdentity();
       } catch {
-        // Identity is needed for chat/location, but the town can still dream.
-        this.goToSleep('server-down');
+        // Identity is needed for chat/location, but a failed identity request
+        // says nothing about whether the public town itself is awake.
+        this.setAvailability('reconnecting');
       }
     }
 
     try {
-      await this.hydrateSnapshot();
-      this.openStream();
+      await this.hydrateSnapshotWithRetry();
     } catch {
       // Server unreachable: replay the last cached snapshot so the dreaming town
       // is populated (sprites + roster + a starting point for the feed), then
       // fall asleep. A first-time visitor with no cache still gets dream mode +
       // whatever the (independent) feed fetch can load.
       this.replayCachedSnapshot();
-      this.goToSleep('server-down');
+      this.setAvailability('unavailable');
     }
+    this.startStreamCoordination();
   }
 
   stop(): void {
     this.stopped = true;
     this.started = false;
-    this.closeStream();
+    this.stopStreamCoordination();
     this.closeActiveChat();
     this.unwirePageHide();
     this.unwireVisibility();
@@ -235,6 +267,7 @@ export class WorldClient {
         this.visitorId = visitor.visitorId;
         this.visitorToken = storedToken;
         this.currentLocation = visitor.locationId ?? null;
+        this.desiredLocation = this.currentLocation;
         // Gate name differs from the stored one → PATCH the rename.
         if (this.visitorName && this.visitorName !== (storedName ?? visitor.name)) {
           await this.patchVisitor({ name: this.visitorName });
@@ -277,7 +310,8 @@ export class WorldClient {
       headers,
       body: JSON.stringify(body),
     });
-    if (res.ok && body.name) {
+    if (!res.ok) throw new Error(`visitor update failed: ${res.status}`);
+    if (body.name) {
       this.writeStored(STORAGE_KEYS.name, body.name);
       this.visitorName = body.name;
     }
@@ -297,6 +331,23 @@ export class WorldClient {
     this.applySnapshot(snapshot);
   }
 
+  private async hydrateSnapshotWithRetry(attempts = 3): Promise<void> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        await this.hydrateSnapshot();
+        return;
+      } catch (err) {
+        lastError = err;
+        if (attempt + 1 < attempts) {
+          this.setAvailability('reconnecting');
+          await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
+        }
+      }
+    }
+    throw lastError;
+  }
+
   // Emit the EventBus state for a snapshot (live or cached-replay). When
   // `cached`, the world reads as not-awake regardless — a cached snapshot is a
   // memory, the town is asleep until a live tick proves otherwise. `replayEvents`
@@ -313,6 +364,7 @@ export class WorldClient {
     // Remember it so a later scene transition can resyncScene() the new manager
     // off this state without re-hitting the network.
     this.lastSnapshot = snapshot;
+    this.authoritativeAwake = cached ? null : snapshot.world.awake;
 
     // Initial per-agent state (positions/status/engagement). On a re-sync this
     // is the whole point: npc-status flows to every NPCManager and reconciles
@@ -325,9 +377,9 @@ export class WorldClient {
     // World-level state drives the tint + sleeping flag.
     EventBus.emit('world-state', snapshot.world);
     if (cached || !snapshot.world.awake) {
-      this.goToSleep(cached ? 'server-down' : 'budget');
+      this.setAvailability(cached ? 'unavailable' : 'budget-asleep');
     } else {
-      EventBus.emit('world-sleeping', { sleeping: false, reason: null });
+      this.setAvailability('live');
     }
 
     // Replay recent events so late joiners see the scene already in motion —
@@ -388,11 +440,15 @@ export class WorldClient {
   }
 
   private onVisibility = () => {
-    if (typeof document === 'undefined' || document.visibilityState !== 'visible') return;
+    if (typeof document === 'undefined') return;
+    if (document.visibilityState !== 'visible') {
+      this.releaseStreamLease();
+      return;
+    }
     // Tab refocused: EventSource may have been throttled/suspended while hidden.
-    // Re-sync authoritative state, and reopen the stream if it died meanwhile.
+    // Re-sync authoritative state, then compete for the one browser-owned stream.
     void this.resync();
-    if (!this.eventSource && !this.reconnectTimer) this.openStream();
+    this.tryClaimStream();
   };
 
   private wireVisibility(): void {
@@ -426,10 +482,154 @@ export class WorldClient {
     }
   }
 
+  // --- cross-tab stream ownership -----------------------------------------
+
+  private startStreamCoordination(): void {
+    if (typeof window === 'undefined') return;
+    const identity = this.visitorId ?? 'observer';
+    this.streamLeaseKey = `town.worldStreamLease.${identity}`;
+    if ('BroadcastChannel' in window) {
+      this.streamChannel = new BroadcastChannel(`town.worldStream.${identity}`);
+      this.streamChannel.onmessage = (message: MessageEvent<StreamChannelMessage>) => {
+        const data = message.data;
+        if (!data || data.sender === this.tabId) return;
+        if (data.kind === 'event') {
+          const parsed = WorldEvent.safeParse(data.event);
+          if (parsed.success) this.dispatchWorldEvent(parsed.data, false);
+        } else if (data.kind === 'availability') {
+          // A sibling's stream proves transport health, not that this tab has a
+          // complete snapshot. Heal first if our own boot hydration failed.
+          if (data.state === 'live' && !this.lastSnapshot) void this.resync();
+          else this.setAvailability(data.state, false);
+        } else if (data.kind === 'released' && this.isVisible()) {
+          this.scheduleStreamClaim(50);
+        }
+      };
+    }
+    if (this.isVisible()) this.tryClaimStream();
+  }
+
+  private stopStreamCoordination(): void {
+    this.releaseStreamLease();
+    if (this.streamClaimTimer) {
+      clearTimeout(this.streamClaimTimer);
+      this.streamClaimTimer = null;
+    }
+    if (this.streamChannel) {
+      this.streamChannel.close();
+      this.streamChannel = null;
+    }
+  }
+
+  private isVisible(): boolean {
+    return typeof document === 'undefined' || document.visibilityState === 'visible';
+  }
+
+  private tryClaimStream(): void {
+    if (this.stopped || !this.isVisible() || !this.streamLeaseKey) return;
+    // BroadcastChannel-less browsers retain the hidden-tab protection and use
+    // their own stream; modern browsers take the shared-lease path below.
+    if (!this.streamChannel) {
+      this.streamOwner = true;
+      if (!this.eventSource && !this.reconnectTimer) this.openStream();
+      return;
+    }
+    const now = Date.now();
+    let lease: { owner?: string; expires?: number } | null = null;
+    try {
+      lease = JSON.parse(localStorage.getItem(this.streamLeaseKey) ?? 'null');
+    } catch {
+      lease = null;
+    }
+    if (lease?.owner && lease.owner !== this.tabId && (lease.expires ?? 0) > now) {
+      this.streamOwner = false;
+      this.closeStream();
+      this.scheduleStreamClaim(Math.max(500, Math.min(5_000, (lease.expires ?? now) - now + 50)));
+      return;
+    }
+    try {
+      localStorage.setItem(
+        this.streamLeaseKey,
+        JSON.stringify({ owner: this.tabId, expires: now + STREAM_LEASE_MS }),
+      );
+      const verified = JSON.parse(localStorage.getItem(this.streamLeaseKey) ?? 'null') as {
+        owner?: string;
+      } | null;
+      if (verified?.owner !== this.tabId) {
+        this.scheduleStreamClaim(1_000);
+        return;
+      }
+    } catch {
+      // Storage unavailable: still keep exactly one stream within this tab.
+    }
+    this.streamOwner = true;
+    if (!this.streamLeaseTimer) {
+      this.streamLeaseTimer = setInterval(() => this.renewStreamLease(), STREAM_LEASE_RENEW_MS);
+    }
+    if (!this.eventSource && !this.reconnectTimer) this.openStream();
+  }
+
+  private renewStreamLease(): void {
+    if (!this.streamOwner || !this.streamLeaseKey || !this.isVisible()) {
+      this.releaseStreamLease();
+      return;
+    }
+    try {
+      const lease = JSON.parse(localStorage.getItem(this.streamLeaseKey) ?? 'null') as {
+        owner?: string;
+      } | null;
+      if (lease?.owner && lease.owner !== this.tabId) {
+        this.streamOwner = false;
+        this.closeStream();
+        this.scheduleStreamClaim(STREAM_LEASE_RENEW_MS);
+        return;
+      }
+      localStorage.setItem(
+        this.streamLeaseKey,
+        JSON.stringify({ owner: this.tabId, expires: Date.now() + STREAM_LEASE_MS }),
+      );
+    } catch {
+      /* storage is best-effort; this tab remains its own owner */
+    }
+  }
+
+  private releaseStreamLease(): void {
+    this.closeStream();
+    if (this.streamLeaseTimer) {
+      clearInterval(this.streamLeaseTimer);
+      this.streamLeaseTimer = null;
+    }
+    if (this.streamClaimTimer) {
+      clearTimeout(this.streamClaimTimer);
+      this.streamClaimTimer = null;
+    }
+    if (this.streamOwner && this.streamLeaseKey) {
+      try {
+        const lease = JSON.parse(localStorage.getItem(this.streamLeaseKey) ?? 'null') as {
+          owner?: string;
+        } | null;
+        if (lease?.owner === this.tabId) localStorage.removeItem(this.streamLeaseKey);
+      } catch {
+        /* best-effort */
+      }
+      this.streamChannel?.postMessage({ kind: 'released', sender: this.tabId } satisfies StreamChannelMessage);
+    }
+    this.streamOwner = false;
+  }
+
+  private scheduleStreamClaim(delay: number): void {
+    if (this.streamClaimTimer || this.stopped) return;
+    this.streamClaimTimer = setTimeout(() => {
+      this.streamClaimTimer = null;
+      this.tryClaimStream();
+    }, delay);
+  }
+
   // --- SSE firehose (GET /events/stream, EventSource) -----------------------
 
   private openStream(): void {
     if (this.stopped || typeof window === 'undefined' || !('EventSource' in window)) return;
+    if (this.streamChannel && !this.streamOwner) return;
     // Defense in depth: never leak a prior connection (reconnect paths / any
     // double-invoke). closeStream() also clears a pending reconnect timer.
     this.closeStream();
@@ -445,6 +645,7 @@ export class WorldClient {
 
     es.onopen = () => {
       this.reconnectAttempt = 0;
+      this.setTransportAvailability(true);
       // A re-open after the first connection is a reconnect (our backoff path OR
       // EventSource's own silent auto-reconnect after a Railway edge recycle).
       // The backlog replay only covers a bounded window, so re-hydrate the
@@ -469,11 +670,12 @@ export class WorldClient {
     es.onmessage = onFrame;
 
     es.onerror = () => {
-      // EventSource auto-reconnects, but a closed connection (server down) needs
-      // our own backoff + sleeping fallback so we don't hammer a dead server.
-      if (es.readyState === EventSource.CLOSED) {
-        this.scheduleReconnect();
-      }
+      this.setTransportAvailability(false);
+      // Close even while EventSource says CONNECTING. A 429 response otherwise
+      // invokes its opaque automatic retry loop, bypassing our backoff entirely.
+      es.close();
+      if (this.eventSource === es) this.eventSource = null;
+      this.scheduleReconnect();
     };
   }
 
@@ -492,13 +694,18 @@ export class WorldClient {
     this.dispatchWorldEvent(result.data);
   }
 
-  private dispatchWorldEvent(ev: WorldEvent): void {
-    // A live tick means the town is awake — clear any sleeping flag.
-    EventBus.emit('world-sleeping', { sleeping: false, reason: null });
+  private dispatchWorldEvent(ev: WorldEvent, broadcast = true): void {
     this.patchSnapshot(ev);
     EventBus.emit('world-event', ev);
     for (const { name, payload } of mapWorldEvent(ev)) {
       EventBus.emit(name, payload);
+    }
+    if (broadcast && this.streamOwner) {
+      this.streamChannel?.postMessage({
+        kind: 'event',
+        sender: this.tabId,
+        event: ev,
+      } satisfies StreamChannelMessage);
     }
   }
 
@@ -517,13 +724,15 @@ export class WorldClient {
     } else if (ev.type === 'agent.activity') {
       const agent = snapshot.agents.find((a) => a.id === ev.payload.agent);
       if (agent) agent.activity = ev.payload.activity;
+    } else if (ev.type === 'world.time') {
+      snapshot.world.phase = ev.payload.phase;
     }
   }
 
   private scheduleReconnect(): void {
     this.closeStream();
-    if (this.stopped) return;
-    this.goToSleep('server-down');
+    if (this.stopped || !this.streamOwner || !this.isVisible()) return;
+    this.setTransportAvailability(false);
     const delay = reconnectDelayMs(this.reconnectAttempt++);
     this.reconnectTimer = setTimeout(() => this.openStream(), delay);
   }
@@ -539,8 +748,22 @@ export class WorldClient {
     }
   }
 
-  private goToSleep(reason: 'budget' | 'server-down'): void {
-    EventBus.emit('world-sleeping', { sleeping: true, reason });
+  private setAvailability(
+    state: 'live' | 'reconnecting' | 'budget-asleep' | 'unavailable',
+    broadcast = true,
+  ): void {
+    EventBus.emit('world-availability', { state });
+    if (broadcast && this.streamOwner) {
+      this.streamChannel?.postMessage({
+        kind: 'availability',
+        sender: this.tabId,
+        state,
+      } satisfies StreamChannelMessage);
+    }
+  }
+
+  private setTransportAvailability(connected: boolean): void {
+    this.setAvailability(availabilityForTransport(this.authoritativeAwake, connected));
   }
 
   // --- location reporting (PATCH on scene change) ---------------------------
@@ -549,10 +772,16 @@ export class WorldClient {
   // co-located agents perceive the arrival (design doc §2).
   reportLocation(locationId: LocationId): void {
     if (this.observe) return;
-    if (locationId === this.currentLocation) return;
-    this.currentLocation = locationId;
-    void this.patchVisitor({ locationId }).catch(() => {
-      /* best-effort; a missed location report isn't fatal */
+    if (locationId === this.desiredLocation && locationId === this.currentLocation) return;
+    this.desiredLocation = locationId;
+    this.locationPatch = this.locationPatch.then(async () => {
+      try {
+        await this.patchVisitor({ locationId });
+        this.currentLocation = locationId;
+      } catch {
+        // Keep canonical and desired state distinct. The next report or chat
+        // open retries instead of suppressing a location the server never saw.
+      }
     });
   }
 
@@ -572,72 +801,92 @@ export class WorldClient {
   // --- chat lifecycle -------------------------------------------------------
 
   // The single chat entry point (M2.1): the visitor speaks first — there is no
-  // greeting. If no session exists for this agent, POST /chats to create one
-  // (with the mid-thought 409 retry loop), then stream the visitor's line via
-  // POST /chats/:id/messages. A send that arrives while a turn is streaming is
-  // queued (single slot) and flushed when the current stream finishes.
+  // greeting. Sends are always enqueued, then one drain loop creates/reuses the
+  // correct session and streams every visitor line in FIFO order.
   async sendMessage(agentId: ThomasId, text: string): Promise<void> {
     if (this.observe) return;
     if (!text.trim()) return;
 
-    // A turn is already streaming for the active session → queue this send and
-    // let the streamTurn finally-block flush it (one body, one turn at a time).
-    if (this.activeChat && this.activeChat.abort) {
-      this.queuedMessage = text;
-      return;
-    }
+    this.pendingMessages.enqueue({ agentId, text });
+    await this.drainPendingMessages();
+  }
 
-    // No session (or a session for a different agent) → open one first.
-    if (!this.activeChat || this.activeChat.primaryAgent !== agentId) {
-      const opened = await this.openSession(agentId);
-      if (!opened) return; // openSession surfaced the error
-    }
+  private async drainPendingMessages(): Promise<void> {
+    if (this.drainingMessages) return;
+    this.drainingMessages = true;
+    try {
+      for (;;) {
+        const message = this.pendingMessages.dequeue();
+        if (!message) break;
 
-    const chat = this.activeChat;
-    if (!chat) return;
-    await this.streamTurn(
-      `${this.baseUrl}/chats/${encodeURIComponent(chat.sessionId)}/messages`,
-      { text }
-    );
+        if (!this.activeChat) {
+          const opened = await this.openSession(message.agentId);
+          if (!opened) continue; // openSession surfaced the error
+        }
+
+        const chat = this.activeChat;
+        if (!chat) continue;
+        // A queued line keeps its text, but not authority to re-invite someone
+        // who left during an earlier reply. Retarget it to the canonical room.
+        const addressed = chat.participants.includes(message.agentId)
+          ? message.agentId
+          : chat.participants.includes(chat.primaryAgent)
+            ? chat.primaryAgent
+            : chat.participants[0];
+        if (!addressed) continue;
+        chat.primaryAgent = addressed;
+        await this.streamTurn(
+          `${this.baseUrl}/chats/${encodeURIComponent(chat.sessionId)}/messages`,
+          { text: message.text, to: addressed }
+        );
+      }
+    } finally {
+      this.drainingMessages = false;
+    }
   }
 
   // Create a session for an agent (POST /chats). Closes any prior session first
-  // (one body, one conversation). `mid-thought` 409s are transient (the agent's
-  // tick is mid-flight — common right after a visitor arrives, since presence
-  // boosts tick rates), so retry a few times before surfacing; `engaged` (a real
-  // chat) surfaces immediately. Returns true iff a session is now active.
+  // (one body, one conversation). Returns true iff a session is now active.
   private async openSession(agentId: ThomasId): Promise<boolean> {
     if (!this.visitorId) {
       EventBus.emit('chat-error', { npcId: agentId, reason: 'not-connected' });
       return false;
     }
-    this.closeActiveChat();
-
-    const MID_THOUGHT_RETRIES = 3;
-    const MID_THOUGHT_DELAY_MS = 4_000;
-    let res: Response | null = null;
-    for (let attempt = 0; ; attempt++) {
+    // A region transition and an immediate SPACE press can otherwise race: the
+    // chat POST reaches the server before the visitor's canonical location.
+    await this.locationPatch;
+    if (this.desiredLocation && this.currentLocation !== this.desiredLocation) {
       try {
-        res = await fetch(`${this.baseUrl}/chats`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ agentId, visitorId: this.visitorId }),
-        });
+        await this.patchVisitor({ locationId: this.desiredLocation });
+        this.currentLocation = this.desiredLocation;
       } catch {
-        EventBus.emit('chat-error', { npcId: agentId, reason: 'server-down' });
+        EventBus.emit('chat-error', { npcId: agentId, reason: 'not-connected' });
         return false;
       }
-      if (res.status !== 409) break;
+    }
+    this.closeActiveChat({ clearPending: false });
+
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}/chats`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(this.visitorToken ? { 'x-visitor-token': this.visitorToken } : {}),
+        },
+        body: JSON.stringify({ agentId, visitorId: this.visitorId }),
+      });
+    } catch {
+      EventBus.emit('chat-error', { npcId: agentId, reason: 'server-down' });
+      return false;
+    }
+    if (res.status === 409) {
       const body = (await res.json().catch(() => ({}))) as { reason?: string };
-      if (body.reason !== 'mid-thought') {
-        EventBus.emit('chat-error', { npcId: agentId, reason: 'engaged' });
-        return false;
-      }
-      if (attempt >= MID_THOUGHT_RETRIES) {
-        EventBus.emit('chat-error', { npcId: agentId, reason: 'mid-thought' });
-        return false;
-      }
-      await new Promise((r) => setTimeout(r, MID_THOUGHT_DELAY_MS));
+      EventBus.emit('chat-error', {
+        npcId: agentId,
+        reason: body.reason === 'not-co-located' ? 'not-co-located' : 'engaged',
+      });
+      return false;
     }
     if (!res.ok) {
       EventBus.emit('chat-error', { npcId: agentId, reason: `error-${res.status}` });
@@ -654,14 +903,86 @@ export class WorldClient {
       abort: null,
       turnText: new Map(),
       streamSettled: true,
-      lastMessageId: null,
+      seenMessageIds: new Set(),
     };
     this.startPing();
-    EventBus.emit('chat-opened', { npcId: agentId });
+    EventBus.emit('chat-opened', {
+      npcId: agentId,
+      sessionId: session.sessionId,
+      participants: session.participants,
+    });
+    EventBus.emit('chat-participants', {
+      sessionId: session.sessionId,
+      participants: session.participants,
+      addressed: agentId,
+    });
     // Show the visitor where they left off. Fire-and-forget: history is a nicety
     // and must never delay or block the panel opening.
     void this.loadChatHistory(agentId, session.sessionId);
     return true;
+  }
+
+  async addressChat(agentId: ThomasId): Promise<boolean> {
+    const chat = this.activeChat;
+    if (!chat) return true;
+    if (!chat.participants.includes(agentId) && !(await this.joinChatParticipant(agentId))) {
+      return false;
+    }
+    if (this.activeChat !== chat || !chat.participants.includes(agentId)) return false;
+    chat.primaryAgent = agentId;
+    EventBus.emit('chat-participants', {
+      sessionId: chat.sessionId,
+      participants: chat.participants,
+      addressed: agentId,
+    });
+    return true;
+  }
+
+  private async joinChatParticipant(agentId: ThomasId): Promise<boolean> {
+    const chat = this.activeChat;
+    if (!chat) return false;
+    try {
+      const res = await fetch(
+        `${this.baseUrl}/chats/${encodeURIComponent(chat.sessionId)}/participants`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-session-token': chat.sessionToken,
+          },
+          body: JSON.stringify({ agentId }),
+        }
+      );
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { reason?: string };
+        if (this.activeChat === chat) {
+          EventBus.emit('chat-error', {
+            npcId: agentId,
+            sessionId: chat.sessionId,
+            reason: body.reason ?? `error-${res.status}`,
+          });
+        }
+        return false;
+      }
+      const joined = JoinChatResponse.parse(await res.json());
+      if (this.activeChat !== chat) return false;
+      chat.participants = joined.participants;
+      EventBus.emit('chat-participants', {
+        sessionId: chat.sessionId,
+        participants: joined.participants,
+        addressed: agentId,
+      });
+      return true;
+    } catch {
+      if (this.activeChat === chat) {
+        EventBus.emit('chat-error', {
+          npcId: agentId,
+          sessionId: chat.sessionId,
+          reason: 'server-down',
+        });
+      }
+      return false;
+    }
   }
 
   // Shared POST-SSE turn streamer: fetch + ReadableStream parse of
@@ -669,6 +990,7 @@ export class WorldClient {
   private async streamTurn(url: string, body: Record<string, unknown>): Promise<void> {
     const chat = this.activeChat;
     if (!chat) return;
+    const requestId = crypto.randomUUID();
     const abort = new AbortController();
     chat.abort = abort;
     chat.streamSettled = false;
@@ -681,16 +1003,22 @@ export class WorldClient {
           'content-type': 'application/json',
           'x-session-token': chat.sessionToken,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, requestId }),
         signal: abort.signal,
       });
     } catch {
+      if (this.activeChat === chat && chat.abort === abort) chat.abort = null;
       EventBus.emit('chat-error', { npcId: chat.primaryAgent, reason: 'stream-failed' });
       return;
     }
 
     if (!res.ok || !res.body) {
-      EventBus.emit('chat-error', { npcId: chat.primaryAgent, reason: `error-${res.status}` });
+      if (this.activeChat === chat && chat.abort === abort) chat.abort = null;
+      const errorBody = (await res.json().catch(() => ({}))) as { reason?: string };
+      EventBus.emit('chat-error', {
+        npcId: chat.primaryAgent,
+        reason: errorBody.reason === 'not-co-located' ? 'not-co-located' : `error-${res.status}`,
+      });
       return;
     }
 
@@ -705,7 +1033,7 @@ export class WorldClient {
         const chunk = decoder.decode(value, { stream: true });
         for (const msg of parser.feed(chunk)) {
           if (isHeartbeat(msg) || !msg.data) continue;
-          this.handleChatFrame(msg.data);
+          this.handleChatFrame(chat, msg.data);
         }
       }
     } catch {
@@ -713,7 +1041,7 @@ export class WorldClient {
     } finally {
       // Clear the abort only if it's still ours (a chat_ended frame may have
       // torn the session down mid-stream).
-      if (this.activeChat === chat) chat.abort = null;
+      if (this.activeChat === chat && chat.abort === abort) chat.abort = null;
     }
 
     // The stream ended without its terminal frame and wasn't aborted by us →
@@ -721,20 +1049,13 @@ export class WorldClient {
     // panel got `memory_recalled`, never the text). The turn almost always
     // completes server-side — poll the transcript and surface the reply.
     if (!chat.streamSettled && !abort.signal.aborted && this.activeChat === chat) {
-      await this.recoverDroppedTurn(chat);
+      await this.recoverDroppedTurn(chat, requestId);
     }
 
-    // Flush a single queued send (a visitor line typed while this turn streamed).
-    if (this.queuedMessage && this.activeChat === chat) {
-      const text = this.queuedMessage;
-      this.queuedMessage = null;
-      await this.sendMessage(chat.primaryAgent, text);
-    }
   }
 
-  private handleChatFrame(data: string): void {
-    const chat = this.activeChat;
-    if (!chat) return;
+  private handleChatFrame(chat: ActiveChat, data: string): void {
+    if (this.activeChat !== chat) return;
     let parsed: unknown;
     try {
       parsed = JSON.parse(data);
@@ -780,8 +1101,7 @@ export class WorldClient {
         const agent: ThomasId = frame.agent ?? chat.primaryAgent;
         const text = chat.turnText.get(agent) ?? '';
         chat.turnText.delete(agent);
-        chat.streamSettled = true;
-        chat.lastMessageId = frame.messageId;
+        chat.seenMessageIds.add(frame.messageId);
         EventBus.emit('chat-turn-done', {
           npcId: agent,
           sessionId: chat.sessionId,
@@ -798,6 +1118,23 @@ export class WorldClient {
         EventBus.emit('npc-chat-response', message);
         break;
       }
+
+      case 'participants':
+        chat.participants = frame.participants;
+        if (!chat.participants.includes(chat.primaryAgent)) {
+          chat.primaryAgent = chat.participants[0];
+        }
+        EventBus.emit('chat-participants', {
+          sessionId: chat.sessionId,
+          participants: frame.participants,
+          addressed: chat.primaryAgent,
+        });
+        break;
+
+      case 'response_done':
+        chat.streamSettled = true;
+        EventBus.emit('chat-response-done', { sessionId: chat.sessionId });
+        break;
 
       case 'action':
         // The agent ran a tool mid-chat (walked, made something). Surface it as
@@ -840,43 +1177,75 @@ export class WorldClient {
     }
   }
 
-  // Recovery for a mid-turn stream kill: poll the transcript until a NEW agent
-  // message appears (the turn finishing server-side), then surface it through
-  // the same EventBus events a live stream would have produced. The panel's
-  // open streaming bubble (with its memory chip) receives the text and closes.
-  private async recoverDroppedTurn(chat: ActiveChat): Promise<void> {
+  // Recovery for a mid-turn stream kill: replay every unseen agent row, but do
+  // not settle the visitor input until its durable response boundary is marked
+  // complete. The boundary is essential when the second facet silently passes.
+  private async recoverDroppedTurn(chat: ActiveChat, requestId: string): Promise<void> {
     for (let attempt = 0; attempt < 6; attempt++) {
       await new Promise((r) => setTimeout(r, attempt === 0 ? 2_000 : 5_000));
       if (this.activeChat !== chat) return; // closed / retargeted meanwhile
       const transcript = await this.rehydrateChat(chat.sessionId, chat.sessionToken);
       if (!transcript) continue;
-      const last = transcript.messages[transcript.messages.length - 1];
-      if (!last || last.sender === 'visitor') continue; // turn still running
-      if (last.id === chat.lastMessageId) continue; // no new reply yet
-      chat.lastMessageId = last.id;
-      const agent = last.sender as ThomasId;
-      const already = chat.turnText.get(agent) ?? '';
-      const missing = last.body.startsWith(already) ? last.body.slice(already.length) : last.body;
-      if (missing) {
-        EventBus.emit('chat-delta', { npcId: agent, sessionId: chat.sessionId, text: missing });
+      chat.participants = transcript.participants;
+      const unseen = transcript.messages.filter(
+        (message) => message.sender !== 'visitor' && !chat.seenMessageIds.has(message.id)
+      );
+      for (const message of unseen) {
+        const agent = message.sender as ThomasId;
+        if (!chat.turnText.has(agent)) {
+          chat.turnText.set(agent, '');
+          EventBus.emit('chat-turn-started', { npcId: agent, sessionId: chat.sessionId });
+        }
+        const already = chat.turnText.get(agent) ?? '';
+        const missing = message.body.startsWith(already)
+          ? message.body.slice(already.length)
+          : message.body;
+        if (missing) {
+          EventBus.emit('chat-delta', { npcId: agent, sessionId: chat.sessionId, text: missing });
+        }
+        chat.turnText.delete(agent);
+        for (const card of message.attachments ?? []) {
+          EventBus.emit('chat-share-card', { npcId: agent, sessionId: chat.sessionId, card });
+        }
+        chat.seenMessageIds.add(message.id);
+        EventBus.emit('chat-turn-done', {
+          npcId: agent,
+          sessionId: chat.sessionId,
+          messageId: message.id,
+        });
+        EventBus.emit('npc-chat-response', {
+          sender: agent,
+          senderName: NPC_CONFIGS[agent]?.displayName ?? agent,
+          text: message.body,
+          timestamp: Date.now(),
+        });
       }
-      chat.turnText.delete(agent);
-      // Re-surface any cards the agent shared on the dropped turn.
-      for (const card of last.attachments ?? []) {
-        EventBus.emit('chat-share-card', { npcId: agent, sessionId: chat.sessionId, card });
+      // A dropped stream can lose chat_ended as well as response_done. Replay
+      // any final speech first, then adopt the server's closed-room state.
+      if (transcript.endedAt) {
+        chat.streamSettled = true;
+        EventBus.emit('chat-ended', {
+          npcId: chat.primaryAgent,
+          sessionId: chat.sessionId,
+          reason: 'the conversation has ended',
+        });
+        this.teardownActiveChat();
+        return;
       }
-      EventBus.emit('chat-turn-done', {
-        npcId: agent,
+      if (!chat.participants.includes(chat.primaryAgent) && chat.participants[0]) {
+        chat.primaryAgent = chat.participants[0];
+      }
+      EventBus.emit('chat-participants', {
         sessionId: chat.sessionId,
-        messageId: last.id,
+        participants: chat.participants,
+        addressed: chat.primaryAgent,
       });
-      EventBus.emit('npc-chat-response', {
-        sender: agent,
-        senderName: NPC_CONFIGS[agent]?.displayName ?? agent,
-        text: last.body,
-        timestamp: Date.now(),
-      });
-      return;
+      const response = transcript.responses.find((item) => item.requestId === requestId);
+      if (response?.completed) {
+        chat.streamSettled = true;
+        EventBus.emit('chat-response-done', { sessionId: chat.sessionId });
+        return;
+      }
     }
     // Six polls (~27s) with nothing new — let the visitor know rather than
     // leaving a silently hung bubble.
@@ -953,9 +1322,9 @@ export class WorldClient {
 
   // Visitor-initiated teardown: tells the server to close the session (POST
   // /close), aborts any in-flight stream, and clears local state.
-  private closeActiveChat(): void {
+  private closeActiveChat({ clearPending = true }: { clearPending?: boolean } = {}): void {
     const chat = this.activeChat;
-    if (!this.teardownActiveChat()) return;
+    if (!this.teardownActiveChat(clearPending)) return;
     void fetch(`${this.baseUrl}/chats/${encodeURIComponent(chat!.sessionId)}/close`, {
       method: 'POST',
       headers: { 'x-session-token': chat!.sessionToken },
@@ -965,8 +1334,8 @@ export class WorldClient {
   // Local teardown WITHOUT a POST /close — used when the server already ended
   // the session (a chat_ended frame). Clears ping/abort/queue/activeChat.
   // Returns true iff there was an active chat to tear down.
-  private teardownActiveChat(): boolean {
-    this.queuedMessage = null;
+  private teardownActiveChat(clearPending = true): boolean {
+    if (clearPending) this.pendingMessages.clear();
     const chat = this.activeChat;
     if (!chat) return false;
     this.activeChat = null;
@@ -978,6 +1347,7 @@ export class WorldClient {
   // --- pagehide: best-effort close via sendBeacon ---------------------------
 
   private onPageHide = () => {
+    this.releaseStreamLease();
     const chat = this.activeChat;
     if (!chat || typeof navigator === 'undefined' || !navigator.sendBeacon) return;
     // sendBeacon can't set headers; the close route accepts the token in the

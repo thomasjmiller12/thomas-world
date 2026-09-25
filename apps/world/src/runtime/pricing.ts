@@ -1,26 +1,51 @@
-// Per-model token pricing (USD per 1M tokens) for the budget meter. Sourced
-// from the claude-api skill's model table (cached 2026-06). Cache reads are
-// ~0.1x base input; cache writes (1h TTL) are ~2x base input — we use those
-// multipliers so the llm_usage est_cost reflects the cache-aware spend the
-// soak's budget cap enforces.
+// Per-provider/model token pricing (USD per 1M tokens) for the budget meter.
+// Provider is part of the key deliberately: model ids are not a global
+// namespace, and a missing active price must be loud rather than silently
+// under-counting the daily budget.
+
+import type { LlmProviderName } from "./llm/types.js";
 
 interface ModelPrice {
   inputPerM: number;
   outputPerM: number;
+  cacheReadPerM: number;
+  cacheWritePerM: number;
 }
 
-const PRICES: Record<string, ModelPrice> = {
-  "claude-opus-4-8": { inputPerM: 5, outputPerM: 25 },
-  // Sonnet 5 sticker is $3/$15 (intro $2/$10 through 2026-08-31). We meter at the
-  // sticker rate so the budget cap never under-counts when intro pricing lapses.
-  "claude-sonnet-5": { inputPerM: 3, outputPerM: 15 },
-  "claude-sonnet-4-6": { inputPerM: 3, outputPerM: 15 },
-  "claude-haiku-4-5": { inputPerM: 1, outputPerM: 5 },
+const PRICES: Record<LlmProviderName, Record<string, ModelPrice>> = {
+  anthropic: {
+    "claude-opus-4-8": {
+      inputPerM: 5,
+      outputPerM: 25,
+      cacheReadPerM: 0.5,
+      cacheWritePerM: 10,
+    },
+    // Sonnet 5 sticker is $3/$15 (intro $2/$10 through 2026-08-31). We meter at the
+    // sticker rate so the budget cap never under-counts when intro pricing lapses.
+    "claude-sonnet-5": {
+      inputPerM: 3,
+      outputPerM: 15,
+      cacheReadPerM: 0.3,
+      cacheWritePerM: 6,
+    },
+    "claude-sonnet-4-6": {
+      inputPerM: 3,
+      outputPerM: 15,
+      cacheReadPerM: 0.3,
+      cacheWritePerM: 6,
+    },
+    "claude-haiku-4-5": {
+      inputPerM: 1,
+      outputPerM: 5,
+      cacheReadPerM: 0.1,
+      cacheWritePerM: 2,
+    },
+  },
+  openai: {
+    "gpt-5.4": { inputPerM: 2.5, outputPerM: 15, cacheReadPerM: 0.25, cacheWritePerM: 0 },
+    "gpt-5.4-mini": { inputPerM: 0.75, outputPerM: 4.5, cacheReadPerM: 0.075, cacheWritePerM: 0 },
+  },
 };
-
-// Fallback for an unknown model id — assume Haiku-tier so we never crash a
-// tick on a pricing miss; the warning surfaces in the usage row's est cost.
-const FALLBACK: ModelPrice = { inputPerM: 1, outputPerM: 5 };
 
 export interface UsageTokens {
   inputTokens: number;
@@ -29,29 +54,16 @@ export interface UsageTokens {
   cacheWriteTokens: number;
 }
 
-// Estimate USD cost of one call. cache_read ≈ 0.1x input price; cache_write
-// (1h TTL) ≈ 2x input price; `inputTokens` here is the uncached remainder.
-export function estimateCostUsd(model: string, t: UsageTokens): number {
-  const p = PRICES[model] ?? FALLBACK;
+export function estimateCostUsd(
+  provider: LlmProviderName,
+  model: string,
+  t: UsageTokens,
+): number {
+  const p = PRICES[provider][model];
+  if (!p) throw new Error(`No pricing configured for ${provider}/${model}`);
   const inUncached = (t.inputTokens / 1_000_000) * p.inputPerM;
-  const inCacheRead = (t.cacheReadTokens / 1_000_000) * p.inputPerM * 0.1;
-  const inCacheWrite = (t.cacheWriteTokens / 1_000_000) * p.inputPerM * 2;
+  const inCacheRead = (t.cacheReadTokens / 1_000_000) * p.cacheReadPerM;
+  const inCacheWrite = (t.cacheWriteTokens / 1_000_000) * p.cacheWritePerM;
   const out = (t.outputTokens / 1_000_000) * p.outputPerM;
   return inUncached + inCacheRead + inCacheWrite + out;
-}
-
-// Pull the four token counts out of an Anthropic usage object (which uses
-// snake_case and may omit the cache fields).
-export function tokensFromUsage(usage: {
-  input_tokens?: number;
-  output_tokens?: number;
-  cache_read_input_tokens?: number | null;
-  cache_creation_input_tokens?: number | null;
-}): UsageTokens {
-  return {
-    inputTokens: usage.input_tokens ?? 0,
-    outputTokens: usage.output_tokens ?? 0,
-    cacheReadTokens: usage.cache_read_input_tokens ?? 0,
-    cacheWriteTokens: usage.cache_creation_input_tokens ?? 0,
-  };
 }

@@ -11,20 +11,21 @@
 //      / resend / vault on|off) so degraded integrations are obvious at a glance.
 //   3. Serve — start the Hono API + SSE.
 //   4. Scheduler — start the in-process agent scheduler (staggered idle ticks,
-//      dynamic rate, nightly reflection, vault sync). No-op without ANTHROPIC_API_KEY.
+//      dynamic rate, nightly reflection, vault sync). No-op without the selected
+//      provider's API key.
 //   5. Graceful shutdown — stop the scheduler, stop accepting connections, drain
 //      the DB pool, then exit.
 
 import { serve } from "@hono/node-server";
-import { eq, isNull, sql } from "drizzle-orm";
-import type { AgentId } from "@town/contract";
+import { isNull, sql } from "drizzle-orm";
 import { config, featureSummary } from "./config.js";
 import { db, pool, schema } from "./db/client.js";
 import { createApp } from "./http/app.js";
-import { appendEvent } from "./engine/events.js";
 import { startScheduler, stopScheduler } from "./runtime/scheduler.js";
+import { endSession } from "./runtime/chat.js";
 import { initTracing, shutdownTracing } from "./runtime/tracing.js";
 import { reconcileBudgets } from "./runtime/roles.js";
+import { flushPendingSemanticActions } from "./runtime/action-journal.js";
 
 // Confirm the DB is reachable and the schema has been migrated. We probe a core
 // table (`agents`) rather than auto-running migrations — applying migrations is
@@ -54,25 +55,12 @@ async function migrationsCheck(): Promise<void> {
 // forever on an end that the crashed process never sent. Runs after
 // migrations, before seed + scheduler.
 async function clearStaleChats(): Promise<void> {
-  const now = new Date();
-
-  // Open chat sessions → close + emit chat.ended.
   const openChats = await db
     .select()
     .from(schema.chatSessions)
     .where(isNull(schema.chatSessions.endedAt));
   for (const s of openChats) {
-    await db
-      .update(schema.chatSessions)
-      .set({ endedAt: now })
-      .where(eq(schema.chatSessions.id, s.id));
-    await appendEvent({
-      type: "chat.ended",
-      agentId: s.agentId as AgentId,
-      visibility: "public",
-      // Presence only — no sessionId on the public stream (matches endChat).
-      payload: { agent: s.agentId, visitorId: s.visitorId },
-    });
+    await endSession(s.id);
   }
 
   if (openChats.length) {
@@ -82,6 +70,16 @@ async function clearStaleChats(): Promise<void> {
 
 // Warn loudly about misconfigurations that would silently break the soak.
 function bootConfigWarnings(): void {
+  const selectedKey =
+    config.llmProvider === "anthropic"
+      ? { name: "ANTHROPIC_API_KEY", present: Boolean(config.anthropicApiKey) }
+      : { name: "OPENAI_API_KEY", present: Boolean(config.openaiApiKey) };
+  if (!selectedKey.present) {
+    console.warn(
+      `[boot] ${selectedKey.name} is missing for selected provider ${config.llmProvider} — LLM workloads are disabled.`,
+    );
+  }
+
   // /admin/tick is unguarded when neither ADMIN_TOKEN nor NODE_ENV=production is
   // set — it would be publicly callable on a Railway public domain.
   if (!config.adminToken && config.nodeEnv !== "production") {
@@ -131,6 +129,12 @@ async function main(): Promise<void> {
   await initTracing();
 
   await migrationsCheck();
+  const semanticRepair = await flushPendingSemanticActions();
+  if (semanticRepair.found) {
+    console.log(
+      `[boot] semantic action outbox: ${semanticRepair.published}/${semanticRepair.found} published, ${semanticRepair.failed} failed.`,
+    );
+  }
   await clearStaleChats();
 
   // Boot summary — log feature flags up front, before the scheduler ticks.

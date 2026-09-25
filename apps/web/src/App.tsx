@@ -13,6 +13,7 @@ import { WelcomeCard } from './components/WelcomeCard';
 import { DirectorBeat } from './components/director/DirectorBeat';
 import { SleepOverlay } from './components/SleepOverlay';
 import { ChroniclePanel } from './components/chronicle/ChroniclePanel';
+import { ArtifactCollection } from './components/chronicle/ArtifactCollection';
 import { AboutPanel, type AboutTab } from './components/portfolio/AboutPanel';
 import { useViewport } from './lib/useViewport';
 import { locationForScene } from './game/data/location-anchors';
@@ -76,18 +77,26 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
   // opening it does NOT tear the chat down. `chronicle` null => closed; non-null
   // carries any initial scoping (a tab + day from "see their day →").
   const [chronicle, setChronicle] = useState<{ tab: 'today' | 'conversations'; day: string | null; artifactId?: string | null } | null>(null);
+  const [artifactCollection, setArtifactCollection] = useState<{
+    objectName: string;
+    artifactIds: string[];
+  } | null>(null);
   // The About / Portfolio hub (M2.2 — Part 3). Coexists with chat (z 60). Null =>
   // closed; non-null carries the initial tab + any deep-link target.
   const [about, setAbout] = useState<{ tab: AboutTab; referenceId?: string | null; proofId?: string | null } | null>(
     openAbout ? { tab: 'overview' } : null,
   );
-  // Day-phase canvas tint + sleeping/dream fallback (design §7).
+  // Day-phase canvas tint + honest availability state. Snapshot truth and SSE
+  // transport health are deliberately separate: a reconnecting stream does not
+  // make an awake town "sleep".
   const [worldPhase, setWorldPhase] = useState<DayPhase>('afternoon');
-  const [sleeping, setSleeping] = useState(false);
-  const [sleepReason, setSleepReason] = useState<'budget' | 'server-down' | null>(null);
-  // Ref mirror so the sleeping-gated chat-open closure reads current state.
-  const sleepingRef = useRef(false);
-  sleepingRef.current = sleeping;
+  const [availability, setAvailability] = useState<
+    'live' | 'reconnecting' | 'budget-asleep' | 'unavailable'
+  >('reconnecting');
+  // Ref mirror so the send closure reads current state. Reconnecting is not a
+  // hard block: the chat HTTP path may still be healthy while SSE recovers.
+  const interactionBlockedRef = useRef(false);
+  interactionBlockedRef.current = availability === 'budget-asleep' || availability === 'unavailable';
   const viewport = useViewport();
   // The visitor's id (for the DirectorBeat directed-beat filter). WorldClient
   // persists it to localStorage during identity bootstrap; we seed from there
@@ -107,7 +116,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
   // the sleeping/budget gate lives HERE, at send-time — sending while the town
   // sleeps surfaces the cozy error line instead of a (dead) turn.
   const handleChatSend = useCallback((npcId: ThomasId, text: string) => {
-    if (sleepingRef.current) {
+    if (interactionBlockedRef.current) {
       EventBus.emit('chat-error', { npcId, reason: 'sleeping' });
       return;
     }
@@ -120,6 +129,10 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
   const handleChatSessionClose = useCallback((npcId: ThomasId | null, hadSession: boolean) => {
     if (hadSession) worldRef.current?.closeChat();
     if (npcId) EventBus.emit('chat-closed', { npcId });
+  }, []);
+
+  const handleChatAddress = useCallback((npcId: ThomasId) => {
+    void worldRef.current?.addressChat(npcId);
   }, []);
 
   // Roster click just mirrors the selection for the row highlight — the profile
@@ -153,6 +166,15 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
 
   const handleTravelToAgent = useCallback((_id: ThomasId, locationId: LocationId) => {
     EventBus.emit('travel-to-location', { locationId });
+  }, []);
+
+  const handleCloseArtifactCollection = useCallback(() => {
+    setArtifactCollection(null);
+  }, []);
+
+  const handleOpenCollectionArtifact = useCallback((artifactId: string) => {
+    setArtifactCollection(null);
+    setChronicle({ tab: 'today', day: null, artifactId });
   }, []);
 
   useEffect(() => {
@@ -195,7 +217,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
     };
     const onSceneChanged = (data: { scene: string; locationName: string; locationId?: LocationId }) => {
       setLocationName(data.locationName);
-      const loc = locationForScene(data.scene);
+      const loc = data.locationId ?? locationForScene(data.scene);
       currentLocationRef.current = loc;
       setCurrentLocation(loc);
       // Bubbles from the room we just left don't belong here.
@@ -263,10 +285,11 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
     // Degraded mode: if WorldClient can't reach the server / budget is gone,
     // run the free scripted dream layer so the town reads asleep, not broken,
     // and surface the night tint + Z's + cozy copy (SleepOverlay).
-    const onWorldSleeping = (data: { sleeping: boolean; reason: 'budget' | 'server-down' | null }) => {
-      setSleeping(data.sleeping);
-      setSleepReason(data.reason);
-      if (data.sleeping) dream.start();
+    const onWorldAvailability = (data: {
+      state: 'live' | 'reconnecting' | 'budget-asleep' | 'unavailable';
+    }) => {
+      setAvailability(data.state);
+      if (data.state === 'budget-asleep' || data.state === 'unavailable') dream.start();
       else dream.stop();
     };
     // A clicked fixture (e.g. the park payphone) → POST /visitors/:id/interact.
@@ -283,10 +306,14 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
       else if (kind === 'reference') setAbout({ tab: 'projects', referenceId: id });
       else if (kind === 'proof') setAbout({ tab: 'proof', proofId: id });
     };
+    const onOpenArtifactCollection = (data: { objectName: string; artifactIds: string[] }) => {
+      setArtifactCollection(data);
+    };
 
     EventBus.on('current-scene-ready', onSceneReady);
     EventBus.on('visitor-interact', onVisitorInteract);
     EventBus.on('open-card-target', onOpenCardTarget);
+    EventBus.on('open-artifact-collection', onOpenArtifactCollection);
     EventBus.on('npc-interaction', onNpcInteraction);
     EventBus.on('scene-changed', onSceneChanged);
     EventBus.on('npc-thought', onNpcThought);
@@ -298,13 +325,15 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
     EventBus.on('npc-proximity-enter', onProximityEnter);
     EventBus.on('npc-proximity-exit', onProximityExit);
     EventBus.on('world-state', onWorldState);
-    EventBus.on('world-sleeping', onWorldSleeping);
+    EventBus.on('world-phase', onWorldState);
+    EventBus.on('world-availability', onWorldAvailability);
 
     return () => {
       dream.stop();
       world.stop();
       EventBus.off('current-scene-ready', onSceneReady);
       EventBus.off('open-card-target', onOpenCardTarget);
+      EventBus.off('open-artifact-collection', onOpenArtifactCollection);
       EventBus.off('npc-interaction', onNpcInteraction);
       EventBus.off('scene-changed', onSceneChanged);
       EventBus.off('npc-thought', onNpcThought);
@@ -316,7 +345,8 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
       EventBus.off('npc-proximity-enter', onProximityEnter);
       EventBus.off('npc-proximity-exit', onProximityExit);
       EventBus.off('world-state', onWorldState);
-      EventBus.off('world-sleeping', onWorldSleeping);
+      EventBus.off('world-phase', onWorldState);
+      EventBus.off('world-availability', onWorldAvailability);
       EventBus.off('visitor-interact', onVisitorInteract);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -342,7 +372,7 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
         <PhaserGame observe={observe} />
 
         {/* Day-phase tint + sleeping/dream fallback over the canvas. */}
-        <SleepOverlay phase={worldPhase} sleeping={sleeping} reason={sleepReason} />
+        <SleepOverlay phase={worldPhase} availability={availability} />
 
         <div className="absolute inset-0 pointer-events-none">
           <HUD
@@ -352,11 +382,11 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
             chronicleOpen={chronicle != null}
             onToggleAbout={handleToggleAbout}
             aboutOpen={about != null}
-            touch={viewport.touch}
+            touch={viewport.touch || viewport.narrow}
           />
 
           {/* One-time premise framing for first-time visitors. */}
-          {!observe && <WelcomeCard touch={viewport.touch} />}
+          {!observe && <WelcomeCard touch={viewport.touch || viewport.narrow} />}
 
           {/* Director/Effect protocol — screen beats (popped cards, emotes) an
               agent runs across the glass. Above chat (z-40), below the
@@ -409,7 +439,8 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
             <ChatSession
               onSend={handleChatSend}
               onClose={handleChatSessionClose}
-              suspended={chronicle != null || about != null}
+              onAddress={handleChatAddress}
+              suspended={chronicle != null || about != null || artifactCollection != null}
               currentLocation={currentLocation}
             />
           )}
@@ -429,6 +460,16 @@ function App({ visitorName, observe = false, openAbout = false }: AppProps) {
               initialTab={chronicle.tab}
               initialDay={chronicle.day}
               initialArtifactId={chronicle.artifactId ?? null}
+              readOnly={observe}
+            />
+          )}
+
+          {artifactCollection && (
+            <ArtifactCollection
+              objectName={artifactCollection.objectName}
+              artifactIds={artifactCollection.artifactIds}
+              onClose={handleCloseArtifactCollection}
+              onOpen={handleOpenCollectionArtifact}
             />
           )}
 

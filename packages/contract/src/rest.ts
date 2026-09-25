@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { AgentId, LocationId, DayPhase } from "./ids.js";
 import { ArtifactKind } from "./artifacts.js";
-import { WorldEvent, WorldEventType } from "./events.js";
+import { RelatedActionId, WorldEvent, WorldEventType } from "./events.js";
 import { WorldObject, SemanticZone } from "./objects.js";
 import { ShareCard } from "./share-cards.js";
 
@@ -124,6 +124,19 @@ export const HealthResponse = z.object({
   ok: z.boolean(),
   ts: z.string(), // ISO 8601
   llm: z.boolean(),
+  provider: z.enum(["anthropic", "openai"]),
+  providerConfigured: z.boolean(),
+  models: z.object({
+    agents: z.array(
+      z.object({
+        agent: AgentId,
+        tick: z.string(),
+        chat: z.string(),
+      }),
+    ),
+    chronicle: z.string(),
+    townCrier: z.string(),
+  }),
   budgetExhausted: z.boolean(),
   // True when autonomous ticking is intentionally paused (outside waking hours),
   // so a monitor can tell "deliberately quiet" from "broken".
@@ -133,6 +146,23 @@ export const HealthResponse = z.object({
   detail: z.string().optional(),
 });
 export type HealthResponse = z.infer<typeof HealthResponse>;
+
+// Public behavioral evidence is deliberately separate from process/API health.
+export const BehaviorHealthResponse = z.object({
+  ok: z.boolean(),
+  ts: z.string(),
+  agents: z.array(z.object({
+    id: AgentId,
+    status: z.enum(["active", "quiet", "stalled", "unknown"]),
+    reasons: z.array(z.string()),
+    sampledEvents: z.number().int().nonnegative(),
+    since: z.string().nullable(),
+    lastMeaningfulAt: z.string().nullable(),
+    repeatedUtterances: z.number().int().nonnegative(),
+    futureDiaryDates: z.number().int().nonnegative(),
+  })),
+});
+export type BehaviorHealthResponse = z.infer<typeof BehaviorHealthResponse>;
 
 // --- GET /events?after=<id>  (catch-up / polling fallback) ------------------
 
@@ -205,6 +235,8 @@ export type MessagesResponse = z.infer<typeof MessagesResponse>;
 // --- GET /artifacts?kind=&agent=  and  GET /artifacts/:id -------------------
 
 export const ArtifactsQuery = z.object({
+  // Made defaults to creations; diaries and bulletins have dedicated views.
+  scope: z.enum(["all", "made"]).optional(),
   kind: ArtifactKind.optional(),
   agent: AgentId.optional(),
 });
@@ -307,7 +339,16 @@ export const GetChatResponse = z.object({
   sessionId: z.string(),
   visitorId: z.string(),
   participants: z.array(AgentId),
+  // Recovery must distinguish a closed room from a completed speaker turn.
+  endedAt: z.string().datetime().nullable().default(null),
   messages: z.array(ChatTranscriptMessage),
+  // Durable response boundaries for POST-SSE recovery. A visitor request can
+  // finish without a second visible agent row when the optional interjector
+  // passes, so transcript rows alone cannot prove the room response is done.
+  responses: z.array(z.object({
+    requestId: z.string(),
+    completed: z.boolean(),
+  })).default([]),
 });
 export type GetChatResponse = z.infer<typeof GetChatResponse>;
 
@@ -350,8 +391,23 @@ export type ChatHistoryResponse = z.infer<typeof ChatHistoryResponse>;
 
 export const ChatMessageRequest = z.object({
   text: z.string().min(1),
+  // Client-generated idempotency/recovery key for this visitor message.
+  requestId: z.string().uuid().optional(),
+  // Optional addressed speaker in a room chat. The server validates that the
+  // facet is still an active participant before directing the turn to them.
+  to: AgentId.optional(),
 });
 export type ChatMessageRequest = z.infer<typeof ChatMessageRequest>;
+
+export const JoinChatRequest = z.object({
+  agentId: AgentId,
+});
+export type JoinChatRequest = z.infer<typeof JoinChatRequest>;
+
+export const JoinChatResponse = z.object({
+  participants: z.array(AgentId).min(1).max(2),
+});
+export type JoinChatResponse = z.infer<typeof JoinChatResponse>;
 
 // Marks the start of an agent's turn (multi-party attribution). The client
 // opens a new speaker bubble for `agent` on receipt.
@@ -420,6 +476,21 @@ export const ChatEndedFrame = z.object({
 });
 export type ChatEndedFrame = z.infer<typeof ChatEndedFrame>;
 
+// Canonical room membership changed while this response was in flight. This
+// is the private-session counterpart to presence-only world events.
+export const ChatParticipantsFrame = z.object({
+  type: z.literal("participants"),
+  participants: z.array(AgentId).min(1).max(2),
+});
+export type ChatParticipantsFrame = z.infer<typeof ChatParticipantsFrame>;
+
+// Terminal marker for one visitor message. An agent-level `done` closes a
+// speaker bubble; a room response may contain two such turns.
+export const ChatResponseDoneFrame = z.object({
+  type: z.literal("response_done"),
+});
+export type ChatResponseDoneFrame = z.infer<typeof ChatResponseDoneFrame>;
+
 // The agent shared a concrete card mid-chat (M2.2 — Part 4): an artifact, a
 // curated external reference/project, or a portfolio proof. Emitted the instant
 // the share tool resolves, so the visitor sees the card while the reply streams.
@@ -439,6 +510,8 @@ export const ChatStreamFrame = z.discriminatedUnion("type", [
   ChatDone,
   ChatActionFrame,
   ChatEndedFrame,
+  ChatParticipantsFrame,
+  ChatResponseDoneFrame,
   ChatShareCardFrame,
 ]);
 export type ChatStreamFrame = z.infer<typeof ChatStreamFrame>;
@@ -465,6 +538,7 @@ export type ChronicleTurn = z.infer<typeof ChronicleTurn>;
 //  - bulletin: a notice posted to the town board
 //  - effect:   a world effect (phone rang, lamp flickered)
 //  - presence: an agent presence beat (arrived, left, started something)
+//  - action:   a semantic, privacy-safe body action with causal ids
 export const ChronicleItem = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("thread"),
@@ -503,6 +577,17 @@ export const ChronicleItem = z.discriminatedUnion("kind", [
     ts: z.string(),
     agent: AgentId,
     line: z.string(),
+  }),
+  z.object({
+    kind: z.literal("action"),
+    id: z.string(),
+    ts: z.string(),
+    agent: AgentId,
+    locationId: LocationId.nullable(),
+    tool: z.string(),
+    summary: z.string(),
+    actionId: z.string(),
+    relatedIds: z.array(RelatedActionId).optional(),
   }),
 ]);
 export type ChronicleItem = z.infer<typeof ChronicleItem>;
@@ -566,6 +651,8 @@ export const ChronicleIssue = z.object({
 export type ChronicleIssue = z.infer<typeof ChronicleIssue>;
 
 export const ChronicleResponse = z.object({
+  // True only while a bounded background enrichment job is running.
+  generationPending: z.boolean().default(false),
   day: z.string(), // the day rendered (YYYY-MM-DD)
   days: z.array(z.string()), // available days, desc — powers the day picker
   // The newspaper issue for the day (null while generating / unavailable). The

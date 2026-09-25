@@ -1,13 +1,25 @@
 import Head from "next/head";
 import { useState } from "react";
 import { useRouter } from "next/router";
+import dynamic from "next/dynamic";
 import { NPC_CONFIGS } from "@/game/data/npc-configs";
+import { useViewport } from "@/lib/useViewport";
+
+// About uses the town's shared EventBus, which imports Phaser and is therefore
+// browser-only. Keep the entrance statically renderable while loading the
+// read-only overlay on demand.
+const AboutPanel = dynamic(
+  () => import("@/components/portfolio/AboutPanel").then((mod) => mod.AboutPanel),
+  { ssr: false },
+);
 
 const npcs = Object.values(NPC_CONFIGS);
 
 export default function Home() {
   const [name, setName] = useState("");
+  const [aboutOpen, setAboutOpen] = useState(false);
   const router = useRouter();
+  const viewport = useViewport();
 
   const handleStart = () => {
     const visitorName = name.trim() || "Visitor";
@@ -102,7 +114,7 @@ export default function Home() {
             {/* Observer mode: everything visible, nothing interactive — the
                 agents never know you're there. */}
             <button
-              onClick={() => router.push('/observe')}
+              onClick={() => router.push('/town?observe=1')}
               className="w-full text-sm py-2.5 rounded-xl transition-colors"
               style={{
                 background: 'transparent',
@@ -112,16 +124,25 @@ export default function Home() {
                 border: '1px solid var(--line-2)',
               }}
             >
-              Just observe — watch without being seen
+              Watch the town unseen
+            </button>
+            <button
+              onClick={() => router.push('/observe')}
+              className="w-full text-xs py-1 transition-opacity hover:opacity-80"
+              style={{
+                background: 'transparent',
+                color: 'var(--ink-3)',
+                fontFamily: 'var(--sans)',
+                border: 'none',
+              }}
+            >
+              Prefer the live dashboard and Chronicle? Open observer view →
             </button>
 
-            {/* About / Portfolio hub — opens the town with the About overlay up,
-                for visitors who want the "what is this & who's Thomas" first. */}
+            {/* Read-only by construction: learning about the project must never
+                register a visible visitor or imply consent to enter the town. */}
             <button
-              onClick={() => {
-                const visitorName = name.trim() || 'Visitor';
-                router.push(`/town?name=${encodeURIComponent(visitorName)}&about=1`);
-              }}
+              onClick={() => setAboutOpen(true)}
               className="w-full text-sm py-2.5 rounded-xl transition-colors"
               style={{
                 background: 'transparent',
@@ -139,11 +160,24 @@ export default function Home() {
             className="mt-8 flex justify-center gap-6 text-xs uppercase"
             style={{ fontFamily: 'var(--mono)', letterSpacing: '0.06em', color: 'var(--ink-3)' }}
           >
-            <span>WASD to move</span>
-            <span>SPACE to interact</span>
+            {viewport.touch || viewport.narrow ? (
+              <span>Tap to move · tap a Thomas to talk</span>
+            ) : (
+              <>
+                <span>WASD to move</span>
+                <span>SPACE to interact</span>
+              </>
+            )}
           </div>
         </div>
       </main>
+
+      {aboutOpen && (
+        <AboutPanel
+          onClose={() => setAboutOpen(false)}
+          initialTab="overview"
+        />
+      )}
     </>
   );
 }

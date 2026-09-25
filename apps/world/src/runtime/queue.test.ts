@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { enqueue, registerExecutor, _resetQueueForTest, type AgentInput } from "./queue.js";
+import {
+  enqueue,
+  registerExecutor,
+  releaseAgentReservation,
+  tryReserveAgent,
+  _resetQueueForTest,
+  type AgentInput,
+} from "./queue.js";
 
 // The per-agent input queue (M3): one worker per agent, interrupt inputs jump
 // ahead of queued normal inputs but never abort a running turn, and duplicate
@@ -11,6 +18,7 @@ const visitorInput = (text: string): AgentInput => ({
   visitorId: "v1",
   visitorName: "Ada",
   text,
+  visitorMessageId: "1",
   handlers: { onFrame: () => {} },
 });
 
@@ -110,5 +118,37 @@ describe("agent input queue", () => {
     await Promise.all([p1, p2, p3]);
     expect(calls).toBe(3); // nothing coalesced away
     expect(seen).toContain("pick up the phone!");
+  });
+
+  it("holds newly queued work until an idle-agent reservation is released", async () => {
+    const seen: string[] = [];
+    registerExecutor(async (_id, input) => {
+      seen.push(input.kind);
+      return { ran: true };
+    });
+
+    expect(tryReserveAgent("researcher")).toBe(true);
+    const queued = enqueue("researcher", { kind: "tick" });
+    await Promise.resolve();
+    expect(seen).toEqual([]);
+
+    releaseAgentReservation("researcher");
+    await queued;
+    expect(seen).toEqual(["tick"]);
+  });
+
+  it("refuses to reserve an agent whose consciousness is already running", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    registerExecutor(async () => {
+      await gate;
+      return { ran: true };
+    });
+
+    const runningTurn = enqueue("builder", { kind: "tick" });
+    await Promise.resolve();
+    expect(tryReserveAgent("builder")).toBe(false);
+    release();
+    await runningTurn;
   });
 });

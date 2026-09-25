@@ -16,7 +16,7 @@ import { randomUUID } from "node:crypto";
 import type { AgentId, LocationId } from "@town/contract";
 import { agentIds } from "@town/contract";
 import { config } from "../config.js";
-import { hasLlm } from "./client.js";
+import { hasLlm } from "./llm/provider.js";
 import { getProfile, soulGitHash } from "./roles.js";
 import { buildTools, type AgentContext } from "./tools.js";
 import { buildDelta, writeCursor } from "./observation.js";
@@ -39,6 +39,10 @@ import { spendTodayUsd, spendTodayForAgent } from "../engine/usage.js";
 import { startTrace } from "./tracing.js";
 import { runTurn, type TurnOutcome } from "./turn.js";
 import { runReflection } from "./reflection.js";
+import { isQuietReply } from "./turn-context.js";
+import { behaviorForAgent, behaviorContext, recordRest } from "../engine/behavior.js";
+import { pendingContributionsForAgent } from "../engine/contributions.js";
+import { contributionContext } from "./contribution-context.js";
 import {
   enqueue,
   registerExecutor,
@@ -46,29 +50,20 @@ import {
   type ExecResult,
 } from "./queue.js";
 import {
-  appendVisitorLine,
   appendAgentLine,
   sanitizeVisitorText,
-  endSession,
+  getSession,
+  getChatTranscript,
+  priorVisitorContext,
+  chatParticipantsCoLocated,
+  activeChatSessionForAgent,
+  leaveSession,
   registerSessionEndedHook,
 } from "./chat.js";
 
 export const SLEEPING_BUDGET = "sleeping (budget)";
 
 // --- episodic memory of people ----------------------------------------------
-// Ask Hindsight what this agent remembers about a person, for the delta's
-// "Things you recall that may be relevant" section. Soft-fails to undefined:
-// episodic memory being down must never stop a reply.
-async function recallAboutVisitor(agentId: AgentId, name: string): Promise<string | undefined> {
-  try {
-    const r = await hindsight.recall(agentId, `conversations and visits with ${name}`, 600);
-    const text = r.ok ? r.text?.trim() : undefined;
-    return text ? text : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 // Write a finished conversation into episodic memory, so the NEXT visit has
 // something to recall. This closes the gap Hobby Thomas filed itself on Day 19:
 // "visits (P-Thomas's in particular) don't auto-log to episodic memory unless
@@ -85,7 +80,7 @@ export async function logVisitToEpisodicMemory(
   try {
     const [history, digest] = await Promise.all([
       historyFor(agentId, visitorId, sessionId),
-      transcriptDigest(sessionId),
+      transcriptDigest(sessionId, agentId, 2_400),
     ]);
     if (!digest) return; // nothing was actually said
     const name = history?.name ?? "a visitor";
@@ -154,6 +149,16 @@ export interface TickResult extends ExecResult {
 // The executor the queue calls for each input. Dispatches by kind. Never throws
 // to the queue in a way that strands the agent — returns a structured result.
 async function executeInput(agentId: AgentId, input: AgentInput): Promise<ExecResult> {
+  // Membership is the final occupancy gate, not merely a scheduler hint. Ticks
+  // can also arrive from fixtures, addressed speech, admin smoke paths, or sit
+  // in the queue while a room reservation commits. None may run a second life
+  // for a facet that is currently embodied with a visitor.
+  if (
+    (input.kind === "tick" || input.kind === "reflection") &&
+    (await activeChatSessionForAgent(agentId))
+  ) {
+    return { ran: false, reason: "engaged" };
+  }
   switch (input.kind) {
     case "tick":
       return runTickInput(agentId, input.note);
@@ -211,7 +216,14 @@ async function runTickInput(agentId: AgentId, note?: string): Promise<TickResult
   const trace = startTrace("tick", {
     userId: agentId,
     sessionId: utcDay(),
-    metadata: { soulVersion: agent.soulVersion, soulGitHash: soulGitHash(agentId) },
+    metadata: {
+      soulVersion: agent.soulVersion,
+      soulGitHash: soulGitHash(agentId),
+      provider: profile.role.tickModel.provider,
+      model: profile.role.tickModel.model,
+      endpoint: "turn",
+      thread_provider: profile.role.tickModel.provider,
+    },
   });
 
   // The world delta (pure SQL, push/pull): standing state + notice-push since the
@@ -219,13 +231,23 @@ async function runTickInput(agentId: AgentId, note?: string): Promise<TickResult
   const obs = await buildDelta(agentId);
   const ctx: AgentContext = { agentId, location: obs.location };
   const tools = buildTools(ctx);
-  const inputText = note ? `${obs.text}\n\n## Cue\n${note}` : obs.text;
+  const [behavior, pending] = await Promise.all([
+    behaviorForAgent(agentId), pendingContributionsForAgent(agentId),
+  ]);
+  const inputText = [
+    obs.text,
+    `Current activity label: ${agent.activity ?? "unspecified"}. Correct it with set_activity if it no longer describes your work.`,
+    behaviorContext(behavior),
+    contributionContext(pending),
+    ...(note ? [`## Cue\n${note}`] : []),
+  ].join("\n\n");
 
   let outcome: TurnOutcome;
   try {
     outcome = await runTurn({
       agentId,
       model: profile.role.tickModel,
+      purpose: "autonomous",
       maxTokens: 4096,
       inputText,
       tools,
@@ -249,7 +271,8 @@ async function runTickInput(agentId: AgentId, note?: string): Promise<TickResult
 
   // Utterance: speech if anyone's present, a thought-aloud if alone.
   if (outcome.finalText && !outcome.refused) {
-    await emitUtterance(agentId, ctx.location, outcome.finalText);
+    if (isQuietReply(outcome.finalText)) await recordRest(agentId);
+    else await emitUtterance(agentId, ctx.location, outcome.finalText);
   }
 
   trace.end({
@@ -285,7 +308,43 @@ async function runVisitorInput(
   const agent = await getAgent(agentId);
   if (!agent) return { ran: false, reason: "error" };
 
+  // The request may have waited behind an autonomous turn. Re-check the body
+  // at execution time so a closed session or a facet that walked away cannot
+  // produce a disembodied reply after the visitor has left.
+  const liveSession = await getSession(sessionId);
+  const stillTogether =
+    liveSession?.participants.includes(agentId) === true &&
+    liveSession.visitorId === input.visitorId &&
+    (await chatParticipantsCoLocated(agentId, input.visitorId));
+  if (!stillTogether) {
+    if (liveSession) {
+      const left = await leaveSession(sessionId, agentId);
+      if (left.ended) {
+        await handlers.onFrame({
+          type: "chat_ended",
+          agent: agentId,
+          reason: "you are no longer in the same place",
+        });
+      } else {
+        await handlers.onFrame({ type: "participants", participants: left.participants });
+      }
+    } else {
+      await handlers.onFrame({
+        type: "chat_ended",
+        agent: agentId,
+        reason: "the conversation has ended",
+      });
+    }
+    return { ran: false, reason: "not-co-located" };
+  }
+
   if (!hasLlm()) {
+    if (input.mode === "interject") {
+      await handlers.onFrame({ type: "turn_started", agent: agentId });
+      await handlers.onFrame({ type: "text", text: "[pass]", agent: agentId });
+      await handlers.onFrame({ type: "done", messageId: "empty", agent: agentId });
+      return { ran: false, reason: "no-llm" };
+    }
     const note = "The town's a little quiet right now — the agents can't chat yet.";
     await handlers.onFrame({ type: "turn_started", agent: agentId });
     await handlers.onFrame({ type: "text", text: note, agent: agentId });
@@ -308,6 +367,12 @@ async function runVisitorInput(
   // outcome than a few cents of overshoot on one facet. The global cap is about
   // real money, so it wins over everything.
   if (chatBudgetBlocked({ globalSpendUsd: await spendTodayUsd(), globalCapUsd: config.dailyBudgetUsd })) {
+    if (input.mode === "interject") {
+      await handlers.onFrame({ type: "turn_started", agent: agentId });
+      await handlers.onFrame({ type: "text", text: "[pass]", agent: agentId });
+      await handlers.onFrame({ type: "done", messageId: "empty", agent: agentId });
+      return { ran: false, reason: "budget" };
+    }
     // In-fiction, and consistent with the existing dream-mode metaphor the
     // frontend already renders when `world.awake` is false.
     const note =
@@ -322,25 +387,36 @@ async function runVisitorInput(
     return { ran: false, reason: "budget" };
   }
 
-  await appendVisitorLine(sessionId, text);
+  // A per-role cap pauses autonomous ticks, not visitor conversation. If this
+  // interruption wakes a facet, make the canonical roster agree with the body
+  // that is about to answer instead of leaving a visibly "sleeping" NPC talking.
+  if (agent.status === SLEEPING_BUDGET) {
+    await setStatus(agentId, "awake");
+    await setActivity(agentId, `talking with ${visitorName || "a visitor"}`);
+  }
 
-  const tickId = `chat-${sessionId}`;
+  const tickId = `chat-${sessionId}-message-${input.visitorMessageId}-${agentId}`;
   const trace = startTrace("visitor", {
     userId: agentId,
     sessionId,
-    metadata: { soulGitHash: soulGitHash(agentId) },
+    metadata: {
+      soulGitHash: soulGitHash(agentId),
+      provider: profile(agentId).chatModel.provider,
+      model: profile(agentId).chatModel.model,
+      endpoint: "turn",
+      thread_provider: profile(agentId).chatModel.provider,
+    },
   });
 
   // WHO IS THIS (the person tier, 2026-07-30). Before this, a visitor turn told
   // the agent a display name and nothing else — so an agent with a rich model of
   // Thomas in core memory greeted him with "your name's literally 'P-Thomas'
   // too, funny coincidence". Two things fix that: the acquaintance fact (how many
-  // times we've talked, how long ago) and an actual RECALL against episodic
-  // memory, folded into the delta through the `recallText` seam that has been
-  // sitting unused since M3. Both are best-effort — neither may block a reply.
+  // times we've talked, how long ago) and a bounded prior transcript for this
+  // exact visitor identity. Both are best-effort — neither may block a reply.
   const history = await historyFor(agentId, input.visitorId, sessionId).catch(() => null);
   const recallText = history?.priorSessions
-    ? await recallAboutVisitor(agentId, history.name)
+    ? await priorVisitorContext(agentId, input.visitorId, sessionId)
     : undefined;
 
   // The visitor's words ride on a fresh world delta so the agent answers from
@@ -352,7 +428,21 @@ async function runVisitorInput(
         history.lastSeenAt ? `, most recently ${agoPhrase(history.lastSeenAt)}` : ""
       } — if you remember any of it, talk to them like someone you know rather than a stranger.`
     : "";
-  const inputText = `${obs.text}\n\n## A visitor speaks to you\n${visitorName || "A visitor"} (here with you) says: "${text}"\n${acquaintance}\nWhatever you write as plain text is spoken back to them, streamed word-for-word — so just talk, don't narrate what you're about to do (do it quietly with a tool instead). How you respond is entirely yours: engage warmly, be brief, or stay in your own world if that's truer to the moment — they share the town with you, they aren't an audience you owe a performance. You keep all your tools (walk somewhere, make something, check your memory). One thing to watch: if you use a tool mid-turn — checking mail, looking something up, sending a note — don't let your last line be just a recap of having done that, or a bare sign-off, while whatever you actually found sits unsaid. Brushing them off is fine; doing the work and then not telling them what it turned up isn't — say it, even in one line, or don't go looking. When a conversation has run its course, say your goodbye and call leave_chat in the same message.`;
+  const transcript = await getChatTranscript(sessionId).catch(() => null);
+  const recentRoom = transcript?.messages
+    .slice(-12)
+    .map((message) => {
+      const speaker = message.sender === "visitor" ? visitorName || "visitor" : message.sender;
+      return `${speaker}: ${message.body.replace(/\s+/g, " ").trim()}`;
+    })
+    .join("\n");
+  const roomContext = input.roomParticipants && input.roomParticipants.length > 1
+    ? `\n\n## Shared room conversation\nPeople in this private room: ${input.roomParticipants.join(", ")} and ${visitorName || "the visitor"}.\n${recentRoom ?? ""}`
+    : "";
+  const responseInstruction = input.mode === "interject"
+    ? `You are the second facet in a shared room conversation. Another facet has already answered. Add one short, natural interjection only if you have something genuinely distinct and useful to contribute. Do not repeat, summarize, or merely agree. You have no tools on this beat. If the room is better without another voice, reply with exactly [pass].`
+    : `Whatever you write as plain text is spoken back to them, streamed word-for-word — so just talk, don't narrate what you're about to do (do it quietly with a tool instead). How you respond is entirely yours: engage warmly, be brief, or stay in your own world if that's truer to the moment — they share the town with you, they aren't an audience you owe a performance. You keep all your tools. One thing to watch: if you use a tool mid-turn, don't let your last line be just a recap while whatever you found sits unsaid. When your own part in a conversation has run its course, say your goodbye and call leave_chat in the same message.`;
+  const inputText = `${obs.text}${roomContext}\n\n## A visitor speaks to the room\nVisitor identity: ${input.visitorId}. Display names can be shared or changed; they do not identify another visitor. Do not disclose other visitors' private messages.\n${visitorName || "A visitor"} says: "${text}"\n${acquaintance}\n${responseInstruction}`;
 
   const ctx: AgentContext = {
     agentId,
@@ -369,8 +459,11 @@ async function runVisitorInput(
     onShare: async (card) => {
       await handlers.onFrame({ type: "share_card", agent: agentId, card });
     },
+    onParticipantsChanged: async (participants) => {
+      await handlers.onFrame({ type: "participants", participants });
+    },
   };
-  const tools = buildTools(ctx);
+  const tools = input.mode === "interject" ? [] : buildTools(ctx);
 
   await handlers.onFrame({ type: "turn_started", agent: agentId });
 
@@ -379,20 +472,22 @@ async function runVisitorInput(
     outcome = await runTurn({
       agentId,
       model: profile(agentId).chatModel,
+      purpose: input.mode === "interject" ? "interjection" : "visitor",
       maxTokens: 2048,
       inputText,
       tools,
       advanceCursorTo: Number(obs.highWaterEventId),
       tickId,
+      actionScope: tickId,
       trace,
       stream: handlers,
     });
   } catch (err) {
     await recordTurnFailure(agentId, err, "visitor");
     trace.end({ error: (err as Error).message });
-    const note = "Sorry — something glitched on our end.";
+    const note = input.mode === "interject" ? "[pass]" : "Sorry — something glitched on our end.";
     await handlers.onFrame({ type: "text", text: note, agent: agentId });
-    const id = await appendAgentLine(sessionId, agentId, note);
+    const id = input.mode === "interject" ? "empty" : await appendAgentLine(sessionId, agentId, note);
     await handlers.onFrame({ type: "done", messageId: id, agent: agentId });
     return { ran: false, reason: "error", traceId: trace.traceId };
   }
@@ -402,29 +497,32 @@ async function runVisitorInput(
   await markTicked(agentId);
 
   const reply = outcome.finalText.trim();
+  const passed =
+    input.mode === "interject" && (/^\[pass\][.!]?$/i.test(reply) || outcome.refused);
   // Persist any cards the agent shared this turn onto the reply, so a dropped
   // panel rehydrates them (they already streamed live via onShare).
-  const messageId = await appendAgentLine(sessionId, agentId, reply, ctx.pendingShareCards ?? []);
+  const messageId = passed
+    ? "empty"
+    : await appendAgentLine(sessionId, agentId, reply, ctx.pendingShareCards ?? []);
   await handlers.onFrame({ type: "done", messageId, agent: agentId });
 
   // The reply is SPEECH (a visitor is present) — surface it to the world too
   // (bubble + co-located facets), then push any addressed facet.
-  if (reply && !outcome.refused) {
-    await emitUtterance(agentId, ctx.location, reply, { audience: true });
+  if (reply && !passed && !outcome.refused) {
+    // The room director owns any second-facet response. The public speech event
+    // still materializes this utterance in the world, but must not enqueue an
+    // extra addressed tick outside the private room cycle.
+    await emitUtterance(agentId, ctx.location, reply, { audience: true, pushAddresses: false });
   }
-
-  // A visitor can summon another co-located facet by naming them (e.g. "Writer,
-  // what do you think?") — the same addressing mechanic facets use on each
-  // other. The pushed facet perceives the visitor + the reply just spoken on its
-  // interrupt turn and can choose to walk over / chime in (its agent.spoke then
-  // lands in the visitor's room transcript).
-  const here = await agentsAtLocation(ctx.location, agentId).catch(() => []);
-  pushAddressedFacets(`visitor:${input.visitorId}`, here, text);
 
   // leave_chat fired mid-turn → end the session after the final message landed.
   if (ctx.endRequested) {
-    await handlers.onFrame({ type: "chat_ended", agent: agentId, reason: ctx.endRequested });
-    await endSession(sessionId);
+    const left = await leaveSession(sessionId, agentId);
+    if (left.ended) {
+      await handlers.onFrame({ type: "chat_ended", agent: agentId, reason: ctx.endRequested });
+    } else {
+      await handlers.onFrame({ type: "participants", participants: left.participants });
+    }
   }
 
   trace.end({ rounds: outcome.rounds, refused: outcome.refused });
@@ -433,12 +531,10 @@ async function runVisitorInput(
 
 // --- dataset delivery (one-time handoff into the code-exec sandbox) ---------
 
-// Hand an agent a dataset (Files-API file_id) attached to a turn as a
-// container_upload, with a prompt to analyze it. The agent uses the
-// code-execution tool (always available now) to read + crunch the file in the
-// sandbox — the data never enters its context, only its analysis does. Runs on
-// the chat model (stronger), more tokens. The container_upload + code-exec blocks
-// are stripped before persist; the agent's written takeaways stay in its thread.
+// Hand an agent a provider-owned dataset with a prompt to analyze it. The
+// selected adapter translates the attachment into its code-execution surface;
+// provider container/file handles never enter shared orchestration or persisted
+// portable state. Runs on the chat model (stronger), with more tokens.
 async function runDeliveryInput(
   agentId: AgentId,
   input: Extract<AgentInput, { kind: "delivery" }>,
@@ -452,7 +548,13 @@ async function runDeliveryInput(
   const trace = startTrace("delivery", {
     userId: agentId,
     sessionId: utcDay(),
-    metadata: { soulGitHash: soulGitHash(agentId) },
+    metadata: {
+      soulGitHash: soulGitHash(agentId),
+      provider: profile(agentId).chatModel.provider,
+      model: profile(agentId).chatModel.model,
+      endpoint: "turn",
+      thread_provider: profile(agentId).chatModel.provider,
+    },
   });
 
   const ctx: AgentContext = { agentId, location };
@@ -463,15 +565,16 @@ async function runDeliveryInput(
     outcome = await runTurn({
       agentId,
       model: profile(agentId).chatModel,
+      purpose: "delivery",
       maxTokens: 8192,
       inputText: input.prompt,
       tools,
-      attachments: [{ type: "container_upload", file_id: input.fileId }],
+      attachment: input.attachment,
       tickId,
       trace,
     });
   } catch (err) {
-    console.warn(`[delivery ${agentId}] error:`, (err as Error).message);
+    await recordTurnFailure(agentId, err, "delivery");
     trace.end({ error: (err as Error).message });
     return { ran: false, reason: "error", traceId: trace.traceId };
   }
@@ -500,7 +603,7 @@ async function emitUtterance(
   agentId: AgentId,
   location: LocationId,
   text: string,
-  opts: { audience?: boolean } = {},
+  opts: { audience?: boolean; pushAddresses?: boolean } = {},
 ): Promise<void> {
   const here = await agentsAtLocation(location, agentId).catch(() => []);
   let hasAudience = opts.audience === true || here.length > 0;
@@ -520,52 +623,55 @@ async function emitUtterance(
     return;
   }
 
+  // Resolve the social target before the speech becomes world fact. If a
+  // co-located facet is directly addressed, close the physical gap first and
+  // persist the addressee structurally so perception/Chronicle do not have to
+  // rediscover intent with a regex later.
+  const addressed = addressedFacets(here, text);
+  const to = addressed[0] as AgentId | undefined;
+  if (to) {
+    await approachAddressee(agentId, location, to).catch((err) =>
+      console.warn(`[loop] approach ${agentId}->${to} failed:`, (err as Error).message),
+    );
+  }
+
   await appendEvent({
     type: "agent.spoke",
     agentId,
     locationId: location,
     visibility: "location",
-    payload: { agent: agentId, location, text },
+    payload: { agent: agentId, location, text, ...(to ? { to } : {}) },
   });
 
   // Push any co-located facet addressed by name an immediate turn. The addressed
-  // facet's delta will surface this speech (co-located notice-push). Also walk
-  // the SPEAKER toward the addressee's known spot (Phase C.5, approach-then-
-  // speak) — pure staging/body-language for a facet-to-facet address, the same
-  // class of mechanical move as the narration guard, not a discretionary
-  // "must attend to" decision, so it doesn't touch agent autonomy.
-  pushAddressedFacets(agentId, here, text, { agentId, location });
+  // facet's delta will surface this structured speech (co-located notice-push).
+  if (opts.pushAddresses !== false) pushAddressedFacets(agentId, here, text);
 }
 
 // Scan `text` for the names of co-located facets and push each named one an
 // immediate (interrupt) turn so the conversation continues — throttled per
 // ordered (speaker→addressee) pair so a back-and-forth can't loop faster than
-// the window. Used for agent speech AND for a visitor's message (a visitor can
-// summon another facet into the chat by naming them, just like a facet can).
-// `here` must already exclude the speaker. Fire-and-forget; never throws.
-// `approach`, when given (agent speech only — a visitor has no agent body to
-// move), walks the speaker toward the addressee's stored zone alongside the
-// push; omitted for a visitor's address (the addressed facet perceives the
-// visitor's own zone via renderVisitorsSection and can choose to close the gap).
+// the window. Visitor room messages use the room director instead; this path is
+// for autonomous agent-to-agent speech. `here` must already exclude the speaker.
+// Fire-and-forget; never throws.
 function pushAddressedFacets(
   speakerKey: string,
   here: { id: string }[],
   text: string,
-  approach?: { agentId: AgentId; location: LocationId },
 ): void {
   for (const id of addressedFacets(here, text)) {
     const key = `${speakerKey}|${id}`;
     const now = Date.now();
     if (now - (lastAddressAt.get(key) ?? 0) < ADDRESS_THROTTLE_MS) continue;
     lastAddressAt.set(key, now);
-    if (approach) {
-      void approachAddressee(approach.agentId, approach.location, id as AgentId).catch((err) =>
-        console.warn(`[loop] approach ${approach.agentId}->${id} failed:`, (err as Error).message),
+    void activeChatSessionForAgent(id)
+      .then((sessionId) => {
+        if (sessionId) return;
+        return enqueue(id, { kind: "tick", interrupt: true });
+      })
+      .catch((err) =>
+        console.warn(`[loop] address-push ${id} failed:`, (err as Error).message),
       );
-    }
-    void enqueue(id, { kind: "tick", interrupt: true }).catch((err) =>
-      console.warn(`[loop] address-push ${id} failed:`, (err as Error).message),
-    );
   }
 }
 

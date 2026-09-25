@@ -18,9 +18,8 @@ import { pixelForZone, ZONE_BOUNDS } from '../data/zone-bounds';
 //      added.
 //
 //   2. CLICK-TO-OPEN: any object (placed OR seeded fixture) carrying attached
-//      artifacts opens its most recent attachment (EventBus 'open-card-target'
-//      → the App overlay's artifact reader — where interactive artifacts run
-//      in the sandboxed ArtifactFrame). Seeded fixtures get the click hung on
+//      artifacts opens its attachment, or a collection picker when several are
+//      mounted. Seeded fixtures get the click hung on
 //      their already-registered sprite via FixtureRegistry, unless the fixture
 //      already has its own interaction (the payphone's pickup wins).
 //
@@ -185,8 +184,7 @@ export class PlacedObjects {
         'pointerdown',
         (_p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
           event.stopPropagation();
-          const latest = row.attachedArtifactIds[row.attachedArtifactIds.length - 1];
-          EventBus.emit('open-card-target', { href: `artifact:${latest}` });
+          this.openAttachments(this.rows.get(row.id) ?? row);
         },
       );
     }
@@ -214,8 +212,7 @@ export class PlacedObjects {
     const open = (event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
       const fresh = this.rows.get(row.id) ?? row;
-      const latest = fresh.attachedArtifactIds[fresh.attachedArtifactIds.length - 1];
-      if (latest) EventBus.emit('open-card-target', { href: `artifact:${latest}` });
+      this.openAttachments(fresh);
     };
 
     const registered = this.fixtures?.get(location, row.displayName);
@@ -268,6 +265,18 @@ export class PlacedObjects {
         open(event),
     );
     this.markers.set(row.id, marker);
+  }
+
+  private openAttachments(row: WorldObject): void {
+    const ids = row.attachedArtifactIds;
+    if (ids.length === 1) {
+      EventBus.emit('open-card-target', { href: `artifact:${ids[0]}` });
+    } else if (ids.length > 1) {
+      EventBus.emit('open-artifact-collection', {
+        objectName: row.displayName,
+        artifactIds: [...ids].reverse(),
+      });
+    }
   }
 
   private showPlacard(row: WorldObject, img: Phaser.GameObjects.Image): void {

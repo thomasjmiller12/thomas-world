@@ -52,18 +52,19 @@ window.town = {
 
 interface Props {
   artifact: Artifact;
+  readOnly?: boolean;
   // Height of the app viewport; the reader passes something roomy.
   height?: number | string;
 }
 
-export function ArtifactFrame({ artifact, height = 520 }: Props) {
+export function ArtifactFrame({ artifact, height = 520, readOnly = false }: Props) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const srcDoc = useMemo(() => {
-    const visitorId = getMyVisitorId();
+    const visitorId = readOnly ? null : getMyVisitorId();
     let visitorName: string | null = null;
     try {
-      visitorName = localStorage.getItem('town.visitorName');
+      visitorName = readOnly ? null : localStorage.getItem('town.visitorName');
     } catch {
       /* SSR/no-storage — bridge ships visitor: null */
     }
@@ -77,7 +78,7 @@ export function ArtifactFrame({ artifact, height = 520 }: Props) {
       artifact.body,
       '</body></html>',
     ].join('');
-  }, [artifact.id, artifact.body]);
+  }, [artifact.id, artifact.body, readOnly]);
 
   // Parent side of the bridge: answer get/set RPCs from OUR iframe only, and
   // push fresh state into the frame whenever this artifact's state changes on
@@ -103,7 +104,7 @@ export function ArtifactFrame({ artifact, height = 520 }: Props) {
           reply(d.reqId, undefined, 'setState needs a string key');
           return;
         }
-        putArtifactStateKey(artifact.id, d.key, d.value ?? null)
+        putArtifactStateKey(artifact.id, d.key, d.value ?? null, { readOnly })
           .then((r) => (r.ok ? reply(d.reqId!, true) : reply(d.reqId!, undefined, r.message ?? 'write refused')))
           .catch((err) => reply(d.reqId!, undefined, (err as Error).message));
       }
@@ -124,7 +125,7 @@ export function ArtifactFrame({ artifact, height = 520 }: Props) {
       window.removeEventListener('message', onMessage);
       EventBus.off('world-event', onWorldEvent);
     };
-  }, [artifact.id]);
+  }, [artifact.id, readOnly]);
 
   return (
     <iframe

@@ -10,7 +10,9 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 // --- mocks ------------------------------------------------------------------
 const appendEventMock = vi.fn(async (_input: unknown) => ({ id: "1" }));
 const setObjectStateMock = vi.fn(async () => ({ ok: true as boolean, reason: undefined as string | undefined }));
-const objectsAtLocationMock = vi.fn(async () => [] as { id: string; displayName: string; kind: string | null }[]);
+const clearObjectRingingMock = vi.fn(async () => true);
+const enqueueMock = vi.fn(async (_agent: unknown, _input: unknown) => ({ ran: true }));
+const objectsAtLocationMock = vi.fn(async () => [] as { id: string; displayName: string; kind: string | null; state?: Record<string, unknown> }[]);
 const findObjectAtLocationMock = vi.fn(
   async () => undefined as { id: string; displayName: string; kind: string | null } | undefined,
 );
@@ -22,6 +24,7 @@ vi.mock("../engine/events.js", () => ({
   eventsOfTypes: (...args: unknown[]) => eventsOfTypesMock(...(args as [])),
 }));
 vi.mock("../engine/objects.js", () => ({
+  clearObjectRinging: (...args: unknown[]) => clearObjectRingingMock(...(args as [])),
   setObjectState: (...args: unknown[]) => setObjectStateMock(...(args as [])),
   objectsAtLocation: (...args: unknown[]) => objectsAtLocationMock(...(args as [])),
   findObjectAtLocation: (...args: unknown[]) => findObjectAtLocationMock(...(args as [])),
@@ -29,8 +32,9 @@ vi.mock("../engine/objects.js", () => ({
 vi.mock("./chat.js", () => ({
   getSession: (...args: unknown[]) => getSessionMock(...(args as [])),
 }));
+vi.mock("./queue.js", () => ({ enqueue: (agent: unknown, input: unknown) => enqueueMock(agent, input) }));
 
-import { playBeat, consumePendingCall, _resetPendingCalls, _resetVisitorPacing } from "./director.js";
+import { playBeat, answerRingingFixture, consumePendingCall, _resetPendingCalls, _resetVisitorPacing } from "./director.js";
 import { _resetEffectLimiter } from "./fixtures.js";
 import type { AgentContext } from "./tools.js";
 
@@ -47,6 +51,8 @@ beforeEach(() => {
   appendEventMock.mockClear();
   setObjectStateMock.mockClear();
   setObjectStateMock.mockResolvedValue({ ok: true, reason: undefined });
+  clearObjectRingingMock.mockReset().mockResolvedValue(true);
+  enqueueMock.mockClear();
   objectsAtLocationMock.mockClear();
   objectsAtLocationMock.mockResolvedValue([]);
   findObjectAtLocationMock.mockClear();
@@ -55,6 +61,79 @@ beforeEach(() => {
   eventsOfTypesMock.mockResolvedValue([]);
   getSessionMock.mockClear();
   getSessionMock.mockResolvedValue(null);
+});
+
+describe("playBeat — answer a ringing object", () => {
+  const answer = { beat: "fixture-effect", object: "payphone", params: { effect: "answer" } };
+
+  async function ringAsBuilder() {
+    objectsAtLocationMock.mockResolvedValue([PHONE]);
+    findObjectAtLocationMock.mockResolvedValue(PHONE);
+    await playBeat(ctx({ agentId: "builder" }), { beat: "fixture-effect", params: { effect: "ring" } });
+    appendEventMock.mockClear();
+    setObjectStateMock.mockClear();
+  }
+
+  it("answers locally and cues the caller once without sending a screen effect", async () => {
+    await ringAsBuilder();
+    const applied = vi.fn();
+    expect(await playBeat(ctx(), answer, applied)).toContain("builder has been cued");
+    expect(clearObjectRingingMock).toHaveBeenCalledWith(PHONE.id, "park", "hobby");
+    expect(enqueueMock).toHaveBeenCalledWith("builder", {
+      kind: "tick", interrupt: true, note: "hobby just answered the payphone you rang in park.",
+    });
+    expect(consumePendingCall(PHONE.id)).toBeNull();
+    expect(applied).toHaveBeenCalledOnce();
+    expect(setObjectStateMock).not.toHaveBeenCalled();
+    expect(appendEventMock).not.toHaveBeenCalled();
+  });
+
+  it("a losing pickup does not consume a pending caller or claim success", async () => {
+    await ringAsBuilder();
+    clearObjectRingingMock.mockResolvedValue(false);
+    const applied = vi.fn();
+    expect(await playBeat(ctx(), answer, applied)).toContain("isn't ringing");
+    expect(consumePendingCall(PHONE.id)).toEqual({ agentId: "builder" });
+    expect(enqueueMock).not.toHaveBeenCalled();
+    expect(applied).not.toHaveBeenCalled();
+  });
+
+  it("does not consume a newer caller recorded while pickup was in flight", async () => {
+    await ringAsBuilder();
+    let finish!: (claimed: boolean) => void;
+    clearObjectRingingMock.mockImplementationOnce(() => new Promise<boolean>((resolve) => { finish = resolve; }));
+    const pickup = answerRingingFixture(PHONE.id, "park", "hobby");
+    await playBeat(ctx({ agentId: "writer" }), { beat: "fixture-effect", params: { effect: "ring" } });
+    finish(true);
+    expect(await pickup).toEqual({ answered: true, caller: null });
+    expect(consumePendingCall(PHONE.id)).toEqual({ agentId: "writer" });
+  });
+
+  it("does not fabricate a caller after a restart or cue itself", async () => {
+    await ringAsBuilder();
+    expect(await playBeat(ctx({ agentId: "builder" }), answer)).toContain("You were the one who rang it");
+    expect(enqueueMock).not.toHaveBeenCalled();
+    expect(await playBeat(ctx(), answer)).toContain("No caller is waiting");
+    expect(enqueueMock).not.toHaveBeenCalled();
+  });
+
+  it("uses only a ringing local object when the object is omitted", async () => {
+    objectsAtLocationMock.mockResolvedValue([
+      { id: "park.other", displayName: "other device", kind: "device" },
+      { ...PHONE, state: { ringing: true } },
+    ]);
+    findObjectAtLocationMock.mockResolvedValue(PHONE);
+    await playBeat(ctx(), { beat: "fixture-effect", params: { effect: "answer" } });
+    expect(findObjectAtLocationMock).toHaveBeenCalledWith("park", "payphone");
+    objectsAtLocationMock.mockResolvedValue([PHONE]);
+    expect(await playBeat(ctx(), { beat: "fixture-effect", params: { effect: "answer" } })).toContain("Nothing here is ringing");
+  });
+
+  it("rejects an object outside the agent's location before claiming it", async () => {
+    expect(await playBeat(ctx({ location: "office" }), answer)).toContain('no "payphone" here');
+    expect(findObjectAtLocationMock).toHaveBeenCalledWith("office", "payphone");
+    expect(clearObjectRingingMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("playBeat — validation", () => {

@@ -32,7 +32,10 @@ export async function putArtifactStateKey(
   artifactId: string,
   key: string,
   value: unknown,
+  options: { readOnly?: boolean } = {},
 ): Promise<{ ok: boolean; message?: string }> {
+  // Explicit surface mode wins over visitor credentials saved in another tab.
+  if (options.readOnly) return { ok: false, message: 'Observer mode is read-only' };
   const visitorId = getMyVisitorId();
   const token = visitorToken();
   if (!visitorId || !token) return { ok: false, message: 'no visitor identity yet' };

@@ -31,13 +31,13 @@ export interface BeatDef {
 export const BEATS = {
   // surface:"object" — one beat, the effect keyword IS the param (not the beat
   // id), so the catalog doesn't grow with every fixture in town. The keyword is
-  // still a closed, validated enum reused by the frontend playEffect vocab —
-  // never free text.
+  // still a closed, validated enum. Answer changes persistent object state;
+  // the other effects also use the frontend playEffect vocabulary.
   "fixture-effect": {
     id: "fixture-effect", label: "Trigger a fixture effect", surface: "object", audience: "room",
-    params: z.object({ effect: z.enum(["ring", "flicker", "hiss", "rustle"]) }),
+    params: z.object({ effect: z.enum(["ring", "answer", "flicker", "hiss", "rustle"]) }),
     description:
-      "Make a fixture here do its thing: ring a phone, flicker a lamp (flicker also works as a generic spotlight — \"look at this\" — on any object), hiss the espresso machine, rustle the notice board. Omit `object` and a sensible one here is picked automatically by what it can do.",
+      "Make a fixture here do its thing: ring a phone, answer a ringing phone (stops the ringing and lets its caller know), flicker a lamp (flicker also works as a generic spotlight — \"look at this\" — on any object), hiss the espresso machine, rustle the notice board. Omit `object` and a sensible one here is picked automatically by what it can do. Answer only works on a ringing object here; it does not start a call.",
   },
   // surface:"screen" — one directed beat with a `style`, covering everything
   // that lands as a floating UI element on the visitor's screen.

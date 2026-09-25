@@ -16,7 +16,7 @@ function toolByName(ctx: AgentContext, name: string) {
   if (!t) throw new Error(`tool ${name} not found`);
   return t as unknown as {
     name: string;
-    run: (args: unknown) => Promise<string | unknown[]>;
+    run: (args: unknown, context?: unknown) => Promise<string | unknown[]>;
   };
 }
 
@@ -35,8 +35,13 @@ describe("tool location gates (plan §3.3, enforced server-side)", () => {
   it("email_thomas from the cafe returns the office-outbox in-fiction error", async () => {
     const ctx: AgentContext = { agentId: "writer", location: "cafe" };
     const tool = toolByName(ctx, "email_thomas");
-    const out = await tool.run({ subject: "hi", body: "there" });
+    let applied = false;
+    const out = await tool.run(
+      { subject: "hi", body: "there" },
+      { markApplied: () => { applied = true; } },
+    );
     expect(out as string).toMatch(/office outbox/i);
+    expect(applied).toBe(false);
   });
 
   it("request_capability from the library redirects to the office outbox", async () => {
@@ -77,6 +82,9 @@ describe("tool location gates (plan §3.3, enforced server-side)", () => {
       "read_note",
       "search_notes",
       "write_agent_note",
+      "move_object",
+      "remove_object",
+      "read_town_log",
       "email_thomas",
       "request_capability",
     ]) {
@@ -85,9 +93,10 @@ describe("tool location gates (plan §3.3, enforced server-side)", () => {
     // M3 speech unification: `say` is gone (plain text is speech). The paced-scene
     // tools and group-chat invite are gone too.
     //
-    // Tool-diet pass (2026-07-30): forget/move_object/remove_object/
-    // share_to_screen were deleted (zero measured calls across the town's full
-    // recorded history); update_artifact was renamed to edit_artifact (agents
+    // Tool-diet pass (2026-07-30): forget/share_to_screen were deleted; the
+    // correction verbs move_object/remove_object have since been restored so
+    // a mistaken placement is not permanent. update_artifact was renamed to
+    // edit_artifact (agents
     // were observed inventing that exact name and getting a not-found error);
     // share_artifact/share_reference/share_proof (also zero calls) were merged
     // into one share_card tool — see the "only in a visitor turn" describe
@@ -99,8 +108,6 @@ describe("tool location gates (plan §3.3, enforced server-side)", () => {
       "end_conversation",
       "invite_to_chat",
       "forget",
-      "move_object",
-      "remove_object",
       "share_to_screen",
       "update_artifact",
       "share_artifact",
@@ -118,6 +125,7 @@ describe("invite_visitor — offered only within a visitor turn (Phase C.5)", ()
   it("appears when a chat session is set, absent otherwise", () => {
     const inChat: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
     expect(names(inChat)).toContain("invite_visitor");
+    expect(names(inChat)).not.toContain("move_to");
     const idle: AgentContext = { agentId: "builder", location: "workshop" };
     expect(names(idle)).not.toContain("invite_visitor");
   });
@@ -129,6 +137,20 @@ describe("invite_visitor — offered only within a visitor turn (Phase C.5)", ()
     // getSession resolves null — the tool's own guard catches that too.
     const out = await tool.run({ location: "town" });
     expect(out as string).toMatch(/no visitor in this conversation/i);
+  });
+});
+
+describe("invite_to_chat — canonical room membership", () => {
+  it("appears only during a visitor conversation", () => {
+    const inChat: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
+    expect(names(inChat)).toContain("invite_to_chat");
+    expect(names({ agentId: "builder", location: "workshop" })).not.toContain("invite_to_chat");
+  });
+
+  it("refuses when the underlying room no longer exists", async () => {
+    const ctx: AgentContext = { agentId: "builder", location: "workshop", chatSessionId: "s1" };
+    const out = await toolByName(ctx, "invite_to_chat").run({ agent: "writer" });
+    expect(out as string).toMatch(/already ended/i);
   });
 });
 

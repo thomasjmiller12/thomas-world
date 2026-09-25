@@ -52,4 +52,24 @@ describe("reconcileBudgets", () => {
     expect(Number.isInteger(Math.round(r.roleSumUsd * 100))).toBe(true);
     expect(r.ok).toBe(true);
   });
+
+  it("defines both provider models for every role", () => {
+    const profiles = loadProfiles();
+    for (const id of agentIds) {
+      const role = profiles.get(id)!.role;
+      expect(role.tickModels.anthropic).toBe("claude-sonnet-5");
+      expect(role.chatModels.anthropic).toBe("claude-sonnet-5");
+      expect(role.tickModels.openai).toBe("gpt-5.4-mini");
+      expect(role.chatModels.openai).toBe("gpt-5.4");
+    }
+  });
+
+  it("gives the facets distinct behavioral rhythms", () => {
+    const profiles = loadProfiles();
+    const cadences = agentIds.map((id) => profiles.get(id)!.role.tickCadenceMinutes);
+    expect(new Set(cadences).size).toBe(agentIds.length);
+    expect(profiles.get("builder")!.role.tickCadenceMinutes).toBeLessThan(
+      profiles.get("writer")!.role.tickCadenceMinutes,
+    );
+  });
 });

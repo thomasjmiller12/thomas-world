@@ -7,8 +7,8 @@
 // full history every turn was pure waste.
 
 import { describe, it, expect } from "vitest";
-import { pruneCompactedHistory } from "./turn.js";
-import type { ThreadMessage } from "../engine/thread.js";
+import { pruneCompactedHistory } from "./llm/anthropic/history.js";
+import type { AnthropicThreadMessage as ThreadMessage } from "./llm/anthropic/history.js";
 
 const user = (t: string) => ({ role: "user", content: [{ type: "text", text: t }] }) as unknown as ThreadMessage;
 const assistant = (t: string) =>

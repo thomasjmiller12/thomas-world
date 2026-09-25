@@ -45,6 +45,13 @@ describe("chat stream frame conformance (design doc §5)", () => {
     expect(ChatStreamFrame.parse(noReason)).toEqual(noReason);
   });
 
+  it("distinguishes canonical roster changes from whole-response completion", () => {
+    const members: Frame = { type: "participants", participants: ["builder", "writer"] };
+    const finished: Frame = { type: "response_done" };
+    expect(ChatStreamFrame.parse(members)).toEqual(members);
+    expect(ChatStreamFrame.parse(finished)).toEqual(finished);
+  });
+
   it("the discriminator is the `type` field — a bad type is rejected", () => {
     expect(ChatStreamFrame.safeParse({ type: "delta", text: "x", agent: "hobby" }).success).toBe(
       false,

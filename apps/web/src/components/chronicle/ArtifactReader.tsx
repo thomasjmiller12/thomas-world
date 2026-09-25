@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
-import type { Artifact, AgentId } from '@town/contract';
+import type { Artifact, AgentId, WorldEvent } from '@town/contract';
 import { THOMAS_COLORS } from '@/lib/constants';
 import type { ThomasId } from '@/lib/types';
 import { agentShortName } from '@/components/chat/primitives';
 import { fetchArtifact } from './chronicleClient';
+import { createArtifactLoader } from './artifactLoader';
 import { artifactKindLabel, headerDate } from './chroniclePresentation';
 import { MarkdownBody } from './MarkdownBody';
 import { ArtifactFrame } from '@/components/artifact/ArtifactFrame';
+import { ArtifactTrail } from './ArtifactTrail';
+import { EventBus } from '@/game/EventBus';
 
 // ArtifactReader — the in-hub document reader (M2.1). Lazily GETs the full
 // artifact body (list views carry only the headline) and renders it as a paper
@@ -17,10 +20,11 @@ import { ArtifactFrame } from '@/components/artifact/ArtifactFrame';
 
 interface Props {
   artifactId: string;
+  readOnly?: boolean;
   onBack: () => void;
 }
 
-export function ArtifactReader({ artifactId, onBack }: Props) {
+export function ArtifactReader({ artifactId, onBack, readOnly = false }: Props) {
   const [artifact, setArtifact] = useState<Artifact | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -28,20 +32,17 @@ export function ArtifactReader({ artifactId, onBack }: Props) {
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    const ctrl = new AbortController();
-    setLoading(true);
-    setError(false);
-    fetchArtifact(artifactId, ctrl.signal)
-      .then((a) => setArtifact(a))
-      .catch((e) => {
-        if (ctrl.signal.aborted) return;
-        setError(true);
-        void e;
-      })
-      .finally(() => {
-        if (!ctrl.signal.aborted) setLoading(false);
-      });
-    return () => ctrl.abort();
+    const loader = createArtifactLoader((signal) => fetchArtifact(artifactId, signal), {
+      onArtifact: setArtifact, onLoading: setLoading, onError: setError,
+    });
+    const onEvent = (event: WorldEvent) => {
+      if (event.type !== 'artifact.updated' || event.payload.artifactId !== artifactId) return;
+      // Keep the contribution form mounted while replacing the current artifact.
+      loader.load(true);
+    };
+    EventBus.on('world-event', onEvent);
+    loader.load();
+    return () => { loader.cancel(); EventBus.off('world-event', onEvent); };
   }, [artifactId, attempt]);
 
   const agent = artifact?.agentId as ThomasId | undefined;
@@ -132,11 +133,18 @@ export function ArtifactReader({ artifactId, onBack }: Props) {
             {artifact.kind === 'interactive' ? (
               // An agent-built app: run it in the sandboxed frame instead of
               // rendering its HTML source as prose.
-              <ArtifactFrame artifact={artifact} />
+              <>
+                {readOnly && <p style={{ color: 'var(--ink-3)', fontSize: 12 }}>Observing — shared changes are disabled.</p>}
+                <ArtifactFrame artifact={artifact} readOnly={readOnly} />
+              </>
             ) : (
               <MarkdownBody body={artifact.body} color={color} />
             )}
           </article>
+
+          {!['diary_entry', 'daily_digest', 'bulletin'].includes(artifact.kind) && (
+            <ArtifactTrail key={artifact.id} artifact={artifact} readOnly={readOnly} />
+          )}
 
           {/* Silkscreen meta footer */}
           <div

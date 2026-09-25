@@ -77,3 +77,15 @@ export function clockLine(now = new Date()): string {
   const mm = String(minute).padStart(2, "0");
   return `${phase}, around ${hh}:${mm}`;
 }
+
+export function townDate(now = new Date()): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: TOWN_TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(now);
+    const part = (type: string) => parts.find((p) => p.type === type)!.value;
+    return `${part("year")}-${part("month")}-${part("day")}`;
+  } catch {
+    return now.toISOString().slice(0, 10);
+  }
+}

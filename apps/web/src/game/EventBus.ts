@@ -35,7 +35,7 @@ export interface WorldEvents {
   'npc-thought': { npcId: ThomasId; thought: string; ts?: string };
   // Overheard ambient speech (contract agent.spoke). `location` scopes the
   // bubble to the room; `ts` gates live-vs-replayed (see npc-thought); `id` is
-  // the source event id so consumers (e.g. the room transcript) can de-dupe.
+  // the source event id so presentation consumers can de-dupe.
   'npc-speech': { npcId: ThomasId; message: string; audience: string; location?: LocationId; ts?: string; id?: string };
   // What an agent is currently doing (contract agent.activity).
   'npc-activity': { npcId: ThomasId; activity: string };
@@ -57,17 +57,23 @@ export interface WorldEvents {
     activity: string | null;
   };
 
-  // --- world-level state (snapshot + world.time) ---------------------------
+  // --- world-level state ----------------------------------------------------
   // phase drives the day/night tint; `awake` false => sleeping/dream mode.
   'world-state': { phase: DayPhase; visitorsPresent: number; awake: boolean };
-  // Degraded-mode flag the UI can read: true when the server is unreachable or
-  // budget-exhausted and the town is running on the free scripted dream layer.
-  'world-sleeping': { sleeping: boolean; reason: 'budget' | 'server-down' | null };
+  // Phase-only live event. Snapshot truth remains authoritative for awake.
+  'world-phase': { phase: DayPhase };
+  // The snapshot is authoritative for whether the town is awake. Transport
+  // recovery is a separate state: losing SSE must never make a healthy town
+  // appear asleep. Dream mode is reserved for an authoritative budget sleep or
+  // a confirmed inability to hydrate any live snapshot.
+  'world-availability': {
+    state: 'live' | 'reconnecting' | 'budget-asleep' | 'unavailable';
+  };
 
   // --- visitor-facing chat lifecycle (WorldClient ↔ React panel) -----------
   // WorldClient opened a session (POST /chats resolved). Canvas-only hook: the
   // agent's sprite faces the player while it lasts.
-  'chat-opened': { npcId: ThomasId };
+  'chat-opened': { npcId: ThomasId; sessionId?: string; participants?: ThomasId[] };
   // The overlay closed the panel (visitor-initiated); WorldClient tears down.
   'chat-closed': { npcId: ThomasId };
   // The visitor's PRIOR conversation with this facet, across earlier sessions
@@ -85,6 +91,11 @@ export interface WorldEvents {
   'chat-delta': { npcId: ThomasId; sessionId: string; text: string };
   // A speaker's turn completed (text final, persisted under messageId).
   'chat-turn-done': { npcId: ThomasId; sessionId: string; messageId: string };
+  // One visitor message is fully handled. A room response can contain two
+  // speaker-level `done` frames, so pending-input state closes only here.
+  'chat-response-done': { sessionId: string };
+  // Canonical private-room roster changed (join / individual leave).
+  'chat-participants': { sessionId: string; participants: ThomasId[]; addressed?: ThomasId };
   // A whole assistant message (kept for back-compat with the React panel which
   // appends ChatMessage objects); WorldClient emits this on turn completion.
   'npc-chat-response': ChatMessage;
@@ -103,8 +114,9 @@ export interface WorldEvents {
   // overlay (artifact reader, reference reader, proof). `href` is a route token
   // like "artifact:<id>" / "reference:<id>" / "proof:<id>" / "thread:<id>".
   'open-card-target': { href: string };
+  'open-artifact-collection': { objectName: string; artifactIds: string[] };
   // WorldClient surfaces an error / 409 the panel should render in-fiction.
-  'chat-error': { npcId?: ThomasId; reason: string };
+  'chat-error': { npcId?: ThomasId; sessionId?: string; reason: string };
   // The chat input gained/lost focus. The player freezes movement ONLY while
   // the input is focused (a chat is open but unfocused → the visitor can walk).
   'typing-focus': { focused: boolean };

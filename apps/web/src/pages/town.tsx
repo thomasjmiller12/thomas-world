@@ -9,7 +9,9 @@ export default function TownPage() {
   const visitorName = (router.query.name as string) || "Visitor";
   // ?observe=1 → ghost mode: the world renders and streams, but no visitor is
   // registered and chat is disabled — a translucent walkabout, unseen.
-  const observe = router.query.observe === "1";
+  // Legacy `?about=1` entry links are also read-only. The entrance now opens
+  // About in place, but old bookmarks must not silently register "Visitor".
+  const observe = router.query.observe === "1" || router.query.about === "1";
   // ?about=1 → open the About / Portfolio hub on arrival (the home page's
   // "About Thomas / How this works" entry).
   const openAbout = router.query.about === "1";

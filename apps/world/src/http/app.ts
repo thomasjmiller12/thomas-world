@@ -2,6 +2,7 @@
 // engine helpers; the only writes here are visitor registration and the chat
 // stubs the runtime phase fills in. SSE drives the live frontend.
 
+import { randomUUID } from "node:crypto";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
@@ -12,6 +13,7 @@ import {
   locationIds,
   artifactKinds,
   HealthResponse,
+  BehaviorHealthResponse,
   SnapshotResponse,
   EventsResponse,
   FeedResponse,
@@ -23,6 +25,9 @@ import {
   PatchVisitorRequest,
   CreateChatResponse,
   GetChatResponse,
+  ChatMessageRequest,
+  JoinChatRequest,
+  JoinChatResponse,
   ChatHistoryResponse,
   InteractRequest,
   AboutResponse,
@@ -44,7 +49,6 @@ import {
   objectsAtLocation,
   findObjectAtLocation,
   rowToWorldObject,
-  setObjectState,
 } from "../engine/objects.js";
 import { allZones, zonesForLocation } from "../engine/zones.js";
 import {
@@ -64,6 +68,8 @@ import { getChronicle, todayUtc, regenerateDayIssue } from "../engine/chronicle.
 import { buildAbout, listProofs, getProof } from "../engine/portfolio.js";
 import { listReferences, getReferenceRow, rowToReference } from "../engine/references.js";
 import { getAgent, allAgents } from "../engine/agents.js";
+import { behaviorForAgent } from "../engine/behavior.js";
+import { memoryHealth } from "../runtime/memory-health.js";
 import { listMessages } from "../engine/messages.js";
 import { recordInboundMail } from "../engine/inbound-mail.js";
 import {
@@ -86,16 +92,18 @@ import { appendEvent } from "../engine/events.js";
 import { boostAgent } from "../runtime/scheduler.js";
 import { subscribe } from "../engine/bus.js";
 import { spendTodayUsd, isBudgetExhausted } from "../engine/usage.js";
-import { openCapabilityRequests } from "../engine/outside.js";
+import { openCapabilityRequests, resolveCapabilityRequest } from "../engine/outside.js";
 import { renderDebugPage } from "./debug.js";
 import { runTick } from "../runtime/loop.js";
 import { circuitBroken } from "../runtime/failures.js";
 import { isActiveHours } from "../runtime/clock.js";
 import { getProfile } from "../runtime/roles.js";
-import { hasLlm } from "../runtime/client.js";
+import { activeProviderConfiguration, hasLlm } from "../runtime/llm/provider.js";
+import { resolveSystemModel } from "../runtime/llm/models.js";
 import { flushTracing } from "../runtime/tracing.js";
 import {
   createSession,
+  joinSession,
   priorConversationWith,
   endSession,
   getSession,
@@ -103,9 +111,15 @@ import {
   pingChat,
   getChatTranscript,
   visitorTurnCount,
+  ChatPresenceError,
+  ChatEngagedError,
+  ChatRoomFullError,
+  activeChatSessionForVisitor,
 } from "../runtime/chat.js";
+import { runRoomResponse } from "../runtime/room-chat.js";
+import { withRoomLock } from "../runtime/room-lock.js";
 import { enqueue } from "../runtime/queue.js";
-import { consumePendingCall } from "../runtime/director.js";
+import { answerRingingFixture } from "../runtime/director.js";
 import { getArtifactState, setArtifactStateKey, shouldCueOwner } from "../engine/artifact-state.js";
 import type { FixtureDef } from "../runtime/fixtures.js";
 import {
@@ -115,10 +129,23 @@ import {
   IN_FICTION_429,
   sessionTurnDecision,
 } from "./rate-limit.js";
+import { parseProviderAttachment } from "./delivery.js";
+import { contributionRoutes } from "./contributions.js";
 
 const agentSet = new Set<string>(agentIds);
 const locationSet = new Set<string>(locationIds);
 const artifactKindSet = new Set<string>(artifactKinds);
+
+function selectedModelSummary() {
+  return {
+    agents: agentIds.map((agent) => {
+      const role = getProfile(agent).role;
+      return { agent, tick: role.tickModel.model, chat: role.chatModel.model };
+    }),
+    chronicle: resolveSystemModel("chronicle", config.llmProvider).model,
+    townCrier: resolveSystemModel("townCrier", config.llmProvider).model,
+  };
+}
 
 function isAgentId(v: unknown): v is AgentId {
   return typeof v === "string" && agentSet.has(v);
@@ -194,14 +221,16 @@ export function createApp() {
   const limits = createRateLimiters();
 
   // --- health -------------------------------------------------------------
-  // {ok, ts, llm, budgetExhausted} (design doc §5): llm = model provider
-  // configured; budgetExhausted = today's spend met the global daily ceiling.
+  // Provider-aware health (design doc §5): selected provider/key/model metadata
+  // is public, credentials never are. budgetExhausted = today's spend met the
+  // global daily ceiling.
   // Shared body for /health and /health/agents. The two differ ONLY in status
   // code — see the route comments below for why that split matters.
   async function healthBody() {
     const [budgetExhausted, agentRows] = await Promise.all([isBudgetExhausted(), allAgents()]);
     const now = Date.now();
     const dormant = !isActiveHours();
+    const providerState = activeProviderConfiguration();
 
     const agents = agentRows.map((a) => ({
       id: a.id,
@@ -228,13 +257,20 @@ export function createApp() {
     if (!dormant && !budgetExhausted && stale.length === agents.length && agents.length > 0) {
       reasons.push(`no agent has completed a turn in ${Math.round(staleThresholdSec / 60)}m`);
     }
-    if (!hasLlm()) reasons.push("no model provider configured");
+    if (!providerState.configured) {
+      reasons.push(
+        `${providerState.missingEnv} missing for selected provider ${config.llmProvider}`,
+      );
+    }
 
     const ok = reasons.length === 0;
     return validated(HealthResponse, {
       ok,
       ts: new Date().toISOString(),
-      llm: hasLlm(),
+      llm: providerState.configured,
+      provider: config.llmProvider,
+      providerConfigured: providerState.configured,
+      models: selectedModelSummary(),
       budgetExhausted,
       dormant,
       agents,
@@ -259,6 +295,22 @@ export function createApp() {
   // configured. Deliberate quiet (dormant hours, exhausted budget) stays ok.
   app.get("/health/agents", async (c) => {
     const body = await healthBody();
+    return c.json(body, body.ok ? 200 : 503);
+  });
+
+  app.get("/health/behavior", async (c) => {
+    const now = new Date();
+    const agents = await Promise.all(agentIds.map(async (id) => ({
+      id, ...await behaviorForAgent(id, now),
+    })));
+    const body = validated(BehaviorHealthResponse, {
+      ok: agents.every((agent) => agent.status !== "stalled"), ts: now.toISOString(), agents,
+    });
+    return c.json(body, body.ok ? 200 : 503);
+  });
+
+  app.get("/health/memory", async (c) => {
+    const body = await memoryHealth();
     return c.json(body, body.ok ? 200 : 503);
   });
 
@@ -598,7 +650,8 @@ export function createApp() {
     const kind: ArtifactKind | undefined =
       kindParam && artifactKindSet.has(kindParam) ? (kindParam as ArtifactKind) : undefined;
     const agent = isAgentId(agentParam) ? agentParam : undefined;
-    const rows = await listArtifacts({ kind, agent });
+    const scope = c.req.query("scope") === "made" ? "made" : "all";
+    const rows = await listArtifacts({ kind, agent, scope });
     return c.json({ artifacts: rows.map(toArtifactSummary) });
   });
 
@@ -607,6 +660,8 @@ export function createApp() {
     if (!row) return c.json({ error: "not found" }, 404);
     return c.json({ artifact: toArtifact(row) });
   });
+
+  app.route("/", contributionRoutes());
 
   // --- artifact state (programmable world, D3) -----------------------------
   // The keyed JSON store an interactive artifact shares with its owning agent.
@@ -724,7 +779,13 @@ export function createApp() {
     }
 
     if (locationId !== undefined) {
-      const moved = await moveVisitor(id, locationId);
+      // Visitor movement shares the room lifecycle lane. Without this, a tap in
+      // a new room can race a participant join or whole-room escort and briefly
+      // create a private conversation whose bodies are in different places.
+      const activeRoom = await activeChatSessionForVisitor(id);
+      const moved = activeRoom
+        ? await withRoomLock(activeRoom, () => moveVisitor(id, locationId))
+        : await moveVisitor(id, locationId);
       // Co-located tick boost (design doc §2): when the visitor actually changed
       // rooms, pull agents AT THE DESTINATION forward (the boost re-arms their
       // timer, which enqueues a tick) so they can acknowledge the arrival — and
@@ -827,15 +888,12 @@ export function createApp() {
       // where the visitor is standing" — record it so an agent can later resolve
       // "where's the visitor" via the same zone vocabulary used everywhere else.
       if (obj) await setVisitorZone(id, obj.zone).catch(() => {});
-      const call = obj ? consumePendingCall(obj.id) : null;
-      if (call) {
+      const pickup = obj ? await answerRingingFixture(obj.id, locationId as LocationId, null) : null;
+      if (pickup?.caller) {
         console.log(
-          `[visitors] ${v.name} answered "${fixture}" in ${locationId} — pending call hit, waking ${call.agentId}`,
+          `[visitors] ${v.name} answered "${fixture}" in ${locationId} — pending call hit, waking ${pickup.caller}`,
         );
-        if (obj) {
-          await setObjectState(obj.id, null, "answered", { ringing: false }).catch(() => {});
-        }
-        await enqueue(call.agentId, {
+        await enqueue(pickup.caller, {
           kind: "tick",
           interrupt: true,
           note: `${v.name || "The visitor"} just answered the ${fixture} you rang — this is your cue to run the bit (play_beat) and pay it off now.`,
@@ -866,10 +924,23 @@ export function createApp() {
     if (typeof visitorId !== "string" || !visitorId) {
       return c.json({ error: "visitorId required" }, 400);
     }
-    // M3: a session is just a routing record — there's no "engaged"/"mid-thought"
-    // gate. The visitor's first message becomes an interrupt input the agent
-    // handles on its next turn (queue-serialized).
-    const res = await createSession(agentId, visitorId);
+    const visitorToken = c.req.header("x-visitor-token") ?? undefined;
+    if (!(await visitorTokenValid(visitorId, visitorToken))) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    // The visitor's first message becomes an interrupt input the agent handles
+    // on its next turn. A facet may have only one open visitor session.
+    const res = await createSession(agentId, visitorId).catch((err) => {
+      if (err instanceof ChatPresenceError) return "not-co-located" as const;
+      if (err instanceof ChatEngagedError) return "engaged" as const;
+      throw err;
+    });
+    if (res === "not-co-located") {
+      return c.json({ error: "not co-located", reason: "not-co-located" }, 409);
+    }
+    if (res === "engaged") {
+      return c.json({ error: "agent is with another visitor", reason: "engaged" }, 409);
+    }
     if (!res) return c.json({ error: "unknown agent" }, 404);
     return c.json(
       validated(CreateChatResponse, {
@@ -906,6 +977,33 @@ export function createApp() {
     return c.json(validated(GetChatResponse, transcript));
   });
 
+  // --- POST /chats/:id/participants {agentId} ----------------------------
+  // Join one exactly co-located facet to the visitor's private room. The
+  // session token proves ownership; canonical membership enforces max two.
+  app.post("/chats/:id/participants", async (c) => {
+    const sessionId = c.req.param("id");
+    const token = c.req.header("x-session-token") ?? undefined;
+    if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
+    const parsed = JoinChatRequest.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) return c.json({ error: "agentId required" }, 400);
+    const result = await withRoomLock(sessionId, () =>
+      joinSession(sessionId, parsed.data.agentId),
+    ).catch((error) => {
+      if (error instanceof ChatPresenceError) return "not-co-located" as const;
+      if (error instanceof ChatRoomFullError) return "room-full" as const;
+      if (error instanceof ChatEngagedError) return "engaged" as const;
+      throw error;
+    });
+    if (result === "not-co-located") {
+      return c.json({ error: "not co-located", reason: result }, 409);
+    }
+    if (result === "room-full") return c.json({ error: "room is full", reason: result }, 409);
+    if (result === "engaged") {
+      return c.json({ error: "agent is already occupied", reason: result }, 409);
+    }
+    return c.json(validated(JoinChatResponse, { participants: result }));
+  });
+
   // --- POST /chats/:id/messages {text} → SSE ChatStreamFrame stream -------
   // Token-gated. The visitor's message is enqueued as an INTERRUPT input to the
   // agent's continuous thread (queue.ts → loop.ts runVisitorInput); the resulting
@@ -916,9 +1014,10 @@ export function createApp() {
     const sessionId = c.req.param("id");
     const token = c.req.header("x-session-token") ?? undefined;
     if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
-    const body = await c.req.json().catch(() => ({}));
-    const text = typeof body?.text === "string" ? body.text : "";
-    if (!text.trim()) return c.json({ error: "text required" }, 400);
+    const parsed = ChatMessageRequest.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success || !parsed.data.text.trim()) return c.json({ error: "text required" }, 400);
+    const { text, to } = parsed.data;
+    const requestId = parsed.data.requestId ?? randomUUID();
 
     const session = await getSession(sessionId);
     if (!session) return c.json({ error: "unknown session" }, 404);
@@ -937,8 +1036,6 @@ export function createApp() {
       return c.json({ error: "session full", message: IN_FICTION_429.chatPerDay }, 429);
     }
 
-    const visitor = await getVisitor(session.visitorId);
-
     return streamSSE(c, async (stream) => {
       // Keep bytes flowing during long tool rounds (model + Hindsight latency):
       // with zero traffic the edge proxy kills the idle response mid-turn. Empty-
@@ -947,14 +1044,12 @@ export function createApp() {
         void stream.writeSSE({ data: "" }).catch(() => undefined);
       }, 15_000);
       try {
-        // enqueue resolves when THIS turn has run (the worker serializes it behind
-        // anything in flight); awaiting it holds the SSE stream open for the turn.
-        await enqueue(session.agentId, {
-          kind: "visitor",
+        await runRoomResponse({
           sessionId,
           visitorId: session.visitorId,
-          visitorName: visitor?.name ?? "",
           text,
+          to,
+          requestId,
           handlers: {
             onFrame: async (frame) => {
               await stream.writeSSE({ data: JSON.stringify(frame) });
@@ -971,13 +1066,46 @@ export function createApp() {
   // Token-gated.
   app.post("/chats/:id/close", async (c) => {
     const sessionId = c.req.param("id");
-    const token = c.req.header("x-session-token") ?? undefined;
+    const headerToken = c.req.header("x-session-token") ?? undefined;
+    const body = headerToken ? undefined : await c.req.json().catch(() => ({}));
+    const token =
+      headerToken ??
+      (typeof body?.sessionToken === "string" ? body.sessionToken : undefined);
     if (!(await chatTokenValid(sessionId, token))) return c.json({ error: "unauthorized" }, 401);
-    await endSession(sessionId);
+    // Closing waits behind any response already speaking in this room. That
+    // keeps the final line inside the transcript/memory boundary and prevents
+    // a late turn from writing into an already-ended session.
+    await withRoomLock(sessionId, () => endSession(sessionId));
     return c.json({ ok: true });
   });
 
   // --- POST /admin/tick/:agentId — force one tick (smoke tests) -----------
+  app.post("/admin/capabilities/:id/resolve", async (c) => {
+    if (config.adminToken) {
+      if (c.req.header("x-admin-token") !== config.adminToken) {
+        return c.json({ error: "forbidden" }, 403);
+      }
+    } else if (config.nodeEnv === "production") {
+      return c.json({ error: "forbidden" }, 403);
+    }
+    const body = await c.req.json().catch(() => ({}));
+    const status = body?.status;
+    if (!(["approved", "declined", "fulfilled"] as const).includes(status)) {
+      return c.json({ error: "bad status", message: "status must be approved, declined, or fulfilled" }, 400);
+    }
+    // This value is intentionally public in SSE + Chronicle. Internal operator
+    // detail must stay out of this endpoint.
+    const publicNote = typeof body?.publicNote === "string" ? body.publicNote : undefined;
+    const resolved = await resolveCapabilityRequest(c.req.param("id"), status, publicNote);
+    if (!resolved) return c.json({ error: "unknown capability request" }, 404);
+    // Wake the owning facet so the public resolution reaches its continuous
+    // thread now instead of waiting for the next passive cadence.
+    void enqueue(resolved.agentId, { kind: "tick", interrupt: true }).catch((error) =>
+      console.warn(`[http] capability resolution wake failed:`, (error as Error).message),
+    );
+    return c.json({ ok: true, request: resolved });
+  });
+
   app.post("/admin/tick/:agentId", async (c) => {
     // Guard: ADMIN_TOKEN when set, otherwise allowed off-production (brief).
     if (config.adminToken) {
@@ -995,9 +1123,8 @@ export function createApp() {
     return c.json(result);
   });
 
-  // --- POST /admin/deliver {agent, fileId, prompt} ------------------------
-  // Hand an agent a dataset (a Files-API file_id) attached to a turn, with a
-  // prompt to analyze it via the code-execution sandbox. One-time handoff.
+  // --- POST /admin/deliver {agent, attachment, prompt} --------------------
+  // Hand an agent a provider-owned dataset attached to one code-execution turn.
   app.post("/admin/deliver", async (c) => {
     if (config.adminToken) {
       if (c.req.header("x-admin-token") !== config.adminToken) {
@@ -1007,11 +1134,18 @@ export function createApp() {
       return c.json({ error: "forbidden" }, 403);
     }
     const body = await c.req.json().catch(() => ({}));
-    const { agent, fileId, prompt } = body ?? {};
+    const { agent, attachment: attachmentInput, prompt } = body ?? {};
     if (!isAgentId(agent)) return c.json({ error: "unknown agent" }, 404);
-    if (typeof fileId !== "string" || !fileId) return c.json({ error: "fileId required" }, 400);
     if (typeof prompt !== "string" || !prompt) return c.json({ error: "prompt required" }, 400);
-    const result = await enqueue(agent, { kind: "delivery", fileId, prompt });
+    const parsedAttachment = parseProviderAttachment(attachmentInput, config.llmProvider);
+    if (!parsedAttachment.ok) {
+      return c.json({ error: parsedAttachment.error }, parsedAttachment.status);
+    }
+    const result = await enqueue(agent, {
+      kind: "delivery",
+      attachment: parsedAttachment.attachment,
+      prompt,
+    });
     await flushTracing();
     return c.json(result);
   });
@@ -1055,6 +1189,11 @@ export function createApp() {
         spendTodayUsd: spend,
         feed: feed.items,
         openCapabilityRequests: capabilities,
+        llm: {
+          provider: config.llmProvider,
+          configured: hasLlm(),
+          models: selectedModelSummary(),
+        },
       }),
     );
   });

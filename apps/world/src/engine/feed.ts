@@ -1,7 +1,7 @@
 // Human-readable rendering of world events for GET /feed and /debug — the
 // "day-in-the-life" surface (plan §5, §7). One line per event.
 
-import { and, desc, eq, lt, type SQL } from "drizzle-orm";
+import { and, desc, eq, lt, notInArray, type SQL } from "drizzle-orm";
 import type { WorldEvent, WorldEventType, AgentId, LocationId } from "@town/contract";
 import { db, schema } from "../db/client.js";
 
@@ -24,9 +24,15 @@ export async function renderLine(e: WorldEvent): Promise<string> {
   const who = async (a: unknown) => displayName(a as string);
   switch (e.type) {
     case "agent.moved":
-      return `${await who(p.agent)} walked from ${p.from} to ${p.to}.`;
+      return p.from === p.to
+        ? `${await who(p.agent)} crossed ${p.to}${p.targetZone ? ` toward ${String(p.targetZone).split(".").at(-1)?.replace(/-/g, " ")}` : ""}.`
+        : `${await who(p.agent)} walked from ${p.from} to ${p.to}.`;
     case "agent.activity":
       return `${await who(p.agent)} is ${p.activity}.`;
+    case "agent.rested":
+      return `${await who(p.agent)} is taking a quiet moment.`;
+    case "agent.acted":
+      return `${await who(p.agent)} ${p.summary}.`;
     case "agent.thought":
       return `${await who(p.agent)} thought: "${p.text}"`;
     case "agent.spoke":
@@ -45,6 +51,8 @@ export async function renderLine(e: WorldEvent): Promise<string> {
       return `A visitor joined the conversation.`;
     case "chat.joined":
       return `${await who(p.agent)} joined the conversation.`;
+    case "chat.left":
+      return `${await who(p.agent)} left the conversation${p.reason ? `: ${p.reason}` : "."}`;
     case "message.sent":
       return p.broadcast
         ? `${await who(p.from)} broadcast a message to everyone.`
@@ -55,10 +63,16 @@ export async function renderLine(e: WorldEvent): Promise<string> {
       }.`;
     case "artifact.updated":
       return `${await who(p.agent)} updated "${p.title}".`;
+    case "artifact.contribution":
+      return p.status === "pending"
+        ? `A visitor left a suggestion for ${await who(p.agent)}'s creation.`
+        : `${await who(p.agent)} marked a visitor suggestion ${p.status}.`;
     case "bulletin.posted":
       return `${await who(p.agent)} posted a bulletin: "${p.title}".`;
     case "capability.requested":
       return `${await who(p.agent)} requested a new capability: ${p.summary}`;
+    case "capability.resolved":
+      return `P-Thomas marked ${await who(p.agent)}'s capability request ${p.status}: ${p.summary}${p.note ? ` — ${p.note}` : ""}`;
     case "visitor.arrived":
       return `${p.name} arrived in town.`;
     case "visitor.left":
@@ -79,6 +93,8 @@ export async function renderLine(e: WorldEvent): Promise<string> {
       return `${await who(p.agent)} started chatting with a visitor.`;
     case "chat.ended":
       return `${await who(p.agent)} finished a visitor conversation.`;
+    case "chronicle.updated":
+      return `The Chronicle for ${p.day} was refreshed.`;
     case "world.time":
       return `It's now ${p.phase}.`;
     default:
@@ -107,7 +123,9 @@ export async function getFeed(
   cursor?: string,
   limit = 50,
 ): Promise<{ items: FeedRow[]; nextCursor: string | null; count: number }> {
-  const conds: SQL[] = [];
+  // Diagnostic silence and cache completion are not story entries. Filter
+  // before LIMIT so these frequent signals cannot bury actual visible work.
+  const conds: SQL[] = [notInArray(worldEvents.type, ["agent.rested", "chronicle.updated"])];
   if (agent) conds.push(eq(worldEvents.agentId, agent));
   if (cursor) {
     const n = Number(cursor);

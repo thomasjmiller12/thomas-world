@@ -1,5 +1,7 @@
 // Event log helpers (plan §3.2). The `world_events` table is append-only:
-// `appendEvent` is the ONLY write path and there is no update/delete here.
+// ordinary callers use `appendEvent`; the action journal's transactional
+// outbox inserts through its own DB transaction and then uses the exported
+// materialize/publish helpers below. There is no update/delete path.
 //
 // Perception scoping (plan §3.4): an agent at tick time should see full detail
 // for events at its own location, but only a headline for public/global events
@@ -24,7 +26,7 @@ export interface AppendEventInput {
 }
 
 // Map a DB row to the contract WorldEvent shape (id + ts are strings on wire).
-function rowToEvent(row: typeof worldEvents.$inferSelect): WorldEvent {
+export function materializeEventRow(row: typeof worldEvents.$inferSelect): WorldEvent {
   return {
     id: String(row.id),
     ts: row.ts.toISOString(),
@@ -35,6 +37,10 @@ function rowToEvent(row: typeof worldEvents.$inferSelect): WorldEvent {
     visibility: row.visibility as Visibility,
     payload: row.payload as never,
   } as WorldEvent;
+}
+
+export function publishCommittedEvent(event: WorldEvent): void {
+  publish(event);
 }
 
 // The single append-only write path. Returns the materialized contract event
@@ -51,8 +57,8 @@ export async function appendEvent(input: AppendEventInput): Promise<WorldEvent> 
       payload: input.payload,
     })
     .returning();
-  const event = rowToEvent(row);
-  publish(event); // realtime fan-out to connected SSE subscribers
+  const event = materializeEventRow(row);
+  publishCommittedEvent(event); // realtime fan-out to connected SSE subscribers
   return event;
 }
 
@@ -69,7 +75,7 @@ export async function eventsAfter(afterId?: string, limit = 200): Promise<WorldE
     .where(conds.length ? and(...conds) : undefined)
     .orderBy(asc(worldEvents.id))
     .limit(limit);
-  return rows.map(rowToEvent);
+  return rows.map(materializeEventRow);
 }
 
 // Most-recent events (snapshot / debug), newest first then reversed to chrono.
@@ -79,7 +85,7 @@ export async function recentEvents(limit = 30): Promise<WorldEvent[]> {
     .from(worldEvents)
     .orderBy(desc(worldEvents.id))
     .limit(limit);
-  return rows.map(rowToEvent).reverse();
+  return rows.map(materializeEventRow).reverse();
 }
 
 // Last ~N events involving a specific agent (feeds GET /agents/:id).
@@ -90,7 +96,22 @@ export async function recentEventsForAgent(agentId: AgentId, limit = 5): Promise
     .where(sql`${worldEvents.agentId} = ${agentId}`)
     .orderBy(desc(worldEvents.id))
     .limit(limit);
-  return rows.map(rowToEvent).reverse();
+  return rows.map(materializeEventRow).reverse();
+}
+
+// Filter work before LIMIT so diaries/activity do not hide the evidence needed
+// by nightly memory. Operator capability decisions target payload.agent and
+// intentionally have no actor agentId.
+export async function recentPublicWorkForAgent(agentId: AgentId, since: Date, limit = 20): Promise<WorldEvent[]> {
+  const rows = await db.select().from(worldEvents).where(sql`
+    ${worldEvents.visibility} = 'public'
+    AND ${worldEvents.ts} >= ${since}
+    AND ${worldEvents.type} IN ('artifact.created', 'artifact.updated', 'artifact.state_changed', 'capability.resolved')
+    AND COALESCE(${worldEvents.payload}->>'kind', '') NOT IN ('diary_entry', 'daily_digest', 'bulletin')
+    AND (${worldEvents.agentId} = ${agentId}
+      OR (${worldEvents.type} = 'capability.resolved' AND ${worldEvents.payload}->>'agent' = ${agentId}))
+  `).orderBy(desc(worldEvents.id)).limit(Math.max(1, Math.min(50, limit)));
+  return rows.map(materializeEventRow).reverse();
 }
 
 // A headline-collapsed view of an event: for events the agent did NOT witness
@@ -180,5 +201,5 @@ export async function eventsOfTypes(types: WorldEventType[], limit = 100): Promi
     .where(inArray(worldEvents.type, types))
     .orderBy(desc(worldEvents.id))
     .limit(limit);
-  return rows.map(rowToEvent).reverse();
+  return rows.map(materializeEventRow).reverse();
 }

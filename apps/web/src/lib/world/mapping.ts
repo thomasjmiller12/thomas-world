@@ -85,23 +85,21 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
       ];
 
     case 'world.time':
-      // Phase change updates only the tint; visitor count / awake come from the
-      // snapshot's world block (and stay until the next snapshot). We surface
-      // phase via world-state with conservative defaults the caller overrides.
-      return [
-        spec('world-state', {
-          phase: ev.payload.phase,
-          visitorsPresent: 0,
-          awake: true,
-        }),
-      ];
+      // Snapshot hydration owns visitor count and awake truth. A clock event
+      // changes only the tint and must never wake a budget-sleeping town.
+      return [spec('world-phase', { phase: ev.payload.phase })];
 
     // Surfaced via feed / roster only — no canvas emit:
+    case 'chronicle.updated':
     case 'message.sent':
+    case 'agent.acted':
+    case 'agent.rested':
     case 'artifact.created':
     case 'artifact.updated':
+    case 'artifact.contribution':
     case 'bulletin.posted':
     case 'capability.requested':
+    case 'capability.resolved':
     case 'visitor.arrived':
     case 'visitor.left':
     case 'visitor.moved':
@@ -129,6 +127,7 @@ export function mapWorldEvent(ev: WorldEvent): EmitSpec[] {
     case 'conversation.ended':
     case 'conversation.converted':
     case 'chat.joined':
+    case 'chat.left':
     // Canonical object-graph + artifact-state events. These have canvas/panel
     // surfaces, but their consumers (PlacedObjects, ArtifactFrame) subscribe to
     // the raw 'world-event' channel directly — no mapped npc-* emit needed.

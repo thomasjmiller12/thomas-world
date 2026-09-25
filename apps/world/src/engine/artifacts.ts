@@ -1,13 +1,15 @@
 // Artifact CRUD — create + update ONLY (no delete; the world keeps what it
 // makes). Each anchored to a location fixture where visitors find it (plan §6).
 
-import { and, desc, eq, gt, type SQL } from "drizzle-orm";
+import { and, desc, eq, gt, notInArray, sql, type SQL } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import type { AgentId, ArtifactKind, LocationId } from "@town/contract";
 import { db, schema } from "../db/client.js";
-import { appendEvent } from "./events.js";
+import { appendEvent, materializeEventRow, publishCommittedEvent } from "./events.js";
+import { ContributionError } from "./contributions.js";
+import { attachArtifact, findObjectAtLocation } from "./objects.js";
 
-const { artifacts } = schema;
+const { artifacts, artifactRevisions, artifactContributions, worldEvents } = schema;
 export type ArtifactRow = typeof artifacts.$inferSelect;
 
 // Default in-world anchor for each artifact kind (plan §6 table).
@@ -80,6 +82,17 @@ export async function createArtifact(input: CreateArtifactInput): Promise<Artifa
       },
     });
   }
+
+  // A fixture anchor is physical world state, not just descriptive metadata.
+  // Resolve the seeded/canonical object behind the free-string fixture name and
+  // use the normal attachment path so both sides of the relationship and the
+  // renderer's object.attached cue stay in sync. Some callers intentionally
+  // create unanchored artifacts, and a custom fixture may not exist, so absence
+  // is a graceful metadata-only fallback.
+  if (location && fixture) {
+    const object = await findObjectAtLocation(location, fixture);
+    if (object) await attachArtifact(object.id, id, input.agentId);
+  }
   return row;
 }
 
@@ -92,29 +105,54 @@ export interface UpdateArtifactInput {
 export async function updateArtifact(
   id: string,
   patch: UpdateArtifactInput,
+  attribution?: { agentId: AgentId; contributionId?: string },
 ): Promise<ArtifactRow | undefined> {
-  const [existing] = await db.select().from(artifacts).where(eq(artifacts.id, id));
-  if (!existing) return undefined;
-  const [row] = await db
-    .update(artifacts)
-    .set({ ...patch, updatedAt: new Date() })
-    .where(eq(artifacts.id, id))
-    .returning();
-  await appendEvent({
-    type: "artifact.updated",
-    agentId: row.agentId as AgentId,
-    locationId: row.locationId as LocationId | null,
-    visibility: "public",
-    payload: {
-      artifactId: row.id,
-      agent: row.agentId,
-      kind: row.kind,
-      title: row.title,
-      location: row.locationId,
-      fixture: row.fixture,
-    },
+  const result = await db.transaction(async (tx) => {
+    // One artifact lock orders versions and preserves the exact preceding content.
+    const [existing] = await tx.select().from(artifacts).where(eq(artifacts.id, id)).for("update");
+    if (!existing) return undefined;
+    if (attribution && existing.agentId !== attribution.agentId) {
+      throw new ContributionError("Only the owner may revise this creation.", 403);
+    }
+    if (attribution?.contributionId) {
+      const [contribution] = await tx.select().from(artifactContributions)
+        .where(eq(artifactContributions.id, attribution.contributionId)).for("update");
+      if (!contribution || contribution.artifactId !== id || contribution.agentId !== attribution.agentId) {
+        throw new ContributionError("That contribution does not belong to this creation and its owner.", 400);
+      }
+      if (contribution.status === "completed" || contribution.status === "declined") {
+        throw new ContributionError("That contribution is closed.", 409);
+      }
+    }
+    const title = patch.title ?? existing.title;
+    const body = patch.body ?? existing.body;
+    const published = patch.published ?? existing.published;
+    if (title === existing.title && body === existing.body && published === existing.published) {
+      if (attribution?.contributionId) throw new ContributionError("No content changed; a contribution cannot be credited with an unchanged revision.", 400);
+      return { row: existing, event: null };
+    }
+    const now = new Date();
+    const snapshot = { artifactId: id, agentId: existing.agentId, title: existing.title,
+      body: existing.body, published: existing.published, version: existing.version };
+    // Existing artifacts predate history. Capture their current version once,
+    // without attributing it to the new visitor suggestion.
+    await tx.insert(artifactRevisions).values({ id: randomUUID(), ...snapshot, createdAt: existing.updatedAt })
+      .onConflictDoNothing({ target: [artifactRevisions.artifactId, artifactRevisions.version] });
+    await tx.insert(artifactRevisions).values({
+      ...snapshot, id: randomUUID(), version: existing.version + 1, title, body, published,
+      contributionId: attribution?.contributionId, createdAt: now,
+    });
+    const [row] = await tx.update(artifacts).set({ title, body, published, version: existing.version + 1, updatedAt: now })
+      .where(eq(artifacts.id, id)).returning();
+    const [event] = await tx.insert(worldEvents).values({
+      type: "artifact.updated", agentId: row.agentId, locationId: row.locationId,
+      visibility: "public", payload: { artifactId: row.id, agent: row.agentId,
+        kind: row.kind, title: row.title, location: row.locationId, fixture: row.fixture },
+    }).returning();
+    return { row, event };
   });
-  return row;
+  if (result?.event) publishCommittedEvent(materializeEventRow(result.event));
+  return result?.row;
 }
 
 export async function getArtifact(id: string): Promise<ArtifactRow | undefined> {
@@ -123,18 +161,27 @@ export async function getArtifact(id: string): Promise<ArtifactRow | undefined> 
 }
 
 export async function listArtifacts(
-  filters: { kind?: ArtifactKind; agent?: AgentId } = {},
+  filters: { kind?: ArtifactKind; agent?: AgentId; scope?: "all" | "made" } = {},
   limit = 100,
+  page: { offset?: number; order?: "updated" } = {},
 ): Promise<ArtifactRow[]> {
   const conds: SQL[] = [];
   if (filters.kind) conds.push(eq(artifacts.kind, filters.kind));
   if (filters.agent) conds.push(eq(artifacts.agentId, filters.agent));
+  if (filters.scope === "made") conds.push(notInArray(artifacts.kind, ["diary_entry", "bulletin"]));
+  // Apply the display scope before LIMIT so nightly diaries cannot bury apps.
+  const order = page.order === "updated"
+    ? [desc(artifacts.updatedAt), desc(artifacts.id)]
+    : filters.scope === "made"
+      ? [sql`case when ${artifacts.kind} = 'interactive' then 0 else 1 end`, desc(artifacts.updatedAt), desc(artifacts.id)]
+      : [desc(artifacts.createdAt), desc(artifacts.id)];
   return db
     .select()
     .from(artifacts)
     .where(conds.length ? and(...conds) : undefined)
-    .orderBy(desc(artifacts.createdAt))
-    .limit(limit);
+    .orderBy(...order)
+    .limit(limit)
+    .offset(page.offset ?? 0);
 }
 
 // Artifacts this agent made in the last `hours`, excluding diary entries

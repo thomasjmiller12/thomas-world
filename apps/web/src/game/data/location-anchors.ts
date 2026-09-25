@@ -1,5 +1,6 @@
 import type { LocationId } from '@town/contract';
 import { SCENE_KEYS } from '@/lib/constants';
+import { ZONE_BOUNDS } from './zone-bounds';
 
 // Per-location spawn/idle anchoring for the NPCManager (design doc §6.2). Each
 // location declares:
@@ -120,6 +121,26 @@ export const SCENE_TO_LOCATION: Record<string, LocationId> = {
 
 export function locationForScene(sceneKey: string): LocationId | null {
   return SCENE_TO_LOCATION[sceneKey] ?? null;
+}
+
+// `town` and `park` share one Phaser scene but are distinct canonical places.
+// Resolve a player's outdoor position against the authored semantic zones
+// rather than collapsing the whole map to `town`. Nearest-zone (not a single
+// hand-guessed x/y split) keeps the boundary aligned with the fixtures and
+// standing areas agents themselves address. This is a tiny 8-entry scan.
+export function locationForTownPosition(x: number, y: number): 'town' | 'park' {
+  let nearest: { location: 'town' | 'park'; distance: number } | null = null;
+  for (const [zoneId, bounds] of Object.entries(ZONE_BOUNDS)) {
+    const location = zoneId.split('.', 1)[0];
+    if (bounds.scene !== SCENE_KEYS.TOWN || (location !== 'town' && location !== 'park')) continue;
+    const centerX = bounds.x + bounds.w / 2;
+    const centerY = bounds.y + bounds.h / 2;
+    const distance = (x - centerX) ** 2 + (y - centerY) ** 2;
+    if (!nearest || distance < nearest.distance) {
+      nearest = { location, distance };
+    }
+  }
+  return nearest?.location ?? 'town';
 }
 
 // All LocationIds a given scene materializes (Town scene = town + park). Used by
