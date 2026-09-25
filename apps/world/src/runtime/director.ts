@@ -27,12 +27,13 @@
 // — production had zero `agent_presets` rows and neither `save_preset` nor
 // `list_my_presets` was ever called across any agent's recorded history.
 
-import { getBeat, listBeats, type AgentId, type BeatDef } from "@town/contract";
+import { getBeat, listBeats, type AgentId, type BeatDef, type LocationId } from "@town/contract";
 import type { AgentContext } from "./tools.js";
 import { tryRecordEffect } from "./fixtures.js";
-import { findObjectAtLocation, objectsAtLocation, setObjectState } from "../engine/objects.js";
+import { clearObjectRinging, findObjectAtLocation, objectsAtLocation, setObjectState } from "../engine/objects.js";
 import { appendEvent, eventsOfTypes } from "../engine/events.js";
 import { getSession } from "./chat.js";
+import { enqueue } from "./queue.js";
 
 // --- pending-call registry --------------------------------------------------
 // A "ring" object beat records a pending call so that when a visitor answers the
@@ -59,6 +60,25 @@ export function consumePendingCall(
   pendingCalls.delete(objectId); // one-shot regardless of freshness
   if (now - call.ts > PENDING_TTL_MS) return null; // stale → as if absent
   return { agentId: call.agentId };
+}
+
+// Shared by agent and visitor pickup. Only the successful state claimant may
+// consume the caller; a losing pickup must leave a subsequent call alone.
+export async function answerRingingFixture(
+  objectId: string,
+  location: LocationId,
+  agent: AgentId | null,
+): Promise<{ answered: boolean; caller: AgentId | null }> {
+  const pending = pendingCalls.get(objectId);
+  if (!(await clearObjectRinging(objectId, location, agent))) {
+    return { answered: false, caller: null };
+  }
+  // A new ring could have replaced the pending call while the DB write was in
+  // flight. Never consume that newer call on behalf of this pickup.
+  const call = pending && pendingCalls.get(objectId) === pending
+    ? consumePendingCall(objectId)
+    : null;
+  return { answered: true, caller: call?.agentId ?? null };
 }
 
 // Arm a pending call on an object: whoever answers it (a visitor clicking the
@@ -143,8 +163,9 @@ export interface PlayBeatArgs {
 // templates).
 function defaultObjectRef(
   effect: string,
-  here: { displayName: string; kind: string | null; affordances?: string[] | null }[],
+  here: { displayName: string; kind: string | null; affordances?: string[] | null; state?: Record<string, unknown> | null }[],
 ): string | null {
+  if (effect === "answer") return here.find((o) => o.state?.ringing === true)?.displayName ?? null;
   const byAffordance = here.find((o) => (o.affordances ?? []).includes(effect));
   if (byAffordance) return byAffordance.displayName;
   const devices = here.filter((o) => o.kind === "device");
@@ -215,9 +236,33 @@ async function runObjectBeat(
   const obj = ref ? await findObjectAtLocation(ctx.location, ref).catch(() => undefined) : undefined;
   if (!obj) {
     const names = here.map((o) => o.displayName).join(", ");
+    if (effect === "answer" && !objectRef) return "Nothing here is ringing. There's no call to answer.";
     return objectRef
       ? `There's no "${objectRef}" here to do that to. What's here: ${names || "nothing"}.`
       : `There's nothing here you can run "${beatDef.label.toLowerCase()}" on right now.`;
+  }
+
+  if (effect === "answer") {
+    const pickup = await answerRingingFixture(obj.id, ctx.location, ctx.agentId).catch(() => null);
+    if (!pickup) return `You couldn't pick up the ${obj.displayName} just now. Try again in a moment.`;
+    if (!pickup.answered) return `The ${obj.displayName} isn't ringing now. There's no call to answer.`;
+    if (pickup.caller && pickup.caller !== ctx.agentId) {
+      // Awaiting another facet's whole turn can deadlock mutually addressing
+      // agents. The queue owns delivery; this action only reports the pickup.
+      void enqueue(pickup.caller, {
+        kind: "tick",
+        interrupt: true,
+        note: `${ctx.agentId} just answered the ${obj.displayName} you rang in ${ctx.location}.`,
+      }).catch((err) => console.warn("[director] answer wake failed:", (err as Error).message));
+    }
+    onApplied?.();
+    await ctx.onAction?.("play_beat", `answers the ${obj.displayName}`);
+    const callerNote = pickup.caller === ctx.agentId
+      ? " You were the one who rang it."
+      : pickup.caller
+        ? ` ${pickup.caller} has been cued that you picked up.`
+        : " No caller is waiting on the line.";
+    return `You answer the ${obj.displayName}; it stops ringing.${callerNote}`;
   }
 
   const res = await setObjectState(obj.id, ctx.agentId, effect, EFFECT_STATE_PATCH[effect]).catch(

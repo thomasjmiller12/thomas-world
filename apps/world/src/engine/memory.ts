@@ -38,6 +38,7 @@ export const MAX_TOTAL_CHARS = 40_000;
 export interface MemoryFile {
   path: string;
   content: string;
+  updatedAt?: Date;
 }
 
 // Normalize a model-supplied path into our virtual namespace. Models address
@@ -46,7 +47,11 @@ export interface MemoryFile {
 function normalizePath(raw: string): string {
   const p = raw.trim();
   if (p.includes("..")) throw new Error("path may not contain '..'");
-  return p.startsWith("/") ? p : `/${p}`;
+  const normalized = p.startsWith("/") ? p : `/${p}`;
+  if (normalized !== "/memories" && !normalized.startsWith("/memories/")) {
+    throw new Error("memory paths must be under /memories/; runtime metadata is protected");
+  }
+  return normalized;
 }
 
 export async function listMemoryFiles(agentId: AgentId): Promise<MemoryFile[]> {
@@ -54,7 +59,7 @@ export async function listMemoryFiles(agentId: AgentId): Promise<MemoryFile[]> {
     .select()
     .from(memoryFiles)
     .where(eq(memoryFiles.agentId, agentId));
-  return rows.map((r) => ({ path: r.path, content: r.content }));
+  return rows.map((r) => ({ path: r.path, content: r.content, updatedAt: r.updatedAt }));
 }
 
 async function readFile(agentId: AgentId, path: string): Promise<MemoryFile | undefined> {
@@ -68,11 +73,14 @@ async function readFile(agentId: AgentId, path: string): Promise<MemoryFile | un
 async function totalChars(agentId: AgentId, excludePath?: string): Promise<number> {
   const files = await listMemoryFiles(agentId);
   return files
-    .filter((f) => f.path !== excludePath)
+    .filter((f) => f.path.startsWith("/memories/") && f.path !== excludePath)
     .reduce((n, f) => n + f.content.length, 0);
 }
 
 async function writeFile(agentId: AgentId, path: string, content: string): Promise<void> {
+  if (path === "/memories" || path.endsWith("/")) {
+    throw new Error("memory writes require a file path under /memories/, not a directory");
+  }
   if (content.length > MAX_FILE_CHARS) {
     // This used to just say "file exceeds N char cap" — read as "trim this
     // file," it's what produced Career Thomas telling a visitor his memory
@@ -116,7 +124,7 @@ export async function memView(agentId: AgentId, path: string): Promise<string> {
   // list files; otherwise return the file body with 1-based line numbers.
   if (p === "/memories" || p.endsWith("/")) {
     const files = await listMemoryFiles(agentId);
-    const inDir = files.filter((f) => f.path.startsWith(p === "/memories" ? "/" : p));
+    const inDir = files.filter((f) => f.path.startsWith(p === "/memories" ? "/memories/" : p));
     if (inDir.length === 0) return "(no memory files yet)";
     return inDir.map((f) => f.path).sort().join("\n");
   }
@@ -191,10 +199,10 @@ export async function memRename(agentId: AgentId, oldPath: string, newPath: stri
 // (plan §3.4 "core memory files (always loaded)"). Read once per tick and
 // pinned below the cache breakpoint.
 export async function coreMemorySnapshot(agentId: AgentId): Promise<string> {
-  const files = await listMemoryFiles(agentId);
+  const files = (await listMemoryFiles(agentId)).filter((f) => f.path.startsWith("/memories/"));
   if (files.length === 0) return "(your core memory is empty — you can write to it with the memory tool)";
   return files
     .sort((a, b) => a.path.localeCompare(b.path))
-    .map((f) => `### ${f.path}\n${f.content}`)
+    .map((f) => `### ${f.path}${f.updatedAt ? ` (last edited ${f.updatedAt.toISOString()})` : ""}\n${f.content}`)
     .join("\n\n");
 }

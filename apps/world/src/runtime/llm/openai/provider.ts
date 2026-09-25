@@ -170,7 +170,7 @@ async function runOpenAITurn(
     throw new Error("OpenAI adapter received a non-OpenAI model or thread state");
   }
   const initialItems = prepareOpenAIHistory(request.thread.items);
-  const session = createOpenAISession(initialItems, request.model.model);
+  const session = createOpenAISession(initialItems);
   let result: OpenAIRunResultLike;
   let partialRounds = 0;
   try {

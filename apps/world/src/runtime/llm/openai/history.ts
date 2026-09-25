@@ -1,12 +1,22 @@
 import { protocol, type AgentInputItem } from "@openai/agents";
 
-const TRACE_MAX_CHARS = 600;
+const TRACE_MAX_CHARS = 8_000;
 
-function clip(value: unknown): string {
-  const text = typeof value === "string" ? value : JSON.stringify(value ?? "");
+function clip(text: string): string {
   return text.length <= TRACE_MAX_CHARS
     ? text
-    : `${text.slice(0, TRACE_MAX_CHARS)}… (truncated)`;
+    : `${text.slice(0, TRACE_MAX_CHARS)}\n[truncated: kept ${TRACE_MAX_CHARS} of ${text.length} characters; ${text.length - TRACE_MAX_CHARS} omitted]`;
+}
+
+function codeInterpreterLogs(outputs: unknown): string {
+  if (!Array.isArray(outputs)) return "";
+  // Retain useful execution evidence, never provider image URLs/base64 or
+  // expiring container/file handles from the surrounding output objects.
+  return outputs.flatMap((output: unknown) => {
+    if (output == null || typeof output !== "object") return [];
+    const value = output as { type?: unknown; logs?: unknown };
+    return value.type === "logs" && typeof value.logs === "string" ? [value.logs] : [];
+  }).join("\n");
 }
 
 export function validateOpenAIHistory(items: unknown[]): AgentInputItem[] {
@@ -52,8 +62,9 @@ function sanitizeHostedTool(item: AgentInputItem): AgentInputItem {
   ) {
     return item;
   }
-  const code = clip(item.providerData?.code ?? item.arguments ?? "");
-  const output = clip(item.providerData?.outputs ?? item.output ?? "");
+  const source = item.providerData?.code ?? item.arguments;
+  const code = clip(typeof source === "string" ? source : "");
+  const output = clip(codeInterpreterLogs(item.providerData?.outputs));
   return {
     type: "message",
     role: "assistant",
@@ -67,14 +78,10 @@ function sanitizeHostedTool(item: AgentInputItem): AgentInputItem {
   };
 }
 
-// Validate provider-native items, keep only the authoritative suffix after the
-// newest compaction checkpoint, and remove temporary file/container handles
-// that cannot be replayed after their provider-side lifetime expires.
+// The SDK owns compaction boundaries. Inline compaction replaces its old prefix,
+// while standalone /responses/compact can retain user messages BEFORE its
+// checkpoint. Preserve the complete SDK window; slicing at the checkpoint would
+// discard those retained inputs. Only sanitize expiring file/container handles.
 export function prepareOpenAIHistory(items: unknown[]): AgentInputItem[] {
-  const validated = validateOpenAIHistory(items);
-  let start = 0;
-  for (let index = 0; index < validated.length; index++) {
-    if (validated[index].type === "compaction") start = index;
-  }
-  return validated.slice(start).map(sanitizeHostedTool).map(sanitizeUserFiles);
+  return validateOpenAIHistory(items).map(sanitizeHostedTool).map(sanitizeUserFiles);
 }

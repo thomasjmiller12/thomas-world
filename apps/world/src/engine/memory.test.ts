@@ -110,6 +110,7 @@ const {
   memDelete,
   memRename,
   listMemoryFiles,
+  coreMemorySnapshot,
   MAX_FILE_CHARS,
   MAX_TOTAL_CHARS,
 } = await import("./memory.js");
@@ -227,5 +228,30 @@ describe("memory-tool handler (storage backing betaMemoryTool)", () => {
 
   it("rejects path traversal", async () => {
     await expect(memCreate("career", "../../etc/passwd", "x")).rejects.toThrow(/\.\./);
+  });
+
+  it("rejects directory writes and renames without losing the source file", async () => {
+    await memCreate("builder", "/memories/core.md", "Keep my identity.");
+    for (const path of ["/memories", "/memories/", "/memories/people/"]) {
+      await expect(memCreate("builder", path, "hidden")).rejects.toThrow(/file path/);
+      await expect(memRename("builder", "/memories/core.md", path)).rejects.toThrow(/file path/);
+    }
+    expect(await memView("builder", "/memories")).toBe("/memories/core.md");
+    expect(await memView("builder", "/memories/core.md")).toContain("Keep my identity.");
+  });
+
+  it("keeps runtime cursors and pursuits outside model-visible memory and protects writes", async () => {
+    store.push({ agentId: "builder", path: "/.cursor", content: "private cursor", updatedAt: new Date() });
+    store.push({ agentId: "builder", path: "/.pursuits", content: "structured focus", updatedAt: new Date() });
+    await memCreate("builder", "/memories/core.md", "Keep my identity.");
+    expect(await memView("builder", "/memories")).toBe("/memories/core.md");
+    const snapshot = await coreMemorySnapshot("builder");
+    expect(snapshot).toContain("last edited");
+    expect(snapshot).toContain("Keep my identity.");
+    expect(snapshot).not.toMatch(/private cursor|structured focus/);
+    await expect(memDelete("builder", "/.cursor")).rejects.toThrow(/protected/);
+    await expect(memCreate("builder", "/.pursuits", "bad")).rejects.toThrow(/protected/);
+    await expect(memRename("builder", "/memories/core.md", "/.cursor")).rejects.toThrow(/protected/);
+    expect(store.find((row) => row.path === "/.cursor")?.content).toBe("private cursor");
   });
 });

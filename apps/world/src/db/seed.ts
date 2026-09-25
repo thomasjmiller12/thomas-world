@@ -35,7 +35,7 @@ const LOCATIONS = [
     fixtures: [
       { id: "outbox", kind: "mail", note: "email_thomas and request_capability are gated here." },
       { id: "desk", kind: "workstation" },
-      { id: "phone", kind: "device", note: "The office phone. Ring it to summon a visitor's attention.", actions: ["ring"] },
+      { id: "phone", kind: "device", note: "The office phone. Ring it for attention, or answer it while it is ringing.", actions: ["ring", "answer"] },
     ],
     adjacency: ["town"],
   },
@@ -86,8 +86,8 @@ const LOCATIONS = [
       {
         id: "payphone",
         kind: "device",
-        note: "The park's red telephone box. Ring it and whoever's in the park — agent or visitor — hears it. (A visitor answering takes a while to reach you: their reply arrives as a world event, not instantly.)",
-        actions: ["ring"],
+        note: "The park's red telephone box. Ring it and whoever's in the park — agent or visitor — hears it. Answer it while it is ringing to stop the ring and let its caller know you picked up.",
+        actions: ["ring", "answer"],
       },
     ],
     adjacency: ["town"],

@@ -1,0 +1,21 @@
+import { afterEach, expect, it, vi } from "vitest";
+const stats = vi.hoisted(() => vi.fn());
+vi.mock("./hindsight.js", () => ({ memoryBankStats: stats }));
+afterEach(() => { vi.useRealTimers(); vi.resetModules(); stats.mockReset(); });
+it("shares in-flight reads, distinguishes empty banks, and expires the cache", async () => {
+  vi.useFakeTimers();
+  stats.mockResolvedValue({ ok: true, stats: { total_nodes: 0, total_documents: 0, pending_operations: 0, failed_operations: 0 } });
+  const { memoryHealth } = await import("./memory-health.js");
+  const first = memoryHealth();
+  expect(memoryHealth()).toBe(first);
+  const health = await first;
+  expect(stats).toHaveBeenCalledTimes(5);
+  expect(health.ok).toBe(true);
+  expect(health.banks.every((bank) => bank.status === "empty")).toBe(true);
+  vi.advanceTimersByTime(60_001);
+  stats.mockResolvedValue({ ok: false, reason: "http", text: "private error body must not appear" });
+  const unavailable = await memoryHealth();
+  expect(unavailable.ok).toBe(false);
+  expect(JSON.stringify(unavailable)).not.toContain("private error body");
+  expect(stats).toHaveBeenCalledTimes(10);
+});

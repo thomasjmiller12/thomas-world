@@ -18,7 +18,7 @@ import type {
   WorldObjectState,
 } from "@town/contract";
 import { db, schema } from "../db/client.js";
-import { appendEvent } from "./events.js";
+import { appendEvent, materializeEventRow, publishCommittedEvent } from "./events.js";
 import { defaultZone, zoneExists, zonesForLocation } from "./zones.js";
 
 const { worldObjects, artifacts } = schema;
@@ -372,6 +372,38 @@ export async function setObjectState(
     },
   });
   return { ok: true };
+}
+
+// Claim a ringing object once, even when a visitor and agent pick it up at the
+// same time. The condition lives in the UPDATE, not a prior read. Record the
+// event in the same transaction so a failed append cannot leave a silent pickup.
+export async function clearObjectRinging(
+  objectId: string,
+  location: LocationId,
+  agent: AgentId | null,
+): Promise<boolean> {
+  const event = await db.transaction(async (tx) => {
+    const [obj] = await tx.update(worldObjects)
+      .set({ state: sql`${worldObjects.state} || '{"ringing":false}'::jsonb`, updatedAt: new Date() })
+      .where(and(
+        eq(worldObjects.id, objectId),
+        eq(worldObjects.locationId, location),
+        sql`${worldObjects.state}->'ringing' = 'true'::jsonb`,
+      ))
+      .returning();
+    if (!obj) return null;
+    const [row] = await tx.insert(schema.worldEvents).values({
+      type: "object.state_changed",
+      agentId: agent,
+      locationId: location,
+      visibility: "location",
+      payload: { objectId, agent, location, effect: "answered", state: obj.state },
+    }).returning();
+    return materializeEventRow(row);
+  });
+  if (!event) return false;
+  publishCommittedEvent(event);
+  return true;
 }
 
 // Mount an artifact on an object (programmable world, D1). Denormalizes onto

@@ -13,6 +13,8 @@ import { join, dirname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AgentId } from "@town/contract";
 import { config } from "../config.js";
+import { createHash } from "node:crypto";
+import { renderReadPage, type ReadPageOptions } from "./read-page.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(here, "..", "..");
@@ -47,6 +49,7 @@ function vaultRoot(): string | null {
 function safeJoin(base: string, rel: string): string | null {
   const target = resolve(base, rel.replace(/^\/+/, ""));
   const baseResolved = resolve(base);
+  if (target.split(sep).includes("_Scratch")) return null;
   if (target !== baseResolved && !target.startsWith(baseResolved + sep)) return null;
   return target;
 }
@@ -61,12 +64,14 @@ async function realSafeJoin(base: string, rel: string): Promise<string | null> {
   if (!target) return null;
   try {
     const realBase = await realpath(base);
+    if (realBase.split(sep).includes("_Scratch")) return null;
     // Resolve the deepest existing ancestor; a symlink anywhere along the chain
     // would surface here.
     let probe = target;
     for (;;) {
       try {
         const realProbe = await realpath(probe);
+        if (realProbe.split(sep).includes("_Scratch")) return null;
         if (realProbe !== realBase && !realProbe.startsWith(realBase + sep)) return null;
         break;
       } catch {
@@ -93,12 +98,15 @@ export async function listNotes(dir: string): Promise<ReferenceResult> {
   if (!target || !existsSync(target)) return { ok: false, text: `Nothing at ${dir}.` };
   const entries = await readdir(target, { withFileTypes: true });
   const lines = entries
-    .filter((e) => !e.name.startsWith("."))
+    .filter((e) => !e.name.startsWith(".") && e.name !== "_Scratch")
     .map((e) => (e.isDirectory() ? `${e.name}/` : e.name));
   return { ok: true, text: lines.length ? lines.join("\n") : "(empty)" };
 }
 
-export async function readNote(path: string): Promise<ReferenceResult> {
+export async function readNote(
+  path: string,
+  page: ReadPageOptions & { expectedSha?: string } = {},
+): Promise<ReferenceResult> {
   const root = vaultRoot();
   if (!root) {
     warnOnce();
@@ -106,9 +114,14 @@ export async function readNote(path: string): Promise<ReferenceResult> {
   }
   const target = await realSafeJoin(root, path);
   if (!target || !existsSync(target)) return { ok: false, text: `No note at ${path}.` };
+  if (!(await stat(target)).isFile()) return { ok: false, text: `${path} is not a file; use list_notes for folders.` };
   const body = await readFile(target, "utf8");
-  // Cap how much a single read can pull into the tick context.
-  return { ok: true, text: body.length > 12_000 ? body.slice(0, 12_000) + "\n…(truncated)" : body };
+  const sha = createHash("sha256").update(body).digest("hex");
+  if (page.expectedSha && page.expectedSha !== sha) {
+    return { ok: false, text: `${path} changed since the previous page. Restart at offset 0 without expected_sha to read the new version.` };
+  }
+  return { ok: true, text: `${path} (sha256 ${sha}):\n` +
+    renderReadPage(body, page, "read_note", { path, expected_sha: sha }) };
 }
 
 // Simple recursive substring search over .md files (no RAG at MVP, plan §8).
@@ -119,6 +132,7 @@ export async function searchNotes(query: string): Promise<ReferenceResult> {
     return { ok: false, text: VAULT_REFERENCE_FICTION };
   }
   const q = query.toLowerCase();
+  if (!await realSafeJoin(root, ".")) return { ok: false, text: "That reference path isn't available." };
   const rootDir: string = root; // narrowed; bind so the nested closure keeps it non-null
   const hits: string[] = [];
   const walk = async (dir: string): Promise<void> => {
@@ -130,13 +144,15 @@ export async function searchNotes(query: string): Promise<ReferenceResult> {
       return;
     }
     for (const e of entries) {
-      if (e.name.startsWith(".")) continue;
+      if (e.name.startsWith(".") || e.name === "_Scratch") continue;
       const full = join(dir, e.name);
       if (e.isDirectory()) {
         await walk(full);
       } else if (e.name.endsWith(".md")) {
         try {
-          const body = await readFile(full, "utf8");
+          const target = await realSafeJoin(rootDir, relative(rootDir, full));
+          if (!target) continue;
+          const body = await readFile(target, "utf8");
           if (body.toLowerCase().includes(q)) {
             hits.push(relative(rootDir, full));
           }

@@ -35,6 +35,7 @@ import {
 } from "../engine/artifacts.js";
 import {
   formatCapabilityReceipt,
+  capabilityRequestsFor,
   openCapabilityRequests,
   recordCapabilityRequest,
   sendEmailToThomas,
@@ -51,6 +52,8 @@ import {
 import * as hindsight from "./hindsight.js";
 import * as vault from "./vault.js";
 import * as github from "./github.js";
+import { READ_PAGE_MAX, renderReadPage } from "./read-page.js";
+import { buildPursuitTool } from "./pursuits.js";
 import { tryRecordEffect } from "./fixtures.js";
 import { playBeat } from "./director.js";
 import {
@@ -141,45 +144,20 @@ export function buildCoreMemoryTool(agentId: AgentId): RunnableTool {
 }
 
 // --- Token hygiene (cost lever) -------------------------------------------
-// Reference reads (repo files, vault notes, artifacts, recall) used to dump
-// their full body verbatim into the continuous thread — 3–5K tokens each, the
-// SAME artifact re-read 6×. That bloat rode in EVERY subsequent tick's cache
-// read and dragged the thread toward the compaction trigger. Two cheap guards:
-//   1. clampText: cap a read's output so one file/note can't dominate the thread.
-//   2. dedupRead: a re-read of the SAME unchanged thing returns a short pointer
-//      instead of re-dumping the body (the agent already has it above).
+// Cap individual results, but never suppress a read because a prior turn read
+// the same bytes: provider compaction may have removed that earlier result.
+// Artifact and repository reads offer explicit continuation below.
 function clampText(text: string, maxChars: number, hint: string): string {
   if (text.length <= maxChars) return text;
   const omitted = text.length - maxChars;
   return `${text.slice(0, maxChars)}\n\n[… truncated ${omitted.toLocaleString()} more characters — ${hint} to see the rest.]`;
 }
 
-// Per-agent recent-read fingerprints (process memory; resets on restart, which
-// just re-warms the guard). Bounded so it only catches genuinely rapid re-reads.
-const RECENT_READS_MAX = 8;
-const recentReads = new Map<string, { key: string; hash: number }[]>();
-function fingerprint(s: string): number {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
-  return h;
-}
-// Returns a pointer string if this exact key+content was read recently (so the
-// caller can skip re-dumping it); else records it and returns null.
-function dedupRead(agentId: string, key: string, content: string, label: string): string | null {
-  const hash = fingerprint(content);
-  const list = recentReads.get(agentId) ?? [];
-  const seen = list.find((e) => e.key === key);
-  if (seen && seen.hash === hash) {
-    return `You already opened ${label} earlier in this conversation and it hasn't changed — scroll back rather than re-reading it (you won't see anything new).`;
-  }
-  const next = list.filter((e) => e.key !== key);
-  next.push({ key, hash });
-  while (next.length > RECENT_READS_MAX) next.shift();
-  recentReads.set(agentId, next);
-  return null;
-}
-
 const artifactKindEnum = z.enum(artifactKinds as unknown as [string, ...string[]]);
+const readPageFields = {
+  offset: z.number().int().min(0).max(10_000_000).optional(),
+  max_chars: z.number().int().min(1).max(READ_PAGE_MAX).optional(),
+};
 
 // Shared by search_shareables (inside buildTools) and the chat-only share_card
 // tool (buildShareTools, a separate top-level function) — module scope so both
@@ -715,50 +693,62 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   const list_my_artifacts = defineTownTool({
     name: "list_my_artifacts",
     description:
-      "List the things YOU'VE made — your own artifacts — most recent first, with each one's id, kind, title, whether it's published, and whether it's actually mounted anywhere. Use this whenever you need an artifact's id (to edit_artifact or publish_blog_post it), or to take stock of your own work — including confirming a build really got mounted (writing it down elsewhere doesn't make it so; this reads the real state).",
-    inputSchema: z.object({}),
-    run: async () => {
-      const rows = await listArtifacts({ agent: ctx.agentId }, 20);
-      if (rows.length === 0) return "You haven't made anything yet.";
+      "List your actual creations, most recently updated first, with ids, versions, dates, publication and mounting state. Defaults to scope made (excludes diaries and bulletins so they cannot bury your work). Use scope diaries or all to inspect those explicitly. Follow next_offset for older work. This reads the real state, not your memory of it.",
+    inputSchema: z.object({
+      scope: z.enum(["made", "diaries", "all"]).optional(),
+      offset: z.number().int().min(0).max(100_000).optional(),
+      limit: z.number().int().min(1).max(20).optional(),
+    }),
+    run: async ({ scope = "made", offset = 0, limit = 20 }) => {
+      const rows = await listArtifacts({
+        agent: ctx.agentId,
+        scope: scope === "made" ? "made" : "all",
+        ...(scope === "diaries" ? { kind: "diary_entry" as const } : {}),
+      }, limit + 1, { offset, order: "updated" });
+      if (rows.length === 0) return `No ${scope} artifacts at offset ${offset}.`;
       const lines = await Promise.all(
-        rows.map(async (a) => {
+        rows.slice(0, limit).map(async (a) => {
           let mounted = "";
           if (a.objectId) {
             const obj = await getObject(a.objectId);
             mounted = obj ? ` — mounted on the ${obj.displayName}` : "";
           }
-          return `- ${a.kind} "${a.title}" (id ${a.id})${a.published ? " [published]" : ""}${mounted}`;
+          return `- ${a.kind} "${a.title}" (id ${a.id}, version ${a.version}, updated ${a.updatedAt.toISOString()})${a.published ? " [published]" : ""}${mounted}`;
         }),
       );
-      return lines.join("\n");
+      const next = rows.length > limit
+        ? `\nnext_offset: ${offset + limit}. Continue with list_my_artifacts(${JSON.stringify({ scope, offset: offset + limit, limit })}).`
+        : "\nEnd of list.";
+      return lines.join("\n") + next;
     },
   });
 
   const read_artifact = defineTownTool({
     name: "read_artifact",
     description:
-      "Read the FULL contents of any artifact by its id — yours or another facet's (a blog post, research note, project log, fun list, or a bulletin/sign). Use this to actually read something you've seen referenced or heard about. Ids come from list_my_artifacts, read_board, or an event line that mentions one (e.g. 'made a research_note … (id …)').",
-    inputSchema: z.object({ id: z.string().min(1) }),
-    run: async ({ id }) => {
+      "Read any artifact by id, yours or another facet's, in bounded pages. Start at offset 0, then use the returned continuation to read the rest. expected_version prevents mixing pages from different revisions. Ids come from list_my_artifacts, search_shareables, read_board, or public events.",
+    inputSchema: z.object({ id: z.string().min(1), ...readPageFields, expected_version: z.number().int().min(1).optional() }),
+    run: async ({ id, offset, max_chars, expected_version }) => {
       const a = await getArtifact(id);
       if (!a) return `There's no artifact with id ${id} (it may have been removed, or the id's off).`;
-      const full = `"${a.title}" — a ${a.kind} by ${a.agentId}${a.published ? " (published)" : ""}\n\n${a.body}`;
-      const dup = dedupRead(ctx.agentId, `artifact:${id}`, full, `"${a.title}"`);
-      if (dup) return dup;
-      return clampText(full, 12_000, "open it again later if you genuinely need the rest");
+      if (expected_version !== undefined && expected_version !== a.version) {
+        return `"${a.title}" changed to version ${a.version}. Restart at offset 0 without expected_version to read the current revision.`;
+      }
+      return `"${a.title}" — a ${a.kind} by ${a.agentId}${a.published ? " (published)" : ""}, version ${a.version}, updated ${a.updatedAt.toISOString()}\n` +
+        renderReadPage(a.body, { offset, maxChars: max_chars }, "read_artifact", { id, expected_version: a.version });
     },
   });
 
   const read_board = defineTownTool({
     name: "read_board",
     description:
-      "Read what's pinned to the town square notice board right now — the bulletins (the 'signs' facets post for everyone). Returns each one's title, who posted it, and its full text. Use this whenever you hear a sign or bulletin was posted and want to actually read it.",
+      "Read what's pinned to the town square notice board right now — the latest twelve bulletins, with ids, authors and text previews. Use read_artifact to read a full bulletin.",
     inputSchema: z.object({}),
     run: async () => {
       const bulletins = await listArtifacts({ kind: "bulletin" }, 12);
       if (bulletins.length === 0) return "The notice board is empty right now.";
       return bulletins
-        .map((b) => `— "${b.title}" (posted by ${b.agentId}, id ${b.id})\n${b.body}`)
+        .map((b) => `— "${b.title}" (posted by ${b.agentId}, id ${b.id})\n${clampText(b.body, 500, `read_artifact id ${b.id}`)}`)
         .join("\n\n");
     },
   });
@@ -1079,8 +1069,6 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       if (!r.ok) return r.reason ?? "Couldn't read that page.";
       const head = r.title ? `# ${r.title}\n(${r.url})\n\n` : `(${r.url})\n\n`;
       const out = head + (r.text ?? "");
-      const dup = dedupRead(ctx.agentId, `web:${r.url}`, out, `that page`);
-      if (dup) return dup;
       await ctx.onAction?.("read_web_page", `reads ${r.title ?? url}`);
       return clampText(out, 16_000, "read_web_page it again — the cap is per read");
     },
@@ -1104,6 +1092,12 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       kind: z.string().min(1).max(40),
     }),
     run: async ({ content, kind }, invocation) => {
+      // Automatic reflection retrieval trusts this reserved source tag. Only
+      // the server's public-event retain path may assign it; model-authored
+      // memories can include private chat and must never enter that channel.
+      if (kind.trim().toLowerCase() === "town_public") {
+        return "The town_public tag is reserved for verified public world events. Use a personal memory kind such as decision, observation, or conversation.";
+      }
       const r = await hindsight.remember(ctx.agentId, content, kind);
       if (r.ok) markApplied(invocation);
       return r.text;
@@ -1144,14 +1138,14 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
 
   const read_note = defineTownTool({
     name: "read_note",
-    description: "Read a specific reference note from the knowledge base by its path.",
-    inputSchema: z.object({ path: z.string().min(1).max(300) }),
-    run: async ({ path }) => {
-      const out = (await vault.readNote(path)).text;
-      const dup = dedupRead(ctx.agentId, `note:${path}`, out, `the note ${path}`);
-      if (dup) return dup;
-      return clampText(out, 8_000, "read a specific section of the note");
-    },
+    description: "Read a reference note from the knowledge base in bounded pages. Follow the returned offset and expected_sha continuation to read an entire long note or dataset without mixing revisions. A truncated earlier copy is not the full source.",
+    inputSchema: z.object({
+      path: z.string().min(1).max(300),
+      ...readPageFields,
+      expected_sha: z.string().min(1).max(128).optional(),
+    }),
+    run: async ({ path, offset, max_chars, expected_sha }) =>
+      (await vault.readNote(path, { offset, maxChars: max_chars, expectedSha: expected_sha })).text,
   });
 
   const search_notes = defineTownTool({
@@ -1202,18 +1196,16 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   const read_repo_file = defineTownTool({
     name: "read_repo_file",
     description:
-      "Read a single file from one of Thomas's repositories. Pass the repo name, the file path within it, and optionally a branch/tag/commit ref (defaults to the repo's default branch).",
+      "Read a text file from Thomas's repositories in bounded pages. Pass repo, path, optional branch/tag/commit ref (default branch if omitted), then follow the returned offset and expected_sha continuation to read all of a large file without mixing revisions.",
     inputSchema: z.object({
       repo: z.string().min(1).max(140),
       path: z.string().min(1).max(300),
       ref: z.string().max(120).optional(),
+      ...readPageFields,
+      expected_sha: z.string().min(1).max(128).optional(),
     }),
-    run: async ({ repo, path, ref }) => {
-      const out = (await github.readRepoFile(repo, path, ref)).text;
-      const dup = dedupRead(ctx.agentId, `repo:${repo}:${path}:${ref ?? ""}`, out, `the file ${repo}/${path}`);
-      if (dup) return dup;
-      return clampText(out, 8_000, "read a narrower path or a specific section");
-    },
+    run: async ({ repo, path, ref, offset, max_chars, expected_sha }) =>
+      (await github.readRepoFile(repo, path, ref, { offset, maxChars: max_chars, expectedSha: expected_sha })).text,
   });
 
   const search_code = defineTownTool({
@@ -1247,6 +1239,17 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
       return r.sent
         ? `Sent to Thomas: "${subject}".`
         : `Queued for Thomas: "${subject}" — it's in the outbox and will go out when the line's open.`;
+    },
+  });
+
+  const list_capability_requests = defineTownTool({
+    name: "list_capability_requests",
+    description: "Read your own most recent capability requests, including resolved ones, with their actual status and date. Check this before treating an old request as a current blocker; approved means permission, fulfilled means delivered. Other residents' requests are not included.",
+    inputSchema: z.object({ limit: z.number().int().min(1).max(20).optional() }),
+    run: async ({ limit = 10 }) => {
+      const rows = await capabilityRequestsFor(ctx.agentId, limit);
+      if (!rows.length) return "You have no recorded capability requests.";
+      return rows.map((r) => `- ${r.id} [${r.status}] ${r.ts.toISOString()}: ${r.summary}`).join("\n");
     },
   });
 
@@ -1370,6 +1373,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     write_artifact_state as RunnableTool,
     read_web_page as RunnableTool,
     memory,
+    buildPursuitTool(ctx.agentId),
     remember as RunnableTool,
     recall as RunnableTool,
     list_notes as RunnableTool,
@@ -1383,6 +1387,7 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
     check_mailbox as RunnableTool,
     email_thomas as RunnableTool,
     read_mail as RunnableTool,
+    list_capability_requests as RunnableTool,
     request_capability as RunnableTool,
   ];
 
@@ -1405,6 +1410,22 @@ export function buildTools(ctx: AgentContext): RunnableTool[] {
   // byte-stable across ticks (cache hygiene, plan §4.3). The memory tool's name
   // is "memory" so it sorts naturally with the rest.
   return tools.sort((a, b) => toolName(a).localeCompare(toolName(b)));
+}
+
+// Nightly reconciliation can inspect current evidence and curate only its own
+// memory/pursuits. An explicit allowlist keeps future social/action tools from
+// accidentally becoming available just because someone labels them read-only.
+const REFLECTION_TOOL_NAMES = new Set([
+  "memory", "update_pursuits", "look_around", "inspect_object",
+  "list_my_artifacts", "read_artifact", "read_artifact_state", "list_contributions",
+  "read_board", "read_town_log", "search_shareables", "list_capability_requests",
+  "list_repos", "browse_repo", "read_repo_file", "search_code",
+  "list_notes", "read_note", "search_notes",
+]);
+
+export function buildReflectionTools(ctx: AgentContext): RunnableTool[] {
+  return buildTools({ agentId: ctx.agentId, location: ctx.location })
+    .filter((tool) => REFLECTION_TOOL_NAMES.has(tool.name));
 }
 
 function toolName(t: RunnableTool): string {

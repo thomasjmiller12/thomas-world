@@ -6,7 +6,7 @@
 // optional.
 
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { AgentId } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { appendEvent } from "./events.js";
@@ -38,6 +38,20 @@ export interface OpenCapabilityRequest {
 }
 
 export type CapabilityResolutionStatus = "approved" | "declined" | "fulfilled";
+
+// Include resolved requests: an old core-memory blocker must be checkable
+// against the actual decision, even after it leaves the open backlog.
+export async function capabilityRequestsFor(agentId: AgentId, limit = 20) {
+  return db.select({
+    id: capabilityRequests.id,
+    agentId: capabilityRequests.agentId,
+    summary: capabilityRequests.summary,
+    status: capabilityRequests.status,
+    ts: capabilityRequests.ts,
+  }).from(capabilityRequests).where(eq(capabilityRequests.agentId, agentId))
+    .orderBy(desc(capabilityRequests.ts), desc(capabilityRequests.id))
+    .limit(Math.max(1, Math.min(100, limit)));
+}
 
 export async function resolveCapabilityRequest(
   id: string,

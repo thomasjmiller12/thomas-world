@@ -49,7 +49,6 @@ import {
   objectsAtLocation,
   findObjectAtLocation,
   rowToWorldObject,
-  setObjectState,
 } from "../engine/objects.js";
 import { allZones, zonesForLocation } from "../engine/zones.js";
 import {
@@ -70,6 +69,7 @@ import { buildAbout, listProofs, getProof } from "../engine/portfolio.js";
 import { listReferences, getReferenceRow, rowToReference } from "../engine/references.js";
 import { getAgent, allAgents } from "../engine/agents.js";
 import { behaviorForAgent } from "../engine/behavior.js";
+import { memoryHealth } from "../runtime/memory-health.js";
 import { listMessages } from "../engine/messages.js";
 import { recordInboundMail } from "../engine/inbound-mail.js";
 import {
@@ -119,7 +119,7 @@ import {
 import { runRoomResponse } from "../runtime/room-chat.js";
 import { withRoomLock } from "../runtime/room-lock.js";
 import { enqueue } from "../runtime/queue.js";
-import { consumePendingCall } from "../runtime/director.js";
+import { answerRingingFixture } from "../runtime/director.js";
 import { getArtifactState, setArtifactStateKey, shouldCueOwner } from "../engine/artifact-state.js";
 import type { FixtureDef } from "../runtime/fixtures.js";
 import {
@@ -306,6 +306,11 @@ export function createApp() {
     const body = validated(BehaviorHealthResponse, {
       ok: agents.every((agent) => agent.status !== "stalled"), ts: now.toISOString(), agents,
     });
+    return c.json(body, body.ok ? 200 : 503);
+  });
+
+  app.get("/health/memory", async (c) => {
+    const body = await memoryHealth();
     return c.json(body, body.ok ? 200 : 503);
   });
 
@@ -883,15 +888,12 @@ export function createApp() {
       // where the visitor is standing" — record it so an agent can later resolve
       // "where's the visitor" via the same zone vocabulary used everywhere else.
       if (obj) await setVisitorZone(id, obj.zone).catch(() => {});
-      const call = obj ? consumePendingCall(obj.id) : null;
-      if (call) {
+      const pickup = obj ? await answerRingingFixture(obj.id, locationId as LocationId, null) : null;
+      if (pickup?.caller) {
         console.log(
-          `[visitors] ${v.name} answered "${fixture}" in ${locationId} — pending call hit, waking ${call.agentId}`,
+          `[visitors] ${v.name} answered "${fixture}" in ${locationId} — pending call hit, waking ${pickup.caller}`,
         );
-        if (obj) {
-          await setObjectState(obj.id, null, "answered", { ringing: false }).catch(() => {});
-        }
-        await enqueue(call.agentId, {
+        await enqueue(pickup.caller, {
           kind: "tick",
           interrupt: true,
           note: `${v.name || "The visitor"} just answered the ${fixture} you rang — this is your cue to run the bit (play_beat) and pay it off now.`,

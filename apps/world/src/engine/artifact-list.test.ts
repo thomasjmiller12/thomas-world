@@ -31,4 +31,12 @@ describe("artifact discovery query", () => {
     expect(sql).not.toContain("not in");
     expect(params).toEqual(["diary_entry", 100]);
   });
+
+  it("pages the agent inventory by updated time with a deterministic tie breaker", async () => {
+    await listArtifacts({ scope: "made", agent: "builder" }, 21, { offset: 20, order: "updated" });
+    const { sql, params } = lastQuery();
+    expect(sql).toMatch(/where.*"agent_id" = .*"kind" not in.*order by.*"updated_at" desc, .*"id" desc.*limit.*offset/s);
+    expect(sql).not.toContain("case when");
+    expect(params).toEqual(["builder", "diary_entry", "bulletin", 21, 20]);
+  });
 });

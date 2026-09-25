@@ -12,7 +12,7 @@
 //    and capability requests; richer elsewhere detail remains pull-only
 //  - EXCLUDED: my own events (already in my thread) + ordinary room noise elsewhere
 
-import { eq, gt, sql } from "drizzle-orm";
+import { and, desc, eq, gt, notInArray, sql } from "drizzle-orm";
 import type { AgentId, LocationId, WorldEvent, ObjectNote } from "@town/contract";
 import { db, schema } from "../db/client.js";
 import { getAgent } from "../engine/agents.js";
@@ -30,6 +30,7 @@ import {
   type VisitorRow,
 } from "../engine/visitors.js";
 import { clockLine } from "./clock.js";
+import { renderPursuits } from "./pursuits.js";
 
 const { visitors } = schema;
 
@@ -241,7 +242,7 @@ export function renderPlace(
   const phrases = shown.map((o) => {
     let s = `${o.displayName}${renderObjectState(o.state)}`;
     const last = o.notes && o.notes.length ? o.notes[o.notes.length - 1] : undefined;
-    if (last) s += ` — a note reads "${last.text}"`;
+    if (last) s += ` — a note reads "${last.text}" (left ${last.ts})`;
     return s;
   });
   if (restCount > 0) {
@@ -425,7 +426,7 @@ export async function buildDelta(
   const location = agent.locationId as LocationId;
 
   const cursor = await readCursor(agentId);
-  const [loc, here, perceivedRes, inboxRes, outsideMail, visitorCount, visitorsHere, core, objectsHere, pinnedHere] =
+  const [loc, here, perceivedRes, inboxRes, outsideMail, visitorCount, visitorsHere, core, objectsHere, pinnedHere, pursuits] =
     await Promise.all([
       getLocation(location),
       agentsAtLocation(location, agentId),
@@ -439,7 +440,10 @@ export async function buildDelta(
       db
         .select()
         .from(schema.artifacts)
-        .where(eq(schema.artifacts.locationId, location)),
+        .where(and(eq(schema.artifacts.locationId, location),
+          notInArray(schema.artifacts.kind, ["diary_entry", "daily_digest", "bulletin"])))
+        .orderBy(desc(schema.artifacts.updatedAt), desc(schema.artifacts.id)).limit(4),
+      renderPursuits(agentId),
     ]);
   const inbox = inboxRes.rows;
   const [arrivalMs, visitorHistory] = await Promise.all([
@@ -508,8 +512,11 @@ export async function buildDelta(
       visitorHistory,
     ),
     ``,
-    `## Your anchors (core memory — keep these short, current, and true at reflection)`,
+    `## Your anchors (dated memories; verify old status claims against the world)`,
     core,
+    ``,
+    `## Your current pursuits`,
+    pursuits,
     ``,
     `## Since you last looked`,
     since,

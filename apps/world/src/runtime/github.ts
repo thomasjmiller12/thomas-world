@@ -10,10 +10,9 @@
 // even so, every call here is a GET — read-only is enforced at both layers.
 
 import { config } from "../config.js";
+import { renderReadPage, type ReadPageOptions } from "./read-page.js";
 
 const API = "https://api.github.com";
-// Cap how much one file read pulls into the tick context (parallels vault.ts).
-const FILE_TRUNCATE = 14_000;
 const MAX_LIST = 80;
 const MAX_SEARCH = 25;
 
@@ -139,6 +138,7 @@ interface ContentEntry {
   // present on a single-file response
   content?: string;
   encoding?: string;
+  sha?: string;
 }
 
 export async function browseRepo(repo: string, path: string): Promise<GithubResult> {
@@ -173,7 +173,12 @@ export async function browseRepo(repo: string, path: string): Promise<GithubResu
   };
 }
 
-export async function readRepoFile(repo: string, path: string, ref?: string): Promise<GithubResult> {
+export async function readRepoFile(
+  repo: string,
+  path: string,
+  ref?: string,
+  page: ReadPageOptions & { expectedSha?: string } = {},
+): Promise<GithubResult> {
   if (!token()) {
     warnOnce();
     return { ok: false, text: GITHUB_REFERENCE_FICTION };
@@ -188,6 +193,9 @@ export async function readRepoFile(repo: string, path: string, ref?: string): Pr
     return { ok: false, text: `${full}/${rel} is a directory — use browse_repo to list it.` };
   }
   const entry = res.body as ContentEntry;
+  if (page.expectedSha && page.expectedSha !== entry.sha) {
+    return { ok: false, text: `${full}/${rel} changed since the previous page. Restart at offset 0 without expected_sha to read the new version.` };
+  }
   if (entry.encoding !== "base64" || typeof entry.content !== "string") {
     return { ok: false, text: `${full}/${rel} can't be read as text (it may be too large or binary).` };
   }
@@ -197,9 +205,10 @@ export async function readRepoFile(repo: string, path: string, ref?: string): Pr
   } catch {
     return { ok: false, text: `${full}/${rel} couldn't be decoded as text.` };
   }
-  const text =
-    decoded.length > FILE_TRUNCATE ? decoded.slice(0, FILE_TRUNCATE) + "\n…(truncated)" : decoded;
-  return { ok: true, text: `${full}/${rel}:\n\n${text}` };
+  const text = renderReadPage(decoded, page, "read_repo_file", {
+    repo, path, ...(ref ? { ref } : {}), ...(entry.sha ? { expected_sha: entry.sha } : {}),
+  });
+  return { ok: true, text: `${full}/${rel}${entry.sha ? ` (blob ${entry.sha})` : ""}:\n${text}` };
 }
 
 interface CodeSearchItem {

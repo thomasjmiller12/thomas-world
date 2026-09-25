@@ -99,6 +99,21 @@ export async function recentEventsForAgent(agentId: AgentId, limit = 5): Promise
   return rows.map(materializeEventRow).reverse();
 }
 
+// Filter work before LIMIT so diaries/activity do not hide the evidence needed
+// by nightly memory. Operator capability decisions target payload.agent and
+// intentionally have no actor agentId.
+export async function recentPublicWorkForAgent(agentId: AgentId, since: Date, limit = 20): Promise<WorldEvent[]> {
+  const rows = await db.select().from(worldEvents).where(sql`
+    ${worldEvents.visibility} = 'public'
+    AND ${worldEvents.ts} >= ${since}
+    AND ${worldEvents.type} IN ('artifact.created', 'artifact.updated', 'artifact.state_changed', 'capability.resolved')
+    AND COALESCE(${worldEvents.payload}->>'kind', '') NOT IN ('diary_entry', 'daily_digest', 'bulletin')
+    AND (${worldEvents.agentId} = ${agentId}
+      OR (${worldEvents.type} = 'capability.resolved' AND ${worldEvents.payload}->>'agent' = ${agentId}))
+  `).orderBy(desc(worldEvents.id)).limit(Math.max(1, Math.min(50, limit)));
+  return rows.map(materializeEventRow).reverse();
+}
+
 // A headline-collapsed view of an event: for events the agent did NOT witness
 // at its own location, we strip the rich body so it only learns the gist
 // ("someone moved", "a bulletin was posted") — never private detail.

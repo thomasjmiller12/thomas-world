@@ -2,7 +2,6 @@ import OpenAI from "openai";
 import {
   MemorySession,
   OpenAIProvider,
-  OpenAIResponsesCompactionSession,
   Runner,
   type AgentInputItem,
 } from "@openai/agents";
@@ -28,23 +27,13 @@ export const openaiRunner = new Runner({
 
 const COMPACT_TRIGGER_TOKENS = 50_000;
 
-function approximateRenderedTokens(items: readonly AgentInputItem[]): number {
-  return Math.ceil(JSON.stringify(items).length / 4);
-}
-
 export function createOpenAISession(
   initialItems: AgentInputItem[],
-  model: string,
-): OpenAIResponsesCompactionSession {
-  const memory = new MemorySession({ initialItems });
-  return new OpenAIResponsesCompactionSession({
-    client: openaiClient,
-    underlyingSession: memory,
-    model,
-    compactionMode: "input",
-    shouldTriggerCompaction: ({ sessionItems }) =>
-      approximateRenderedTokens(sessionItems) >= COMPACT_TRIGGER_TOKENS,
-  });
+): MemorySession {
+  // Use inline Responses compaction only. The pinned Agents SDK trims history
+  // before its latest checkpoint when preparing model input, which is valid for
+  // inline compaction but drops retained inputs from standalone /responses/compact.
+  return new MemorySession({ initialItems });
 }
 
 export const OPENAI_CONTEXT_MANAGEMENT = [
